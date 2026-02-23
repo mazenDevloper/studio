@@ -35,8 +35,8 @@ export function DashboardView() {
   const { favoriteChannels, starredChannelIds } = useMediaStore();
   
   // Layout State for Resizable Widgets
-  const [mapLayout, setMapLayout] = useState<WidgetLayout>({ id: 'map', colSpan: 8, height: 500 });
-  const [stackLayout, setStackLayout] = useState<WidgetLayout>({ id: 'stack', colSpan: 4, height: 500 });
+  const [mapLayout, setMapLayout] = useState<WidgetLayout>({ id: 'map', colSpan: 8, height: 520 });
+  const [stackLayout, setStackLayout] = useState<WidgetLayout>({ id: 'stack', colSpan: 4, height: 520 });
   const [resizingId, setResizingId] = useState<string | null>(null);
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
 
@@ -81,10 +81,10 @@ export function DashboardView() {
     if (!resizingId) return;
 
     if (resizingId === 'map') {
-      const newColSpan = Math.max(4, Math.min(12, Math.floor((e.clientX / window.innerWidth) * 12)));
+      const newColSpan = Math.max(4, Math.min(10, Math.floor((e.clientX / window.innerWidth) * 12)));
       const newHeight = Math.max(300, Math.min(800, e.clientY - 100));
       setMapLayout(prev => ({ ...prev, colSpan: newColSpan, height: newHeight }));
-      setStackLayout(prev => ({ ...prev, colSpan: newColSpan >= 12 ? 12 : 12 - newColSpan }));
+      setStackLayout(prev => ({ ...prev, colSpan: 12 - newColSpan }));
     }
   }, [resizingId]);
 
@@ -98,12 +98,12 @@ export function DashboardView() {
   }, [handleMouseMove, handleMouseUp]);
 
   return (
-    <div className="p-6 h-full flex flex-col gap-6 bg-black overflow-y-auto custom-scrollbar">
+    <div className="p-6 h-full flex flex-col gap-8 bg-black overflow-y-auto custom-scrollbar">
       {/* Header HUD */}
       <header className="flex items-center justify-between px-4 h-16 shrink-0">
         <div className="flex items-center gap-4">
           {weather && (
-            <div className="flex items-center gap-3 px-5 py-2 rounded-full bg-zinc-900/50 border border-white/5 backdrop-blur-xl shadow-lg">
+            <div className="flex items-center gap-3 px-6 py-2 rounded-full bg-zinc-900/50 border border-white/5 backdrop-blur-xl shadow-lg">
               {weather.current.condition.text.includes('Sun') ? <Sun className="text-yellow-400 w-5 h-5" /> : <Cloud className="text-blue-400 w-5 h-5" />}
               <div className="flex flex-col">
                 <span className="text-sm font-bold leading-none text-white">{weather.current.temp_c}°C</span>
@@ -125,11 +125,11 @@ export function DashboardView() {
       </header>
 
       {/* Main Command Center Layout */}
-      <div className="grid grid-cols-12 gap-6 items-stretch shrink-0">
+      <div className="grid grid-cols-12 gap-6 items-start shrink-0">
         {/* Left: Interactive Map - Resizable */}
         <div 
           className={cn(
-            "relative group rounded-[2.5rem] overflow-hidden transition-all duration-200",
+            "relative group rounded-[2.5rem] overflow-hidden transition-all duration-300",
             `col-span-12 lg:col-span-${mapLayout.colSpan}`
           )}
           style={{ height: mapLayout.height }}
@@ -139,18 +139,19 @@ export function DashboardView() {
           {/* Resize Handle: Bottom Left */}
           <div 
             onMouseDown={() => handleMouseDown('map')}
-            className="absolute bottom-4 left-4 w-10 h-10 bg-white/10 backdrop-blur-3xl rounded-xl border border-white/20 flex items-center justify-center cursor-nwse-resize opacity-0 group-hover:opacity-100 transition-opacity z-30 active:bg-primary active:scale-90"
+            className="absolute bottom-6 left-6 w-12 h-12 bg-white/10 backdrop-blur-3xl rounded-2xl border border-white/20 flex items-center justify-center cursor-nwse-resize opacity-0 group-hover:opacity-100 transition-opacity z-30 active:bg-primary active:scale-90"
           >
-            <Maximize2 className="w-5 h-5 text-white rotate-90" />
+            <Maximize2 className="w-6 h-6 text-white rotate-90" />
           </div>
         </div>
 
-        {/* Right: Smart Stack & Reminders */}
+        {/* Right: Smart Stack & Reminders - Fixed Stack Column */}
         <div className={cn(
-          "flex flex-col gap-6 transition-all duration-200",
+          "flex flex-col gap-6 transition-all duration-300",
           `col-span-12 lg:col-span-${stackLayout.colSpan}`
-        )}>
-          <div className="h-[250px] lg:h-1/2 relative group">
+        )} style={{ height: mapLayout.height }}>
+          {/* Smart Stack Carousel */}
+          <div className="flex-1 relative group overflow-hidden">
             <Carousel setApi={setApi} opts={{ loop: true }} className="w-full h-full">
               <CarouselContent className="h-full ml-0">
                 <CarouselItem className="h-full pl-0">
@@ -168,29 +169,31 @@ export function DashboardView() {
               </CarouselContent>
             </Carousel>
             
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
+            {/* Dots Fixed Position */}
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-20">
               {[0, 1, 2, 3].map((i) => (
                 <div 
                   key={i} 
-                  className={`h-1.5 rounded-full transition-all duration-300 ${current === i ? "w-6 bg-primary shadow-[0_0_10px_rgba(59,130,246,0.5)]" : "w-1.5 bg-white/20"}`}
+                  className={`h-1.5 rounded-full transition-all duration-300 ${current === i ? "w-6 bg-primary shadow-glow" : "w-1.5 bg-white/20"}`}
                 />
               ))}
             </div>
           </div>
           
-          <div className="flex-1 min-h-[250px]">
+          {/* Reminders - Takes 40% of the column height */}
+          <div className="h-[40%] min-h-[220px]">
             <RemindersWidget />
           </div>
         </div>
       </div>
 
-      {/* Prayer Timeline - Moved here above video bars */}
-      <div className="shrink-0">
+      {/* Prayer Timeline Row */}
+      <div className="shrink-0 w-full">
         <PrayerTimelineWidget />
       </div>
 
       {/* Video Bars Section */}
-      <div className="grid grid-cols-12 gap-6 shrink-0">
+      <div className="grid grid-cols-12 gap-6 shrink-0 pb-12">
         <div className="col-span-12 lg:col-span-6">
           <LatestVideosWidget channels={starredChannels} />
         </div>

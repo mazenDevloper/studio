@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -95,7 +94,7 @@ export function MoonWidget() {
           <div className="space-y-1">
             <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Illumination</p>
             <h3 className="text-5xl font-bold font-headline text-white leading-none">
-              {moonData ? Math.round(moonData.illumination) : "0"}%
+              {moonData && moonData.illumination ? Math.round(moonData.illumination) : "..."}%
             </h3>
           </div>
 
