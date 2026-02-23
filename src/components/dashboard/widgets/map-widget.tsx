@@ -3,11 +3,13 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { Card } from "@/components/ui/card";
-import { Compass, Navigation, MapPin, Search, Clock, Zap, Bookmark, Star, Trash2, Map as MapIcon } from "lucide-react";
+import { Compass, Navigation, MapPin, Search, Clock, Zap, Bookmark, Star, Trash2, Map as MapIcon, AlertTriangle, ExternalLink } from "lucide-react";
 import { GOOGLE_MAPS_API_KEY } from "@/lib/constants";
 import { useMediaStore, SavedPlace } from "@/lib/store";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import Image from "next/image";
+import { PlaceHolderImages } from "@/lib/placeholder-images";
 
 const DARK_MAP_STYLE = [
   { "elementType": "geometry", "stylers": [{ "color": "#212121" }] },
@@ -36,6 +38,7 @@ const DARK_MAP_STYLE = [
 declare global {
   interface Window {
     initMap: () => void;
+    gm_authFailure?: () => void;
   }
 }
 
@@ -43,6 +46,7 @@ export function MapWidget() {
   const mapRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [map, setMap] = useState<google.maps.Map | null>(null);
+  const [apiError, setApiError] = useState<boolean>(false);
   const [directionsRenderer, setDirectionsRenderer] = useState<google.maps.DirectionsRenderer | null>(null);
   const [navigationData, setNavigationData] = useState<{
     destination: string;
@@ -53,6 +57,8 @@ export function MapWidget() {
   const [showSavedPlaces, setShowSavedPlaces] = useState(false);
   const { savedPlaces, savePlace, removePlace } = useMediaStore();
   const [currentPlace, setCurrentPlace] = useState<SavedPlace | null>(null);
+
+  const mapPlaceholder = PlaceHolderImages.find(img => img.id === 'map-placeholder');
 
   const startNavigation = useCallback((destination: google.maps.LatLng, name: string = "Target Location") => {
     if (!map || !directionsRenderer) return;
@@ -93,59 +99,66 @@ export function MapWidget() {
 
   const initGoogleMap = useCallback(() => {
     if (mapRef.current && !map) {
-      const newMap = new google.maps.Map(mapRef.current, {
-        center: { lat: 21.4225, lng: 39.8262 }, // Makkah
-        zoom: 15,
-        disableDefaultUI: true,
-        styles: DARK_MAP_STYLE,
-        gestureHandling: "greedy"
-      });
-      setMap(newMap);
+      try {
+        const newMap = new google.maps.Map(mapRef.current, {
+          center: { lat: 21.4225, lng: 39.8262 }, // Makkah
+          zoom: 15,
+          disableDefaultUI: true,
+          styles: DARK_MAP_STYLE,
+          gestureHandling: "greedy"
+        });
+        setMap(newMap);
 
-      const renderer = new google.maps.DirectionsRenderer({
-        map: newMap,
-        suppressMarkers: false,
-        polylineOptions: {
-          strokeColor: "#3b82f6",
-          strokeWeight: 6,
-          strokeOpacity: 0.8
-        }
-      });
-      setDirectionsRenderer(renderer);
+        const renderer = new google.maps.DirectionsRenderer({
+          map: newMap,
+          suppressMarkers: false,
+          polylineOptions: {
+            strokeColor: "#3b82f6",
+            strokeWeight: 6,
+            strokeOpacity: 0.8
+          }
+        });
+        setDirectionsRenderer(renderer);
 
-      newMap.addListener("click", (e: google.maps.MapMouseEvent) => {
-        if (e.latLng) {
-          const geocoder = new google.maps.Geocoder();
-          geocoder.geocode({ location: e.latLng }, (results, status) => {
-            let name = "Selected Point";
-            if (status === "OK" && results && results[0]) {
-              const poi = results.find(r => r.types.includes("point_of_interest") || r.types.includes("establishment"));
-              name = poi ? poi.formatted_address.split(',')[0] : results[0].formatted_address.split(',')[0];
-            }
-            // Explicitly pass map and renderer for immediate use if needed, 
-            // but the state should update in time for the next call.
-            startNavigation(e.latLng!, name);
+        newMap.addListener("click", (e: google.maps.MapMouseEvent) => {
+          if (e.latLng) {
+            const geocoder = new google.maps.Geocoder();
+            geocoder.geocode({ location: e.latLng }, (results, status) => {
+              let name = "Selected Point";
+              if (status === "OK" && results && results[0]) {
+                const poi = results.find(r => r.types.includes("point_of_interest") || r.types.includes("establishment"));
+                name = poi ? poi.formatted_address.split(',')[0] : results[0].formatted_address.split(',')[0];
+              }
+              startNavigation(e.latLng!, name);
+            });
+          }
+        });
+
+        if (searchInputRef.current) {
+          const autocomplete = new google.maps.places.Autocomplete(searchInputRef.current);
+          autocomplete.bindTo("bounds", newMap);
+          autocomplete.addListener("place_changed", () => {
+            const place = autocomplete.getPlace();
+            if (!place.geometry || !place.geometry.location) return;
+
+            newMap.setCenter(place.geometry.location);
+            newMap.setZoom(17);
+            startNavigation(place.geometry.location, place.name || "Search Result");
           });
         }
-      });
-
-      if (searchInputRef.current) {
-        const autocomplete = new google.maps.places.Autocomplete(searchInputRef.current);
-        autocomplete.bindTo("bounds", newMap);
-        autocomplete.addListener("place_changed", () => {
-          const place = autocomplete.getPlace();
-          if (!place.geometry || !place.geometry.location) return;
-
-          newMap.setCenter(place.geometry.location);
-          newMap.setZoom(17);
-          startNavigation(place.geometry.location, place.name || "Search Result");
-        });
+      } catch (e) {
+        console.error("Map initialization failed", e);
+        setApiError(true);
       }
     }
   }, [map, startNavigation]);
 
   useEffect(() => {
-    // Check if script is already present or API is already loaded
+    // Handle Google Maps authentication failures (like BillingNotEnabled)
+    window.gm_authFailure = () => {
+      setApiError(true);
+    };
+
     if (window.google && window.google.maps) {
       initGoogleMap();
       return;
@@ -160,14 +173,14 @@ export function MapWidget() {
     script.id = 'google-maps-script';
     script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places&callback=initMap`;
     script.async = true;
+    script.onerror = () => setApiError(true);
     
     window.initMap = initGoogleMap;
     document.head.appendChild(script);
 
     return () => {
-      // Don't remove the script on unmount as it might be needed again,
-      // but we could clean up the callback.
       delete (window as any).initMap;
+      delete (window as any).gm_authFailure;
     };
   }, [initGoogleMap]);
 
@@ -179,7 +192,39 @@ export function MapWidget() {
 
   return (
     <Card className="h-full w-full overflow-hidden border-none bg-black relative group rounded-[2.5rem] ios-shadow">
-      <div ref={mapRef} className="absolute inset-0 z-0" />
+      {apiError ? (
+        <div className="absolute inset-0 z-0 flex flex-col items-center justify-center p-8 text-center bg-zinc-900/50 backdrop-blur-3xl">
+          {mapPlaceholder && (
+            <Image 
+              src={mapPlaceholder.imageUrl} 
+              alt="Map Preview" 
+              fill 
+              className="object-cover opacity-20 grayscale pointer-events-none"
+            />
+          )}
+          <div className="relative z-10 space-y-6">
+            <div className="w-20 h-20 rounded-3xl bg-red-500/20 flex items-center justify-center mx-auto border border-red-500/30">
+              <AlertTriangle className="w-10 h-10 text-red-500" />
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-2xl font-headline font-bold text-white">Navigation Offline</h3>
+              <p className="text-muted-foreground max-w-sm mx-auto text-sm leading-relaxed">
+                Google Maps API requires billing to be enabled. Please visit the Cloud Console to activate your account.
+              </p>
+            </div>
+            <Button 
+              asChild
+              className="bg-white text-black font-bold rounded-2xl h-12 px-8 hover:bg-zinc-200"
+            >
+              <a href="https://console.cloud.google.com/project/_/billing/enable" target="_blank" rel="noreferrer">
+                <ExternalLink className="w-4 h-4 mr-2" /> Enable Billing
+              </a>
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div ref={mapRef} className="absolute inset-0 z-0" />
+      )}
       
       <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/60 pointer-events-none z-10" />
 
@@ -190,12 +235,13 @@ export function MapWidget() {
           </div>
           <Input 
             ref={searchInputRef}
-            placeholder="Tap map or search destination"
-            className="w-full h-16 pl-14 pr-6 bg-black/80 backdrop-blur-3xl border-white/5 rounded-2xl text-white font-headline font-bold text-lg ios-shadow focus:ring-2 focus:ring-blue-500 transition-all placeholder:text-muted-foreground/50"
+            disabled={apiError}
+            placeholder={apiError ? "Navigation unavailable" : "Tap map or search destination"}
+            className="w-full h-16 pl-14 pr-6 bg-black/80 backdrop-blur-3xl border-white/5 rounded-2xl text-white font-headline font-bold text-lg ios-shadow focus:ring-2 focus:ring-blue-500 transition-all placeholder:text-muted-foreground/50 disabled:opacity-50"
           />
         </div>
 
-        {navigationData && (
+        {navigationData && !apiError && (
           <div className="p-6 rounded-[2.5rem] bg-black/90 backdrop-blur-3xl border border-white/10 space-y-5 w-full shadow-2xl animate-in fade-in slide-in-from-left-4 duration-500">
             <div className="flex items-center gap-5">
               <div className="w-16 h-16 rounded-[1.2rem] bg-blue-600 flex items-center justify-center shadow-[0_0_25px_rgba(37,99,235,0.4)]">
@@ -259,17 +305,19 @@ export function MapWidget() {
         >
           <Bookmark className={`w-7 h-7 ${showSavedPlaces ? "text-yellow-500 fill-current" : "text-white"}`} />
         </Button>
-        <Button 
-          className="w-16 h-16 rounded-full bg-zinc-900/90 backdrop-blur-3xl flex items-center justify-center border border-white/10 shadow-2xl hover:bg-white/10 transition-all"
-          onClick={() => {
-            if (map) {
-              map.setCenter({ lat: 21.4225, lng: 39.8262 });
-              map.setZoom(15);
-            }
-          }}
-        >
-          <Compass className="w-7 h-7 text-white animate-[spin_15s_linear_infinite]" />
-        </Button>
+        {!apiError && (
+          <Button 
+            className="w-16 h-16 rounded-full bg-zinc-900/90 backdrop-blur-3xl flex items-center justify-center border border-white/10 shadow-2xl hover:bg-white/10 transition-all"
+            onClick={() => {
+              if (map) {
+                map.setCenter({ lat: 21.4225, lng: 39.8262 });
+                map.setZoom(15);
+              }
+            }}
+          >
+            <Compass className="w-7 h-7 text-white animate-[spin_15s_linear_infinite]" />
+          </Button>
+        )}
       </div>
 
       {showSavedPlaces && (
