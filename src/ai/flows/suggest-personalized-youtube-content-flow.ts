@@ -30,6 +30,7 @@ const SuggestPersonalizedYouTubeContentOutputSchema = z.object({
   suggestions: z
     .array(SuggestedContentSchema)
     .describe('A list of personalized YouTube content suggestions.'),
+  error: z.string().optional().describe('An optional error message if generation failed.'),
 });
 export type SuggestPersonalizedYouTubeContentOutput = z.infer<
   typeof SuggestPersonalizedYouTubeContentOutputSchema
@@ -38,7 +39,22 @@ export type SuggestPersonalizedYouTubeContentOutput = z.infer<
 export async function suggestPersonalizedYouTubeContent(
   input: SuggestPersonalizedYouTubeContentInput
 ): Promise<SuggestPersonalizedYouTubeContentOutput> {
-  return suggestPersonalizedYouTubeContentFlow(input);
+  try {
+    return await suggestPersonalizedYouTubeContentFlow(input);
+  } catch (error: any) {
+    console.error("GenAI Flow Error:", error);
+    // Return a graceful error response instead of throwing to the client
+    if (error.message?.includes('429') || error.message?.includes('QUOTA_EXHAUSTED')) {
+      return { 
+        suggestions: [], 
+        error: "QUOTA_EXHAUSTED" 
+      };
+    }
+    return { 
+      suggestions: [], 
+      error: "INTERNAL_ERROR" 
+    };
+  }
 }
 
 const prompt = ai.definePrompt({

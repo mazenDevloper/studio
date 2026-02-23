@@ -1,9 +1,8 @@
-
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Sparkles, RefreshCw, ExternalLink } from "lucide-react";
+import { Sparkles, RefreshCw, ExternalLink, AlertTriangle } from "lucide-react";
 import { suggestPersonalizedYouTubeContent, type SuggestPersonalizedYouTubeContentOutput } from "@/ai/flows/suggest-personalized-youtube-content-flow";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -16,19 +15,30 @@ interface Props {
 export function YouTubeSuggestionsWidget({ channels }: Props) {
   const [suggestions, setSuggestions] = useState<SuggestPersonalizedYouTubeContentOutput | null>(null);
   const [loading, setLoading] = useState(false);
+  const [errorStatus, setErrorStatus] = useState<string | null>(null);
 
   const fetchSuggestions = useCallback(async () => {
     if (channels.length === 0) {
       setSuggestions(null);
+      setErrorStatus(null);
       return;
     }
     setLoading(true);
+    setErrorStatus(null);
     try {
       const channelTitles = channels.map(c => c.title);
       const result = await suggestPersonalizedYouTubeContent({ favoriteChannels: channelTitles });
-      setSuggestions(result);
+      
+      if (result.error) {
+        setErrorStatus(result.error);
+        setSuggestions(null);
+      } else {
+        setSuggestions(result);
+        setErrorStatus(null);
+      }
     } catch (error) {
       console.error("Failed to fetch suggestions", error);
+      setErrorStatus("INTERNAL_ERROR");
     } finally {
       setLoading(false);
     }
@@ -65,6 +75,25 @@ export function YouTubeSuggestionsWidget({ channels }: Props) {
         ) : loading ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[1, 2, 3].map(i => <Skeleton key={i} className="h-40 w-full rounded-[2.5rem] bg-zinc-800" />)}
+          </div>
+        ) : errorStatus ? (
+          <div className="py-12 flex flex-col items-center justify-center text-center bg-white/5 rounded-[2rem] border border-white/5 px-8">
+            <div className="w-16 h-16 rounded-full bg-yellow-500/10 flex items-center justify-center mb-4">
+              <AlertTriangle className="w-8 h-8 text-yellow-500" />
+            </div>
+            <h4 className="text-xl font-bold mb-2">Intelligence Calibrating</h4>
+            <p className="text-muted-foreground text-sm max-w-md">
+              {errorStatus === 'QUOTA_EXHAUSTED' 
+                ? "The AI is processing heavy traffic. Please wait a few seconds before refreshing your feed."
+                : "System intelligence temporarily offline. Please try again shortly."}
+            </p>
+            <Button 
+              variant="link" 
+              onClick={fetchSuggestions}
+              className="mt-4 text-primary font-bold"
+            >
+              Try Reconnecting
+            </Button>
           </div>
         ) : suggestions ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
