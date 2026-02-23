@@ -1,11 +1,11 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Search, Plus, Play, Trash2, Youtube, Radio, Loader2, Check, ArrowLeft, Clock } from "lucide-react";
+import { Search, Plus, Play, Trash2, Youtube, Radio, Loader2, Check, ArrowLeft, Clock, Bookmark } from "lucide-react";
 import { useMediaStore } from "@/lib/store";
 import { searchYouTubeChannels, fetchChannelVideos, YouTubeChannel, YouTubeVideo } from "@/lib/youtube";
 import Image from "next/image";
@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog";
 
 export function MediaView() {
-  const { favoriteChannels, addChannel, removeChannel } = useMediaStore();
+  const { favoriteChannels, addChannel, removeChannel, savedVideos, toggleSaveVideo } = useMediaStore();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<YouTubeChannel[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -48,6 +48,11 @@ export function MediaView() {
     } else {
       addChannel(channel);
     }
+  };
+
+  const handleToggleSave = (e: React.MouseEvent, video: YouTubeVideo) => {
+    e.stopPropagation();
+    toggleSaveVideo(video);
   };
 
   return (
@@ -116,34 +121,49 @@ export function MediaView() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {channelVideos.map((video) => (
-                <Card 
-                  key={video.id} 
-                  className="group relative overflow-hidden bg-zinc-900/80 border-none rounded-[2.5rem] transition-all hover:scale-[1.02] cursor-pointer ios-shadow"
-                  onClick={() => setPlayingVideoId(video.id)}
-                >
-                  <div className="aspect-video relative overflow-hidden">
-                    <Image
-                      src={video.thumbnail}
-                      alt={video.title}
-                      fill
-                      className="object-cover opacity-80 group-hover:opacity-100 transition-opacity"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="w-20 h-20 rounded-full bg-white/20 backdrop-blur-3xl flex items-center justify-center border border-white/20 opacity-0 group-hover:opacity-100 transition-all scale-75 group-hover:scale-100 shadow-2xl">
-                        <Play className="w-10 h-10 text-white fill-white ml-1" />
+              {channelVideos.map((video) => {
+                const isSaved = savedVideos.some(v => v.id === video.id);
+                return (
+                  <Card 
+                    key={video.id} 
+                    className="group relative overflow-hidden bg-zinc-900/80 border-none rounded-[2.5rem] transition-all hover:scale-[1.02] cursor-pointer ios-shadow"
+                    onClick={() => setPlayingVideoId(video.id)}
+                  >
+                    <div className="aspect-video relative overflow-hidden">
+                      <Image
+                        src={video.thumbnail}
+                        alt={video.title}
+                        fill
+                        className="object-cover opacity-80 group-hover:opacity-100 transition-opacity"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                      
+                      <div className="absolute top-4 right-4 z-20">
+                         <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={(e) => handleToggleSave(e, video)}
+                          className={`w-12 h-12 rounded-full backdrop-blur-3xl border border-white/10 ${isSaved ? "bg-accent text-black" : "bg-black/40 text-white hover:bg-white hover:text-black"}`}
+                         >
+                           <Bookmark className={`w-6 h-6 ${isSaved ? "fill-current" : ""}`} />
+                         </Button>
+                      </div>
+
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="w-20 h-20 rounded-full bg-white/20 backdrop-blur-3xl flex items-center justify-center border border-white/20 opacity-0 group-hover:opacity-100 transition-all scale-75 group-hover:scale-100 shadow-2xl">
+                          <Play className="w-10 h-10 text-white fill-white ml-1" />
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <CardContent className="p-6 space-y-2">
-                    <h3 className="font-bold text-xl line-clamp-1 font-headline">{video.title}</h3>
-                    <div className="flex items-center gap-4 text-xs font-bold text-muted-foreground uppercase tracking-widest">
-                       <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> Latest</span>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    <CardContent className="p-6 space-y-2">
+                      <h3 className="font-bold text-xl line-clamp-1 font-headline">{video.title}</h3>
+                      <div className="flex items-center gap-4 text-xs font-bold text-muted-foreground uppercase tracking-widest">
+                         <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> Latest</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           )}
         </div>

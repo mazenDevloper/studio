@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 import { MapWidget } from "./widgets/map-widget";
 import { YouTubeSuggestionsWidget } from "./widgets/youtube-suggestions-widget";
+import { YouTubeSavedWidget } from "./widgets/youtube-saved-widget";
 import { useMediaStore } from "@/lib/store";
 import { MoonWidget } from "./widgets/moon-widget";
 import { PrayerWidget } from "./widgets/prayer-widget";
@@ -58,22 +59,26 @@ export function DashboardView() {
         </div>
       </header>
 
-      <div className="flex-1 grid grid-cols-12 gap-6 pb-8">
-        <div className="col-span-8 row-span-2">
+      <div className="flex-1 grid grid-cols-12 gap-6 pb-8 overflow-y-auto">
+        <div className="col-span-8 row-span-2 min-h-[500px]">
           <MapWidget />
         </div>
 
         <div className="col-span-4 space-y-6">
-          <div className="h-1/2">
+          <div className="h-1/2 min-h-[240px]">
             <MoonWidget />
           </div>
-          <div className="h-1/2">
+          <div className="h-1/2 min-h-[240px]">
             <PrayerWidget />
           </div>
         </div>
 
-        <div className="col-span-12">
+        <div className="col-span-12 lg:col-span-7">
           <YouTubeSuggestionsWidget channels={favoriteChannels} />
+        </div>
+
+        <div className="col-span-12 lg:col-span-5">
+          <YouTubeSavedWidget />
         </div>
       </div>
     </div>

@@ -1,44 +1,90 @@
+
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Bookmark, Play, Clock } from "lucide-react";
-
-const savedVideos = [
-  { title: "The Future of Quantum Computing", author: "Veritasium", duration: "12:30", color: "bg-blue-500" },
-  { title: "Mastering Next.js 15 for Apps", author: "Tech Lead", duration: "45:00", color: "bg-red-500" },
-  { title: "Deep Sea Exploration Log", author: "National Geographic", duration: "18:22", color: "bg-teal-500" },
-];
+import { Bookmark, Play, Trash2, Youtube } from "lucide-react";
+import { useMediaStore } from "@/lib/store";
+import { useState } from "react";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import Image from "next/image";
+import { Button } from "@/components/ui/button";
 
 export function YouTubeSavedWidget() {
+  const { savedVideos, removeVideo } = useMediaStore();
+  const [playingVideoId, setPlayingVideoId] = useState<string | null>(null);
+
   return (
-    <Card className="h-full border-white/5 bg-gradient-to-br from-card to-card/40">
-      <CardHeader className="p-4 flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
-          YouTube Saved List
-        </CardTitle>
-        <Bookmark className="h-4 w-4 text-accent" />
-      </CardHeader>
-      <CardContent className="p-4 pt-0 space-y-3">
-        {savedVideos.map((video, idx) => (
-          <div key={idx} className="flex items-center gap-3 p-2 rounded-xl bg-white/5 hover:bg-white/10 transition-colors border border-transparent hover:border-white/10 cursor-pointer group">
-            <div className={`w-12 h-12 rounded-lg ${video.color} flex items-center justify-center overflow-hidden relative`}>
-              <Play className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity z-10" />
-              <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h4 className="text-sm font-bold truncate">{video.title}</h4>
-              <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-tight">{video.author}</p>
-            </div>
-            <div className="flex items-center gap-1 text-[10px] text-muted-foreground font-mono">
-              <Clock className="w-3 h-3" />
-              {video.duration}
-            </div>
+    <Card className="h-full border-none bg-zinc-900/50 rounded-[2.5rem] ios-shadow overflow-hidden flex flex-col">
+      <CardHeader className="p-8 flex flex-row items-center justify-between space-y-0 pb-4">
+        <CardTitle className="text-xl font-bold font-headline text-white flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-accent flex items-center justify-center ios-shadow">
+            <Bookmark className="h-6 w-6 text-black fill-current" />
           </div>
-        ))}
-        <button className="w-full py-2 text-xs font-bold text-muted-foreground uppercase tracking-widest hover:text-white transition-colors">
-          View All Library
-        </button>
+          Saved Transmissions
+        </CardTitle>
+        <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 bg-white/5 rounded-full border border-white/5">
+          {savedVideos.length} Saved
+        </span>
+      </CardHeader>
+      <CardContent className="p-8 pt-0 flex-1 overflow-y-auto max-h-[400px]">
+        {savedVideos.length === 0 ? (
+          <div className="py-12 text-center bg-white/5 rounded-[2rem] border border-dashed border-white/5">
+            <p className="text-muted-foreground italic text-lg font-medium">No bookmarks found. Save videos in Media to view them here.</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {savedVideos.map((video) => (
+              <div 
+                key={video.id} 
+                className="flex items-center gap-4 p-4 rounded-[1.5rem] bg-white/5 hover:bg-white/10 transition-all border border-transparent hover:border-white/10 group cursor-pointer"
+                onClick={() => setPlayingVideoId(video.id)}
+              >
+                <div className="relative w-24 h-16 rounded-xl overflow-hidden flex-shrink-0">
+                  <Image 
+                    src={video.thumbnail} 
+                    alt={video.title} 
+                    fill 
+                    className="object-cover opacity-80 group-hover:opacity-100 transition-opacity"
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <Play className="w-6 h-6 text-white fill-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-sm font-bold truncate text-white font-headline">{video.title}</h4>
+                  <p className="text-[10px] text-accent font-bold uppercase tracking-widest mt-1">Ready for Playback</p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="rounded-full w-10 h-10 text-muted-foreground hover:text-red-500 hover:bg-red-500/10"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeVideo(video.id);
+                  }}
+                >
+                  <Trash2 className="w-5 h-5" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
       </CardContent>
+
+      <Dialog open={!!playingVideoId} onOpenChange={() => setPlayingVideoId(null)}>
+        <DialogContent className="max-w-[90vw] w-full h-[85vh] bg-black border-white/5 p-0 rounded-[3rem] overflow-hidden ios-shadow">
+          {playingVideoId && (
+            <iframe
+              className="w-full h-full"
+              src={`https://www.youtube.com/embed/${playingVideoId}?autoplay=1`}
+              title="YouTube video player"
+              frameBorder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            ></iframe>
+          )}
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

@@ -3,12 +3,15 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { YouTubeChannel } from "./youtube";
+import { YouTubeChannel, YouTubeVideo } from "./youtube";
 
 interface MediaState {
   favoriteChannels: YouTubeChannel[];
+  savedVideos: YouTubeVideo[];
   addChannel: (channel: YouTubeChannel) => void;
   removeChannel: (id: string) => void;
+  toggleSaveVideo: (video: YouTubeVideo) => void;
+  removeVideo: (id: string) => void;
 }
 
 export const useMediaStore = create<MediaState>()(
@@ -34,6 +37,7 @@ export const useMediaStore = create<MediaState>()(
           thumbnail: "https://picsum.photos/seed/tech/400/225",
         }
       ],
+      savedVideos: [],
       addChannel: (channel) =>
         set((state) => ({
           favoriteChannels: state.favoriteChannels.some(c => c.id === channel.id)
@@ -44,9 +48,22 @@ export const useMediaStore = create<MediaState>()(
         set((state) => ({
           favoriteChannels: state.favoriteChannels.filter((c) => c.id !== id),
         })),
+      toggleSaveVideo: (video) =>
+        set((state) => {
+          const isSaved = state.savedVideos.some(v => v.id === video.id);
+          return {
+            savedVideos: isSaved
+              ? state.savedVideos.filter(v => v.id !== video.id)
+              : [video, ...state.savedVideos]
+          };
+        }),
+      removeVideo: (id) =>
+        set((state) => ({
+          savedVideos: state.savedVideos.filter(v => v.id !== id),
+        })),
     }),
     {
-      name: "drivecast-media-storage-v2",
+      name: "drivecast-media-storage-v3",
     }
   )
 );
