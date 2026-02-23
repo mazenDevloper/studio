@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -42,6 +42,8 @@ export function MediaView() {
   const [selectedSurah, setSelectedSurah] = useState("");
   const [isFullListOpen, setIsFullListOpen] = useState(false);
   const [listType, setListType] = useState<"surah" | "juz">("surah");
+
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const handleSearch = async (queryToUse?: string) => {
     const q = queryToUse || searchQuery;
@@ -111,6 +113,13 @@ export function MediaView() {
     toggleStarChannel(channelId);
   };
 
+  const scrollToSearch = () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    setTimeout(() => {
+      searchInputRef.current?.focus();
+    }, 600);
+  };
+
   return (
     <div className="p-8 space-y-12 max-w-7xl mx-auto pb-48 relative min-h-screen">
       <header className="flex flex-col gap-8">
@@ -133,6 +142,7 @@ export function MediaView() {
                 <div className="relative flex-1">
                   <Search className="absolute left-6 top-1/2 -translate-y-1/2 h-6 w-6 text-muted-foreground" />
                   <Input
+                    ref={searchInputRef}
                     placeholder={searchType === "channels" ? "Search Channels..." : "Search Specific Videos..."}
                     className="pl-16 h-20 bg-zinc-900/80 border-white/5 rounded-[2rem] text-xl font-headline focus-visible:ring-primary backdrop-blur-3xl"
                     value={searchQuery}
@@ -237,7 +247,7 @@ export function MediaView() {
                </Button>
                <Button 
                   onClick={(e) => toggleSubscription(e, selectedChannel)}
-                  variant={favoriteChannels.some(c => c.id === selectedChannel.id) ? "secondary" : "default"}
+                  variant={favoriteChannels.some(c => c.id === channel.id) ? "secondary" : "default"}
                   className={`rounded-[1.5rem] h-16 px-10 text-xl font-bold ${favoriteChannels.some(c => c.id === selectedChannel.id) ? "bg-accent/10 text-accent" : "bg-white text-black"}`}
                 >
                   {favoriteChannels.some(c => c.id === selectedChannel.id) ? <Check className="w-6 h-6 mr-3" /> : <Plus className="w-6 h-6 mr-3" />}
@@ -382,12 +392,21 @@ export function MediaView() {
           )}
 
           <section className="space-y-8 pb-32">
-            <h2 className="text-3xl font-bold font-headline flex items-center gap-4 text-white">
-              <div className="w-12 h-12 rounded-2xl bg-red-500 flex items-center justify-center ios-shadow">
-                <Youtube className="text-white w-7 h-7" />
-              </div>
-              Subscribed Frequencies
-            </h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-3xl font-bold font-headline flex items-center gap-4 text-white">
+                <div className="w-12 h-12 rounded-2xl bg-red-500 flex items-center justify-center ios-shadow">
+                  <Youtube className="text-white w-7 h-7" />
+                </div>
+                Subscribed Frequencies
+              </h2>
+              <Button 
+                onClick={scrollToSearch}
+                className="rounded-[1.5rem] h-14 px-8 bg-white/5 border border-white/10 text-white hover:bg-accent hover:text-black font-bold flex items-center gap-3 transition-all active:scale-95"
+              >
+                <Plus className="w-5 h-5" />
+                إضافة تردد جديد
+              </Button>
+            </div>
             
             {favoriteChannels.length === 0 ? (
               <Card className="bg-zinc-900/30 border-dashed border-white/5 rounded-[3rem]">
