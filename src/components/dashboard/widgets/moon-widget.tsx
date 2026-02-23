@@ -57,6 +57,13 @@ export function MoonWidget() {
     return () => clearInterval(timer);
   }, []);
 
+  // Safe phase string formatter
+  const formatPhase = (phase: any) => {
+    if (!phase) return "Loading...";
+    if (typeof phase !== 'string') return String(phase);
+    return phase.replace(/-/g, ' ');
+  };
+
   return (
     <Card className="h-full overflow-hidden border-none bg-zinc-900/50 rounded-[2.5rem] relative">
       <div className="absolute top-0 right-0 p-4 opacity-10">
@@ -77,7 +84,7 @@ export function MoonWidget() {
                 fill
                 className="object-cover transition-transform duration-100 scale-125"
                 style={{ transform: `rotate(${rotation}deg)` }}
-                unoptimized // NASA URLs might change or have specific query params
+                unoptimized
               />
             )}
             <div className="absolute inset-0 bg-gradient-to-tr from-black/60 via-transparent to-white/10" />
@@ -94,7 +101,7 @@ export function MoonWidget() {
           </div>
           <div className="space-y-1">
             <h3 className="text-2xl font-bold font-headline leading-tight text-white capitalize">
-              {moonData ? moonData.phase.replace(/-/g, ' ') : "Loading..."}
+              {formatPhase(moonData?.phase)}
             </h3>
             <p className="text-sm text-muted-foreground font-medium uppercase tracking-widest">
               Phase: {moonData ? `${Math.round(moonData.illumination)}%` : "--"} Illuminant
