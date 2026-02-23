@@ -1,14 +1,14 @@
 import { DashboardView } from "@/components/dashboard/dashboard-view";
-import { AppSidebar } from "@/components/layout/app-sidebar";
-import { SidebarInset } from "@/components/ui/sidebar";
+import { CarDock } from "@/components/layout/car-dock";
 
 export default function Home() {
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-background">
-      <AppSidebar />
-      <SidebarInset className="flex-1 overflow-y-auto">
+    <>
+      <CarDock />
+      <main className="flex-1 overflow-y-auto bg-black relative">
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-900/10 via-black to-purple-900/10 pointer-events-none" />
         <DashboardView />
-      </SidebarInset>
-    </div>
+      </main>
+    </>
   );
 }

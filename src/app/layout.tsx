@@ -1,11 +1,10 @@
 import type {Metadata} from 'next';
 import './globals.css';
-import { SidebarProvider } from "@/components/ui/sidebar";
 import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
-  title: 'DriveCast | Futuristic Dashboard',
-  description: 'In-car tech experience for the future.',
+  title: 'DriveCast | CarPlay',
+  description: 'Futuristic automotive interface.',
 };
 
 export default function RootLayout({
@@ -20,11 +19,9 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
       </head>
-      <body className="font-body antialiased bg-background text-foreground overflow-hidden">
-        <SidebarProvider>
-          {children}
-          <Toaster />
-        </SidebarProvider>
+      <body className="font-body antialiased bg-black text-foreground overflow-hidden h-screen w-screen flex">
+        {children}
+        <Toaster />
       </body>
     </html>
   );

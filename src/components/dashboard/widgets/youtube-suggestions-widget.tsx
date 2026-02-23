@@ -35,48 +35,45 @@ export function YouTubeSuggestionsWidget({ channels }: Props) {
   }, [channels]);
 
   return (
-    <Card className="h-full border-accent/20 bg-gradient-to-tr from-card via-card to-accent/5 shadow-[0_0_30px_rgba(65,184,131,0.05)]">
-      <CardHeader className="p-4 flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-bold uppercase tracking-wider text-accent flex items-center gap-2">
-          <Sparkles className="h-4 w-4" />
-          AI Curated Stream
+    <Card className="border-none bg-zinc-900/50 rounded-[2.5rem] ios-shadow">
+      <CardHeader className="p-8 flex flex-row items-center justify-between space-y-0 pb-4">
+        <CardTitle className="text-xl font-bold font-headline text-white flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-blue-500 flex items-center justify-center">
+            <Sparkles className="h-5 w-5 text-white" />
+          </div>
+          Up Next for You
         </CardTitle>
-        <Button variant="ghost" size="icon" onClick={fetchSuggestions} disabled={loading || channels.length === 0}>
-          <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+        <Button variant="ghost" size="icon" onClick={fetchSuggestions} disabled={loading || channels.length === 0} className="rounded-full hover:bg-white/10">
+          <RefreshCw className={`h-5 w-5 ${loading ? "animate-spin" : ""}`} />
         </Button>
       </CardHeader>
-      <CardContent className="p-4 pt-0">
+      <CardContent className="p-8 pt-0">
         {channels.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-8 text-center space-y-2">
-            <p className="text-sm text-muted-foreground italic">No channels added yet.</p>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Add favorites in Media screen to get suggestions</p>
+          <div className="py-10 text-center">
+            <p className="text-muted-foreground italic">Add your favorite frequencies in Media to see suggestions here.</p>
           </div>
         ) : loading ? (
-          <div className="space-y-4">
-            <Skeleton className="h-16 w-full rounded-xl bg-white/5" />
-            <Skeleton className="h-16 w-full rounded-xl bg-white/5" />
-            <Skeleton className="h-16 w-full rounded-xl bg-white/5" />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[1, 2, 3].map(i => <Skeleton key={i} className="h-32 w-full rounded-[2rem] bg-zinc-800" />)}
           </div>
         ) : suggestions ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {suggestions.suggestions.map((item, idx) => (
-              <div key={idx} className="flex flex-col gap-2 p-3 rounded-xl bg-white/5 border border-white/5 hover:border-accent/40 transition-all group">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {suggestions.suggestions.slice(0, 3).map((item, idx) => (
+              <div key={idx} className="flex flex-col gap-4 p-6 rounded-[2rem] bg-white/5 border border-white/5 hover:border-blue-500/50 transition-all group ios-shadow">
                 <div className="flex items-center justify-between">
-                  <span className={`text-[8px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-widest ${item.type === 'channel' ? 'bg-purple-500/20 text-purple-400' : 'bg-accent/20 text-accent'}`}>
+                  <span className={`text-[10px] px-3 py-1 rounded-full font-bold uppercase tracking-widest ${item.type === 'channel' ? 'bg-purple-500/20 text-purple-400' : 'bg-blue-500/20 text-blue-400'}`}>
                     {item.type}
                   </span>
-                  <ExternalLink className="w-3 h-3 text-muted-foreground group-hover:text-accent transition-colors" />
+                  <ExternalLink className="w-4 h-4 text-muted-foreground group-hover:text-blue-400 transition-colors" />
                 </div>
-                <h4 className="text-sm font-bold line-clamp-1 group-hover:text-accent transition-colors">{item.title}</h4>
-                <p className="text-[10px] text-muted-foreground line-clamp-2 leading-relaxed">
+                <h4 className="text-xl font-bold line-clamp-1 group-hover:text-blue-400 transition-colors">{item.title}</h4>
+                <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
                   {item.reason}
                 </p>
               </div>
             ))}
           </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">Initializing stream...</p>
-        )}
+        ) : null}
       </CardContent>
     </Card>
   );

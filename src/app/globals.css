@@ -4,34 +4,26 @@
 
 @layer base {
   :root {
-    --background: 255 42% 13%;
+    --background: 0 0% 0%;
     --foreground: 0 0% 98%;
-    --card: 255 42% 18%;
+    --card: 0 0% 7%;
     --card-foreground: 0 0% 98%;
-    --popover: 255 42% 13%;
+    --popover: 0 0% 7%;
     --popover-foreground: 0 0% 98%;
-    --primary: 260 35% 47%;
+    --primary: 210 100% 50%;
     --primary-foreground: 0 0% 98%;
-    --secondary: 255 42% 22%;
+    --secondary: 0 0% 15%;
     --secondary-foreground: 0 0% 98%;
-    --muted: 255 42% 22%;
-    --muted-foreground: 255 20% 70%;
-    --accent: 153 48% 49%;
-    --accent-foreground: 255 42% 13%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 60%;
+    --accent: 153 100% 50%;
+    --accent-foreground: 0 0% 0%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 255 42% 25%;
-    --input: 255 42% 25%;
-    --ring: 153 48% 49%;
-    --radius: 1rem;
-    --sidebar-background: 255 42% 10%;
-    --sidebar-foreground: 0 0% 90%;
-    --sidebar-primary: 260 35% 47%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 255 42% 20%;
-    --sidebar-accent-foreground: 153 48% 49%;
-    --sidebar-border: 255 42% 20%;
-    --sidebar-ring: 153 48% 49%;
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+    --ring: 210 100% 50%;
+    --radius: 1.5rem;
   }
 }
 
@@ -40,24 +32,45 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground font-body;
+    @apply bg-background text-foreground font-body select-none;
   }
   h1, h2, h3, h4, h5, h6 {
     @apply font-headline;
   }
 }
 
+.car-squircle {
+  border-radius: 22%;
+  @supports (mask-image: paint(squircle)) {
+    border-radius: 0;
+    mask-image: paint(squircle);
+    --squircle-radius: 40;
+  }
+}
+
 .glass-panel {
-  @apply bg-card/60 backdrop-blur-md border border-white/10;
+  @apply bg-card/40 backdrop-blur-2xl border border-white/10;
 }
 
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 0px;
 }
-::-webkit-scrollbar-track {
-  background: transparent;
+
+.ios-shadow {
+  box-shadow: 0 10px 30px -10px rgba(0,0,0,0.5);
 }
-::-webkit-scrollbar-thumb {
-  background: hsl(var(--secondary));
-  border-radius: 10px;
+
+.active-glow {
+  box-shadow: 0 0 20px -5px hsl(var(--primary));
+}
+
+@keyframes siri-pulse {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.1); }
+}
+
+.siri-gradient {
+  background: linear-gradient(90deg, #4285f4, #9b72cb, #d96a6f, #f4c20d);
+  background-size: 300% 300%;
+  animation: siri-pulse 4s ease-in-out infinite;
 }
