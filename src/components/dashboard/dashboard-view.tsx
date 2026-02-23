@@ -89,24 +89,24 @@ export function DashboardView() {
         <div className="col-span-12 lg:col-span-4 flex flex-col gap-6 min-h-[500px]">
           <div className="h-1/2 relative group">
             <Carousel setApi={setApi} opts={{ loop: true }} className="w-full h-full">
-              <CarouselContent className="h-full">
-                <CarouselItem className="h-full">
+              <CarouselContent className="h-full ml-0">
+                <CarouselItem className="h-full pl-0">
                   <DateAndClockWidget />
                 </CarouselItem>
-                <CarouselItem className="h-full">
+                <CarouselItem className="h-full pl-0">
                   <MoonWidget />
                 </CarouselItem>
-                <CarouselItem className="h-full">
+                <CarouselItem className="h-full pl-0">
                   <CalendarWidget />
                 </CarouselItem>
-                <CarouselItem className="h-full">
+                <CarouselItem className="h-full pl-0">
                   <PlayingNowWidget />
                 </CarouselItem>
               </CarouselContent>
             </Carousel>
             
-            {/* Scrolled Dots */}
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
+            {/* Scrolled Dots - Adjusted Position */}
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
               {[0, 1, 2, 3].map((i) => (
                 <div 
                   key={i} 
