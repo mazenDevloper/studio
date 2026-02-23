@@ -1,25 +1,24 @@
-
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
 import { MapWidget } from "./widgets/map-widget";
-import { YouTubeSuggestionsWidget } from "./widgets/youtube-suggestions-widget";
+import { LatestVideosWidget } from "./widgets/latest-videos-widget";
 import { YouTubeSavedWidget } from "./widgets/youtube-saved-widget";
 import { useMediaStore } from "@/lib/store";
 import { MoonWidget } from "./widgets/moon-widget";
 import { PrayerWidget } from "./widgets/prayer-widget";
 import { WEATHER_API_KEY } from "@/lib/constants";
-import { Cloud, Sun, CloudRain } from "lucide-react";
+import { Cloud, Sun, Search } from "lucide-react";
+import Link from "next/link";
 
 export function DashboardView() {
   const { favoriteChannels, starredChannelIds } = useMediaStore();
   const [weather, setWeather] = useState<any>(null);
   const [dateTime, setDateTime] = useState({ time: "", date: "" });
 
-  // Filter channels for suggestions: Prefer starred, otherwise use all
-  const channelsForSuggestions = useMemo(() => {
-    const starred = favoriteChannels.filter(c => starredChannelIds.includes(c.id));
-    return starred.length > 0 ? starred : favoriteChannels;
+  // Filter channels for latest videos: Prefer starred
+  const starredChannels = useMemo(() => {
+    return favoriteChannels.filter(c => starredChannelIds.includes(c.id));
   }, [favoriteChannels, starredChannelIds]);
 
   useEffect(() => {
@@ -59,31 +58,39 @@ export function DashboardView() {
             </div>
           )}
         </div>
-        <div className="flex flex-col items-end">
-           <div className="text-3xl font-bold font-headline mb-1">{dateTime.time}</div>
-           <div className="h-1 w-32 rounded-full siri-gradient" />
+        <div className="flex items-center gap-8">
+          <Link href="/media" className="w-14 h-14 rounded-full bg-zinc-900/50 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-colors">
+            <Search className="w-6 h-6 text-white" />
+          </Link>
+          <div className="flex flex-col items-end">
+             <div className="text-3xl font-bold font-headline mb-1">{dateTime.time}</div>
+             <div className="h-1 w-32 rounded-full siri-gradient" />
+          </div>
         </div>
       </header>
 
       <div className="flex-1 grid grid-cols-12 gap-6 pb-8 overflow-y-auto">
-        <div className="col-span-8 row-span-2 min-h-[500px]">
+        {/* Row 1: Main Viewport */}
+        <div className="col-span-8 h-[450px]">
           <MapWidget />
         </div>
 
         <div className="col-span-4 space-y-6">
-          <div className="h-1/2 min-h-[240px]">
+          <div className="h-1/2">
             <MoonWidget />
           </div>
-          <div className="h-1/2 min-h-[240px]">
+          <div className="h-1/2">
             <PrayerWidget />
           </div>
         </div>
 
-        <div className="col-span-12 lg:col-span-7">
-          <YouTubeSuggestionsWidget channels={channelsForSuggestions} />
+        {/* Row 2: Full Width Scrolled Suggested Bar */}
+        <div className="col-span-12">
+          <LatestVideosWidget channels={starredChannels} />
         </div>
 
-        <div className="col-span-12 lg:col-span-5">
+        {/* Row 3: Secondary Context */}
+        <div className="col-span-12">
           <YouTubeSavedWidget />
         </div>
       </div>
