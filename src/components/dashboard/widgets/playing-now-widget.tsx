@@ -1,10 +1,10 @@
-
 "use client";
 
 import { useMediaStore } from "@/lib/store";
 import { Play, Pause, Music, Radio, Activity, Maximize2 } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 export function PlayingNowWidget() {
   const { activeVideo, isPlaying, setIsPlaying, setIsMinimized } = useMediaStore();
@@ -71,5 +71,3 @@ export function PlayingNowWidget() {
     </div>
   );
 }
-
-import { cn } from "@/lib/utils";

@@ -124,15 +124,18 @@ export function DashboardView() {
         </div>
       </header>
 
-      {/* Main Command Center Layout */}
+      {/* Main Command Center Layout - 12 Column Grid */}
       <div className="grid grid-cols-12 gap-6 items-start shrink-0">
         {/* Left: Interactive Map - Resizable */}
         <div 
           className={cn(
-            "relative group rounded-[2.5rem] overflow-hidden transition-all duration-300",
-            `col-span-12 lg:col-span-${mapLayout.colSpan}`
+            "relative group rounded-[2.5rem] overflow-hidden transition-all duration-300 col-span-12",
+            `lg:col-span-${mapLayout.colSpan}`
           )}
-          style={{ height: mapLayout.height }}
+          style={{ 
+            height: mapLayout.height,
+            gridColumn: `span ${mapLayout.colSpan} / span ${mapLayout.colSpan}` 
+          }}
         >
           <MapWidget />
           
@@ -145,11 +148,17 @@ export function DashboardView() {
           </div>
         </div>
 
-        {/* Right: Smart Stack & Reminders - Fixed Stack Column */}
-        <div className={cn(
-          "flex flex-col gap-6 transition-all duration-300",
-          `col-span-12 lg:col-span-${stackLayout.colSpan}`
-        )} style={{ height: mapLayout.height }}>
+        {/* Right: Smart Stack & Reminders */}
+        <div 
+          className={cn(
+            "flex flex-col gap-6 transition-all duration-300 col-span-12",
+            `lg:col-span-${stackLayout.colSpan}`
+          )} 
+          style={{ 
+            height: mapLayout.height,
+            gridColumn: `span ${stackLayout.colSpan} / span ${stackLayout.colSpan}`
+          }}
+        >
           {/* Smart Stack Carousel */}
           <div className="flex-1 relative group overflow-hidden">
             <Carousel setApi={setApi} opts={{ loop: true }} className="w-full h-full">
@@ -169,7 +178,7 @@ export function DashboardView() {
               </CarouselContent>
             </Carousel>
             
-            {/* Dots Fixed Position */}
+            {/* Dots Fixed Position at Bottom Over Cards */}
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-20">
               {[0, 1, 2, 3].map((i) => (
                 <div 
@@ -180,19 +189,19 @@ export function DashboardView() {
             </div>
           </div>
           
-          {/* Reminders - Takes 40% of the column height */}
+          {/* Reminders - Intelligent Display */}
           <div className="h-[40%] min-h-[220px]">
             <RemindersWidget />
           </div>
         </div>
       </div>
 
-      {/* Prayer Timeline Row */}
-      <div className="shrink-0 w-full">
+      {/* Prayer Timeline Row - Centered and Distinct */}
+      <div className="shrink-0 w-full z-10">
         <PrayerTimelineWidget />
       </div>
 
-      {/* Video Bars Section */}
+      {/* Video Bars Section - 12 Column Grid Base */}
       <div className="grid grid-cols-12 gap-6 shrink-0 pb-12">
         <div className="col-span-12 lg:col-span-6">
           <LatestVideosWidget channels={starredChannels} />
