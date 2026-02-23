@@ -3,12 +3,14 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { prayerTimesData } from "@/lib/constants";
-import { Sun, Moon, Clock, Calendar } from "lucide-react";
+import { Sun, Clock } from "lucide-react";
 
 export function DateAndClockWidget() {
+  const [mounted, setMounted] = useState(false);
   const [now, setNow] = useState<Date | null>(null);
   
   useEffect(() => {
+    setMounted(true);
     setNow(new Date());
     const timer = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(timer);
@@ -48,56 +50,45 @@ export function DateAndClockWidget() {
 
     return {
       name: next.name,
-      time: next.time,
       countdown: `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`
     };
   }, [now]);
 
-  if (!now) {
-    return <div className="h-full bg-zinc-900/40 animate-pulse rounded-[2.5rem]" />;
+  if (!mounted || !now) {
+    return <div className="h-full bg-zinc-900/40 animate-pulse rounded-[2rem]" />;
   }
 
   const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const dayName = now.toLocaleDateString('ar-EG', { weekday: 'long' });
-  const dateString = now.toLocaleDateString('ar-EG', { day: 'numeric', month: 'long', year: 'numeric' });
 
   return (
-    <div className="h-full flex flex-col gap-6">
-      {/* Date Card */}
-      <div className="flex-1 bg-zinc-900/60 backdrop-blur-3xl rounded-[2.5rem] border border-white/5 p-10 flex flex-col items-center justify-center relative overflow-hidden group shadow-2xl">
-        <div className="absolute inset-0 bg-gradient-to-tr from-white/5 to-transparent pointer-events-none" />
-        <div className="flex flex-col items-center gap-2 mb-8 text-center">
-           <h3 className="text-4xl font-bold font-headline text-white">{dayName}</h3>
-           <p className="text-lg text-primary font-bold uppercase tracking-widest">{dateString} | {hijriDate}</p>
-        </div>
-        <div className="relative">
-           <div className="text-[120px] font-bold font-headline text-white/10 select-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 leading-none">
-             {now.getDate()}
-           </div>
-           <div className="text-6xl font-bold font-headline text-white z-10 relative flex flex-col items-center">
-             {now.getDate()}
-             <span className="text-xl uppercase tracking-tighter opacity-40 mt-[-10px]">February</span>
-           </div>
+    <div className="h-full bg-zinc-900/60 backdrop-blur-3xl rounded-[2.5rem] border border-white/5 p-6 flex flex-col justify-between relative shadow-2xl overflow-hidden group">
+      <div className="absolute top-4 right-6">
+        <Sun className="w-6 h-6 text-yellow-500/50 animate-pulse" />
+      </div>
+
+      <div>
+        <h3 className="text-xl font-bold font-headline text-white/80">{dayName}</h3>
+        <p className="text-[10px] text-primary font-bold uppercase tracking-widest">{hijriDate}</p>
+      </div>
+
+      <div className="flex flex-col items-center">
+        <div className="text-6xl font-bold font-headline text-white tracking-tighter">
+          {timeString}
         </div>
       </div>
 
-      {/* Clock Card */}
-      <div className="flex-1 bg-zinc-900/60 backdrop-blur-3xl rounded-[2.5rem] border border-white/5 p-10 flex flex-col items-center justify-center relative shadow-2xl">
-        <div className="absolute top-6 right-8">
-          <Sun className="w-8 h-8 text-yellow-500 animate-pulse" />
-        </div>
-        <div className="text-8xl font-bold font-headline text-white tracking-tighter mb-4">
-          {timeString}
-        </div>
-        {nextPrayer && (
-          <div className="flex flex-col items-center gap-1">
-             <p className="text-xl font-bold text-orange-400 font-headline">إقامة صلاة {nextPrayer.name} في:</p>
-             <div className="text-4xl font-bold font-headline text-white tracking-widest bg-orange-400/20 px-6 py-2 rounded-2xl border border-orange-400/30">
-               {nextPrayer.countdown}
-             </div>
+      {nextPrayer && (
+        <div className="flex items-center justify-between bg-primary/10 border border-primary/20 p-3 rounded-2xl">
+          <div className="flex items-center gap-2">
+            <Clock className="w-4 h-4 text-primary" />
+            <span className="text-xs font-bold text-white/80">{nextPrayer.name}</span>
           </div>
-        )}
-      </div>
+          <span className="text-lg font-bold font-headline text-primary tracking-widest">
+            {nextPrayer.countdown}
+          </span>
+        </div>
+      )}
     </div>
   );
 }
