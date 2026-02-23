@@ -5,24 +5,24 @@ import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Search, Plus, Play, Trash2, Youtube, Radio, Loader2, Check, ArrowLeft, Clock, Bookmark, Star, Users, Music, LayoutGrid, X } from "lucide-react";
+import { Search, Plus, Play, Trash2, Youtube, Radio, Loader2, Check, ArrowLeft, Clock, Bookmark, Star, Users, Music, LayoutGrid, X, ChevronDown } from "lucide-react";
 import { useMediaStore } from "@/lib/store";
 import { searchYouTubeChannels, searchYouTubeVideos, fetchChannelVideos, YouTubeChannel, YouTubeVideo } from "@/lib/youtube";
 import Image from "next/image";
 import {
   Dialog,
   DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SURAH_LIST, JUZ_LIST } from "@/lib/constants";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const QUICK_RECITERS = [
   "ياسر الدوسري", "بندر بليلة", "سعود الشريم", "عبدالرحمن السديس", 
   "ماهر المعيقلي", "منصور السالمي", "إسلام صبحي", "بدر التركي"
-];
-
-const QUICK_SURAH_PARTS = [
-  "سورة البقرة", "سورة الكهف", "سورة يس", "سورة الملك", 
-  "جزء عم", "جزء تبارك", "سورة مريم", "سورة يوسف"
 ];
 
 export function MediaView() {
@@ -38,9 +38,10 @@ export function MediaView() {
   const [playingVideoId, setPlayingVideoId] = useState<string | null>(null);
   const [showQuickGrids, setShowQuickGrids] = useState(false);
   
-  // Track selections for combined search
   const [selectedReciter, setSelectedReciter] = useState("");
   const [selectedSurah, setSelectedSurah] = useState("");
+  const [isFullListOpen, setIsFullListOpen] = useState(false);
+  const [listType, setListType] = useState<"surah" | "juz">("surah");
 
   const handleSearch = async (queryToUse?: string) => {
     const q = queryToUse || searchQuery;
@@ -61,24 +62,24 @@ export function MediaView() {
     setIsSearching(false);
   };
 
-  const handleQuickSelect = (type: 'reciter' | 'surah', value: string) => {
+  const handleQuickSelect = (type: 'reciter' | 'surah' | 'juz', value: string) => {
     let newReciter = selectedReciter;
     let newSurah = selectedSurah;
     
     if (type === 'reciter') newReciter = value;
-    if (type === 'surah') newSurah = value;
+    if (type === 'surah' || type === 'juz') newSurah = value;
     
     setSelectedReciter(newReciter);
     setSelectedSurah(newSurah);
     
     const combinedQuery = [newReciter, newSurah].filter(Boolean).join(" ");
     setSearchQuery(combinedQuery);
-    setSearchType("videos"); // Switch to video search for specific combinations
+    setSearchType("videos");
 
-    // Only auto-search if BOTH are selected
     if (newReciter && newSurah) {
       handleSearch(combinedQuery);
       setShowQuickGrids(false);
+      setIsFullListOpen(false);
     }
   };
 
@@ -156,7 +157,6 @@ export function MediaView() {
               </div>
             </div>
 
-            {/* Quick Select Grids */}
             {showQuickGrids && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 animate-in slide-in-from-top-4 fade-in duration-500">
                 <div className="space-y-4">
@@ -177,11 +177,20 @@ export function MediaView() {
                   </div>
                 </div>
                 <div className="space-y-4">
-                  <h3 className="text-lg font-bold font-headline flex items-center gap-3 text-white/60">
-                    <Music className="w-5 h-5 text-blue-400" /> السور والأجزاء
-                  </h3>
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-bold font-headline flex items-center gap-3 text-white/60">
+                      <Music className="w-5 h-5 text-blue-400" /> السور والأجزاء
+                    </h3>
+                    <Button 
+                      variant="link" 
+                      onClick={() => setIsFullListOpen(true)}
+                      className="text-accent font-bold"
+                    >
+                      عرض الكل <ChevronDown className="w-4 h-4 ml-1" />
+                    </Button>
+                  </div>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    {QUICK_SURAH_PARTS.map((item) => (
+                    {SURAH_LIST.slice(0, 8).map((item) => (
                       <Button 
                         key={item} 
                         variant="outline" 
@@ -292,7 +301,6 @@ export function MediaView() {
         </div>
       ) : (
         <>
-          {/* Channel Search Results */}
           {channelResults.length > 0 && searchType === "channels" && (
             <section className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
               <h2 className="text-2xl font-bold font-headline text-primary flex items-center gap-3">
@@ -331,7 +339,6 @@ export function MediaView() {
             </section>
           )}
 
-          {/* Video Search Results */}
           {videoResults.length > 0 && searchType === "videos" && (
             <section className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
               <h2 className="text-2xl font-bold font-headline text-blue-400 flex items-center gap-3">
@@ -374,7 +381,6 @@ export function MediaView() {
             </section>
           )}
 
-          {/* Subscribed List */}
           <section className="space-y-8 pb-32">
             <h2 className="text-3xl font-bold font-headline flex items-center gap-4 text-white">
               <div className="w-12 h-12 rounded-2xl bg-red-500 flex items-center justify-center ios-shadow">
@@ -454,6 +460,37 @@ export function MediaView() {
           </section>
         </>
       )}
+
+      {/* Full Surah/Juz Dialog */}
+      <Dialog open={isFullListOpen} onOpenChange={setIsFullListOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] bg-zinc-900 border-white/10 rounded-[2.5rem] p-0 overflow-hidden">
+          <div className="p-8 border-b border-white/5 bg-zinc-900/50 backdrop-blur-xl">
+             <DialogHeader>
+                <DialogTitle className="text-3xl font-bold font-headline text-white mb-6">المكتبة القرآنية الكاملة</DialogTitle>
+                <Tabs value={listType} onValueChange={(v) => setListType(v as any)} className="w-full">
+                  <TabsList className="bg-white/5 border border-white/5 h-14 p-1 rounded-xl w-full">
+                    <TabsTrigger value="surah" className="flex-1 h-full rounded-lg text-lg font-bold">السور (114)</TabsTrigger>
+                    <TabsTrigger value="juz" className="flex-1 h-full rounded-lg text-lg font-bold">الأجزاء (30)</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+             </DialogHeader>
+          </div>
+          <ScrollArea className="h-[60vh] p-8">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+               {(listType === "surah" ? SURAH_LIST : JUZ_LIST).map((item) => (
+                 <Button
+                  key={item}
+                  variant="outline"
+                  onClick={() => handleQuickSelect(listType, item)}
+                  className={`border-white/5 rounded-xl h-16 font-bold text-lg transition-all ${selectedSurah === item ? 'bg-blue-500 text-white border-blue-500' : 'bg-white/5 text-white hover:bg-white hover:text-black'}`}
+                 >
+                   {item}
+                 </Button>
+               ))}
+            </div>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!playingVideoId} onOpenChange={() => setPlayingVideoId(null)}>
         <DialogContent className="max-w-[90vw] w-full h-[85vh] bg-black border-white/5 p-0 rounded-[3rem] overflow-hidden ios-shadow">
