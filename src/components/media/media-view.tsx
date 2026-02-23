@@ -30,7 +30,8 @@ export function MediaView() {
     toggleStarChannel,
     reciterKeywords,
     addReciterKeyword,
-    removeReciterKeyword
+    removeReciterKeyword,
+    setActiveVideo
   } = useMediaStore();
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -41,7 +42,6 @@ export function MediaView() {
   const [selectedChannel, setSelectedChannel] = useState<YouTubeChannel | null>(null);
   const [channelVideos, setChannelVideos] = useState<YouTubeVideo[]>([]);
   const [isLoadingVideos, setIsLoadingVideos] = useState(false);
-  const [playingVideoId, setPlayingVideoId] = useState<string | null>(null);
   const [showQuickGrids, setShowQuickGrids] = useState(false);
   
   const [selectedReciter, setSelectedReciter] = useState("");
@@ -306,7 +306,7 @@ export function MediaView() {
                   <Card 
                     key={video.id} 
                     className="group relative overflow-hidden bg-zinc-900/80 border-none rounded-[2.5rem] transition-all hover:scale-[1.02] cursor-pointer ios-shadow"
-                    onClick={() => setPlayingVideoId(video.id)}
+                    onClick={() => setActiveVideo(video)}
                   >
                     <div className="aspect-video relative overflow-hidden">
                       <Image
@@ -397,7 +397,7 @@ export function MediaView() {
                   return (
                     <Card 
                       key={video.id} 
-                      onClick={() => setPlayingVideoId(video.id)}
+                      onClick={() => setActiveVideo(video)}
                       className="group relative overflow-hidden bg-zinc-900/40 border-none rounded-[2rem] transition-all hover:scale-[1.02] cursor-pointer ios-shadow"
                     >
                       <div className="aspect-video relative overflow-hidden">
@@ -545,21 +545,6 @@ export function MediaView() {
                ))}
             </div>
           </ScrollArea>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={!!playingVideoId} onOpenChange={() => setPlayingVideoId(null)}>
-        <DialogContent className="max-w-[90vw] w-full h-[85vh] bg-black border-white/5 p-0 rounded-[3rem] overflow-hidden ios-shadow">
-          {playingVideoId && (
-            <iframe
-              className="w-full h-full"
-              src={`https://www.youtube.com/embed/${playingVideoId}?autoplay=1`}
-              title="YouTube video player"
-              frameBorder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-            ></iframe>
-          )}
         </DialogContent>
       </Dialog>
     </div>

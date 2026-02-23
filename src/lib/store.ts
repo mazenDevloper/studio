@@ -30,6 +30,12 @@ interface MediaState {
   savedPlaces: SavedPlace[];
   reciterKeywords: string[];
   reminders: Reminder[];
+  
+  // Player State
+  activeVideo: YouTubeVideo | null;
+  isPlaying: boolean;
+  isMinimized: boolean;
+  
   addChannel: (channel: YouTubeChannel) => void;
   removeChannel: (id: string) => void;
   toggleSaveVideo: (video: YouTubeVideo) => void;
@@ -40,6 +46,12 @@ interface MediaState {
   addReciterKeyword: (keyword: string) => void;
   removeReciterKeyword: (keyword: string) => void;
   toggleReminder: (id: string) => void;
+  
+  // Player Actions
+  setActiveVideo: (video: YouTubeVideo | null) => void;
+  setIsPlaying: (playing: boolean) => void;
+  setIsMinimized: (minimized: boolean) => void;
+  toggleMinimize: () => void;
 }
 
 const INITIAL_CHANNELS: YouTubeChannel[] = [
@@ -118,6 +130,11 @@ export const useMediaStore = create<MediaState>()(
       savedPlaces: [],
       reciterKeywords: INITIAL_RECITERS,
       reminders: INITIAL_REMINDERS,
+      
+      activeVideo: null,
+      isPlaying: false,
+      isMinimized: false,
+
       addChannel: (channel) =>
         set((state) => ({
           favoriteChannels: state.favoriteChannels.some(c => c.id === channel.id)
@@ -173,10 +190,23 @@ export const useMediaStore = create<MediaState>()(
           reminders: state.reminders.map(r => 
             r.id === id ? { ...r, completed: !r.completed } : r
           )
-        }))
+        })),
+
+      setActiveVideo: (video) => set({ activeVideo: video, isPlaying: !!video, isMinimized: false }),
+      setIsPlaying: (playing) => set({ isPlaying: playing }),
+      setIsMinimized: (minimized) => set({ isMinimized: minimized }),
+      toggleMinimize: () => set((state) => ({ isMinimized: !state.isMinimized }))
     }),
     {
-      name: "drivecast-media-storage-v10",
+      name: "drivecast-media-storage-v12",
+      partialize: (state) => ({
+        favoriteChannels: state.favoriteChannels,
+        savedVideos: state.savedVideos,
+        starredChannelIds: state.starredChannelIds,
+        savedPlaces: state.savedPlaces,
+        reciterKeywords: state.reciterKeywords,
+        reminders: state.reminders,
+      }),
     }
   )
 );
