@@ -25,9 +25,17 @@ export function DashboardView() {
 
   useEffect(() => {
     if (!api) return;
+    
     api.on("select", () => {
       setCurrent(api.selectedScrollSnap());
     });
+
+    // Auto-scroll logic: changes card every 3 seconds
+    const interval = setInterval(() => {
+      api.scrollNext();
+    }, 3000);
+
+    return () => clearInterval(interval);
   }, [api]);
 
   useEffect(() => {
@@ -74,7 +82,7 @@ export function DashboardView() {
         {/* Right: Smart Stack (Time, Moon, Calendar) */}
         <div className="col-span-4 flex flex-col gap-6 h-full overflow-hidden">
           <div className="h-[45%] relative group">
-            <Carousel setApi={setApi} className="w-full h-full">
+            <Carousel setApi={setApi} opts={{ loop: true }} className="w-full h-full">
               <CarouselContent className="h-full">
                 <CarouselItem className="h-full">
                   <DateAndClockWidget />
