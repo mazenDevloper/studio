@@ -1,9 +1,8 @@
-
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Moon as MoonIcon, Star, Loader2 } from "lucide-react";
+import { Moon as MoonIcon, Star, Loader2, Info } from "lucide-react";
 import Image from "next/image";
 
 interface MoonData {
@@ -20,6 +19,7 @@ export function MoonWidget() {
   const [moonData, setMoonData] = useState<MoonData | null>(null);
   const [loading, setLoading] = useState(true);
   const [rotation, setRotation] = useState(0);
+  const [infoIndex, setInfoIndex] = useState(0);
 
   useEffect(() => {
     async function fetchMoonData() {
@@ -51,69 +51,96 @@ export function MoonWidget() {
 
     fetchMoonData();
 
-    const timer = setInterval(() => {
+    // Constant slow rotation for visual effect
+    const rotTimer = setInterval(() => {
       setRotation(prev => (prev + 0.05) % 360);
     }, 100);
-    return () => clearInterval(timer);
+
+    // Info cycling timer every 4 seconds
+    const infoTimer = setInterval(() => {
+      setInfoIndex((prev) => (prev + 1) % 3);
+    }, 4000);
+
+    return () => {
+      clearInterval(rotTimer);
+      clearInterval(infoTimer);
+    };
   }, []);
 
-  // Safe phase string formatter
-  const formatPhase = (phase: any) => {
-    if (!phase) return "Loading...";
-    if (typeof phase !== 'string') return String(phase);
-    return phase.replace(/-/g, ' ');
-  };
+  const currentInfo = useMemo(() => {
+    if (!moonData) return { label: "Syncing", value: "NASA SVS" };
+    
+    const formattedPhase = typeof moonData.phase === 'string' 
+      ? moonData.phase.replace(/-/g, ' ') 
+      : String(moonData.phase || "Loading...");
+
+    const infos = [
+      { label: "Illumination", value: `${Math.round(moonData.illumination || 0)}%` },
+      { label: "Distance", value: `${(moonData.distance || 0).toLocaleString()} KM` },
+      { label: "Current Phase", value: formattedPhase },
+    ];
+    return infos[infoIndex];
+  }, [moonData, infoIndex]);
 
   return (
-    <Card className="h-full overflow-hidden border-none bg-zinc-900/50 rounded-[2.5rem] relative">
-      <div className="absolute top-0 right-0 p-4 opacity-10">
-        <MoonIcon className="w-32 h-32" />
-      </div>
+    <Card className="h-full overflow-hidden border-none bg-zinc-900/50 rounded-[2.5rem] relative group">
+      {/* Background glow behind the moon */}
+      <div className="absolute top-1/2 left-1/4 -translate-y-1/2 -translate-x-1/2 w-48 h-48 bg-blue-500/10 rounded-full blur-[80px] pointer-events-none" />
       
-      <CardContent className="p-8 h-full flex items-center gap-8 relative z-10">
-        {loading ? (
-          <div className="w-32 h-32 rounded-full bg-white/5 flex items-center justify-center border border-white/10">
-            <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
+      <CardContent className="p-8 h-full flex items-center gap-10 relative z-10">
+        {/* Main Element: The Moon */}
+        <div className="relative w-40 h-40 flex-shrink-0">
+          {loading ? (
+            <div className="w-full h-full rounded-full bg-white/5 flex items-center justify-center border border-white/10">
+              <Loader2 className="w-10 h-10 animate-spin text-blue-400" />
+            </div>
+          ) : (
+            <div className="relative w-full h-full rounded-full overflow-hidden ring-[12px] ring-white/5 shadow-[0_0_50px_rgba(255,255,255,0.05)] bg-black">
+              {moonData?.image?.url && (
+                <Image
+                  src={moonData.image.url}
+                  alt="NASA Live Moon"
+                  fill
+                  className="object-cover transition-transform duration-100 scale-[1.15]"
+                  style={{ transform: `rotate(${rotation}deg)` }}
+                  unoptimized
+                />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-tr from-black/70 via-transparent to-white/5 pointer-events-none" />
+            </div>
+          )}
+          {/* Decorative Pulse Star */}
+          <div className="absolute -top-2 -right-2">
+            <Star className="w-4 h-4 text-yellow-500 fill-current animate-pulse shadow-glow" />
           </div>
-        ) : (
-          <div className="relative w-32 h-32 rounded-full overflow-hidden ring-8 ring-white/5 shadow-2xl bg-black">
-            {moonData?.image?.url && (
-              <Image
-                src={moonData.image.url}
-                alt="NASA Live Moon"
-                fill
-                className="object-cover transition-transform duration-100 scale-125"
-                style={{ transform: `rotate(${rotation}deg)` }}
-                unoptimized
-              />
-            )}
-            <div className="absolute inset-0 bg-gradient-to-tr from-black/60 via-transparent to-white/10" />
-          </div>
-        )}
+        </div>
         
-        <div className="flex-1 space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-[0.3em] text-blue-400">Astronomy Live</span>
-            <div className="flex gap-1">
-              <Star className="w-3 h-3 text-yellow-500 fill-current animate-pulse" />
-              <Star className="w-3 h-3 text-yellow-500 fill-current animate-pulse delay-75" />
-            </div>
+        {/* Dynamic Info Pane */}
+        <div className="flex-1 space-y-4">
+          <div className="flex items-center gap-2">
+            <div className="h-1 w-8 bg-blue-500 rounded-full" />
+            <span className="text-[10px] font-bold uppercase tracking-[0.4em] text-blue-400">Astronomy Live</span>
           </div>
-          <div className="space-y-1">
-            <h3 className="text-2xl font-bold font-headline leading-tight text-white capitalize">
-              {formatPhase(moonData?.phase)}
-            </h3>
-            <p className="text-sm text-muted-foreground font-medium uppercase tracking-widest">
-              Phase: {moonData ? `${Math.round(moonData.illumination)}%` : "--"} Illuminant
+
+          <div className="space-y-1 animate-in fade-in slide-in-from-bottom-2 duration-700 key={infoIndex}">
+            <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest opacity-60">
+              {currentInfo.label}
             </p>
+            <h3 className="text-3xl font-bold font-headline leading-tight text-white capitalize truncate">
+              {currentInfo.value}
+            </h3>
           </div>
-          <div className="flex flex-wrap gap-2 pt-2">
-            <div className="px-3 py-1 bg-white/5 rounded-full border border-white/5 text-[10px] font-bold text-white/60">
-              Dist: {moonData ? moonData.distance.toLocaleString() : "---"} KM
+
+          <div className="flex items-center gap-2 pt-2">
+            <div className="flex gap-1">
+              {[0, 1, 2].map((i) => (
+                <div 
+                  key={i} 
+                  className={`h-1.5 w-1.5 rounded-full transition-all duration-500 ${infoIndex === i ? "bg-blue-400 w-4" : "bg-white/10"}`}
+                />
+              ))}
             </div>
-            <div className="px-3 py-1 bg-blue-500/10 rounded-full border border-blue-500/20 text-[10px] font-bold text-blue-400">
-              NASA SVS: {loading ? "SYNCING" : "LIVE"}
-            </div>
+            <span className="text-[9px] text-white/30 font-bold uppercase ml-2">Auto-Cycle 4s</span>
           </div>
         </div>
       </CardContent>
