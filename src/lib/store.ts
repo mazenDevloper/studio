@@ -19,6 +19,8 @@ export interface Reminder {
   iconType: 'play' | 'bell' | 'circle';
   completed: boolean;
   color: string;
+  startHour: number;
+  endHour: number;
 }
 
 interface MediaState {
@@ -97,14 +99,14 @@ const INITIAL_RECITERS = [
 ];
 
 const INITIAL_REMINDERS: Reminder[] = [
-  { id: '1', label: 'أذكار الصباح', iconType: 'play', completed: false, color: 'text-teal-400' },
-  { id: '2', label: 'صلاة الضحى', iconType: 'play', completed: false, color: 'text-teal-400' },
-  { id: '3', label: 'أذكار المساء', iconType: 'bell', completed: false, color: 'text-orange-400' },
-  { id: '4', label: 'السنن الرواتب', iconType: 'circle', completed: false, color: 'text-zinc-400' },
-  { id: '5', label: 'سورة الملك', iconType: 'bell', completed: false, color: 'text-orange-400' },
-  { id: '6', label: 'الورد اليومي', iconType: 'play', completed: false, color: 'text-teal-400' },
-  { id: '7', label: 'صلاة الوتر', iconType: 'bell', completed: false, color: 'text-orange-400' },
-  { id: '8', label: 'قيام الليل', iconType: 'bell', completed: false, color: 'text-orange-400' },
+  { id: '1', label: 'أذكار الصباح', iconType: 'play', completed: false, color: 'text-teal-400', startHour: 4, endHour: 11 },
+  { id: '2', label: 'صلاة الضحى', iconType: 'play', completed: false, color: 'text-teal-400', startHour: 7, endHour: 11 },
+  { id: '3', label: 'أذكار المساء', iconType: 'bell', completed: false, color: 'text-orange-400', startHour: 15, endHour: 19 },
+  { id: '4', label: 'السنن الرواتب', iconType: 'circle', completed: false, color: 'text-zinc-400', startHour: 4, endHour: 23 },
+  { id: '5', label: 'سورة الملك', iconType: 'bell', completed: false, color: 'text-orange-400', startHour: 19, endHour: 24 },
+  { id: '6', label: 'الورد اليومي', iconType: 'play', completed: false, color: 'text-teal-400', startHour: 0, endHour: 24 },
+  { id: '7', label: 'صلاة الوتر', iconType: 'bell', completed: false, color: 'text-orange-400', startHour: 20, endHour: 4 },
+  { id: '8', label: 'قيام الليل', iconType: 'bell', completed: false, color: 'text-orange-400', startHour: 1, endHour: 5 },
 ];
 
 export const useMediaStore = create<MediaState>()(
@@ -174,7 +176,7 @@ export const useMediaStore = create<MediaState>()(
         }))
     }),
     {
-      name: "drivecast-media-storage-v9",
+      name: "drivecast-media-storage-v10",
     }
   )
 );
