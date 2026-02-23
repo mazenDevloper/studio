@@ -14,19 +14,25 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SURAH_LIST, JUZ_LIST } from "@/lib/constants";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
-const QUICK_RECITERS = [
-  "ياسر الدوسري", "بندر بليلة", "سعود الشريم", "عبدالرحمن السديس", 
-  "ماهر المعيقلي", "منصور السالمي", "إسلام صبحي", "بدر التركي"
-];
-
 export function MediaView() {
-  const { favoriteChannels, addChannel, removeChannel, savedVideos, toggleSaveVideo, starredChannelIds, toggleStarChannel } = useMediaStore();
+  const { 
+    favoriteChannels, 
+    addChannel, 
+    removeChannel, 
+    savedVideos, 
+    toggleSaveVideo, 
+    starredChannelIds, 
+    toggleStarChannel,
+    reciterKeywords,
+    addReciterKeyword,
+    removeReciterKeyword
+  } = useMediaStore();
+
   const [searchQuery, setSearchQuery] = useState("");
   const [searchType, setSearchType] = useState<"channels" | "videos">("channels");
   const [channelResults, setChannelResults] = useState<YouTubeChannel[]>([]);
@@ -42,6 +48,7 @@ export function MediaView() {
   const [selectedSurah, setSelectedSurah] = useState("");
   const [isFullListOpen, setIsFullListOpen] = useState(false);
   const [listType, setListType] = useState<"surah" | "juz">("surah");
+  const [newReciterKeyword, setNewReciterKeyword] = useState("");
 
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -82,6 +89,13 @@ export function MediaView() {
       handleSearch(combinedQuery);
       setShowQuickGrids(false);
       setIsFullListOpen(false);
+    }
+  };
+
+  const handleAddReciter = () => {
+    if (newReciterKeyword.trim()) {
+      addReciterKeyword(newReciterKeyword.trim());
+      setNewReciterKeyword("");
     }
   };
 
@@ -170,19 +184,42 @@ export function MediaView() {
             {showQuickGrids && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 animate-in slide-in-from-top-4 fade-in duration-500">
                 <div className="space-y-4">
-                  <h3 className="text-lg font-bold font-headline flex items-center gap-3 text-white/60">
-                    <Users className="w-5 h-5 text-accent" /> قائمة القراء
-                  </h3>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    {QUICK_RECITERS.map((reciter) => (
-                      <Button 
-                        key={reciter} 
-                        variant="outline" 
-                        onClick={() => handleQuickSelect('reciter', reciter)}
-                        className={`border-white/5 rounded-xl h-14 font-bold text-sm transition-all ${selectedReciter === reciter ? 'bg-accent text-black border-accent' : 'bg-white/5 text-white hover:bg-white hover:text-black'}`}
-                      >
-                        {reciter}
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-bold font-headline flex items-center gap-3 text-white/60">
+                      <Users className="w-5 h-5 text-accent" /> قائمة القراء
+                    </h3>
+                    <div className="flex items-center gap-2">
+                      <Input 
+                        placeholder="أضف قارئ..." 
+                        value={newReciterKeyword}
+                        onChange={(e) => setNewReciterKeyword(e.target.value)}
+                        className="bg-white/5 border-white/10 h-10 w-40 rounded-xl text-sm"
+                        onKeyDown={(e) => e.key === 'Enter' && handleAddReciter()}
+                      />
+                      <Button onClick={handleAddReciter} size="icon" className="h-10 w-10 rounded-xl bg-accent text-black">
+                        <Plus className="w-5 h-5" />
                       </Button>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {reciterKeywords.map((reciter) => (
+                      <div key={reciter} className="relative group/rec">
+                        <Button 
+                          variant="outline" 
+                          onClick={() => handleQuickSelect('reciter', reciter)}
+                          className={`w-full border-white/5 rounded-xl h-14 font-bold text-sm transition-all ${selectedReciter === reciter ? 'bg-accent text-black border-accent' : 'bg-white/5 text-white hover:bg-white hover:text-black'}`}
+                        >
+                          {reciter}
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={(e) => { e.stopPropagation(); removeReciterKeyword(reciter); }}
+                          className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-red-500 text-white opacity-0 group-hover/rec:opacity-100 transition-opacity"
+                        >
+                          <X className="w-3 h-3" />
+                        </Button>
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -247,7 +284,7 @@ export function MediaView() {
                </Button>
                <Button 
                   onClick={(e) => toggleSubscription(e, selectedChannel)}
-                  variant={favoriteChannels.some(c => c.id === channel.id) ? "secondary" : "default"}
+                  variant={favoriteChannels.some(c => c.id === selectedChannel.id) ? "secondary" : "default"}
                   className={`rounded-[1.5rem] h-16 px-10 text-xl font-bold ${favoriteChannels.some(c => c.id === selectedChannel.id) ? "bg-accent/10 text-accent" : "bg-white text-black"}`}
                 >
                   {favoriteChannels.some(c => c.id === selectedChannel.id) ? <Check className="w-6 h-6 mr-3" /> : <Plus className="w-6 h-6 mr-3" />}

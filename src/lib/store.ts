@@ -18,6 +18,7 @@ interface MediaState {
   savedVideos: YouTubeVideo[];
   starredChannelIds: string[];
   savedPlaces: SavedPlace[];
+  reciterKeywords: string[];
   addChannel: (channel: YouTubeChannel) => void;
   removeChannel: (id: string) => void;
   toggleSaveVideo: (video: YouTubeVideo) => void;
@@ -25,6 +26,8 @@ interface MediaState {
   toggleStarChannel: (id: string) => void;
   savePlace: (place: SavedPlace) => void;
   removePlace: (id: string) => void;
+  addReciterKeyword: (keyword: string) => void;
+  removeReciterKeyword: (keyword: string) => void;
 }
 
 const INITIAL_CHANNELS: YouTubeChannel[] = [
@@ -78,6 +81,11 @@ const INITIAL_CHANNELS: YouTubeChannel[] = [
   }
 ];
 
+const INITIAL_RECITERS = [
+  "ياسر الدوسري", "بندر بليلة", "سعود الشريم", "عبدالرحمن السديس", 
+  "ماهر المعيقلي", "منصور السالمي", "إسلام صبحي", "بدر التركي"
+];
+
 export const useMediaStore = create<MediaState>()(
   persist(
     (set) => ({
@@ -85,6 +93,7 @@ export const useMediaStore = create<MediaState>()(
       savedVideos: [],
       starredChannelIds: [],
       savedPlaces: [],
+      reciterKeywords: INITIAL_RECITERS,
       addChannel: (channel) =>
         set((state) => ({
           favoriteChannels: state.favoriteChannels.some(c => c.id === channel.id)
@@ -124,10 +133,20 @@ export const useMediaStore = create<MediaState>()(
       removePlace: (id) =>
         set((state) => ({
           savedPlaces: state.savedPlaces.filter(p => p.id !== id)
+        })),
+      addReciterKeyword: (keyword) =>
+        set((state) => ({
+          reciterKeywords: state.reciterKeywords.includes(keyword)
+            ? state.reciterKeywords
+            : [...state.reciterKeywords, keyword]
+        })),
+      removeReciterKeyword: (keyword) =>
+        set((state) => ({
+          reciterKeywords: state.reciterKeywords.filter(k => k !== keyword)
         }))
     }),
     {
-      name: "drivecast-media-storage-v7",
+      name: "drivecast-media-storage-v8",
     }
   )
 );
