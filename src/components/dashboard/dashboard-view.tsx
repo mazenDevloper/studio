@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
@@ -45,7 +46,6 @@ export function DashboardView() {
       <header className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-6">
           <div>
-            <h1 className="text-5xl font-headline font-bold text-white tracking-tighter">DriveCast</h1>
             <p className="text-muted-foreground text-sm font-medium uppercase tracking-widest">{dateTime.date}</p>
           </div>
           {weather && (
