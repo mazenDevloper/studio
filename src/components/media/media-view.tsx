@@ -56,7 +56,7 @@ export function MediaView() {
   };
 
   return (
-    <div className="p-8 space-y-12 max-w-7xl mx-auto pb-32">
+    <div className="p-8 space-y-12 max-w-7xl mx-auto pb-48 relative min-h-screen">
       <header className="flex flex-col gap-8">
         <div>
           <h1 className="text-6xl font-headline font-bold tracking-tighter mb-2">Media</h1>
@@ -88,13 +88,15 @@ export function MediaView() {
 
       {selectedChannel ? (
         <div className="space-y-8 animate-in fade-in slide-in-from-left-4 duration-500">
-          <Button 
-            variant="ghost" 
-            onClick={() => setSelectedChannel(null)}
-            className="rounded-full h-16 px-8 text-xl font-bold gap-3 hover:bg-white/10"
-          >
-            <ArrowLeft className="w-6 h-6" /> Back to Channels
-          </Button>
+          {/* Fixed Back Button - CarPlay Style */}
+          <div className="fixed bottom-10 left-[110px] z-[60]">
+            <Button 
+              onClick={() => setSelectedChannel(null)}
+              className="h-20 w-20 rounded-full bg-white/10 backdrop-blur-3xl border border-white/20 text-white hover:bg-white hover:text-black shadow-2xl transition-all active:scale-90 flex items-center justify-center ios-shadow"
+            >
+              <ArrowLeft className="w-10 h-10" />
+            </Button>
+          </div>
 
           <div className="flex items-center gap-8 p-10 rounded-[3rem] bg-zinc-900/40 border border-white/5 backdrop-blur-xl">
              <div className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-primary/50 shadow-2xl shadow-primary/20">
@@ -120,7 +122,7 @@ export function MediaView() {
               <p className="text-muted-foreground font-bold tracking-widest uppercase">Fetching Stream...</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 pb-32">
               {channelVideos.map((video) => {
                 const isSaved = savedVideos.some(v => v.id === video.id);
                 return (
@@ -158,7 +160,7 @@ export function MediaView() {
                     <CardContent className="p-6 space-y-2">
                       <h3 className="font-bold text-xl line-clamp-1 font-headline">{video.title}</h3>
                       <div className="flex items-center gap-4 text-xs font-bold text-muted-foreground uppercase tracking-widest">
-                         <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> Latest</span>
+                         <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> Ready to Broadcast</span>
                       </div>
                     </CardContent>
                   </Card>
@@ -207,7 +209,7 @@ export function MediaView() {
             </section>
           )}
 
-          <section className="space-y-8">
+          <section className="space-y-8 pb-32">
             <h2 className="text-3xl font-bold font-headline flex items-center gap-4">
               <div className="w-12 h-12 rounded-2xl bg-red-500 flex items-center justify-center ios-shadow">
                 <Youtube className="text-white w-7 h-7" />
