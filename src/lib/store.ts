@@ -5,15 +5,26 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { YouTubeChannel, YouTubeVideo } from "./youtube";
 
+export interface SavedPlace {
+  id: string;
+  name: string;
+  address: string;
+  lat: number;
+  lng: number;
+}
+
 interface MediaState {
   favoriteChannels: YouTubeChannel[];
   savedVideos: YouTubeVideo[];
   starredChannelIds: string[];
+  savedPlaces: SavedPlace[];
   addChannel: (channel: YouTubeChannel) => void;
   removeChannel: (id: string) => void;
   toggleSaveVideo: (video: YouTubeVideo) => void;
   removeVideo: (id: string) => void;
   toggleStarChannel: (id: string) => void;
+  savePlace: (place: SavedPlace) => void;
+  removePlace: (id: string) => void;
 }
 
 const INITIAL_CHANNELS: YouTubeChannel[] = [
@@ -73,6 +84,7 @@ export const useMediaStore = create<MediaState>()(
       favoriteChannels: INITIAL_CHANNELS,
       savedVideos: [],
       starredChannelIds: [],
+      savedPlaces: [],
       addChannel: (channel) =>
         set((state) => ({
           favoriteChannels: state.favoriteChannels.some(c => c.id === channel.id)
@@ -103,9 +115,19 @@ export const useMediaStore = create<MediaState>()(
             ? state.starredChannelIds.filter(i => i !== id)
             : [...state.starredChannelIds, id]
         })),
+      savePlace: (place) =>
+        set((state) => ({
+          savedPlaces: state.savedPlaces.some(p => p.id === place.id)
+            ? state.savedPlaces
+            : [place, ...state.savedPlaces]
+        })),
+      removePlace: (id) =>
+        set((state) => ({
+          savedPlaces: state.savedPlaces.filter(p => p.id !== id)
+        }))
     }),
     {
-      name: "drivecast-media-storage-v6",
+      name: "drivecast-media-storage-v7",
     }
   )
 );
