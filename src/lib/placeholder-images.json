@@ -1,3 +1,28 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "moon-surface",
+      "description": "Craters on the moon's surface",
+      "imageUrl": "https://images.unsplash.com/photo-1686861453864-9b2a22a97fc9?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxtb29uJTIwc3VyZmFjZXxlbnwwfHx8fDE3NzE3OTU4NTB8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "moon surface"
+    },
+    {
+      "id": "map-placeholder",
+      "description": "A stylish dark map interface",
+      "imageUrl": "https://images.unsplash.com/photo-1612180768015-56180b567352?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8ZGFyayUyMG1hcHxlbnwwfHx8fDE3NzE3NzYxMjZ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "dark map"
+    },
+    {
+      "id": "tech-channel",
+      "description": "Tech reviewer setup",
+      "imageUrl": "https://picsum.photos/seed/tech/400/225",
+      "imageHint": "tech reviewer"
+    },
+    {
+      "id": "science-channel",
+      "description": "Space science thumbnail",
+      "imageUrl": "https://images.unsplash.com/photo-1712194295920-a7e01399bf9f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxzcGFjZSUyMHNjaWVuY2V8ZW58MHx8fHwxNzcxODI4NDcyfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "space science"
+    }
+  ]
 }
