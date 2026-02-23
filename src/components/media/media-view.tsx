@@ -5,7 +5,7 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Search, Plus, Play, Trash2, Youtube, Radio, Loader2, Check, ArrowLeft, Clock, Bookmark } from "lucide-react";
+import { Search, Plus, Play, Trash2, Youtube, Radio, Loader2, Check, ArrowLeft, Clock, Bookmark, Star } from "lucide-react";
 import { useMediaStore } from "@/lib/store";
 import { searchYouTubeChannels, fetchChannelVideos, YouTubeChannel, YouTubeVideo } from "@/lib/youtube";
 import Image from "next/image";
@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog";
 
 export function MediaView() {
-  const { favoriteChannels, addChannel, removeChannel, savedVideos, toggleSaveVideo } = useMediaStore();
+  const { favoriteChannels, addChannel, removeChannel, savedVideos, toggleSaveVideo, starredChannelIds, toggleStarChannel } = useMediaStore();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<YouTubeChannel[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -55,6 +55,11 @@ export function MediaView() {
     toggleSaveVideo(video);
   };
 
+  const handleToggleStar = (e: React.MouseEvent, channelId: string) => {
+    e.stopPropagation();
+    toggleStarChannel(channelId);
+  };
+
   return (
     <div className="p-8 space-y-12 max-w-7xl mx-auto pb-48 relative min-h-screen">
       <header className="flex flex-col gap-8">
@@ -88,7 +93,6 @@ export function MediaView() {
 
       {selectedChannel ? (
         <div className="space-y-8 animate-in fade-in slide-in-from-left-4 duration-500">
-          {/* Fixed Back Button - CarPlay Style */}
           <div className="fixed bottom-10 left-[110px] z-[60]">
             <Button 
               onClick={() => setSelectedChannel(null)}
@@ -106,14 +110,23 @@ export function MediaView() {
                 <h2 className="text-4xl font-headline font-bold text-white mb-2">{selectedChannel.title}</h2>
                 <p className="text-muted-foreground text-lg line-clamp-2 max-w-2xl">{selectedChannel.description}</p>
              </div>
-             <Button 
-                onClick={(e) => toggleSubscription(e, selectedChannel)}
-                variant={favoriteChannels.some(c => c.id === selectedChannel.id) ? "secondary" : "default"}
-                className={`rounded-[1.5rem] h-16 px-10 text-xl font-bold ${favoriteChannels.some(c => c.id === selectedChannel.id) ? "bg-accent/10 text-accent" : "bg-white text-black"}`}
-              >
-                {favoriteChannels.some(c => c.id === selectedChannel.id) ? <Check className="w-6 h-6 mr-3" /> : <Plus className="w-6 h-6 mr-3" />}
-                {favoriteChannels.some(c => c.id === selectedChannel.id) ? "Added" : "Add to Feed"}
-              </Button>
+             <div className="flex items-center gap-4">
+               <Button
+                  onClick={(e) => handleToggleStar(e, selectedChannel.id)}
+                  variant="ghost"
+                  className={`h-16 w-16 rounded-2xl border border-white/5 ${starredChannelIds.includes(selectedChannel.id) ? "bg-yellow-500/20 text-yellow-500 border-yellow-500/30" : "bg-white/5 text-muted-foreground"}`}
+               >
+                 <Star className={`w-8 h-8 ${starredChannelIds.includes(selectedChannel.id) ? "fill-current" : ""}`} />
+               </Button>
+               <Button 
+                  onClick={(e) => toggleSubscription(e, selectedChannel)}
+                  variant={favoriteChannels.some(c => c.id === selectedChannel.id) ? "secondary" : "default"}
+                  className={`rounded-[1.5rem] h-16 px-10 text-xl font-bold ${favoriteChannels.some(c => c.id === selectedChannel.id) ? "bg-accent/10 text-accent" : "bg-white text-black"}`}
+                >
+                  {favoriteChannels.some(c => c.id === selectedChannel.id) ? <Check className="w-6 h-6 mr-3" /> : <Plus className="w-6 h-6 mr-3" />}
+                  {favoriteChannels.some(c => c.id === selectedChannel.id) ? "Added" : "Add to Feed"}
+                </Button>
+             </div>
           </div>
 
           {isLoadingVideos ? (
@@ -231,45 +244,58 @@ export function MediaView() {
               </Card>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-                {favoriteChannels.map((channel) => (
-                  <Card 
-                    key={channel.id} 
-                    onClick={() => handleSelectChannel(channel)}
-                    className="group relative overflow-hidden bg-zinc-900/80 border-none rounded-[2.5rem] transition-all hover:scale-[1.02] cursor-pointer ios-shadow"
-                  >
-                    <div className="aspect-video relative overflow-hidden">
-                      <Image
-                        src={channel.thumbnail}
-                        alt={channel.title}
-                        fill
-                        className="object-cover opacity-80 group-hover:opacity-100 transition-opacity"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <Button 
-                          size="icon" 
-                          className="rounded-full w-20 h-20 bg-white/20 backdrop-blur-3xl text-white hover:bg-white hover:text-black hover:scale-110 transition-all opacity-0 group-hover:opacity-100 border border-white/20"
-                        >
-                          <Play className="fill-current w-10 h-10 ml-1" />
-                        </Button>
+                {favoriteChannels.map((channel) => {
+                  const isStarred = starredChannelIds.includes(channel.id);
+                  return (
+                    <Card 
+                      key={channel.id} 
+                      onClick={() => handleSelectChannel(channel)}
+                      className="group relative overflow-hidden bg-zinc-900/80 border-none rounded-[2.5rem] transition-all hover:scale-[1.02] cursor-pointer ios-shadow"
+                    >
+                      <div className="aspect-video relative overflow-hidden">
+                        <Image
+                          src={channel.thumbnail}
+                          alt={channel.title}
+                          fill
+                          className="object-cover opacity-80 group-hover:opacity-100 transition-opacity"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <Button 
+                            size="icon" 
+                            className="rounded-full w-20 h-20 bg-white/20 backdrop-blur-3xl text-white hover:bg-white hover:text-black hover:scale-110 transition-all opacity-0 group-hover:opacity-100 border border-white/20"
+                          >
+                            <Play className="fill-current w-10 h-10 ml-1" />
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                    <CardContent className="p-6 flex items-center justify-between">
-                      <div className="min-w-0">
-                        <h3 className="font-bold text-xl truncate font-headline">{channel.title}</h3>
-                        <p className="text-[10px] text-accent font-bold uppercase tracking-[0.2em] mt-1">Live Feed</p>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-muted-foreground hover:text-red-500 hover:bg-red-500/10 rounded-full w-12 h-12"
-                        onClick={(e) => { e.stopPropagation(); removeChannel(channel.id); }}
-                      >
-                        <Trash2 className="w-6 h-6" />
-                      </Button>
-                    </CardContent>
-                  </Card>
-                ))}
+                      <CardContent className="p-6 flex items-center justify-between">
+                        <div className="min-w-0">
+                          <h3 className="font-bold text-xl truncate font-headline">{channel.title}</h3>
+                          <p className="text-[10px] text-accent font-bold uppercase tracking-[0.2em] mt-1">Live Feed</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className={`rounded-full w-10 h-10 ${isStarred ? "text-yellow-500 bg-yellow-500/10" : "text-muted-foreground hover:bg-white/5"}`}
+                            onClick={(e) => handleToggleStar(e, channel.id)}
+                          >
+                            <Star className={`w-5 h-5 ${isStarred ? "fill-current" : ""}`} />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-muted-foreground hover:text-red-500 hover:bg-red-500/10 rounded-full w-10 h-10"
+                            onClick={(e) => { e.stopPropagation(); removeChannel(channel.id); }}
+                          >
+                            <Trash2 className="w-5 h-5" />
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             )}
           </section>

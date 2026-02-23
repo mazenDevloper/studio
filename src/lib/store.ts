@@ -8,10 +8,12 @@ import { YouTubeChannel, YouTubeVideo } from "./youtube";
 interface MediaState {
   favoriteChannels: YouTubeChannel[];
   savedVideos: YouTubeVideo[];
+  starredChannelIds: string[];
   addChannel: (channel: YouTubeChannel) => void;
   removeChannel: (id: string) => void;
   toggleSaveVideo: (video: YouTubeVideo) => void;
   removeVideo: (id: string) => void;
+  toggleStarChannel: (id: string) => void;
 }
 
 const INITIAL_CHANNELS: YouTubeChannel[] = [
@@ -124,6 +126,7 @@ export const useMediaStore = create<MediaState>()(
     (set) => ({
       favoriteChannels: INITIAL_CHANNELS,
       savedVideos: [],
+      starredChannelIds: [],
       addChannel: (channel) =>
         set((state) => ({
           favoriteChannels: state.favoriteChannels.some(c => c.id === channel.id)
@@ -133,6 +136,7 @@ export const useMediaStore = create<MediaState>()(
       removeChannel: (id) =>
         set((state) => ({
           favoriteChannels: state.favoriteChannels.filter((c) => c.id !== id),
+          starredChannelIds: state.starredChannelIds.filter(i => i !== id),
         })),
       toggleSaveVideo: (video) =>
         set((state) => {
@@ -147,9 +151,15 @@ export const useMediaStore = create<MediaState>()(
         set((state) => ({
           savedVideos: state.savedVideos.filter(v => v.id !== id),
         })),
+      toggleStarChannel: (id) =>
+        set((state) => ({
+          starredChannelIds: state.starredChannelIds.includes(id)
+            ? state.starredChannelIds.filter(i => i !== id)
+            : [...state.starredChannelIds, id]
+        })),
     }),
     {
-      name: "drivecast-media-storage-v4",
+      name: "drivecast-media-storage-v5",
     }
   )
 );

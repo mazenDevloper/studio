@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { MapWidget } from "./widgets/map-widget";
 import { YouTubeSuggestionsWidget } from "./widgets/youtube-suggestions-widget";
 import { YouTubeSavedWidget } from "./widgets/youtube-saved-widget";
@@ -12,9 +12,15 @@ import { WEATHER_API_KEY } from "@/lib/constants";
 import { Cloud, Sun, CloudRain } from "lucide-react";
 
 export function DashboardView() {
-  const { favoriteChannels } = useMediaStore();
+  const { favoriteChannels, starredChannelIds } = useMediaStore();
   const [weather, setWeather] = useState<any>(null);
   const [dateTime, setDateTime] = useState({ time: "", date: "" });
+
+  // Filter channels for suggestions: Prefer starred, otherwise use all
+  const channelsForSuggestions = useMemo(() => {
+    const starred = favoriteChannels.filter(c => starredChannelIds.includes(c.id));
+    return starred.length > 0 ? starred : favoriteChannels;
+  }, [favoriteChannels, starredChannelIds]);
 
   useEffect(() => {
     // Fetch Live Weather
@@ -74,7 +80,7 @@ export function DashboardView() {
         </div>
 
         <div className="col-span-12 lg:col-span-7">
-          <YouTubeSuggestionsWidget channels={favoriteChannels} />
+          <YouTubeSuggestionsWidget channels={channelsForSuggestions} />
         </div>
 
         <div className="col-span-12 lg:col-span-5">
