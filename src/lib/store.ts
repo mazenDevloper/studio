@@ -13,12 +13,21 @@ export interface SavedPlace {
   lng: number;
 }
 
+export interface Reminder {
+  id: string;
+  label: string;
+  iconType: 'play' | 'bell' | 'circle';
+  completed: boolean;
+  color: string;
+}
+
 interface MediaState {
   favoriteChannels: YouTubeChannel[];
   savedVideos: YouTubeVideo[];
   starredChannelIds: string[];
   savedPlaces: SavedPlace[];
   reciterKeywords: string[];
+  reminders: Reminder[];
   addChannel: (channel: YouTubeChannel) => void;
   removeChannel: (id: string) => void;
   toggleSaveVideo: (video: YouTubeVideo) => void;
@@ -28,6 +37,7 @@ interface MediaState {
   removePlace: (id: string) => void;
   addReciterKeyword: (keyword: string) => void;
   removeReciterKeyword: (keyword: string) => void;
+  toggleReminder: (id: string) => void;
 }
 
 const INITIAL_CHANNELS: YouTubeChannel[] = [
@@ -86,6 +96,17 @@ const INITIAL_RECITERS = [
   "ماهر المعيقلي", "منصور السالمي", "إسلام صبحي", "بدر التركي"
 ];
 
+const INITIAL_REMINDERS: Reminder[] = [
+  { id: '1', label: 'أذكار الصباح', iconType: 'play', completed: false, color: 'text-teal-400' },
+  { id: '2', label: 'صلاة الضحى', iconType: 'play', completed: false, color: 'text-teal-400' },
+  { id: '3', label: 'أذكار المساء', iconType: 'bell', completed: false, color: 'text-orange-400' },
+  { id: '4', label: 'السنن الرواتب', iconType: 'circle', completed: false, color: 'text-zinc-400' },
+  { id: '5', label: 'سورة الملك', iconType: 'bell', completed: false, color: 'text-orange-400' },
+  { id: '6', label: 'الورد اليومي', iconType: 'play', completed: false, color: 'text-teal-400' },
+  { id: '7', label: 'صلاة الوتر', iconType: 'bell', completed: false, color: 'text-orange-400' },
+  { id: '8', label: 'قيام الليل', iconType: 'bell', completed: false, color: 'text-orange-400' },
+];
+
 export const useMediaStore = create<MediaState>()(
   persist(
     (set) => ({
@@ -94,6 +115,7 @@ export const useMediaStore = create<MediaState>()(
       starredChannelIds: [],
       savedPlaces: [],
       reciterKeywords: INITIAL_RECITERS,
+      reminders: INITIAL_REMINDERS,
       addChannel: (channel) =>
         set((state) => ({
           favoriteChannels: state.favoriteChannels.some(c => c.id === channel.id)
@@ -143,10 +165,16 @@ export const useMediaStore = create<MediaState>()(
       removeReciterKeyword: (keyword) =>
         set((state) => ({
           reciterKeywords: state.reciterKeywords.filter(k => k !== keyword)
+        })),
+      toggleReminder: (id) =>
+        set((state) => ({
+          reminders: state.reminders.map(r => 
+            r.id === id ? { ...r, completed: !r.completed } : r
+          )
         }))
     }),
     {
-      name: "drivecast-media-storage-v8",
+      name: "drivecast-media-storage-v9",
     }
   )
 );
