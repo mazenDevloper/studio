@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
@@ -85,7 +84,6 @@ export function DashboardView() {
       const newColSpan = Math.max(4, Math.min(12, Math.floor((e.clientX / window.innerWidth) * 12)));
       const newHeight = Math.max(300, Math.min(800, e.clientY - 100));
       setMapLayout(prev => ({ ...prev, colSpan: newColSpan, height: newHeight }));
-      // Adjust stack to fill remaining or stack below
       setStackLayout(prev => ({ ...prev, colSpan: newColSpan >= 12 ? 12 : 12 - newColSpan }));
     }
   }, [resizingId]);
@@ -186,6 +184,11 @@ export function DashboardView() {
         </div>
       </div>
 
+      {/* Prayer Timeline - Moved here above video bars */}
+      <div className="shrink-0">
+        <PrayerTimelineWidget />
+      </div>
+
       {/* Video Bars Section */}
       <div className="grid grid-cols-12 gap-6 shrink-0">
         <div className="col-span-12 lg:col-span-6">
@@ -194,11 +197,6 @@ export function DashboardView() {
         <div className="col-span-12 lg:col-span-6">
           <YouTubeSavedWidget />
         </div>
-      </div>
-
-      {/* Footer: Floating Prayer Timeline */}
-      <div className="h-24 shrink-0 mt-auto">
-        <PrayerTimelineWidget />
       </div>
     </div>
   );
