@@ -6,12 +6,29 @@ import { WEATHER_API_KEY } from "@/lib/constants";
 import { Cloud, Sun, Search, Mic } from "lucide-react";
 import Link from "next/link";
 import { RemindersWidget } from "./widgets/reminders-widget";
-import { DateAndClockWidget } from "./widgets/date-and-clock-widget";
 import { MapWidget } from "./widgets/map-widget";
 import { PrayerTimelineWidget } from "./widgets/prayer-timeline-widget";
+import { 
+  Carousel, 
+  CarouselContent, 
+  CarouselItem, 
+  type CarouselApi 
+} from "@/components/ui/carousel";
+import { DateAndClockWidget } from "./widgets/date-and-clock-widget";
+import { MoonWidget } from "./widgets/moon-widget";
+import { CalendarWidget } from "./widgets/calendar-widget";
 
 export function DashboardView() {
   const [weather, setWeather] = useState<any>(null);
+  const [api, setApi] = useState<CarouselApi>();
+  const [current, setCurrent] = useState(0);
+
+  useEffect(() => {
+    if (!api) return;
+    api.on("select", () => {
+      setCurrent(api.selectedScrollSnap());
+    });
+  }, [api]);
 
   useEffect(() => {
     fetch(`https://api.weatherapi.com/v1/current.json?key=${WEATHER_API_KEY}&q=Silicon Valley&aqi=no`)
@@ -54,11 +71,34 @@ export function DashboardView() {
           <MapWidget />
         </div>
 
-        {/* Right: Smart Stack (Clock + Reminders) */}
+        {/* Right: Smart Stack (Time, Moon, Calendar) */}
         <div className="col-span-4 flex flex-col gap-6 h-full overflow-hidden">
-          <div className="h-[45%]">
-            <DateAndClockWidget />
+          <div className="h-[45%] relative group">
+            <Carousel setApi={setApi} className="w-full h-full">
+              <CarouselContent className="h-full">
+                <CarouselItem className="h-full">
+                  <DateAndClockWidget />
+                </CarouselItem>
+                <CarouselItem className="h-full">
+                  <MoonWidget />
+                </CarouselItem>
+                <CarouselItem className="h-full">
+                  <CalendarWidget />
+                </CarouselItem>
+              </CarouselContent>
+            </Carousel>
+            
+            {/* Scrolled Dots (Page Indicator) */}
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
+              {[0, 1, 2].map((i) => (
+                <div 
+                  key={i} 
+                  className={`h-1.5 rounded-full transition-all duration-300 ${current === i ? "w-6 bg-primary" : "w-1.5 bg-white/20"}`}
+                />
+              ))}
+            </div>
           </div>
+          
           <div className="h-[55%]">
             <RemindersWidget />
           </div>
