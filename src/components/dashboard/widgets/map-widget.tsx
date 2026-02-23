@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { Card } from "@/components/ui/card";
-import { Compass, Navigation, MapPin, Search, Clock, Zap, Bookmark, Star, Trash2 } from "lucide-react";
+import { Compass, Navigation, MapPin, Search, Clock, Zap, Bookmark, Star, Trash2, Map as MapIcon } from "lucide-react";
 import { GOOGLE_MAPS_API_KEY } from "@/lib/constants";
 import { useMediaStore, SavedPlace } from "@/lib/store";
 import { Input } from "@/components/ui/input";
@@ -38,71 +38,18 @@ export function MapWidget() {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [directionsRenderer, setDirectionsRenderer] = useState<google.maps.DirectionsRenderer | null>(null);
+  const [currentMarker, setCurrentMarker] = useState<google.maps.Marker | null>(null);
   const [navigationData, setNavigationData] = useState<{
     destination: string;
     distance: string;
     duration: string;
     eta: string;
   } | null>(null);
-  const [isSearching, setIsSearching] = useState(false);
   const [showSavedPlaces, setShowSavedPlaces] = useState(false);
   const { savedPlaces, savePlace, removePlace } = useMediaStore();
   const [currentPlace, setCurrentPlace] = useState<SavedPlace | null>(null);
 
-  // Load API and Init Map
-  useEffect(() => {
-    const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places&callback=initMap`;
-    script.async = true;
-    window.initMap = () => {
-      if (mapRef.current) {
-        const newMap = new google.maps.Map(mapRef.current, {
-          center: { lat: 21.4225, lng: 39.8262 }, // Makkah
-          zoom: 15,
-          disableDefaultUI: true,
-          styles: DARK_MAP_STYLE,
-        });
-        setMap(newMap);
-
-        const renderer = new google.maps.DirectionsRenderer({
-          map: newMap,
-          suppressMarkers: false,
-          polylineOptions: {
-            strokeColor: "#3b82f6",
-            strokeWeight: 6,
-            strokeOpacity: 0.8
-          }
-        });
-        setDirectionsRenderer(renderer);
-
-        // Setup Autocomplete
-        if (searchInputRef.current) {
-          const autocomplete = new google.maps.places.Autocomplete(searchInputRef.current);
-          autocomplete.bindTo("bounds", newMap);
-          autocomplete.addListener("place_changed", () => {
-            const place = autocomplete.getPlace();
-            if (!place.geometry || !place.geometry.location) return;
-
-            newMap.setCenter(place.geometry.location);
-            newMap.setZoom(17);
-            
-            setCurrentPlace({
-              id: place.place_id || Date.now().toString(),
-              name: place.name || "Unknown Location",
-              address: place.formatted_address || "",
-              lat: place.geometry.location.lat(),
-              lng: place.geometry.location.lng()
-            });
-
-            startNavigation(place.geometry.location);
-          });
-        }
-      }
-    };
-    document.head.appendChild(script);
-  }, []);
-
-  const startNavigation = useCallback((destination: google.maps.LatLng) => {
+  const startNavigation = useCallback((destination: google.maps.LatLng, name: string = "Target Location") => {
     if (!map || !directionsRenderer) return;
 
     const directionsService = new google.maps.DirectionsService();
@@ -126,10 +73,81 @@ export function MapWidget() {
             duration: leg.duration?.text || "0 Min",
             eta: arrivalTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
           });
+
+          // Update current place status
+          setCurrentPlace({
+            id: `pin-${Date.now()}`,
+            name: name,
+            address: leg.end_address,
+            lat: destination.lat(),
+            lng: destination.lng()
+          });
         }
       }
     );
   }, [map, directionsRenderer]);
+
+  // Load API and Init Map
+  useEffect(() => {
+    const script = document.createElement('script');
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places&callback=initMap`;
+    script.async = true;
+    window.initMap = () => {
+      if (mapRef.current) {
+        const newMap = new google.maps.Map(mapRef.current, {
+          center: { lat: 21.4225, lng: 39.8262 }, // Makkah
+          zoom: 15,
+          disableDefaultUI: true,
+          styles: DARK_MAP_STYLE,
+          gestureHandling: "greedy"
+        });
+        setMap(newMap);
+
+        const renderer = new google.maps.DirectionsRenderer({
+          map: newMap,
+          suppressMarkers: false,
+          polylineOptions: {
+            strokeColor: "#3b82f6",
+            strokeWeight: 6,
+            strokeOpacity: 0.8
+          }
+        });
+        setDirectionsRenderer(renderer);
+
+        // Click Listener to drop pin
+        newMap.addListener("click", (e: google.maps.MapMouseEvent) => {
+          if (e.latLng) {
+            const geocoder = new google.maps.Geocoder();
+            geocoder.geocode({ location: e.latLng }, (results, status) => {
+              let name = "Selected Point";
+              if (status === "OK" && results && results[0]) {
+                // Try to find a meaningful name
+                const poi = results.find(r => r.types.includes("point_of_interest") || r.types.includes("establishment"));
+                name = poi ? poi.formatted_address.split(',')[0] : results[0].formatted_address.split(',')[0];
+              }
+              startNavigation(e.latLng!, name);
+            });
+          }
+        });
+
+        // Setup Autocomplete
+        if (searchInputRef.current) {
+          const autocomplete = new google.maps.places.Autocomplete(searchInputRef.current);
+          autocomplete.bindTo("bounds", newMap);
+          autocomplete.addListener("place_changed", () => {
+            const place = autocomplete.getPlace();
+            if (!place.geometry || !place.geometry.location) return;
+
+            newMap.setCenter(place.geometry.location);
+            newMap.setZoom(17);
+            
+            startNavigation(place.geometry.location, place.name || "Search Result");
+          });
+        }
+      }
+    };
+    document.head.appendChild(script);
+  }, [startNavigation]);
 
   const handleSavePlace = () => {
     if (currentPlace) {
@@ -146,29 +164,29 @@ export function MapWidget() {
       {/* CarPlay Style HUD Overlay */}
       <div className="absolute top-6 left-6 z-20 flex flex-col gap-4 items-start w-[380px]">
         
-        {/* Search Bar - Integrated in the Map Widget */}
+        {/* Search Bar */}
         <div className="relative w-full group">
-          <div className="absolute left-6 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-blue-500">
+          <div className="absolute left-6 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-blue-500 transition-colors">
             <Search className="w-5 h-5" />
           </div>
           <Input 
             ref={searchInputRef}
-            placeholder="Where to?"
-            className="w-full h-16 pl-14 pr-6 bg-black/80 backdrop-blur-3xl border-white/5 rounded-2xl text-white font-headline font-bold text-lg ios-shadow focus:ring-2 focus:ring-blue-500 transition-all"
+            placeholder="Tap map or search destination"
+            className="w-full h-16 pl-14 pr-6 bg-black/80 backdrop-blur-3xl border-white/5 rounded-2xl text-white font-headline font-bold text-lg ios-shadow focus:ring-2 focus:ring-blue-500 transition-all placeholder:text-muted-foreground/50"
           />
         </div>
 
         {/* Navigation Intelligence Panel */}
         {navigationData && (
-          <div className="p-6 rounded-[2rem] bg-black/90 backdrop-blur-3xl border border-white/10 space-y-5 w-full shadow-2xl animate-in fade-in slide-in-from-left-4 duration-500">
+          <div className="p-6 rounded-[2.5rem] bg-black/90 backdrop-blur-3xl border border-white/10 space-y-5 w-full shadow-2xl animate-in fade-in slide-in-from-left-4 duration-500">
             <div className="flex items-center gap-5">
-              <div className="w-16 h-16 rounded-[1.2rem] bg-blue-600 flex items-center justify-center shadow-[0_0_25px_rgba(37,99,235,0.5)]">
+              <div className="w-16 h-16 rounded-[1.2rem] bg-blue-600 flex items-center justify-center shadow-[0_0_25px_rgba(37,99,235,0.4)]">
                 <Navigation className="text-white w-9 h-9 rotate-45" />
               </div>
               <div className="flex-1 min-w-0">
                 <h3 className="font-headline font-bold text-xl text-white truncate">{currentPlace?.name || "Active Route"}</h3>
-                <p className="text-xs text-blue-400 font-bold uppercase tracking-widest flex items-center gap-2">
-                  <Zap className="w-3 h-3 fill-current" /> Optimal Efficiency
+                <p className="text-[10px] text-blue-400 font-bold uppercase tracking-widest flex items-center gap-2">
+                  <Zap className="w-3 h-3 fill-current" /> GPS Active • 5G
                 </p>
               </div>
               {currentPlace && (
@@ -176,23 +194,23 @@ export function MapWidget() {
                   size="icon" 
                   variant="ghost" 
                   onClick={handleSavePlace}
-                  className={`rounded-full ${savedPlaces.some(p => p.id === currentPlace.id) ? "text-yellow-500" : "text-white/40"}`}
+                  className={`rounded-2xl h-12 w-12 transition-all ${savedPlaces.some(p => p.address === currentPlace.address) ? "text-yellow-500 bg-yellow-500/10" : "text-white/40 hover:bg-white/10"}`}
                 >
-                  <Star className={`w-6 h-6 ${savedPlaces.some(p => p.id === currentPlace.id) ? "fill-current" : ""}`} />
+                  <Star className={`w-6 h-6 ${savedPlaces.some(p => p.address === currentPlace.address) ? "fill-current" : ""}`} />
                 </Button>
               )}
             </div>
             
             <div className="grid grid-cols-2 gap-4">
-              <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
+              <div className="bg-white/5 p-4 rounded-[1.5rem] border border-white/5">
                 <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest block mb-1">Arrival</span>
                 <div className="flex items-center gap-2">
                   <Clock className="w-4 h-4 text-blue-400" />
                   <span className="text-xl font-bold text-white font-headline">{navigationData.eta}</span>
                 </div>
               </div>
-              <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
-                <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest block mb-1">Distance</span>
+              <div className="bg-white/5 p-4 rounded-[1.5rem] border border-white/5">
+                <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest block mb-1">Dist</span>
                 <div className="flex items-center gap-2">
                   <MapPin className="w-4 h-4 text-accent" />
                   <span className="text-xl font-bold text-white font-headline">{navigationData.distance}</span>
@@ -202,14 +220,15 @@ export function MapWidget() {
 
             <Button 
               variant="outline" 
-              className="w-full h-12 rounded-xl bg-white/5 border-white/10 text-white font-bold hover:bg-red-500/10 hover:text-red-500 transition-colors"
+              className="w-full h-14 rounded-2xl bg-white/5 border-white/10 text-white font-bold hover:bg-red-500/10 hover:text-red-500 transition-all border-none"
               onClick={() => {
                 setNavigationData(null);
                 directionsRenderer?.setDirections({ routes: [] });
                 if (map) map.setZoom(15);
+                setCurrentPlace(null);
               }}
             >
-              End Navigation
+              Cancel Navigation
             </Button>
           </div>
         )}
@@ -218,13 +237,13 @@ export function MapWidget() {
       {/* Floating System Controls */}
       <div className="absolute bottom-8 right-8 z-20 flex flex-col gap-4">
         <Button 
-          className="w-16 h-16 rounded-full bg-zinc-900/90 backdrop-blur-3xl flex items-center justify-center border border-white/10 shadow-2xl hover:bg-white/10"
+          className="w-16 h-16 rounded-full bg-zinc-900/90 backdrop-blur-3xl flex items-center justify-center border border-white/10 shadow-2xl hover:bg-white/10 transition-all"
           onClick={() => setShowSavedPlaces(!showSavedPlaces)}
         >
           <Bookmark className={`w-7 h-7 ${showSavedPlaces ? "text-yellow-500 fill-current" : "text-white"}`} />
         </Button>
         <Button 
-          className="w-16 h-16 rounded-full bg-zinc-900/90 backdrop-blur-3xl flex items-center justify-center border border-white/10 shadow-2xl hover:bg-white/10"
+          className="w-16 h-16 rounded-full bg-zinc-900/90 backdrop-blur-3xl flex items-center justify-center border border-white/10 shadow-2xl hover:bg-white/10 transition-all"
           onClick={() => {
             if (map) {
               map.setCenter({ lat: 21.4225, lng: 39.8262 });
@@ -242,33 +261,36 @@ export function MapWidget() {
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-headline font-bold text-white">Saved Hub</h2>
             <Button variant="ghost" size="icon" onClick={() => setShowSavedPlaces(false)} className="text-white">
-              <Zap className="w-5 h-5 rotate-45" />
+              <Zap className="w-5 h-5 rotate-45 text-blue-400" />
             </Button>
           </div>
           
           <div className="flex-1 overflow-y-auto space-y-4">
             {savedPlaces.length === 0 ? (
-              <p className="text-muted-foreground italic text-center py-12">No saved frequencies found.</p>
+              <div className="flex flex-col items-center justify-center py-12 gap-4 text-center opacity-40">
+                <MapIcon className="w-12 h-12 text-muted-foreground" />
+                <p className="text-xs font-bold uppercase tracking-widest">No saved points</p>
+              </div>
             ) : (
               savedPlaces.map((place) => (
                 <div 
                   key={place.id}
-                  className="p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-all group cursor-pointer"
+                  className="p-4 rounded-[1.5rem] bg-white/5 border border-white/5 hover:bg-white/10 transition-all group cursor-pointer"
                   onClick={() => {
                     if (map) {
-                      const pos = { lat: place.lat, lng: place.lng };
+                      const pos = new google.maps.LatLng(place.lat, place.lng);
                       map.setCenter(pos);
                       map.setZoom(17);
-                      startNavigation(new google.maps.LatLng(place.lat, place.lng));
+                      startNavigation(pos, place.name);
                     }
                   }}
                 >
                   <div className="flex items-center justify-between mb-1">
-                    <h4 className="font-bold text-white truncate">{place.name}</h4>
+                    <h4 className="font-bold text-white truncate text-sm">{place.name}</h4>
                     <Button 
                       size="icon" 
                       variant="ghost" 
-                      className="h-8 w-8 opacity-0 group-hover:opacity-100 text-red-500 hover:bg-red-500/10"
+                      className="h-8 w-8 opacity-0 group-hover:opacity-100 text-red-500 hover:bg-red-500/10 rounded-xl"
                       onClick={(e) => {
                         e.stopPropagation();
                         removePlace(place.id);
@@ -277,7 +299,7 @@ export function MapWidget() {
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
-                  <p className="text-[10px] text-muted-foreground truncate uppercase font-bold tracking-widest">{place.address}</p>
+                  <p className="text-[9px] text-muted-foreground truncate uppercase font-bold tracking-widest">{place.address}</p>
                 </div>
               ))
             )}
