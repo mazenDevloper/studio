@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sparkles, RefreshCw, ExternalLink } from "lucide-react";
 import { suggestPersonalizedYouTubeContent, type SuggestPersonalizedYouTubeContentOutput } from "@/ai/flows/suggest-personalized-youtube-content-flow";
@@ -17,8 +17,11 @@ export function YouTubeSuggestionsWidget({ channels }: Props) {
   const [suggestions, setSuggestions] = useState<SuggestPersonalizedYouTubeContentOutput | null>(null);
   const [loading, setLoading] = useState(false);
 
-  async function fetchSuggestions() {
-    if (channels.length === 0) return;
+  const fetchSuggestions = useCallback(async () => {
+    if (channels.length === 0) {
+      setSuggestions(null);
+      return;
+    }
     setLoading(true);
     try {
       const channelTitles = channels.map(c => c.title);
@@ -29,13 +32,11 @@ export function YouTubeSuggestionsWidget({ channels }: Props) {
     } finally {
       setLoading(false);
     }
-  }
+  }, [channels]);
 
   useEffect(() => {
-    if (channels.length > 0) {
-      fetchSuggestions();
-    }
-  }, [channels]);
+    fetchSuggestions();
+  }, [fetchSuggestions]);
 
   return (
     <Card className="border-none bg-zinc-900/50 rounded-[2.5rem] ios-shadow">
@@ -46,7 +47,13 @@ export function YouTubeSuggestionsWidget({ channels }: Props) {
           </div>
           AI Curated Feed
         </CardTitle>
-        <Button variant="ghost" size="icon" onClick={fetchSuggestions} disabled={loading || channels.length === 0} className="rounded-full hover:bg-white/10 w-12 h-12">
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={fetchSuggestions} 
+          disabled={loading || channels.length === 0} 
+          className="rounded-full hover:bg-white/10 w-12 h-12"
+        >
           <RefreshCw className={`h-6 w-6 ${loading ? "animate-spin" : ""}`} />
         </Button>
       </CardHeader>
@@ -60,7 +67,7 @@ export function YouTubeSuggestionsWidget({ channels }: Props) {
             {[1, 2, 3].map(i => <Skeleton key={i} className="h-40 w-full rounded-[2.5rem] bg-zinc-800" />)}
           </div>
         ) : suggestions ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
             {suggestions.suggestions.slice(0, 3).map((item, idx) => (
               <div key={idx} className="flex flex-col gap-5 p-8 rounded-[2.5rem] bg-white/5 border border-white/5 hover:border-primary/50 transition-all group ios-shadow relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-6 opacity-20 group-hover:opacity-100 transition-opacity">
@@ -78,7 +85,11 @@ export function YouTubeSuggestionsWidget({ channels }: Props) {
               </div>
             ))}
           </div>
-        ) : null}
+        ) : (
+          <div className="py-12 text-center">
+            <p className="text-muted-foreground italic">No suggestions available.</p>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
