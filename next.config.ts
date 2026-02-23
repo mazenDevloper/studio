@@ -53,6 +53,12 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'svs.gsfc.nasa.gov',
+        port: '',
+        pathname: '/**',
+      },
     ],
   },
 };
