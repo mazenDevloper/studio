@@ -17,11 +17,18 @@ import {
 import { DateAndClockWidget } from "./widgets/date-and-clock-widget";
 import { MoonWidget } from "./widgets/moon-widget";
 import { CalendarWidget } from "./widgets/calendar-widget";
+import { PlayingNowWidget } from "./widgets/playing-now-widget";
+import { LatestVideosWidget } from "./widgets/latest-videos-widget";
+import { YouTubeSavedWidget } from "./widgets/youtube-saved-widget";
+import { useMediaStore } from "@/lib/store";
 
 export function DashboardView() {
   const [weather, setWeather] = useState<any>(null);
   const [api, setApi] = useState<CarouselApi>();
   const [current, setCurrent] = useState(0);
+  const { favoriteChannels, starredChannelIds } = useMediaStore();
+
+  const starredChannels = favoriteChannels.filter(c => starredChannelIds.includes(c.id));
 
   useEffect(() => {
     if (!api) return;
@@ -30,10 +37,9 @@ export function DashboardView() {
       setCurrent(api.selectedScrollSnap());
     });
 
-    // Auto-scroll logic: changes card every 3 seconds
     const interval = setInterval(() => {
       api.scrollNext();
-    }, 3000);
+    }, 4000);
 
     return () => clearInterval(interval);
   }, [api]);
@@ -46,9 +52,9 @@ export function DashboardView() {
   }, []);
 
   return (
-    <div className="p-6 h-full flex flex-col gap-6 bg-black overflow-hidden">
+    <div className="p-6 h-full flex flex-col gap-6 bg-black overflow-y-auto custom-scrollbar">
       {/* Header HUD */}
-      <header className="flex items-center justify-between px-4 h-16">
+      <header className="flex items-center justify-between px-4 h-16 shrink-0">
         <div className="flex items-center gap-4">
           {weather && (
             <div className="flex items-center gap-3 px-5 py-2 rounded-full bg-zinc-900/50 border border-white/5 backdrop-blur-xl shadow-lg">
@@ -73,15 +79,15 @@ export function DashboardView() {
       </header>
 
       {/* Main Command Center Layout */}
-      <div className="flex-1 grid grid-cols-12 gap-6 items-stretch overflow-hidden">
-        {/* Left: Interactive Map (Main Focus) */}
-        <div className="col-span-8 h-full rounded-[2.5rem] overflow-hidden">
+      <div className="grid grid-cols-12 gap-6 items-stretch shrink-0">
+        {/* Left: Interactive Map */}
+        <div className="col-span-12 lg:col-span-8 h-[500px] lg:h-auto min-h-[400px] rounded-[2.5rem] overflow-hidden">
           <MapWidget />
         </div>
 
-        {/* Right: Smart Stack (Time, Moon, Calendar) */}
-        <div className="col-span-4 flex flex-col gap-6 h-full overflow-hidden">
-          <div className="h-[45%] relative group">
+        {/* Right: Smart Stack & Reminders */}
+        <div className="col-span-12 lg:col-span-4 flex flex-col gap-6 min-h-[500px]">
+          <div className="h-1/2 relative group">
             <Carousel setApi={setApi} opts={{ loop: true }} className="w-full h-full">
               <CarouselContent className="h-full">
                 <CarouselItem className="h-full">
@@ -93,12 +99,15 @@ export function DashboardView() {
                 <CarouselItem className="h-full">
                   <CalendarWidget />
                 </CarouselItem>
+                <CarouselItem className="h-full">
+                  <PlayingNowWidget />
+                </CarouselItem>
               </CarouselContent>
             </Carousel>
             
-            {/* Scrolled Dots (Page Indicator) */}
+            {/* Scrolled Dots */}
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
-              {[0, 1, 2].map((i) => (
+              {[0, 1, 2, 3].map((i) => (
                 <div 
                   key={i} 
                   className={`h-1.5 rounded-full transition-all duration-300 ${current === i ? "w-6 bg-primary" : "w-1.5 bg-white/20"}`}
@@ -107,14 +116,24 @@ export function DashboardView() {
             </div>
           </div>
           
-          <div className="h-[55%]">
+          <div className="h-1/2">
             <RemindersWidget />
           </div>
         </div>
       </div>
 
+      {/* Video Bars Section */}
+      <div className="grid grid-cols-12 gap-6 shrink-0">
+        <div className="col-span-12 lg:col-span-6">
+          <LatestVideosWidget channels={starredChannels} />
+        </div>
+        <div className="col-span-12 lg:col-span-6">
+          <YouTubeSavedWidget />
+        </div>
+      </div>
+
       {/* Footer: Floating Prayer Timeline */}
-      <div className="h-24">
+      <div className="h-24 shrink-0 mt-auto">
         <PrayerTimelineWidget />
       </div>
     </div>
