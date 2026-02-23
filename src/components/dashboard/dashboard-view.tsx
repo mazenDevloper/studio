@@ -1,9 +1,9 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { WEATHER_API_KEY } from "@/lib/constants";
-import { Cloud, Sun, Search, Mic } from "lucide-react";
+import { Cloud, Sun, Search, Mic, Maximize2 } from "lucide-react";
 import Link from "next/link";
 import { RemindersWidget } from "./widgets/reminders-widget";
 import { MapWidget } from "./widgets/map-widget";
@@ -21,12 +21,25 @@ import { PlayingNowWidget } from "./widgets/playing-now-widget";
 import { LatestVideosWidget } from "./widgets/latest-videos-widget";
 import { YouTubeSavedWidget } from "./widgets/youtube-saved-widget";
 import { useMediaStore } from "@/lib/store";
+import { cn } from "@/lib/utils";
+
+interface WidgetLayout {
+  id: string;
+  colSpan: number;
+  height: number;
+}
 
 export function DashboardView() {
   const [weather, setWeather] = useState<any>(null);
   const [api, setApi] = useState<CarouselApi>();
   const [current, setCurrent] = useState(0);
   const { favoriteChannels, starredChannelIds } = useMediaStore();
+  
+  // Layout State for Resizable Widgets
+  const [mapLayout, setMapLayout] = useState<WidgetLayout>({ id: 'map', colSpan: 8, height: 500 });
+  const [stackLayout, setStackLayout] = useState<WidgetLayout>({ id: 'stack', colSpan: 4, height: 500 });
+  const [resizingId, setResizingId] = useState<string | null>(null);
+  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
 
   const starredChannels = favoriteChannels.filter(c => starredChannelIds.includes(c.id));
 
@@ -50,6 +63,41 @@ export function DashboardView() {
       .then(data => setWeather(data))
       .catch(err => console.error("Weather error:", err));
   }, []);
+
+  // Handle Resize Logic
+  const handleMouseDown = useCallback((id: string) => {
+    longPressTimer.current = setTimeout(() => {
+      setResizingId(id);
+      document.body.style.cursor = 'nwse-resize';
+    }, 500);
+  }, []);
+
+  const handleMouseUp = useCallback(() => {
+    if (longPressTimer.current) clearTimeout(longPressTimer.current);
+    setResizingId(null);
+    document.body.style.cursor = 'default';
+  }, []);
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!resizingId) return;
+
+    if (resizingId === 'map') {
+      const newColSpan = Math.max(4, Math.min(12, Math.floor((e.clientX / window.innerWidth) * 12)));
+      const newHeight = Math.max(300, Math.min(800, e.clientY - 100));
+      setMapLayout(prev => ({ ...prev, colSpan: newColSpan, height: newHeight }));
+      // Adjust stack to fill remaining or stack below
+      setStackLayout(prev => ({ ...prev, colSpan: newColSpan >= 12 ? 12 : 12 - newColSpan }));
+    }
+  }, [resizingId]);
+
+  useEffect(() => {
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [handleMouseMove, handleMouseUp]);
 
   return (
     <div className="p-6 h-full flex flex-col gap-6 bg-black overflow-y-auto custom-scrollbar">
@@ -80,14 +128,31 @@ export function DashboardView() {
 
       {/* Main Command Center Layout */}
       <div className="grid grid-cols-12 gap-6 items-stretch shrink-0">
-        {/* Left: Interactive Map */}
-        <div className="col-span-12 lg:col-span-8 h-[500px] lg:h-auto min-h-[400px] rounded-[2.5rem] overflow-hidden">
+        {/* Left: Interactive Map - Resizable */}
+        <div 
+          className={cn(
+            "relative group rounded-[2.5rem] overflow-hidden transition-all duration-200",
+            `col-span-12 lg:col-span-${mapLayout.colSpan}`
+          )}
+          style={{ height: mapLayout.height }}
+        >
           <MapWidget />
+          
+          {/* Resize Handle: Bottom Left */}
+          <div 
+            onMouseDown={() => handleMouseDown('map')}
+            className="absolute bottom-4 left-4 w-10 h-10 bg-white/10 backdrop-blur-3xl rounded-xl border border-white/20 flex items-center justify-center cursor-nwse-resize opacity-0 group-hover:opacity-100 transition-opacity z-30 active:bg-primary active:scale-90"
+          >
+            <Maximize2 className="w-5 h-5 text-white rotate-90" />
+          </div>
         </div>
 
         {/* Right: Smart Stack & Reminders */}
-        <div className="col-span-12 lg:col-span-4 flex flex-col gap-6 min-h-[500px]">
-          <div className="h-1/2 relative group">
+        <div className={cn(
+          "flex flex-col gap-6 transition-all duration-200",
+          `col-span-12 lg:col-span-${stackLayout.colSpan}`
+        )}>
+          <div className="h-[250px] lg:h-1/2 relative group">
             <Carousel setApi={setApi} opts={{ loop: true }} className="w-full h-full">
               <CarouselContent className="h-full ml-0">
                 <CarouselItem className="h-full pl-0">
@@ -105,7 +170,6 @@ export function DashboardView() {
               </CarouselContent>
             </Carousel>
             
-            {/* Scrolled Dots - Fixed position at the bottom center of the card area */}
             <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
               {[0, 1, 2, 3].map((i) => (
                 <div 
@@ -116,7 +180,7 @@ export function DashboardView() {
             </div>
           </div>
           
-          <div className="h-1/2">
+          <div className="flex-1 min-h-[250px]">
             <RemindersWidget />
           </div>
         </div>
