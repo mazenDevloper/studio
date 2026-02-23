@@ -105,12 +105,12 @@ export function DashboardView() {
               </CarouselContent>
             </Carousel>
             
-            {/* Scrolled Dots - Adjusted Position */}
+            {/* Scrolled Dots - Fixed position at the bottom center of the card area */}
             <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
               {[0, 1, 2, 3].map((i) => (
                 <div 
                   key={i} 
-                  className={`h-1.5 rounded-full transition-all duration-300 ${current === i ? "w-6 bg-primary" : "w-1.5 bg-white/20"}`}
+                  className={`h-1.5 rounded-full transition-all duration-300 ${current === i ? "w-6 bg-primary shadow-[0_0_10px_rgba(59,130,246,0.5)]" : "w-1.5 bg-white/20"}`}
                 />
               ))}
             </div>
