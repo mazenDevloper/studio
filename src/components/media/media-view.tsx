@@ -1,13 +1,14 @@
+
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Search, Plus, Play, Trash2, Youtube, Info, Radio } from "lucide-react";
+import { Search, Plus, Play, Trash2, Youtube, Radio, Loader2, Check } from "lucide-react";
 import { useMediaStore } from "@/lib/store";
+import { searchYouTubeChannels, YouTubeChannel } from "@/lib/youtube";
 import Image from "next/image";
-import { PlaceHolderImages } from "@/lib/placeholder-images";
 import {
   Dialog,
   DialogContent,
@@ -19,95 +20,144 @@ import {
 export function MediaView() {
   const { favoriteChannels, addChannel, removeChannel } = useMediaStore();
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedChannel, setSelectedChannel] = useState<string | null>(null);
-  const scienceImage = PlaceHolderImages.find(img => img.id === "science-channel")?.imageUrl;
-  const techImage = PlaceHolderImages.find(img => img.id === "tech-channel")?.imageUrl;
+  const [searchResults, setSearchResults] = useState<YouTubeChannel[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [selectedChannel, setSelectedChannel] = useState<YouTubeChannel | null>(null);
 
-  const handleAdd = () => {
-    if (searchQuery && !favoriteChannels.includes(searchQuery)) {
-      addChannel(searchQuery);
-      setSearchQuery("");
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return;
+    setIsSearching(true);
+    const results = await searchYouTubeChannels(searchQuery);
+    setSearchResults(results);
+    setIsSearching(false);
+  };
+
+  const toggleSubscription = (channel: YouTubeChannel) => {
+    const isSubscribed = favoriteChannels.some(c => c.id === channel.id);
+    if (isSubscribed) {
+      removeChannel(channel.id);
+    } else {
+      addChannel(channel);
     }
   };
 
   return (
-    <div className="p-8 space-y-10 max-w-7xl">
-      <header className="flex flex-col gap-6">
+    <div className="p-8 space-y-12 max-w-7xl mx-auto">
+      <header className="flex flex-col gap-8">
         <div>
-          <h1 className="text-5xl font-bold tracking-tight mb-2">Media</h1>
-          <p className="text-muted-foreground text-xl">Curate your driving frequencies.</p>
+          <h1 className="text-6xl font-headline font-bold tracking-tighter mb-2">Media</h1>
+          <p className="text-muted-foreground text-xl font-medium uppercase tracking-widest">iOS 26 • Neural Transmissions</p>
         </div>
         
-        <div className="flex gap-3 max-w-2xl">
+        <div className="flex gap-4 max-w-3xl">
           <div className="relative flex-1">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+            <Search className="absolute left-6 top-1/2 -translate-y-1/2 h-6 w-6 text-muted-foreground" />
             <Input
-              placeholder="Search frequencies..."
-              className="pl-12 h-16 bg-zinc-900 border-none rounded-[1.5rem] text-lg focus-visible:ring-blue-500"
+              placeholder="Search YouTube Channels..."
+              className="pl-16 h-20 bg-zinc-900/80 border-white/5 rounded-[2rem] text-xl font-headline focus-visible:ring-primary backdrop-blur-3xl"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
+              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
             />
           </div>
-          <Button onClick={handleAdd} className="h-16 px-8 rounded-[1.5rem] bg-white text-black font-bold hover:bg-zinc-200">
-            <Plus className="w-6 h-6 mr-1" />
-            Add
+          <Button 
+            onClick={handleSearch} 
+            disabled={isSearching}
+            className="h-20 px-10 rounded-[2rem] bg-white text-black font-bold text-xl hover:bg-zinc-200 transition-all active:scale-95 disabled:opacity-50"
+          >
+            {isSearching ? <Loader2 className="w-8 h-8 animate-spin" /> : "Find"}
           </Button>
         </div>
       </header>
 
-      <section className="space-y-6">
-        <h2 className="text-2xl font-bold font-headline flex items-center gap-3">
-          <Youtube className="text-red-500 w-8 h-8" />
+      {searchResults.length > 0 && (
+        <section className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <h2 className="text-2xl font-bold font-headline text-primary flex items-center gap-3">
+            Search Results
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {searchResults.map((channel) => {
+              const isSubscribed = favoriteChannels.some(c => c.id === channel.id);
+              return (
+                <Card key={channel.id} className="group relative overflow-hidden bg-zinc-900/40 border-white/5 rounded-[2.5rem] transition-all hover:bg-zinc-900/60">
+                  <div className="p-6 flex flex-col items-center text-center gap-4">
+                    <div className="relative w-24 h-24 rounded-full overflow-hidden border-2 border-white/10 group-hover:border-primary transition-colors">
+                      <Image src={channel.thumbnail} alt={channel.title} fill className="object-cover" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-bold text-lg line-clamp-1">{channel.title}</h3>
+                      <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{channel.description}</p>
+                    </div>
+                    <Button 
+                      onClick={() => toggleSubscription(channel)}
+                      variant={isSubscribed ? "secondary" : "default"}
+                      className={`w-full rounded-2xl font-bold py-6 ${isSubscribed ? "bg-accent/10 text-accent border border-accent/20" : "bg-white text-black"}`}
+                    >
+                      {isSubscribed ? <Check className="w-5 h-5 mr-2" /> : <Plus className="w-5 h-5 mr-2" />}
+                      {isSubscribed ? "Added" : "Add"}
+                    </Button>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      <section className="space-y-8">
+        <h2 className="text-3xl font-bold font-headline flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-red-500 flex items-center justify-center ios-shadow">
+            <Youtube className="text-white w-7 h-7" />
+          </div>
           Subscribed Transmissions
         </h2>
         
         {favoriteChannels.length === 0 ? (
-          <Card className="bg-zinc-900/50 border-none rounded-[2rem]">
-            <CardContent className="flex flex-col items-center justify-center p-16 text-center">
-              <div className="w-20 h-20 rounded-full bg-zinc-800 flex items-center justify-center mb-6">
-                <Radio className="w-10 h-10 text-muted-foreground" />
+          <Card className="bg-zinc-900/30 border-dashed border-white/5 rounded-[3rem]">
+            <CardContent className="flex flex-col items-center justify-center p-24 text-center">
+              <div className="w-24 h-24 rounded-full bg-zinc-800/50 flex items-center justify-center mb-8 border border-white/5">
+                <Radio className="w-12 h-12 text-muted-foreground animate-pulse" />
               </div>
-              <h3 className="text-2xl font-bold mb-2">No frequencies found</h3>
-              <p className="text-muted-foreground max-w-sm text-lg">
-                Add your favorite YouTube channels to power the AI dashboard.
+              <h3 className="text-3xl font-bold mb-3 font-headline">Silence Detected</h3>
+              <p className="text-muted-foreground max-w-md text-xl font-medium leading-relaxed">
+                Your frequency list is empty. Search for channels to initialize your AI dashboard.
               </p>
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             {favoriteChannels.map((channel) => (
-              <Card key={channel} className="group relative overflow-hidden bg-zinc-900/80 border-none rounded-[2rem] transition-all hover:scale-[1.02]">
+              <Card key={channel.id} className="group relative overflow-hidden bg-zinc-900/80 border-none rounded-[2.5rem] transition-all hover:scale-[1.02] ios-shadow">
                 <div className="aspect-video relative overflow-hidden">
                   <Image
-                    src={channel.toLowerCase().includes('tech') ? techImage || "https://picsum.photos/seed/tech/400/225" : scienceImage || "https://picsum.photos/seed/science/400/225"}
-                    alt={channel}
+                    src={channel.thumbnail}
+                    alt={channel.title}
                     fill
-                    className="object-cover"
+                    className="object-cover opacity-80 group-hover:opacity-100 transition-opacity"
                   />
-                  <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-colors" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
                   <div className="absolute inset-0 flex items-center justify-center">
                     <Button 
                       onClick={() => setSelectedChannel(channel)}
                       size="icon" 
-                      className="rounded-full w-14 h-14 bg-white text-black hover:scale-110 transition-transform opacity-0 group-hover:opacity-100"
+                      className="rounded-full w-20 h-20 bg-white/20 backdrop-blur-3xl text-white hover:bg-white hover:text-black hover:scale-110 transition-all opacity-0 group-hover:opacity-100 border border-white/20"
                     >
-                      <Play className="fill-current w-7 h-7 ml-1" />
+                      <Play className="fill-current w-10 h-10 ml-1" />
                     </Button>
                   </div>
                 </div>
-                <CardContent className="p-5 flex items-center justify-between">
+                <CardContent className="p-6 flex items-center justify-between">
                   <div className="min-w-0">
-                    <h3 className="font-bold text-lg truncate">{channel}</h3>
-                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Active Link</p>
+                    <h3 className="font-bold text-xl truncate font-headline">{channel.title}</h3>
+                    <p className="text-[10px] text-accent font-bold uppercase tracking-[0.2em] mt-1">Live Feed</p>
                   </div>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="text-muted-foreground hover:text-red-500"
-                    onClick={() => removeChannel(channel)}
+                    className="text-muted-foreground hover:text-red-500 hover:bg-red-500/10 rounded-full w-12 h-12"
+                    onClick={() => removeChannel(channel.id)}
                   >
-                    <Trash2 className="w-5 h-5" />
+                    <Trash2 className="w-6 h-6" />
                   </Button>
                 </CardContent>
               </Card>
@@ -117,23 +167,24 @@ export function MediaView() {
       </section>
 
       <Dialog open={!!selectedChannel} onOpenChange={() => setSelectedChannel(null)}>
-        <DialogContent className="max-w-3xl bg-zinc-950 border-white/5 p-8 rounded-[2.5rem]">
-          <DialogHeader>
-            <DialogTitle className="text-3xl font-headline font-bold">{selectedChannel}</DialogTitle>
-            <DialogDescription className="text-lg">Streaming latest neural transmission...</DialogDescription>
-          </DialogHeader>
-          <div className="aspect-video w-full rounded-[2rem] bg-black flex flex-col items-center justify-center border border-white/5 relative overflow-hidden">
-             <Image
-                src={selectedChannel?.toLowerCase().includes('tech') ? techImage || "https://picsum.photos/seed/tech/800/450" : scienceImage || "https://picsum.photos/seed/science/800/450"}
-                alt="Preview"
-                fill
-                className="object-cover opacity-50"
-             />
-             <div className="z-10 flex flex-col items-center gap-6">
-                <div className="w-20 h-20 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-3xl border border-white/10">
-                  <Play className="w-10 h-10 text-white animate-pulse" />
+        <DialogContent className="max-w-4xl bg-black border-white/5 p-0 rounded-[3rem] overflow-hidden ios-shadow">
+          <div className="aspect-video w-full relative flex flex-col items-center justify-center">
+             {selectedChannel && (
+               <Image
+                  src={selectedChannel.thumbnail}
+                  alt="Preview"
+                  fill
+                  className="object-cover opacity-40 blur-sm scale-110"
+               />
+             )}
+             <div className="z-10 flex flex-col items-center gap-8">
+                <div className="w-32 h-32 rounded-full bg-primary/20 flex items-center justify-center backdrop-blur-3xl border border-primary/30 active-glow">
+                  <Play className="w-16 h-16 text-primary animate-pulse fill-primary" />
                 </div>
-                <p className="font-headline font-bold text-2xl uppercase tracking-tighter">Initializing...</p>
+                <div className="text-center space-y-2">
+                  <h3 className="text-4xl font-headline font-bold text-white">{selectedChannel?.title}</h3>
+                  <p className="font-headline font-bold text-xl text-primary uppercase tracking-[0.3em] animate-pulse">Initializing Stream...</p>
+                </div>
              </div>
           </div>
         </DialogContent>
