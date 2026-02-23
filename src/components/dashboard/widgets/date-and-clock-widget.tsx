@@ -6,19 +6,19 @@ import { prayerTimesData } from "@/lib/constants";
 import { Sun, Moon, Clock, Calendar } from "lucide-react";
 
 export function DateAndClockWidget() {
-  const [now, setNow] = useState(new Date());
+  const [now, setNow] = useState<Date | null>(null);
   
   useEffect(() => {
+    setNow(new Date());
     const timer = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  const hijriDate = "٥ رمضان ١٤٤٧ هـ"; // Simplified mock for demo
-  const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  const dayName = now.toLocaleDateString('ar-EG', { weekday: 'long' });
-  const dateString = now.toLocaleDateString('ar-EG', { day: 'numeric', month: 'long', year: 'numeric' });
-
+  const hijriDate = "٥ رمضان ١٤٤٧ هـ"; 
+  
   const nextPrayer = useMemo(() => {
+    if (!now) return null;
+    
     const timeToMinutes = (t: string) => {
       const [h, m] = t.split(':').map(Number);
       return h * 60 + m;
@@ -39,7 +39,6 @@ export function DateAndClockWidget() {
     let next = prayers.find(p => timeToMinutes(p.time) > currentMinutes);
     if (!next) next = prayers[0];
 
-    // Calculate countdown
     const targetMins = timeToMinutes(next.time);
     let diff = targetMins - currentMinutes;
     if (diff < 0) diff += 24 * 60;
@@ -53,6 +52,14 @@ export function DateAndClockWidget() {
       countdown: `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`
     };
   }, [now]);
+
+  if (!now) {
+    return <div className="h-full bg-zinc-900/40 animate-pulse rounded-[2.5rem]" />;
+  }
+
+  const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const dayName = now.toLocaleDateString('ar-EG', { weekday: 'long' });
+  const dateString = now.toLocaleDateString('ar-EG', { day: 'numeric', month: 'long', year: 'numeric' });
 
   return (
     <div className="h-full flex flex-col gap-6">
@@ -82,12 +89,14 @@ export function DateAndClockWidget() {
         <div className="text-8xl font-bold font-headline text-white tracking-tighter mb-4">
           {timeString}
         </div>
-        <div className="flex flex-col items-center gap-1">
-           <p className="text-xl font-bold text-orange-400 font-headline">إقامة صلاة {nextPrayer.name} في:</p>
-           <div className="text-4xl font-bold font-headline text-white tracking-widest bg-orange-400/20 px-6 py-2 rounded-2xl border border-orange-400/30">
-             {nextPrayer.countdown}
-           </div>
-        </div>
+        {nextPrayer && (
+          <div className="flex flex-col items-center gap-1">
+             <p className="text-xl font-bold text-orange-400 font-headline">إقامة صلاة {nextPrayer.name} في:</p>
+             <div className="text-4xl font-bold font-headline text-white tracking-widest bg-orange-400/20 px-6 py-2 rounded-2xl border border-orange-400/30">
+               {nextPrayer.countdown}
+             </div>
+          </div>
+        )}
       </div>
     </div>
   );

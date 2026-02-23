@@ -6,14 +6,16 @@ import { prayerTimesData, convertTo12Hour } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
 export function PrayerTimelineWidget() {
-  const [now, setNow] = useState(new Date());
+  const [now, setNow] = useState<Date | null>(null);
 
   useEffect(() => {
+    setNow(new Date());
     const timer = setInterval(() => setNow(new Date()), 60000);
     return () => clearInterval(timer);
   }, []);
 
   const pTimes = useMemo(() => {
+    if (!now) return [];
     const dateStr = `2026-02-${now.getDate().toString().padStart(2, '0')}`;
     const data = prayerTimesData.find(p => p.date === dateStr) || prayerTimesData[0];
     
@@ -26,6 +28,10 @@ export function PrayerTimelineWidget() {
       { name: "العشاء", time: data.isha, iqamah: "8:01" },
     ];
   }, [now]);
+
+  if (!now) {
+    return <div className="w-full h-24 bg-zinc-950/80 animate-pulse rounded-[2rem]" />;
+  }
 
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
   const timeToMinutes = (t: string) => {
