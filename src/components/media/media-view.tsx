@@ -37,6 +37,10 @@ export function MediaView() {
   const [isLoadingVideos, setIsLoadingVideos] = useState(false);
   const [playingVideoId, setPlayingVideoId] = useState<string | null>(null);
   const [showQuickGrids, setShowQuickGrids] = useState(false);
+  
+  // Track selections for combined search
+  const [selectedReciter, setSelectedReciter] = useState("");
+  const [selectedSurah, setSelectedSurah] = useState("");
 
   const handleSearch = async (queryToUse?: string) => {
     const q = queryToUse || searchQuery;
@@ -45,7 +49,7 @@ export function MediaView() {
     setIsSearching(true);
     setChannelResults([]);
     setVideoResults([]);
-    setShowQuickGrids(false); // Hide grids when search is performed
+    setShowQuickGrids(false);
     
     if (searchType === "channels") {
       const results = await searchYouTubeChannels(q);
@@ -57,9 +61,25 @@ export function MediaView() {
     setIsSearching(false);
   };
 
-  const handleQuickSelect = (term: string) => {
-    setSearchQuery(term);
-    handleSearch(term); // Automatic search upon selection
+  const handleQuickSelect = (type: 'reciter' | 'surah', value: string) => {
+    let newReciter = selectedReciter;
+    let newSurah = selectedSurah;
+    
+    if (type === 'reciter') newReciter = value;
+    if (type === 'surah') newSurah = value;
+    
+    setSelectedReciter(newReciter);
+    setSelectedSurah(newSurah);
+    
+    const combinedQuery = [newReciter, newSurah].filter(Boolean).join(" ");
+    setSearchQuery(combinedQuery);
+    setSearchType("videos"); // Switch to video search for specific combinations
+
+    // Only auto-search if BOTH are selected
+    if (newReciter && newSurah) {
+      handleSearch(combinedQuery);
+      setShowQuickGrids(false);
+    }
   };
 
   const handleSelectChannel = async (channel: YouTubeChannel) => {
@@ -136,7 +156,7 @@ export function MediaView() {
               </div>
             </div>
 
-            {/* Quick Select Grids - Initially Hidden */}
+            {/* Quick Select Grids */}
             {showQuickGrids && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 animate-in slide-in-from-top-4 fade-in duration-500">
                 <div className="space-y-4">
@@ -148,8 +168,8 @@ export function MediaView() {
                       <Button 
                         key={reciter} 
                         variant="outline" 
-                        onClick={() => handleQuickSelect(reciter)}
-                        className="bg-white/5 border-white/5 rounded-xl h-14 font-bold text-sm hover:bg-white hover:text-black transition-all"
+                        onClick={() => handleQuickSelect('reciter', reciter)}
+                        className={`border-white/5 rounded-xl h-14 font-bold text-sm transition-all ${selectedReciter === reciter ? 'bg-accent text-black border-accent' : 'bg-white/5 text-white hover:bg-white hover:text-black'}`}
                       >
                         {reciter}
                       </Button>
@@ -165,8 +185,8 @@ export function MediaView() {
                       <Button 
                         key={item} 
                         variant="outline" 
-                        onClick={() => handleQuickSelect(item)}
-                        className="bg-white/5 border-white/5 rounded-xl h-14 font-bold text-sm hover:bg-white hover:text-black transition-all"
+                        onClick={() => handleQuickSelect('surah', item)}
+                        className={`border-white/5 rounded-xl h-14 font-bold text-sm transition-all ${selectedSurah === item ? 'bg-blue-500 text-white border-blue-500' : 'bg-white/5 text-white hover:bg-white hover:text-black'}`}
                       >
                         {item}
                       </Button>
