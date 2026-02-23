@@ -16,6 +16,7 @@ export interface YouTubeVideo {
   description: string;
   thumbnail: string;
   publishedAt: string;
+  channelTitle?: string;
 }
 
 let keyIndex = 0;
@@ -45,6 +46,31 @@ export async function searchYouTubeChannels(query: string): Promise<YouTubeChann
     }));
   } catch (error) {
     console.error("YouTube Search Failed:", error);
+    return [];
+  }
+}
+
+export async function searchYouTubeVideos(query: string): Promise<YouTubeVideo[]> {
+  if (!query) return [];
+
+  const apiKey = getApiKey();
+  const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=12&q=${encodeURIComponent(query)}&key=${apiKey}`;
+
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error("YouTube API Error");
+    const data = await response.json();
+
+    return data.items.map((item: any) => ({
+      id: item.id.videoId,
+      title: item.snippet.title,
+      description: item.snippet.description,
+      thumbnail: item.snippet.thumbnails.high?.url || item.snippet.thumbnails.default?.url,
+      publishedAt: item.snippet.publishedAt,
+      channelTitle: item.snippet.channelTitle
+    }));
+  } catch (error) {
+    console.error("YouTube Video Search Failed:", error);
     return [];
   }
 }

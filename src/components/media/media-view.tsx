@@ -1,35 +1,63 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Search, Plus, Play, Trash2, Youtube, Radio, Loader2, Check, ArrowLeft, Clock, Bookmark, Star } from "lucide-react";
+import { Search, Plus, Play, Trash2, Youtube, Radio, Loader2, Check, ArrowLeft, Clock, Bookmark, Star, Users, Music } from "lucide-react";
 import { useMediaStore } from "@/lib/store";
-import { searchYouTubeChannels, fetchChannelVideos, YouTubeChannel, YouTubeVideo } from "@/lib/youtube";
+import { searchYouTubeChannels, searchYouTubeVideos, fetchChannelVideos, YouTubeChannel, YouTubeVideo } from "@/lib/youtube";
 import Image from "next/image";
 import {
   Dialog,
   DialogContent,
 } from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+const QUICK_RECITERS = [
+  "ياسر الدوسري", "بندر بليلة", "سعود الشريم", "عبدالرحمن السديس", 
+  "ماهر المعيقلي", "منصور السالمي", "إسلام صبحي", "بدر التركي"
+];
+
+const QUICK_SURAH_PARTS = [
+  "سورة البقرة", "سورة الكهف", "سورة يس", "سورة الملك", 
+  "جزء عم", "جزء تبارك", "سورة مريم", "سورة يوسف"
+];
 
 export function MediaView() {
   const { favoriteChannels, addChannel, removeChannel, savedVideos, toggleSaveVideo, starredChannelIds, toggleStarChannel } = useMediaStore();
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<YouTubeChannel[]>([]);
+  const [searchType, setSearchType] = useState<"channels" | "videos">("channels");
+  const [channelResults, setChannelResults] = useState<YouTubeChannel[]>([]);
+  const [videoResults, setVideoResults] = useState<YouTubeVideo[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [selectedChannel, setSelectedChannel] = useState<YouTubeChannel | null>(null);
   const [channelVideos, setChannelVideos] = useState<YouTubeVideo[]>([]);
   const [isLoadingVideos, setIsLoadingVideos] = useState(false);
   const [playingVideoId, setPlayingVideoId] = useState<string | null>(null);
 
-  const handleSearch = async () => {
-    if (!searchQuery.trim()) return;
+  const handleSearch = async (queryToUse?: string) => {
+    const q = queryToUse || searchQuery;
+    if (!q.trim()) return;
+    
     setIsSearching(true);
-    const results = await searchYouTubeChannels(searchQuery);
-    setSearchResults(results);
+    setChannelResults([]);
+    setVideoResults([]);
+    
+    if (searchType === "channels") {
+      const results = await searchYouTubeChannels(q);
+      setChannelResults(results);
+    } else {
+      const results = await searchYouTubeVideos(q);
+      setVideoResults(results);
+    }
     setIsSearching(false);
+  };
+
+  const handleQuickSelect = (term: string) => {
+    setSearchQuery(term);
+    handleSearch(term);
   };
 
   const handleSelectChannel = async (channel: YouTubeChannel) => {
@@ -64,36 +92,85 @@ export function MediaView() {
     <div className="p-8 space-y-12 max-w-7xl mx-auto pb-48 relative min-h-screen">
       <header className="flex flex-col gap-8">
         <div>
-          <h1 className="text-6xl font-headline font-bold tracking-tighter mb-2">Media</h1>
-          <p className="text-muted-foreground text-xl font-medium uppercase tracking-widest">iOS 26 • Neural Transmissions</p>
+          <h1 className="text-6xl font-headline font-bold tracking-tighter mb-2 text-white">DriveCast Media</h1>
+          <p className="text-muted-foreground text-xl font-medium uppercase tracking-widest">iOS 26 • Global Frequency Hub</p>
         </div>
         
         {!selectedChannel && (
-          <div className="flex gap-4 max-w-3xl">
-            <div className="relative flex-1">
-              <Search className="absolute left-6 top-1/2 -translate-y-1/2 h-6 w-6 text-muted-foreground" />
-              <Input
-                placeholder="Search YouTube Channels..."
-                className="pl-16 h-20 bg-zinc-900/80 border-white/5 rounded-[2rem] text-xl font-headline focus-visible:ring-primary backdrop-blur-3xl"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              />
+          <div className="space-y-8 animate-in fade-in duration-700">
+            <div className="flex flex-col gap-6">
+              <Tabs value={searchType} onValueChange={(v) => setSearchType(v as any)} className="w-fit">
+                <TabsList className="bg-zinc-900/80 border border-white/5 h-16 p-1 rounded-2xl">
+                  <TabsTrigger value="channels" className="px-8 h-full rounded-xl text-lg font-bold data-[state=active]:bg-white data-[state=active]:text-black">Channels</TabsTrigger>
+                  <TabsTrigger value="videos" className="px-8 h-full rounded-xl text-lg font-bold data-[state=active]:bg-white data-[state=active]:text-black">Videos</TabsTrigger>
+                </TabsList>
+              </Tabs>
+
+              <div className="flex gap-4 max-w-4xl">
+                <div className="relative flex-1">
+                  <Search className="absolute left-6 top-1/2 -translate-y-1/2 h-6 w-6 text-muted-foreground" />
+                  <Input
+                    placeholder={searchType === "channels" ? "Search Channels..." : "Search Specific Videos..."}
+                    className="pl-16 h-20 bg-zinc-900/80 border-white/5 rounded-[2rem] text-xl font-headline focus-visible:ring-primary backdrop-blur-3xl"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                  />
+                </div>
+                <Button 
+                  onClick={() => handleSearch()} 
+                  disabled={isSearching}
+                  className="h-20 px-10 rounded-[2rem] bg-white text-black font-bold text-xl hover:bg-zinc-200 transition-all active:scale-95 disabled:opacity-50"
+                >
+                  {isSearching ? <Loader2 className="w-8 h-8 animate-spin" /> : "Transmit"}
+                </Button>
+              </div>
             </div>
-            <Button 
-              onClick={handleSearch} 
-              disabled={isSearching}
-              className="h-20 px-10 rounded-[2rem] bg-white text-black font-bold text-xl hover:bg-zinc-200 transition-all active:scale-95 disabled:opacity-50"
-            >
-              {isSearching ? <Loader2 className="w-8 h-8 animate-spin" /> : "Find"}
-            </Button>
+
+            {/* Quick Select Grids */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="space-y-4">
+                <h3 className="text-lg font-bold font-headline flex items-center gap-3 text-white/60">
+                  <Users className="w-5 h-5 text-accent" /> قائمة القراء
+                </h3>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {QUICK_RECITERS.map((reciter) => (
+                    <Button 
+                      key={reciter} 
+                      variant="outline" 
+                      onClick={() => handleQuickSelect(reciter)}
+                      className="bg-white/5 border-white/5 rounded-xl h-14 font-bold text-sm hover:bg-white hover:text-black transition-all"
+                    >
+                      {reciter}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-4">
+                <h3 className="text-lg font-bold font-headline flex items-center gap-3 text-white/60">
+                  <Music className="w-5 h-5 text-blue-400" /> السور والأجزاء
+                </h3>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {QUICK_SURAH_PARTS.map((item) => (
+                    <Button 
+                      key={item} 
+                      variant="outline" 
+                      onClick={() => handleQuickSelect(item)}
+                      className="bg-white/5 border-white/5 rounded-xl h-14 font-bold text-sm hover:bg-white hover:text-black transition-all"
+                    >
+                      {item}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </header>
 
       {selectedChannel ? (
         <div className="space-y-8 animate-in fade-in slide-in-from-left-4 duration-500">
-          <div className="fixed bottom-10 left-[110px] z-[60]">
+          <div className="fixed bottom-10 left-[120px] z-[60]">
             <Button 
               onClick={() => setSelectedChannel(null)}
               className="h-20 w-20 rounded-full bg-white/10 backdrop-blur-3xl border border-white/20 text-white hover:bg-white hover:text-black shadow-2xl transition-all active:scale-90 flex items-center justify-center ios-shadow"
@@ -124,7 +201,7 @@ export function MediaView() {
                   className={`rounded-[1.5rem] h-16 px-10 text-xl font-bold ${favoriteChannels.some(c => c.id === selectedChannel.id) ? "bg-accent/10 text-accent" : "bg-white text-black"}`}
                 >
                   {favoriteChannels.some(c => c.id === selectedChannel.id) ? <Check className="w-6 h-6 mr-3" /> : <Plus className="w-6 h-6 mr-3" />}
-                  {favoriteChannels.some(c => c.id === selectedChannel.id) ? "Added" : "Add to Feed"}
+                  {favoriteChannels.some(c => c.id === selectedChannel.id) ? "Subscribed" : "Subscribe"}
                 </Button>
              </div>
           </div>
@@ -132,7 +209,7 @@ export function MediaView() {
           {isLoadingVideos ? (
             <div className="flex flex-col items-center justify-center p-32 gap-6">
               <Loader2 className="w-12 h-12 animate-spin text-primary" />
-              <p className="text-muted-foreground font-bold tracking-widest uppercase">Fetching Stream...</p>
+              <p className="text-muted-foreground font-bold tracking-widest uppercase">Initializing Stream...</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 pb-32">
@@ -171,9 +248,9 @@ export function MediaView() {
                       </div>
                     </div>
                     <CardContent className="p-6 space-y-2">
-                      <h3 className="font-bold text-xl line-clamp-1 font-headline">{video.title}</h3>
-                      <div className="flex items-center gap-4 text-xs font-bold text-muted-foreground uppercase tracking-widest">
-                         <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> Ready to Broadcast</span>
+                      <h3 className="font-bold text-xl line-clamp-1 font-headline text-white">{video.title}</h3>
+                      <div className="flex items-center gap-4 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                         <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> Latest Transmission</span>
                       </div>
                     </CardContent>
                   </Card>
@@ -184,13 +261,14 @@ export function MediaView() {
         </div>
       ) : (
         <>
-          {searchResults.length > 0 && (
+          {/* Channel Search Results */}
+          {channelResults.length > 0 && searchType === "channels" && (
             <section className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
               <h2 className="text-2xl font-bold font-headline text-primary flex items-center gap-3">
-                Search Results
+                Identified Frequencies
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {searchResults.map((channel) => {
+                {channelResults.map((channel) => {
                   const isSubscribed = favoriteChannels.some(c => c.id === channel.id);
                   return (
                     <Card 
@@ -203,7 +281,7 @@ export function MediaView() {
                           <Image src={channel.thumbnail} alt={channel.title} fill className="object-cover" />
                         </div>
                         <div className="flex-1">
-                          <h3 className="font-bold text-lg line-clamp-1">{channel.title}</h3>
+                          <h3 className="font-bold text-lg line-clamp-1 text-white">{channel.title}</h3>
                           <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{channel.description}</p>
                         </div>
                         <Button 
@@ -212,7 +290,7 @@ export function MediaView() {
                           className={`w-full rounded-2xl font-bold py-6 ${isSubscribed ? "bg-accent/10 text-accent border border-accent/20" : "bg-white text-black"}`}
                         >
                           {isSubscribed ? <Check className="w-5 h-5 mr-2" /> : <Plus className="w-5 h-5 mr-2" />}
-                          {isSubscribed ? "Added" : "Add"}
+                          {isSubscribed ? "Active" : "Tune In"}
                         </Button>
                       </div>
                     </Card>
@@ -222,12 +300,56 @@ export function MediaView() {
             </section>
           )}
 
+          {/* Video Search Results */}
+          {videoResults.length > 0 && searchType === "videos" && (
+            <section className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <h2 className="text-2xl font-bold font-headline text-blue-400 flex items-center gap-3">
+                Live Transmissions
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {videoResults.map((video) => {
+                  const isSaved = savedVideos.some(v => v.id === video.id);
+                  return (
+                    <Card 
+                      key={video.id} 
+                      onClick={() => setPlayingVideoId(video.id)}
+                      className="group relative overflow-hidden bg-zinc-900/40 border-none rounded-[2rem] transition-all hover:scale-[1.02] cursor-pointer ios-shadow"
+                    >
+                      <div className="aspect-video relative overflow-hidden">
+                        <Image src={video.thumbnail} alt={video.title} fill className="object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                        <div className="absolute top-4 right-4 z-20">
+                           <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={(e) => handleToggleSave(e, video)}
+                            className={`w-10 h-10 rounded-full backdrop-blur-3xl border border-white/10 ${isSaved ? "bg-accent text-black" : "bg-black/40 text-white"}`}
+                           >
+                             <Bookmark className={`w-5 h-5 ${isSaved ? "fill-current" : ""}`} />
+                           </Button>
+                        </div>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <Play className="w-10 h-10 text-white fill-white opacity-0 group-hover:opacity-100 transition-all scale-75 group-hover:scale-100" />
+                        </div>
+                      </div>
+                      <div className="p-4 space-y-1">
+                        <h3 className="font-bold text-sm line-clamp-1 text-white">{video.title}</h3>
+                        <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">{video.channelTitle}</p>
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+
+          {/* Subscribed List */}
           <section className="space-y-8 pb-32">
-            <h2 className="text-3xl font-bold font-headline flex items-center gap-4">
+            <h2 className="text-3xl font-bold font-headline flex items-center gap-4 text-white">
               <div className="w-12 h-12 rounded-2xl bg-red-500 flex items-center justify-center ios-shadow">
                 <Youtube className="text-white w-7 h-7" />
               </div>
-              Subscribed Transmissions
+              Subscribed Frequencies
             </h2>
             
             {favoriteChannels.length === 0 ? (
@@ -236,9 +358,9 @@ export function MediaView() {
                   <div className="w-24 h-24 rounded-full bg-zinc-800/50 flex items-center justify-center mb-8 border border-white/5">
                     <Radio className="w-12 h-12 text-muted-foreground animate-pulse" />
                   </div>
-                  <h3 className="text-3xl font-bold mb-3 font-headline">Silence Detected</h3>
+                  <h3 className="text-3xl font-bold mb-3 font-headline text-white">Silence Detected</h3>
                   <p className="text-muted-foreground max-w-md text-xl font-medium leading-relaxed">
-                    Your frequency list is empty. Search for channels to initialize your AI dashboard.
+                    Your frequency list is empty. Search for reciters to initialize your AI dashboard.
                   </p>
                 </CardContent>
               </Card>
@@ -271,7 +393,7 @@ export function MediaView() {
                       </div>
                       <CardContent className="p-6 flex items-center justify-between">
                         <div className="min-w-0">
-                          <h3 className="font-bold text-xl truncate font-headline">{channel.title}</h3>
+                          <h3 className="font-bold text-xl truncate font-headline text-white">{channel.title}</h3>
                           <p className="text-[10px] text-accent font-bold uppercase tracking-[0.2em] mt-1">Live Feed</p>
                         </div>
                         <div className="flex items-center gap-2">
