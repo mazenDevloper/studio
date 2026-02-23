@@ -33,12 +33,17 @@ const DARK_MAP_STYLE = [
   { "featureType": "water", "elementType": "labels.text.fill", "stylers": [{ "color": "#3d3d3d" }] }
 ];
 
+declare global {
+  interface Window {
+    initMap: () => void;
+  }
+}
+
 export function MapWidget() {
   const mapRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [directionsRenderer, setDirectionsRenderer] = useState<google.maps.DirectionsRenderer | null>(null);
-  const [currentMarker, setCurrentMarker] = useState<google.maps.Marker | null>(null);
   const [navigationData, setNavigationData] = useState<{
     destination: string;
     distance: string;
@@ -74,7 +79,6 @@ export function MapWidget() {
             eta: arrivalTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
           });
 
-          // Update current place status
           setCurrentPlace({
             id: `pin-${Date.now()}`,
             name: name,
@@ -87,67 +91,85 @@ export function MapWidget() {
     );
   }, [map, directionsRenderer]);
 
-  // Load API and Init Map
-  useEffect(() => {
-    const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places&callback=initMap`;
-    script.async = true;
-    window.initMap = () => {
-      if (mapRef.current) {
-        const newMap = new google.maps.Map(mapRef.current, {
-          center: { lat: 21.4225, lng: 39.8262 }, // Makkah
-          zoom: 15,
-          disableDefaultUI: true,
-          styles: DARK_MAP_STYLE,
-          gestureHandling: "greedy"
-        });
-        setMap(newMap);
+  const initGoogleMap = useCallback(() => {
+    if (mapRef.current && !map) {
+      const newMap = new google.maps.Map(mapRef.current, {
+        center: { lat: 21.4225, lng: 39.8262 }, // Makkah
+        zoom: 15,
+        disableDefaultUI: true,
+        styles: DARK_MAP_STYLE,
+        gestureHandling: "greedy"
+      });
+      setMap(newMap);
 
-        const renderer = new google.maps.DirectionsRenderer({
-          map: newMap,
-          suppressMarkers: false,
-          polylineOptions: {
-            strokeColor: "#3b82f6",
-            strokeWeight: 6,
-            strokeOpacity: 0.8
-          }
-        });
-        setDirectionsRenderer(renderer);
+      const renderer = new google.maps.DirectionsRenderer({
+        map: newMap,
+        suppressMarkers: false,
+        polylineOptions: {
+          strokeColor: "#3b82f6",
+          strokeWeight: 6,
+          strokeOpacity: 0.8
+        }
+      });
+      setDirectionsRenderer(renderer);
 
-        // Click Listener to drop pin
-        newMap.addListener("click", (e: google.maps.MapMouseEvent) => {
-          if (e.latLng) {
-            const geocoder = new google.maps.Geocoder();
-            geocoder.geocode({ location: e.latLng }, (results, status) => {
-              let name = "Selected Point";
-              if (status === "OK" && results && results[0]) {
-                // Try to find a meaningful name
-                const poi = results.find(r => r.types.includes("point_of_interest") || r.types.includes("establishment"));
-                name = poi ? poi.formatted_address.split(',')[0] : results[0].formatted_address.split(',')[0];
-              }
-              startNavigation(e.latLng!, name);
-            });
-          }
-        });
-
-        // Setup Autocomplete
-        if (searchInputRef.current) {
-          const autocomplete = new google.maps.places.Autocomplete(searchInputRef.current);
-          autocomplete.bindTo("bounds", newMap);
-          autocomplete.addListener("place_changed", () => {
-            const place = autocomplete.getPlace();
-            if (!place.geometry || !place.geometry.location) return;
-
-            newMap.setCenter(place.geometry.location);
-            newMap.setZoom(17);
-            
-            startNavigation(place.geometry.location, place.name || "Search Result");
+      newMap.addListener("click", (e: google.maps.MapMouseEvent) => {
+        if (e.latLng) {
+          const geocoder = new google.maps.Geocoder();
+          geocoder.geocode({ location: e.latLng }, (results, status) => {
+            let name = "Selected Point";
+            if (status === "OK" && results && results[0]) {
+              const poi = results.find(r => r.types.includes("point_of_interest") || r.types.includes("establishment"));
+              name = poi ? poi.formatted_address.split(',')[0] : results[0].formatted_address.split(',')[0];
+            }
+            // Explicitly pass map and renderer for immediate use if needed, 
+            // but the state should update in time for the next call.
+            startNavigation(e.latLng!, name);
           });
         }
+      });
+
+      if (searchInputRef.current) {
+        const autocomplete = new google.maps.places.Autocomplete(searchInputRef.current);
+        autocomplete.bindTo("bounds", newMap);
+        autocomplete.addListener("place_changed", () => {
+          const place = autocomplete.getPlace();
+          if (!place.geometry || !place.geometry.location) return;
+
+          newMap.setCenter(place.geometry.location);
+          newMap.setZoom(17);
+          startNavigation(place.geometry.location, place.name || "Search Result");
+        });
       }
-    };
+    }
+  }, [map, startNavigation]);
+
+  useEffect(() => {
+    // Check if script is already present or API is already loaded
+    if (window.google && window.google.maps) {
+      initGoogleMap();
+      return;
+    }
+
+    if (document.getElementById('google-maps-script')) {
+      window.initMap = initGoogleMap;
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.id = 'google-maps-script';
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places&callback=initMap`;
+    script.async = true;
+    
+    window.initMap = initGoogleMap;
     document.head.appendChild(script);
-  }, [startNavigation]);
+
+    return () => {
+      // Don't remove the script on unmount as it might be needed again,
+      // but we could clean up the callback.
+      delete (window as any).initMap;
+    };
+  }, [initGoogleMap]);
 
   const handleSavePlace = () => {
     if (currentPlace) {
@@ -161,10 +183,7 @@ export function MapWidget() {
       
       <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/60 pointer-events-none z-10" />
 
-      {/* CarPlay Style HUD Overlay */}
       <div className="absolute top-6 left-6 z-20 flex flex-col gap-4 items-start w-[380px]">
-        
-        {/* Search Bar */}
         <div className="relative w-full group">
           <div className="absolute left-6 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-blue-500 transition-colors">
             <Search className="w-5 h-5" />
@@ -176,7 +195,6 @@ export function MapWidget() {
           />
         </div>
 
-        {/* Navigation Intelligence Panel */}
         {navigationData && (
           <div className="p-6 rounded-[2.5rem] bg-black/90 backdrop-blur-3xl border border-white/10 space-y-5 w-full shadow-2xl animate-in fade-in slide-in-from-left-4 duration-500">
             <div className="flex items-center gap-5">
@@ -234,7 +252,6 @@ export function MapWidget() {
         )}
       </div>
 
-      {/* Floating System Controls */}
       <div className="absolute bottom-8 right-8 z-20 flex flex-col gap-4">
         <Button 
           className="w-16 h-16 rounded-full bg-zinc-900/90 backdrop-blur-3xl flex items-center justify-center border border-white/10 shadow-2xl hover:bg-white/10 transition-all"
@@ -255,7 +272,6 @@ export function MapWidget() {
         </Button>
       </div>
 
-      {/* Saved Places Panel */}
       {showSavedPlaces && (
         <div className="absolute inset-y-0 right-0 w-80 bg-black/95 backdrop-blur-3xl border-l border-white/10 z-30 p-8 flex flex-col gap-6 animate-in slide-in-from-right-full duration-500">
           <div className="flex items-center justify-between">
