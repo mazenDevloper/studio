@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Search, Plus, Play, Trash2, Youtube, Radio, Loader2, Check, ArrowLeft, Clock, Bookmark, Star, Users, Music } from "lucide-react";
+import { Search, Plus, Play, Trash2, Youtube, Radio, Loader2, Check, ArrowLeft, Clock, Bookmark, Star, Users, Music, LayoutGrid, X } from "lucide-react";
 import { useMediaStore } from "@/lib/store";
 import { searchYouTubeChannels, searchYouTubeVideos, fetchChannelVideos, YouTubeChannel, YouTubeVideo } from "@/lib/youtube";
 import Image from "next/image";
@@ -36,6 +36,7 @@ export function MediaView() {
   const [channelVideos, setChannelVideos] = useState<YouTubeVideo[]>([]);
   const [isLoadingVideos, setIsLoadingVideos] = useState(false);
   const [playingVideoId, setPlayingVideoId] = useState<string | null>(null);
+  const [showQuickGrids, setShowQuickGrids] = useState(false);
 
   const handleSearch = async (queryToUse?: string) => {
     const q = queryToUse || searchQuery;
@@ -44,6 +45,7 @@ export function MediaView() {
     setIsSearching(true);
     setChannelResults([]);
     setVideoResults([]);
+    setShowQuickGrids(false); // Hide grids when search is performed
     
     if (searchType === "channels") {
       const results = await searchYouTubeChannels(q);
@@ -57,7 +59,7 @@ export function MediaView() {
 
   const handleQuickSelect = (term: string) => {
     setSearchQuery(term);
-    handleSearch(term);
+    handleSearch(term); // Automatic search upon selection
   };
 
   const handleSelectChannel = async (channel: YouTubeChannel) => {
@@ -117,6 +119,13 @@ export function MediaView() {
                     onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                   />
                 </div>
+                <Button
+                  onClick={() => setShowQuickGrids(!showQuickGrids)}
+                  variant="outline"
+                  className={`h-20 w-20 rounded-[2rem] border-white/5 flex items-center justify-center transition-all ${showQuickGrids ? 'bg-accent text-black border-accent' : 'bg-zinc-900/80 text-white hover:bg-white/10'}`}
+                >
+                  {showQuickGrids ? <X className="w-8 h-8" /> : <LayoutGrid className="w-8 h-8" />}
+                </Button>
                 <Button 
                   onClick={() => handleSearch()} 
                   disabled={isSearching}
@@ -127,43 +136,45 @@ export function MediaView() {
               </div>
             </div>
 
-            {/* Quick Select Grids */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="space-y-4">
-                <h3 className="text-lg font-bold font-headline flex items-center gap-3 text-white/60">
-                  <Users className="w-5 h-5 text-accent" /> قائمة القراء
-                </h3>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {QUICK_RECITERS.map((reciter) => (
-                    <Button 
-                      key={reciter} 
-                      variant="outline" 
-                      onClick={() => handleQuickSelect(reciter)}
-                      className="bg-white/5 border-white/5 rounded-xl h-14 font-bold text-sm hover:bg-white hover:text-black transition-all"
-                    >
-                      {reciter}
-                    </Button>
-                  ))}
+            {/* Quick Select Grids - Initially Hidden */}
+            {showQuickGrids && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 animate-in slide-in-from-top-4 fade-in duration-500">
+                <div className="space-y-4">
+                  <h3 className="text-lg font-bold font-headline flex items-center gap-3 text-white/60">
+                    <Users className="w-5 h-5 text-accent" /> قائمة القراء
+                  </h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {QUICK_RECITERS.map((reciter) => (
+                      <Button 
+                        key={reciter} 
+                        variant="outline" 
+                        onClick={() => handleQuickSelect(reciter)}
+                        className="bg-white/5 border-white/5 rounded-xl h-14 font-bold text-sm hover:bg-white hover:text-black transition-all"
+                      >
+                        {reciter}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <h3 className="text-lg font-bold font-headline flex items-center gap-3 text-white/60">
+                    <Music className="w-5 h-5 text-blue-400" /> السور والأجزاء
+                  </h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {QUICK_SURAH_PARTS.map((item) => (
+                      <Button 
+                        key={item} 
+                        variant="outline" 
+                        onClick={() => handleQuickSelect(item)}
+                        className="bg-white/5 border-white/5 rounded-xl h-14 font-bold text-sm hover:bg-white hover:text-black transition-all"
+                      >
+                        {item}
+                      </Button>
+                    ))}
+                  </div>
                 </div>
               </div>
-              <div className="space-y-4">
-                <h3 className="text-lg font-bold font-headline flex items-center gap-3 text-white/60">
-                  <Music className="w-5 h-5 text-blue-400" /> السور والأجزاء
-                </h3>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {QUICK_SURAH_PARTS.map((item) => (
-                    <Button 
-                      key={item} 
-                      variant="outline" 
-                      onClick={() => handleQuickSelect(item)}
-                      className="bg-white/5 border-white/5 rounded-xl h-14 font-bold text-sm hover:bg-white hover:text-black transition-all"
-                    >
-                      {item}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            </div>
+            )}
           </div>
         )}
       </header>
