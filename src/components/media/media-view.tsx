@@ -5,7 +5,7 @@ import { useState, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Search, Plus, Play, Trash2, Youtube, Radio, Loader2, Check, ArrowLeft, Clock, Bookmark, X, PlusCircle } from "lucide-react";
+import { Search, Plus, Play, Trash2, Youtube, Radio, Loader2, Check, ArrowLeft, Clock, Bookmark, X, PlusCircle, Star } from "lucide-react";
 import { useMediaStore } from "@/lib/store";
 import { searchYouTubeChannels, searchYouTubeVideos, fetchChannelVideos, YouTubeChannel, YouTubeVideo } from "@/lib/youtube";
 import Image from "next/image";
@@ -17,6 +17,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { cn } from "@/lib/utils";
 
 export function MediaView() {
   const { 
@@ -25,7 +26,9 @@ export function MediaView() {
     removeChannel, 
     savedVideos, 
     toggleSaveVideo, 
-    setActiveVideo
+    setActiveVideo,
+    starredChannelIds,
+    toggleStarChannel
   } = useMediaStore();
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -307,32 +310,46 @@ export function MediaView() {
             </Dialog>
 
             {/* Favorite Channels Grid */}
-            {favoriteChannels.map((channel) => (
-              <div key={channel.id} className="flex flex-col items-center gap-3 group relative">
-                <div 
-                  className="w-24 h-24 sm:w-32 sm:h-32 rounded-full overflow-hidden border-2 border-white/10 group-hover:border-primary transition-all duration-500 cursor-pointer shadow-xl relative"
-                  onClick={() => handleSelectChannel(channel)}
-                >
-                  <Image
-                    src={channel.thumbnail}
-                    alt={channel.title}
-                    fill
-                    className="object-cover group-hover:scale-110 transition-transform duration-700"
-                  />
-                  <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors" />
-                </div>
-                
-                {/* Delete Button (Red Circle) */}
-                <button 
-                  onClick={(e) => { e.stopPropagation(); removeChannel(channel.id); }}
-                  className="absolute top-0 right-0 sm:right-2 w-8 h-8 rounded-full bg-destructive text-white flex items-center justify-center shadow-lg hover:scale-110 transition-all z-10"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+            {favoriteChannels.map((channel) => {
+              const isStarred = starredChannelIds.includes(channel.id);
+              return (
+                <div key={channel.id} className="flex flex-col items-center gap-3 group relative">
+                  <div 
+                    className="w-24 h-24 sm:w-32 sm:h-32 rounded-full overflow-hidden border-2 border-white/10 group-hover:border-primary transition-all duration-500 cursor-pointer shadow-xl relative"
+                    onClick={() => handleSelectChannel(channel)}
+                  >
+                    <Image
+                      src={channel.thumbnail}
+                      alt={channel.title}
+                      fill
+                      className="object-cover group-hover:scale-110 transition-transform duration-700"
+                    />
+                    <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors" />
+                  </div>
+                  
+                  {/* Star Button (Favorite Indicator) */}
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); toggleStarChannel(channel.id); }}
+                    className={cn(
+                      "absolute top-0 left-0 sm:left-2 w-8 h-8 rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-all z-10 border border-white/10 backdrop-blur-md",
+                      isStarred ? "bg-accent text-black" : "bg-black/40 text-white/40"
+                    )}
+                  >
+                    <Star className={cn("w-4 h-4", isStarred && "fill-current")} />
+                  </button>
 
-                <span className="font-bold text-sm text-center text-white/80 group-hover:text-white truncate w-full px-2">{channel.title}</span>
-              </div>
-            ))}
+                  {/* Delete Button (Red Circle) */}
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); removeChannel(channel.id); }}
+                    className="absolute top-0 right-0 sm:right-2 w-8 h-8 rounded-full bg-destructive text-white flex items-center justify-center shadow-lg hover:scale-110 transition-all z-10"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+
+                  <span className="font-bold text-sm text-center text-white/80 group-hover:text-white truncate w-full px-2">{channel.title}</span>
+                </div>
+              );
+            })}
           </div>
 
           {favoriteChannels.length === 0 && (

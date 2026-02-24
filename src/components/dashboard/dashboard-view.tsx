@@ -24,10 +24,13 @@ import {
 
 export function DashboardView() {
   const [weather, setWeather] = useState<any>(null);
-  const { favoriteChannels } = useMediaStore();
+  const { favoriteChannels, starredChannelIds } = useMediaStore();
   const [api, setApi] = useState<CarouselApi>();
   const [current, setCurrent] = useState(0);
   const [count, setCount] = useState(0);
+
+  // Filter channels to only include starred ones for suggestions
+  const starredChannels = favoriteChannels.filter(c => starredChannelIds.includes(c.id));
 
   useEffect(() => {
     fetch(`https://api.weatherapi.com/v1/current.json?key=${WEATHER_API_KEY}&q=Salalah&aqi=no`)
@@ -173,7 +176,7 @@ export function DashboardView() {
 
       {/* Suggested Bar Section */}
       <div className="w-full space-y-2">
-        <LatestVideosWidget channels={favoriteChannels} />
+        <LatestVideosWidget channels={starredChannels} />
       </div>
 
       {/* Saved Video Bar Section */}
