@@ -1,8 +1,9 @@
+
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
 import { WEATHER_API_KEY } from "@/lib/constants";
-import { Mic, RotateCcw, Upload, Loader2 } from "lucide-react";
+import { RotateCcw, Upload } from "lucide-react";
 import Image from "next/image";
 import { MapWidget } from "./widgets/map-widget";
 import { PrayerTimelineWidget } from "./widgets/prayer-timeline-widget";
@@ -14,8 +15,6 @@ import { YouTubeSavedWidget } from "./widgets/youtube-saved-widget";
 import { PrayerCountdownCard } from "./widgets/prayer-countdown-card";
 import { useMediaStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { useRouter } from "next/navigation";
-import { useToast } from "@/hooks/use-toast";
 import {
   Carousel,
   CarouselContent,
@@ -29,9 +28,6 @@ export function DashboardView() {
   const [api, setApi] = useState<CarouselApi>();
   const [current, setCurrent] = useState(0);
   const [count, setCount] = useState(0);
-  const [isListening, setIsListening] = useState(false);
-  const router = useRouter();
-  const { toast } = useToast();
 
   const starredChannels = favoriteChannels.filter(c => starredChannelIds.includes(c.id));
 
@@ -59,49 +55,6 @@ export function DashboardView() {
     return () => clearInterval(interval);
   }, [api]);
 
-  const handleVoiceSearch = useCallback(() => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    
-    if (!SpeechRecognition) {
-      toast({
-        variant: "destructive",
-        title: "خطأ في النظام",
-        description: "متصفحك لا يدعم خاصية البحث الصوتي.",
-      });
-      return;
-    }
-
-    const recognition = new SpeechRecognition();
-    recognition.lang = 'ar-SA';
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
-
-    recognition.onstart = () => {
-      setIsListening(true);
-    };
-
-    recognition.onresult = (event: any) => {
-      const transcript = event.results[0][0].transcript;
-      setIsListening(false);
-      toast({
-        title: "جاري البحث...",
-        description: `أنت قلت: "${transcript}"`,
-      });
-      router.push(`/media?q=${encodeURIComponent(transcript)}`);
-    };
-
-    recognition.onerror = (event: any) => {
-      setIsListening(false);
-      console.error("Speech Recognition Error:", event.error);
-    };
-
-    recognition.onend = () => {
-      setIsListening(false);
-    };
-
-    recognition.start();
-  }, [router, toast]);
-
   return (
     <div className="h-full w-full p-6 flex flex-col gap-6 relative overflow-y-auto pb-32">
       <div className="absolute top-2 left-1/2 -translate-x-1/2 z-[50] opacity-80 pointer-events-none">
@@ -114,9 +67,8 @@ export function DashboardView() {
         />
       </div>
 
-      {/* Main Grid: Height reduced to show timeline without scroll */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6 h-[460px]">
-        {/* Left Column: Widgets Carousel (65%) & Countdown (35%) */}
+        {/* Left Column */}
         <div className="md:col-span-4 flex flex-col gap-6 h-full">
           <div className="glass-panel rounded-[2.5rem] relative group overflow-hidden flex flex-col w-full shadow-2xl h-[65%]">
             <Carousel setApi={setApi} opts={{ loop: true }} className="flex-1 w-full h-full">
@@ -183,7 +135,7 @@ export function DashboardView() {
           </div>
         </div>
 
-        {/* Middle Column: Car Showcase */}
+        {/* Middle Column */}
         <div className="md:col-span-4 glass-panel rounded-[2.5rem] relative group flex flex-col items-center justify-center overflow-hidden h-full">
           <div className="flex-1 flex items-center justify-center w-full p-8">
             <Image 
@@ -204,7 +156,7 @@ export function DashboardView() {
           </div>
         </div>
 
-        {/* Right Column: Interactive Map */}
+        {/* Right Column */}
         <div className="md:col-span-4 glass-panel rounded-[2.5rem] overflow-hidden relative group shadow-2xl h-full">
           <MapWidget />
         </div>
@@ -220,23 +172,6 @@ export function DashboardView() {
 
       <div className="w-full space-y-2">
         <YouTubeSavedWidget />
-      </div>
-
-      <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100]">
-        <button 
-          onClick={handleVoiceSearch}
-          disabled={isListening}
-          className={cn(
-            "w-20 h-20 rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(59,130,246,0.6)] cursor-pointer hover:scale-110 transition-all border-4 border-white/10 backdrop-blur-xl",
-            isListening ? "bg-red-500 animate-pulse shadow-[0_0_30px_rgba(239,68,68,0.6)]" : "bg-primary active-glow"
-          )}
-        >
-          {isListening ? (
-            <Loader2 className="w-10 h-10 text-white animate-spin" />
-          ) : (
-            <Mic className="w-10 h-10 text-white" />
-          )}
-        </button>
       </div>
     </div>
   );
