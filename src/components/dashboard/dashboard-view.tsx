@@ -12,6 +12,7 @@ import { MoonWidget } from "./widgets/moon-widget";
 import { PlayingNowWidget } from "./widgets/playing-now-widget";
 import { LatestVideosWidget } from "./widgets/latest-videos-widget";
 import { YouTubeSavedWidget } from "./widgets/youtube-saved-widget";
+import { PrayerCountdownCard } from "./widgets/prayer-countdown-card";
 import { useMediaStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import {
@@ -65,102 +66,111 @@ export function DashboardView() {
         />
       </div>
 
-      {/* Main Grid: Smart Stack + Main Content */}
-      <div className="grid grid-cols-12 gap-6 min-h-[500px]">
+      {/* Main Grid: 3 Main Columns */}
+      <div className="grid grid-cols-12 gap-6 min-h-[600px]">
         
-        {/* Column 1: Smart Stack (4 units wide) */}
-        <div className="col-span-4 glass-panel rounded-[2.5rem] relative group overflow-hidden flex flex-col aspect-[3/4]">
-          <Carousel setApi={setApi} opts={{ loop: true }} className="flex-1 w-full h-full">
-            <CarouselContent className="h-full">
-              <CarouselItem className="h-full">
-                <DateAndClockWidget />
-              </CarouselItem>
-              <CarouselItem className="h-full">
-                <MoonWidget />
-              </CarouselItem>
-              <CarouselItem className="h-full">
-                <div className="h-full w-full p-8 flex flex-col items-center justify-center text-center">
-                  {weather ? (
-                    <>
-                      <div className="relative w-full mb-6">
-                        <span className="text-8xl font-black text-white/90 tracking-tighter drop-shadow-2xl">
-                          {Math.round(weather.current.temp_c)}°
-                        </span>
-                        <div className="absolute -top-6 -right-2">
-                          <img src={weather.current.condition.icon} alt="Weather" className="w-20 h-20 animate-pulse" />
+        {/* Column 1: Left (Carousel + Countdown) - Span 3 */}
+        <div className="col-span-3 flex flex-col gap-6">
+          {/* Smart Stack (Carousel) */}
+          <div className="glass-panel rounded-[2.5rem] relative group overflow-hidden flex flex-col aspect-[4/3] w-full">
+            <Carousel setApi={setApi} opts={{ loop: true }} className="flex-1 w-full h-full">
+              <CarouselContent className="h-full">
+                <CarouselItem className="h-full">
+                  <DateAndClockWidget />
+                </CarouselItem>
+                <CarouselItem className="h-full">
+                  <MoonWidget />
+                </CarouselItem>
+                <CarouselItem className="h-full">
+                  <div className="h-full w-full p-6 flex flex-col items-center justify-center text-center">
+                    {weather ? (
+                      <>
+                        <div className="relative w-full mb-4">
+                          <span className="text-6xl font-black text-white/90 tracking-tighter drop-shadow-2xl">
+                            {Math.round(weather.current.temp_c)}°
+                          </span>
+                          <div className="absolute -top-4 -right-2">
+                            <img src={weather.current.condition.icon} alt="Weather" className="w-16 h-16 animate-pulse" />
+                          </div>
                         </div>
-                      </div>
-                      <div className="grid grid-cols-3 gap-3 w-full">
-                        <div className="metric-box py-4">
-                          <div className="text-blue-400 font-bold text-lg">{weather.current.humidity}%</div>
-                          <div className="text-[10px] text-white/40 font-bold uppercase">Hum</div>
+                        <div className="grid grid-cols-3 gap-2 w-full">
+                          <div className="metric-box py-3">
+                            <div className="text-blue-400 font-bold text-sm">{weather.current.humidity}%</div>
+                            <div className="text-[8px] text-white/40 font-bold uppercase">Hum</div>
+                          </div>
+                          <div className="metric-box py-3">
+                            <div className="text-yellow-400 font-bold text-sm">{weather.current.uv}</div>
+                            <div className="text-[8px] text-white/40 font-bold uppercase">UV</div>
+                          </div>
+                          <div className="metric-box py-3">
+                            <div className="text-accent font-bold text-sm">{Math.round(weather.current.temp_c)}°</div>
+                            <div className="text-[8px] text-white/40 font-bold uppercase">Temp</div>
+                          </div>
                         </div>
-                        <div className="metric-box py-4">
-                          <div className="text-yellow-400 font-bold text-lg">{weather.current.uv}</div>
-                          <div className="text-[10px] text-white/40 font-bold uppercase">UV</div>
-                        </div>
-                        <div className="metric-box py-4">
-                          <div className="text-accent font-bold text-lg">{Math.round(weather.current.temp_c)}°</div>
-                          <div className="text-[10px] text-white/40 font-bold uppercase">Temp</div>
-                        </div>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="animate-pulse text-white/20 font-bold text-xl uppercase tracking-widest">Loading Satellite...</div>
-                  )}
-                </div>
-              </CarouselItem>
-              <CarouselItem className="h-full">
-                <PlayingNowWidget />
-              </CarouselItem>
-            </CarouselContent>
-          </Carousel>
+                      </>
+                    ) : (
+                      <div className="animate-pulse text-white/20 font-bold text-sm uppercase tracking-widest">Loading Satellite...</div>
+                    )}
+                  </div>
+                </CarouselItem>
+                <CarouselItem className="h-full">
+                  <PlayingNowWidget />
+                </CarouselItem>
+              </CarouselContent>
+            </Carousel>
 
-          {/* Dots Indicator: Centered over cards */}
-          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-2 z-20">
-            {Array.from({ length: count }).map((_, i) => (
-              <div
-                key={i}
-                className={cn(
-                  "h-1.5 rounded-full transition-all duration-500",
-                  current === i ? "w-8 bg-primary shadow-[0_0_10px_hsl(var(--primary))]" : "w-1.5 bg-white/20"
-                )}
-              />
-            ))}
+            {/* Dots Indicator: Fixed center bottom */}
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
+              {Array.from({ length: count }).map((_, i) => (
+                <div
+                  key={i}
+                  className={cn(
+                    "h-1 rounded-full transition-all duration-500",
+                    current === i ? "w-6 bg-primary shadow-[0_0_8px_hsl(var(--primary))]" : "w-1 bg-white/20"
+                  )}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Prayer Countdown Widget (Below Carousel) */}
+          <div className="flex-1 min-h-[180px]">
+            <PrayerCountdownCard />
           </div>
         </div>
 
-        {/* Column 2: Map & Car (8 units wide) */}
-        <div className="col-span-8 flex flex-col gap-6">
-          <div className="flex-1 glass-panel rounded-[2.5rem] overflow-hidden relative group min-h-[350px]">
-            <MapWidget />
-            <div className="absolute top-6 right-6 z-20">
-              <button className="w-12 h-12 rounded-2xl bg-black/60 backdrop-blur-xl border border-white/10 flex items-center justify-center hover:bg-primary transition-all">
-                <Maximize2 className="w-6 h-6 text-white" />
-              </button>
-            </div>
-            <div className="absolute bottom-6 left-6 z-20 bg-black/60 backdrop-blur-xl p-3 rounded-2xl border border-white/10 flex items-center gap-3">
-              <Navigation className="w-5 h-5 text-blue-400" />
-              <span className="text-xs font-bold text-white/80">صلالة، سلطنة عمان</span>
-            </div>
-          </div>
-          
-          <div className="h-[150px] glass-panel rounded-[2.5rem] relative group flex items-center justify-center overflow-hidden">
+        {/* Column 2: Middle (Car Display) - Span 5 */}
+        <div className="col-span-5 glass-panel rounded-[2.5rem] relative group flex flex-col items-center justify-center overflow-hidden">
+          <div className="flex-1 flex items-center justify-center w-full">
             <Image 
               src="https://dmusera.netlify.app/es350gb.png" 
               alt="Lexus ES350" 
-              width={400} 
-              height={200}
-              className="object-contain drop-shadow-[0_15px_40px_rgba(0,0,0,0.8)] group-hover:scale-105 transition-transform duration-700"
+              width={500} 
+              height={250}
+              className="object-contain drop-shadow-[0_20px_50px_rgba(0,0,0,0.9)] group-hover:scale-105 transition-transform duration-700"
             />
-            <div className="absolute bottom-4 flex gap-3 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-              <button className="flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-xl border border-white/10 rounded-full hover:bg-white/20 transition-all font-bold text-xs">
-                <RotateCcw className="w-3 h-3" /> إعادة تعيين
-              </button>
-              <button className="flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-xl border border-white/10 rounded-full hover:bg-white/20 transition-all font-bold text-xs">
-                <Upload className="w-3 h-3" /> تحميل
-              </button>
-            </div>
+          </div>
+          <div className="absolute bottom-8 flex gap-4 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-black/40 backdrop-blur-xl p-2 rounded-full border border-white/5">
+            <button className="flex items-center gap-2 px-5 py-2.5 bg-white/10 border border-white/10 rounded-full hover:bg-white/20 transition-all font-bold text-xs text-white">
+              <RotateCcw className="w-4 h-4" /> إعادة تعيين
+            </button>
+            <button className="flex items-center gap-2 px-5 py-2.5 bg-white/10 border border-white/10 rounded-full hover:bg-white/20 transition-all font-bold text-xs text-white">
+              <Upload className="w-4 h-4" /> تحميل
+            </button>
+          </div>
+        </div>
+
+        {/* Column 3: Right (Map Display) - Span 4 */}
+        <div className="col-span-4 glass-panel rounded-[2.5rem] overflow-hidden relative group">
+          <MapWidget />
+          <div className="absolute top-6 right-6 z-20">
+            <button className="w-12 h-12 rounded-2xl bg-black/60 backdrop-blur-xl border border-white/10 flex items-center justify-center hover:bg-primary transition-all">
+              <Maximize2 className="w-6 h-6 text-white" />
+            </button>
+          </div>
+          <div className="absolute bottom-6 left-6 z-20 bg-black/60 backdrop-blur-xl p-3 rounded-2xl border border-white/10 flex items-center gap-3">
+            <Navigation className="w-5 h-5 text-blue-400" />
+            <span className="text-xs font-bold text-white/80">صلالة، سلطنة عمان</span>
           </div>
         </div>
       </div>
