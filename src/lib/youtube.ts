@@ -20,8 +20,7 @@ export interface YouTubeVideo {
 }
 
 /**
- * Robust fetch with key rotation.
- * Tries each key in the pool until success or all fail.
+ * دالة جلب البيانات مع نظام التدوير التلقائي للمفاتيح لضمان الاستقرار.
  */
 async function fetchWithRotation(endpoint: string, params: Record<string, string>) {
   const queryParams = new URLSearchParams(params);
@@ -36,16 +35,16 @@ async function fetchWithRotation(endpoint: string, params: Record<string, string
         return await response.json();
       }
       
-      // If quota exceeded or forbidden, try next key
+      // إذا تم تجاوز الحصة أو منع الوصول، جرب المفتاح التالي
       if (response.status === 403 || response.status === 429) {
-        console.warn(`YouTube API Key ${i} exhausted. Trying next...`);
+        console.warn(`YouTube API Key ${i} exhausted. Rotation in progress...`);
         continue;
       }
       
-      // Other errors might be permanent for this query
+      // أخطاء أخرى قد لا يحلها تغيير المفتاح
       return null;
     } catch (error) {
-      console.error(`Fetch error with key ${i}:`, error);
+      console.error(`Network error with key index ${i}:`, error);
       continue;
     }
   }
@@ -100,7 +99,7 @@ export async function fetchChannelVideos(channelId: string): Promise<YouTubeVide
   const data = await fetchWithRotation('search', {
     part: 'snippet',
     channelId: channelId,
-    maxResults: '12',
+    maxResults: '15',
     order: 'date',
     type: 'video'
   });

@@ -49,7 +49,6 @@ export function GlobalVideoPlayer() {
 
   const isSaved = savedVideos.some(v => v.id === activeVideo.id);
   const startSeconds = videoProgress[activeVideo.id] || 0;
-  const rates = [1.0, 1.25, 1.5, 1.65];
 
   return (
     <div 
@@ -104,7 +103,7 @@ export function GlobalVideoPlayer() {
             </div>
           </div>
           <div className="flex-1 bg-black">
-             <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${activeVideo.id}?autoplay=1&controls=1&modestbranding=1&rel=0&start=${startSeconds}&playbackRate=${rate}`} frameBorder="0" allowFullScreen></iframe>
+             <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${activeVideo.id}?autoplay=1&controls=1&modestbranding=1&rel=0&start=${startSeconds}`} frameBorder="0" allowFullScreen></iframe>
           </div>
         </>
       ) : (
@@ -131,7 +130,7 @@ export function GlobalVideoPlayer() {
               </Button>
             </div>
             <div className="flex-1">
-              <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${activeVideo.id}?autoplay=1&controls=1&modestbranding=1&rel=0&start=${startSeconds}&playbackRate=${rate}`} frameBorder="0" allowFullScreen></iframe>
+              <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${activeVideo.id}?autoplay=1&controls=1&modestbranding=1&rel=0&start=${startSeconds}`} frameBorder="0" allowFullScreen></iframe>
             </div>
             <div className="h-20 bg-black/80 flex items-center justify-between px-8">
               <Button variant="default" size="icon" onClick={(e) => { e.stopPropagation(); setIsPlaying(!isPlaying); }} className="h-14 w-14 rounded-full bg-white text-black shadow-xl">
