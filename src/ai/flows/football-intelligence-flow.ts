@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview A Genkit flow for intelligent football match data processing.
@@ -73,14 +74,16 @@ const prompt = ai.definePrompt({
   
   Your task is to:
   1. Call the fetchMatchesTool to get the raw match data for {{type}}.
-  2. Analyze the data and identify the most relevant channels for the MENA region (Saudi Arabia, Egypt, Gulf, etc.). 
-     - Prefer SSC for Saudi League.
-     - Prefer beIN Sports for European and International leagues.
-  3. Identify or suggest the likely commentator based on typical assignments if not explicitly in the data.
-  4. Format the output according to the schema. 
-  5. Provide a short, energetic summary in Arabic of today's highlights.
+  2. If no matches are found in the tool output, return an empty array for matches and a message explaining why (e.g., no major matches today).
+  3. Analyze the raw data and identify the most relevant channels for the MENA region (Saudi Arabia, Egypt, Gulf, etc.). 
+     - Use SSC for Saudi League matches.
+     - Use beIN Sports for European leagues (Champions League, Premier League, La Liga, etc.).
+     - Use Abu Dhabi Sports or Dubai Sports for local UAE matches.
+  4. Suggest a famous Arabic commentator (e.g., Issam Chawali, Khalil Al-Balushi, Fahad Al-Otaibi) for the big matches if the data doesn't specify one.
+  5. Format the output according to the schema. 
+  6. Provide a short, energetic summary in Arabic (2-3 sentences) of today's highlights. Use phrases like "يا رباااه" or "مساء الكورة".
   
-  Focus on quality and relevance for an Arabic-speaking user driving a luxury car.`,
+  IMPORTANT: Only return matches that are of reasonable importance (Top leagues, Arab leagues). If there are too many, prioritize Arab teams and European giants.`,
 });
 
 const footballIntelligenceFlow = ai.defineFlow(
