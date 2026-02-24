@@ -29,6 +29,7 @@ export function MapWidget() {
   const [isLoading, setIsLoading] = useState(true);
   const [apiError, setApiError] = useState(false);
 
+  // إعدادات التحكم في المنظور (Tuner)
   const [tuner, setTuner] = useState({
     zoom: 19.5,
     tilt: 65,
@@ -57,7 +58,7 @@ export function MapWidget() {
       const scene = new THREE.Scene();
       const camera = new THREE.PerspectiveCamera();
       
-      // نظام إضاءة الاستوديو لإبراز اللمعة الذهبية
+      // نظام إضاءة الاستوديو المطور من المرجع
       scene.add(new THREE.AmbientLight(0xffffff, 0.65));
       const light1 = new THREE.DirectionalLight(0xffffff, 0.68);
       light1.position.set(25, 8, 15); 
@@ -85,7 +86,7 @@ export function MapWidget() {
                 opacity: node.material.opacity
               });
             } else {
-              // الهيكل الذهبي الملكي
+              // الهيكل الذهبي الملكي (من المرجع)
               node.material = new THREE.MeshPhongMaterial({
                 color: 0xcccaac,
                 specular: 0x888888,    
@@ -136,7 +137,7 @@ export function MapWidget() {
       
       camera.projectionMatrix = new THREE.Matrix4().fromArray(matrix);
 
-      // معادلة الحجم الديناميكي
+      // معادلة الحجم الديناميكي (من المرجع)
       const finalScale = tunerRef.current.scale * Math.pow(2, 20 - zoom); 
       carModelRef.current.scale.set(finalScale, finalScale, finalScale);
       carModelRef.current.rotation.y = -(carStateRef.current.heading * Math.PI) / 180 + Math.PI;
@@ -167,27 +168,37 @@ export function MapWidget() {
 
         setup3DCarSystem(map);
 
+        // تفعيل التتبع المستمر بدقة متناهية (High Accuracy)
         if (navigator.geolocation) {
           watchIdRef.current = navigator.geolocation.watchPosition((pos) => {
             const newPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+            const newHeading = pos.coords.heading || 0;
+            
             setCarState({
               location: newPos,
-              heading: pos.coords.heading || 0
+              heading: newHeading
             });
+
             if (mapInstanceRef.current) {
-               mapInstanceRef.current.setCenter(newPos);
-               if (pos.coords.heading !== null) {
-                 mapInstanceRef.current.setHeading(pos.coords.heading);
-               }
+               // تحديث الكاميرا لتتبع الحركة والتدوير
+               mapInstanceRef.current.moveCamera({
+                 center: newPos,
+                 heading: newHeading,
+                 tilt: tunerRef.current.tilt
+               });
             }
           }, (err) => {
-            console.error("Geo watch error", err);
-          }, { enableHighAccuracy: true });
+            console.error("Geo watch error:", err);
+          }, { 
+            enableHighAccuracy: true,
+            maximumAge: 0,
+            timeout: 5000 
+          });
         }
 
         setIsLoading(false);
       } catch (e) {
-        console.error("Map Init Error", e);
+        console.error("Map Init Error:", e);
         setApiError(true);
         setIsLoading(false);
       }
@@ -219,7 +230,7 @@ export function MapWidget() {
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <div className="flex flex-col items-center gap-4">
             <Loader2 className="w-10 h-10 animate-spin text-blue-500" />
-            <span className="text-white/60 font-bold text-xs uppercase tracking-widest">Initializing Navigation...</span>
+            <span className="text-white/60 font-bold text-xs uppercase tracking-widest">تحميل نظام الملاحة...</span>
           </div>
         </div>
       )}
@@ -229,8 +240,8 @@ export function MapWidget() {
           <div className="w-20 h-20 rounded-3xl bg-red-500/20 flex items-center justify-center mx-auto border border-red-500/30">
             <AlertTriangle className="w-10 h-10 text-red-500" />
           </div>
-          <h3 className="text-2xl font-headline font-bold text-white mt-4">Map System Offline</h3>
-          <p className="text-sm text-white/40 max-w-xs mt-2">Check API configuration and billing status.</p>
+          <h3 className="text-2xl font-headline font-bold text-white mt-4">نظام الخرائط غير متصل</h3>
+          <p className="text-sm text-white/40 max-w-xs mt-2">يرجى التحقق من اتصال الإنترنت وإعدادات الموقع.</p>
         </div>
       ) : (
         <div ref={mapRef} className="absolute inset-0 z-0" />
@@ -256,7 +267,7 @@ export function MapWidget() {
               <ChevronDown className="w-4 h-4" />
             </Button>
           </div>
-          <Button size="icon" className="h-12 w-12 rounded-2xl bg-blue-600 text-white shadow-lg" onClick={() => alert("✅ Saved Settings")}>
+          <Button size="icon" className="h-12 w-12 rounded-2xl bg-blue-600 text-white shadow-lg" onClick={() => alert("✅ تم حفظ الإعدادات")}>
             <Save className="w-5 h-5" />
           </Button>
         </div>
