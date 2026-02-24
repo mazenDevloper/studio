@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -197,7 +198,6 @@ export function MediaView() {
               </Button>
           </div>
 
-          {/* Grid updated to 3 columns on medium screens and above */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {isLoadingVideos ? (
               <div className="col-span-full py-40 flex flex-col items-center gap-6">
@@ -258,7 +258,6 @@ export function MediaView() {
               إغلاق النتائج
             </Button>
           </div>
-          {/* Grid updated to 3 columns on medium screens */}
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-8">
             {videoResults.map((video) => (
               <Card 
@@ -296,41 +295,54 @@ export function MediaView() {
                   <span className="font-black text-xs uppercase tracking-[0.3em] text-white/40 group-hover:text-primary transition-colors">إضافة قناة</span>
                 </div>
               </DialogTrigger>
-              <DialogContent className="max-w-3xl bg-zinc-950 border-white/10 rounded-[3.5rem] p-0 overflow-hidden shadow-[0_50px_150px_rgba(0,0,0,1)]">
+              <DialogContent className="max-w-4xl bg-zinc-950 border-white/10 rounded-[3.5rem] p-0 overflow-hidden shadow-[0_50px_150px_rgba(0,0,0,1)]">
                 <DialogHeader className="p-10 border-b border-white/10 bg-zinc-900/40 backdrop-blur-3xl">
-                  <DialogTitle className="text-3xl font-black text-white mb-6 uppercase tracking-tight">البحث عن الترددات</DialogTitle>
+                  <DialogTitle className="text-3xl font-black text-white mb-6 uppercase tracking-tight text-right">البحث عن الترددات</DialogTitle>
                   <div className="flex gap-4">
                     <Input 
                       placeholder="اسم القناة أو المعرّف..." 
                       value={channelSearchQuery}
                       onChange={(e) => setChannelSearchQuery(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && handleChannelSearch()}
-                      className="bg-white/5 border-white/10 h-16 rounded-[1.5rem] text-xl px-8"
+                      className="bg-white/5 border-white/10 h-16 rounded-[1.5rem] text-xl px-8 text-right"
                     />
                     <Button onClick={handleChannelSearch} disabled={isSearchingChannels} className="h-16 w-20 bg-primary rounded-[1.5rem] shadow-xl">
                       {isSearchingChannels ? <Loader2 className="w-8 h-8 animate-spin" /> : <Search className="w-8 h-8" />}
                     </Button>
                   </div>
                 </DialogHeader>
-                <ScrollArea className="max-h-[65vh] p-8">
-                  <div className="space-y-5">
+                <ScrollArea className="max-h-[65vh]">
+                  <div className="p-10 space-y-6">
                     {channelResults.map((channel) => {
                       const isSubscribed = favoriteChannels.some(c => c.id === channel.id);
                       return (
                         <div key={channel.id} className="flex items-center gap-6 p-6 rounded-[2rem] bg-white/5 border border-white/5 hover:bg-white/10 transition-all group">
-                          <div className="relative w-24 h-24 rounded-full overflow-hidden border-2 border-white/10 group-hover:border-primary transition-all">
+                          <div className="relative w-24 h-24 rounded-full overflow-hidden border-2 border-white/10 group-hover:border-primary transition-all flex-shrink-0">
                             <Image src={channel.thumbnail} alt={channel.title} fill className="object-cover" />
                           </div>
-                          <div className="flex-1 min-w-0">
+                          <div className="flex-1 min-w-0 text-right">
                             <h4 className="font-black text-xl text-white truncate">{channel.title}</h4>
                             <p className="text-white/40 text-sm truncate mt-1">{channel.description}</p>
                           </div>
                           <Button 
                             onClick={() => isSubscribed ? removeChannel(channel.id) : addChannel(channel)}
                             variant={isSubscribed ? "secondary" : "default"}
-                            className={cn("rounded-full h-14 px-8 font-black text-base shadow-lg transition-all", isSubscribed ? "bg-accent/20 text-accent border border-accent/20" : "bg-primary text-white hover:scale-105")}
+                            className={cn(
+                              "rounded-full h-14 px-8 font-black text-base shadow-lg transition-all flex-shrink-0 relative z-10 min-w-[140px]", 
+                              isSubscribed ? "bg-accent/20 text-accent border border-accent/20" : "bg-primary text-white hover:scale-105"
+                            )}
                           >
-                            {isSubscribed ? "مشترك" : "إضافة"}
+                            {isSubscribed ? (
+                              <div className="flex items-center gap-2">
+                                <Check className="w-5 h-5" />
+                                <span>مشترك</span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                <Plus className="w-5 h-5" />
+                                <span>إضافة</span>
+                              </div>
+                            )}
                           </Button>
                         </div>
                       );
