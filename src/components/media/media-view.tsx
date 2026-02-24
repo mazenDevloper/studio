@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -212,7 +213,7 @@ export function MediaView() {
               </Button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {isLoadingVideos ? (
               <div className="col-span-full py-40 flex flex-col items-center gap-6">
                 <Loader2 className="w-16 h-16 animate-spin text-primary" />
@@ -241,18 +242,9 @@ export function MediaView() {
                          <Bookmark className={cn("w-7 h-7", isSaved && "fill-current")} />
                        </Button>
                     </div>
-                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-500">
-                      <div className="w-20 h-20 rounded-full bg-white/20 backdrop-blur-3xl flex items-center justify-center border border-white/20 scale-75 group-hover:scale-100 transition-transform shadow-2xl">
-                        <Play className="w-10 h-10 text-white fill-white ml-1.5" />
-                      </div>
-                    </div>
                   </div>
                   <CardContent className="p-8">
                     <h3 className="font-bold text-lg line-clamp-2 text-white font-headline leading-relaxed h-14">{video.title}</h3>
-                    <div className="flex items-center gap-3 mt-4">
-                       <span className="w-2 h-2 rounded-full bg-primary" />
-                       <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">Live Signal Active</span>
-                    </div>
                   </CardContent>
                 </Card>
               );
@@ -276,7 +268,7 @@ export function MediaView() {
               إغلاق
             </Button>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {videoResults.map((video, idx) => (
               <Card 
                 key={video.id} 

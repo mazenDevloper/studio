@@ -14,15 +14,15 @@ export function PlayingNowWidget() {
     <div className="h-full w-full bg-zinc-900/60 backdrop-blur-3xl rounded-[2.5rem] border border-white/5 relative shadow-2xl overflow-hidden group">
       {activeVideo ? (
         <>
-          {/* Background Image filling the card */}
+          {/* Background Image filling the card (Full Cover) */}
           <div className="absolute inset-0 z-0">
             <Image 
               src={activeVideo.thumbnail} 
               alt={activeVideo.title} 
               fill 
-              className="object-cover opacity-40 group-hover:scale-110 transition-transform duration-[10s]"
+              className="object-cover opacity-60 group-hover:scale-110 transition-transform duration-[10s]"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
           </div>
 
           <div className="relative z-10 h-full p-8 flex flex-col justify-between items-center text-center">
@@ -51,10 +51,10 @@ export function PlayingNowWidget() {
                 {isPlaying ? <Pause className="w-8 h-8 fill-current" /> : <Play className="w-8 h-8 fill-current ml-1" />}
               </Button>
               <div className="space-y-1 px-4 max-w-full">
-                <h3 className="text-sm font-black font-headline text-white line-clamp-2 leading-tight uppercase tracking-tight">
+                <h3 className="text-sm font-black font-headline text-white line-clamp-2 leading-tight uppercase tracking-tight drop-shadow-lg">
                   {activeVideo.title}
                 </h3>
-                <p className="text-[9px] text-accent font-black uppercase tracking-[0.3em]">Direct Feed</p>
+                <p className="text-[9px] text-accent font-black uppercase tracking-[0.3em] drop-shadow-md">Direct Feed</p>
               </div>
             </div>
 
