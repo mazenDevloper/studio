@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
@@ -29,12 +28,12 @@ export function RemotePointer() {
     if (direction === "ArrowDown" && dy <= 0) return Infinity;
     if (direction === "ArrowUp" && dy >= 0) return Infinity;
 
-    // Euclidean distance with weight on the primary axis
-    const weight = 2.5;
+    // Spatial weight: prioritize elements in the same "lane"
+    const orthogonalWeight = 3.5;
     if (direction === "ArrowRight" || direction === "ArrowLeft") {
-      return Math.sqrt(Math.pow(dx, 2) + Math.pow(dy * weight, 2));
+      return Math.sqrt(Math.pow(dx, 2) + Math.pow(dy * orthogonalWeight, 2));
     } else {
-      return Math.sqrt(Math.pow(dx * weight, 2) + Math.pow(dy, 2));
+      return Math.sqrt(Math.pow(dx * orthogonalWeight, 2) + Math.pow(dy, 2));
     }
   };
 
@@ -49,6 +48,7 @@ export function RemotePointer() {
     let next: HTMLElement | null = null;
 
     if (!isCurrentFocusable) {
+      // Start from top-left if nothing is focused
       next = focusables[0];
     } else {
       const currentRect = current.getBoundingClientRect();
@@ -56,9 +56,12 @@ export function RemotePointer() {
 
       for (const el of focusables) {
         if (el === current) continue;
-        const rect = el.getBoundingClientRect();
-        const dist = getDistance(currentRect, rect, direction);
         
+        // Skip hidden elements or parents if we are navigating within a container
+        const rect = el.getBoundingClientRect();
+        if (rect.width === 0 || rect.height === 0) continue;
+
+        const dist = getDistance(currentRect, rect, direction);
         if (dist < minDistance) {
           minDistance = dist;
           next = el;
@@ -102,8 +105,8 @@ export function RemotePointer() {
         height: pointerRect.height + 8,
       }}
     >
-      <div className="w-full h-full rounded-[inherit] border-2 border-primary shadow-[0_0_20px_hsl(var(--primary))] animate-pulse" />
-      <div className="absolute -top-2 -left-2 w-4 h-4 bg-primary rounded-full blur-sm" />
+      <div className="w-full h-full rounded-[inherit] border-4 border-primary shadow-[0_0_30px_hsl(var(--primary))] animate-pulse" />
+      <div className="absolute -top-3 -left-3 w-6 h-6 bg-primary rounded-full blur-sm opacity-50" />
     </div>
   );
 }

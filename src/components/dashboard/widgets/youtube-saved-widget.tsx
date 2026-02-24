@@ -1,17 +1,13 @@
-
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Bookmark, Play, Trash2, Youtube } from "lucide-react";
+import { Bookmark, Play, Trash2 } from "lucide-react";
 import { useMediaStore } from "@/lib/store";
-import { useState } from "react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 
 export function YouTubeSavedWidget() {
-  const { savedVideos, removeVideo } = useMediaStore();
-  const [playingVideoId, setPlayingVideoId] = useState<string | null>(null);
+  const { savedVideos, removeVideo, setActiveVideo } = useMediaStore();
 
   return (
     <Card className="h-full border-none bg-zinc-900/50 rounded-[2.5rem] ios-shadow overflow-hidden flex flex-col">
@@ -33,11 +29,13 @@ export function YouTubeSavedWidget() {
           </div>
         ) : (
           <div className="space-y-4">
-            {savedVideos.map((video) => (
+            {savedVideos.map((video, idx) => (
               <div 
                 key={video.id} 
-                className="flex items-center gap-4 p-4 rounded-[1.5rem] bg-white/5 hover:bg-white/10 transition-all border border-transparent hover:border-white/10 group cursor-pointer"
-                onClick={() => setPlayingVideoId(video.id)}
+                className="flex items-center gap-4 p-4 rounded-[1.5rem] bg-white/5 hover:bg-white/10 transition-all border border-transparent hover:border-white/10 group cursor-pointer focusable"
+                onClick={() => setActiveVideo(video)}
+                data-nav-id={`saved-video-${idx}`}
+                tabIndex={0}
               >
                 <div className="relative w-24 h-16 rounded-xl overflow-hidden flex-shrink-0">
                   <Image 
@@ -57,7 +55,9 @@ export function YouTubeSavedWidget() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="rounded-full w-10 h-10 text-muted-foreground hover:text-red-500 hover:bg-red-500/10"
+                  className="rounded-full w-10 h-10 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 focusable"
+                  data-nav-id={`remove-saved-${idx}`}
+                  tabIndex={0}
                   onClick={(e) => {
                     e.stopPropagation();
                     removeVideo(video.id);
@@ -70,21 +70,6 @@ export function YouTubeSavedWidget() {
           </div>
         )}
       </CardContent>
-
-      <Dialog open={!!playingVideoId} onOpenChange={() => setPlayingVideoId(null)}>
-        <DialogContent className="max-w-[90vw] w-full h-[85vh] bg-black border-white/5 p-0 rounded-[3rem] overflow-hidden ios-shadow">
-          {playingVideoId && (
-            <iframe
-              className="w-full h-full"
-              src={`https://www.youtube.com/embed/${playingVideoId}?autoplay=1`}
-              title="YouTube video player"
-              frameBorder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-            ></iframe>
-          )}
-        </DialogContent>
-      </Dialog>
     </Card>
   );
 }

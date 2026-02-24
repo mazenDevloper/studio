@@ -1,21 +1,22 @@
-
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Sparkles, RefreshCw, Play, Clock, Star } from "lucide-react";
+import { RefreshCw, Play, Clock, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { YouTubeChannel, YouTubeVideo, fetchChannelVideos } from "@/lib/youtube";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import Image from "next/image";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { useMediaStore } from "@/lib/store";
 
 interface Props {
   channels: YouTubeChannel[];
 }
 
 export function LatestVideosWidget({ channels }: Props) {
+  const { setActiveVideo } = useMediaStore();
   const [videos, setVideos] = useState<YouTubeVideo[]>([]);
   const [loading, setLoading] = useState(false);
   const [playingVideoId, setPlayingVideoId] = useState<string | null>(null);
@@ -27,18 +28,12 @@ export function LatestVideosWidget({ channels }: Props) {
     }
     setLoading(true);
     try {
-      // Fetch 2 latest videos for each channel in parallel
       const videoPromises = channels.map(c => fetchChannelVideos(c.id));
       const results = await Promise.all(videoPromises);
-      
-      // Take top 2 from each and flatten
       const allVideos = results.flatMap(channelVideos => channelVideos.slice(0, 2));
-      
-      // Sort by published date
       const sorted = allVideos.sort((a, b) => 
         new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
       );
-      
       setVideos(sorted);
     } catch (error) {
       console.error("Failed to fetch latest videos", error);
@@ -66,7 +61,9 @@ export function LatestVideosWidget({ channels }: Props) {
           size="icon" 
           onClick={fetchLatest} 
           disabled={loading || channels.length === 0} 
-          className="rounded-full hover:bg-white/10 w-12 h-12"
+          className="rounded-full hover:bg-white/10 w-12 h-12 focusable"
+          data-nav-id="refresh-starred-btn"
+          tabIndex={0}
         >
           <RefreshCw className={`h-6 w-6 ${loading ? "animate-spin" : ""}`} />
         </Button>
@@ -83,11 +80,13 @@ export function LatestVideosWidget({ channels }: Props) {
         ) : (
           <ScrollArea className="w-full whitespace-nowrap">
             <div className="flex w-max gap-6 pb-4">
-              {videos.map((video) => (
+              {videos.map((video, idx) => (
                 <div 
                   key={video.id} 
-                  className="w-80 group relative overflow-hidden bg-zinc-900/80 border-none rounded-[2rem] transition-all hover:scale-[1.02] cursor-pointer ios-shadow"
-                  onClick={() => setPlayingVideoId(video.id)}
+                  className="w-80 group relative overflow-hidden bg-zinc-900/80 border-none rounded-[2rem] transition-all hover:scale-[1.02] cursor-pointer ios-shadow focusable"
+                  onClick={() => setActiveVideo(video)}
+                  data-nav-id={`starred-video-${idx}`}
+                  tabIndex={0}
                 >
                   <div className="aspect-video relative overflow-hidden">
                     <Image
@@ -119,21 +118,6 @@ export function LatestVideosWidget({ channels }: Props) {
           </ScrollArea>
         )}
       </CardContent>
-
-      <Dialog open={!!playingVideoId} onOpenChange={() => setPlayingVideoId(null)}>
-        <DialogContent className="max-w-[90vw] w-full h-[85vh] bg-black border-white/5 p-0 rounded-[3rem] overflow-hidden ios-shadow">
-          {playingVideoId && (
-            <iframe
-              className="w-full h-full"
-              src={`https://www.youtube.com/embed/${playingVideoId}?autoplay=1`}
-              title="YouTube video player"
-              frameBorder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-            ></iframe>
-          )}
-        </DialogContent>
-      </Dialog>
     </Card>
   );
 }

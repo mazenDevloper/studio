@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -137,7 +136,7 @@ export function DashboardView() {
           </div>
         </div>
 
-        {/* Middle Column - Car Image (Covering) */}
+        {/* Middle Column - Car Image */}
         <div 
           className="md:col-span-4 glass-panel rounded-[2.5rem] relative group flex flex-col items-center justify-center overflow-hidden h-full shadow-2xl focusable outline-none"
           tabIndex={0}
