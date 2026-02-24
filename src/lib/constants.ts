@@ -2,7 +2,8 @@
 export const AI_ASSISTANT_API_KEY = 'AIzaSyBMmtON9ww4dJxMHrl1wKyWTvI0ipJXJws'; 
 export const WEATHER_API_KEY = '7acefc26deee4904a2393917252207'; 
 export const GOOGLE_MAPS_API_KEY = 'AIzaSyBRqAHJ2elbE_Z7NXXYC50XZpqi6HbG6Rk';
-export const FOOTBALL_API_KEY = 'AIzaSyB-EXAMPLE-KEY'; // مفتاح تجريبي للربط مع API الرياضة
+export const FOOTBALL_API_KEY = '5faa81bde7c1843d6be4a4e3706a93da'; 
+export const FOOTBALL_API_BASE_URL = 'https://v3.football.api-sports.io';
 
 export const JSONBIN = {
   API_KEY: '$2a$10$SYrYv.ct8hiMU9YeUxEQ.ecRkOrTqs.TDchJRV3wW.aKJnDXy2oVy',

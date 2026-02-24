@@ -1,10 +1,12 @@
+
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Match, MOCK_MATCHES } from "@/lib/football-data";
+import { Match } from "@/lib/football-data";
+import { fetchFootballData } from "@/lib/football-api";
 import { useMediaStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { Timer, Trophy, Tv } from "lucide-react";
+import { Timer, Tv } from "lucide-react";
 import Image from "next/image";
 
 export function LiveMatchIsland() {
@@ -14,11 +16,10 @@ export function LiveMatchIsland() {
 
   const fetchLiveStatus = useCallback(async () => {
     try {
-      // Integration with API-Football refined structure
-      // In a real scenario, this would be a filtered fetch for 'live' fixtures
-      const currentMatches: Match[] = MOCK_MATCHES;
+      // جلب المباريات المباشرة الحقيقية
+      const currentMatches = await fetchFootballData('live');
 
-      // Filter for live matches involving favorite teams
+      // تصفية للمباريات المباشرة التي تخص فرقك المفضلة فقط
       const activeFavMatch = currentMatches.find(m => 
         m.status === 'live' && 
         (favoriteTeams.includes(m.homeTeam) || favoriteTeams.includes(m.awayTeam))
@@ -32,13 +33,12 @@ export function LiveMatchIsland() {
 
   useEffect(() => {
     fetchLiveStatus();
-    const interval = setInterval(fetchLiveStatus, 60000); // Check every minute
+    const interval = setInterval(fetchLiveStatus, 45000); // تحديث كل 45 ثانية في الخلفية
     return () => clearInterval(interval);
   }, [fetchLiveStatus]);
 
   if (!liveMatch) return null;
 
-  // Extract relevant channel from broadcasts for the island
   const activeBroadcast = liveMatch.broadcasts.find(b => b.country === 'Saudi Arabia' || b.country === 'MENA') || liveMatch.broadcasts[0];
 
   return (
@@ -46,7 +46,7 @@ export function LiveMatchIsland() {
       <div 
         onClick={() => setIsExpanded(!isExpanded)}
         className={cn(
-          "bg-black/90 backdrop-blur-3xl border border-white/20 rounded-full shadow-[0_20px_60px_rgba(0,0,0,1)] transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] cursor-pointer overflow-hidden ring-1 ring-white/10",
+          "bg-black/95 backdrop-blur-3xl border border-white/20 rounded-full shadow-[0_20px_80px_rgba(0,0,0,1)] transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] cursor-pointer overflow-hidden ring-1 ring-white/10",
           isExpanded ? "w-[520px] h-36 px-10" : "w-72 h-14 px-6"
         )}
       >
@@ -58,11 +58,11 @@ export function LiveMatchIsland() {
                 <span className="text-[10px] font-black text-white/50 uppercase tracking-[0.2em]">LIVE</span>
               </div>
               <div className="flex items-center gap-4">
-                <span className="text-sm font-black text-white tracking-tighter">{liveMatch.homeTeam}</span>
-                <div className="bg-white/10 px-3 py-1 rounded-lg">
-                  <span className="text-lg font-black text-primary">{liveMatch.score?.home} - {liveMatch.score?.away}</span>
+                <span className="text-xs font-black text-white tracking-tighter truncate max-w-[60px]">{liveMatch.homeTeam}</span>
+                <div className="bg-white/10 px-3 py-1 rounded-lg border border-white/5">
+                  <span className="text-lg font-black text-primary leading-none">{liveMatch.score?.home} - {liveMatch.score?.away}</span>
                 </div>
-                <span className="text-sm font-black text-white tracking-tighter">{liveMatch.awayTeam}</span>
+                <span className="text-xs font-black text-white tracking-tighter truncate max-w-[60px]">{liveMatch.awayTeam}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Timer className="w-3.5 h-3.5 text-accent" />
@@ -75,7 +75,7 @@ export function LiveMatchIsland() {
                 <div className="relative w-14 h-14 transition-transform group-hover:scale-110 duration-500">
                   <Image src={liveMatch.homeLogo} alt={liveMatch.homeTeam} fill className="object-contain" />
                 </div>
-                <span className="text-[11px] font-black text-white/80 truncate w-full text-center uppercase tracking-tighter">{liveMatch.homeTeam}</span>
+                <span className="text-[10px] font-black text-white/80 truncate w-full text-center uppercase tracking-tighter">{liveMatch.homeTeam}</span>
               </div>
 
               <div className="flex flex-col items-center gap-3">
@@ -91,9 +91,8 @@ export function LiveMatchIsland() {
                 <div className="flex flex-col items-center gap-1">
                   <div className="text-[10px] font-bold text-accent uppercase tracking-[0.4em] flex items-center gap-2">
                      <Tv className="w-3 h-3" />
-                     {activeBroadcast?.channel || liveMatch.channel}
+                     {activeBroadcast?.channel || "Live Feed"}
                   </div>
-                  <span className="text-[9px] text-white/30 font-bold uppercase">{liveMatch.commentator}</span>
                 </div>
               </div>
 
@@ -101,7 +100,7 @@ export function LiveMatchIsland() {
                 <div className="relative w-14 h-14 transition-transform group-hover:scale-110 duration-500">
                   <Image src={liveMatch.awayLogo} alt={liveMatch.awayTeam} fill className="object-contain" />
                 </div>
-                <span className="text-[11px] font-black text-white/80 truncate w-full text-center uppercase tracking-tighter">{liveMatch.awayTeam}</span>
+                <span className="text-[10px] font-black text-white/80 truncate w-full text-center uppercase tracking-tighter">{liveMatch.awayTeam}</span>
               </div>
             </div>
           )}
