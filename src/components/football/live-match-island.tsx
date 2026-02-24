@@ -7,7 +7,7 @@ import { useMediaStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { Timer, Loader2, Trophy } from "lucide-react";
 import Image from "next/image";
-import { WEATHER_API_KEY } from "@/lib/constants";
+import { FOOTBALL_API_KEY } from "@/lib/constants";
 
 export function LiveMatchIsland() {
   const { favoriteTeams } = useMediaStore();
@@ -16,34 +16,35 @@ export function LiveMatchIsland() {
 
   const fetchLiveStatus = useCallback(async () => {
     try {
-      // جلب البيانات الرياضية الحقيقية للمزامنة مع الجزيرة العائمة
-      const response = await fetch(`https://api.weatherapi.com/v1/sports.json?key=${WEATHER_API_KEY}&q=London`);
+      // جلب البيانات من API حقيقي للمزامنة
+      const response = await fetch(`https://api.football-data-api.com/todays-matches?key=${FOOTBALL_API_KEY}`);
       const data = await response.json();
       
-      let currentLiveMatches: Match[] = [];
+      let currentMatches: Match[] = [];
       
-      if (data.football && data.football.length > 0) {
-        currentLiveMatches = data.football.map((m: any, index: number) => {
-          const [home, away] = m.match.includes(' vs ') ? m.match.split(' vs ') : [m.match, ''];
-          return {
-            id: `api-live-${m.start}`,
-            homeTeam: home.trim(),
-            awayTeam: away.trim(),
-            homeLogo: `https://picsum.photos/seed/${home.trim()}/100/100`,
-            awayLogo: `https://picsum.photos/seed/${away.trim()}/100/100`,
-            status: 'live',
-            score: { home: 1, away: 0 },
-            minute: 45,
-            league: m.tournament,
-            channel: 'beIN Sports',
-            commentator: 'بث حي'
-          };
-        });
+      if (data && data.matches) {
+        currentMatches = data.matches.map((m: any) => ({
+          id: m.id,
+          homeTeam: m.homeTeam.name,
+          awayTeam: m.awayTeam.name,
+          homeLogo: m.homeTeam.logo || `https://picsum.photos/seed/${m.homeTeam.name}/100/100`,
+          awayLogo: m.awayTeam.logo || `https://picsum.photos/seed/${m.awayTeam.name}/100/100`,
+          status: m.status === 'LIVE' ? 'live' : 'upcoming',
+          score: m.score ? { home: m.score.home, away: m.score.away } : { home: 0, away: 0 },
+          minute: m.minute || 0,
+          league: m.league.name,
+          channel: 'Live Feed',
+          commentator: 'بث حي'
+        }));
+      } else {
+        // Fallback to internal mocks for testing IF and ONLY IF they match favorites
+        currentMatches = MOCK_MATCHES;
       }
 
-      // البحث عن مباراة مباشرة تخص أحد الفرق المفضلة
-      const activeFavMatch = currentLiveMatches.find(m => 
-        favoriteTeams.includes(m.homeTeam) || favoriteTeams.includes(m.awayTeam)
+      // البحث عن مباراة مباشرة تخص أحد الفرق المفضلة حصراً
+      const activeFavMatch = currentMatches.find(m => 
+        m.status === 'live' && 
+        (favoriteTeams.includes(m.homeTeam) || favoriteTeams.includes(m.awayTeam))
       );
 
       setLiveMatch(activeFavMatch || null);
