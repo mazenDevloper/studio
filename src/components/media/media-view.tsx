@@ -94,7 +94,7 @@ export function MediaView() {
   };
 
   return (
-    <div className="p-6 space-y-8 max-w-7xl mx-auto pb-32 min-h-screen">
+    <div className="p-6 space-y-8 max-w-7xl mx-auto pb-32 min-h-screen relative">
       <header className="flex flex-col gap-6">
         <div className="flex items-center justify-between">
           <div>
@@ -134,17 +134,7 @@ export function MediaView() {
       </header>
 
       {selectedChannel ? (
-        <div className="space-y-6 animate-in fade-in slide-in-from-left-4 duration-500">
-          <div className="flex items-center gap-4">
-            <Button 
-              onClick={() => setSelectedChannel(null)}
-              variant="secondary"
-              className="bg-white/10 text-white hover:bg-white/20 rounded-2xl px-6 h-12 font-bold shadow-xl border border-white/10"
-            >
-              <ArrowLeft className="w-6 h-6 mr-2" /> العودة للقنوات
-            </Button>
-          </div>
-
+        <div className="space-y-6 animate-in fade-in slide-in-from-left-4 duration-500 pb-20">
           <div className="flex items-center gap-6 p-8 rounded-3xl bg-white/5 border border-white/10 backdrop-blur-xl">
              <div className="relative w-24 h-24 rounded-full overflow-hidden border-2 border-primary shadow-2xl">
                 <Image src={selectedChannel.thumbnail} alt={selectedChannel.title} fill className="object-cover" />
@@ -204,6 +194,15 @@ export function MediaView() {
               })}
             </div>
           )}
+
+          {/* Floating Circular Back Button - Bottom Left */}
+          <Button
+            onClick={() => setSelectedChannel(null)}
+            className="fixed bottom-8 left-32 w-16 h-16 rounded-full bg-white/10 border border-white/20 text-white backdrop-blur-2xl shadow-2xl hover:bg-white/20 hover:scale-110 transition-all active:scale-95 z-[60]"
+            title="العودة للقنوات"
+          >
+            <ArrowLeft className="w-9 h-9" />
+          </Button>
         </div>
       ) : videoResults.length > 0 ? (
         <section className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -370,3 +369,4 @@ export function MediaView() {
     </div>
   );
 }
+
