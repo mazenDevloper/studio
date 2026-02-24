@@ -24,6 +24,7 @@ export function MapWidget() {
   const carOverlayRef = useRef<google.maps.WebGLOverlayView | null>(null);
   const carModelRef = useRef<THREE.Group | null>(null);
   const watchIdRef = useRef<number | null>(null);
+  const scriptLoadedRef = useRef(false);
 
   const [isLoading, setIsLoading] = useState(true);
   const [apiError, setApiError] = useState(false);
@@ -41,14 +42,10 @@ export function MapWidget() {
   });
 
   const carStateRef = useRef(carState);
-  useEffect(() => {
-    carStateRef.current = carState;
-  }, [carState]);
+  useEffect(() => { carStateRef.current = carState; }, [carState]);
 
   const tunerRef = useRef(tuner);
-  useEffect(() => {
-    tunerRef.current = tuner;
-  }, [tuner]);
+  useEffect(() => { tunerRef.current = tuner; }, [tuner]);
 
   const setup3DCarSystem = useCallback((map: google.maps.Map) => {
     if (carOverlayRef.current) return;
@@ -60,6 +57,7 @@ export function MapWidget() {
       const scene = new THREE.Scene();
       const camera = new THREE.PerspectiveCamera();
       
+      // نظام إضاءة الاستوديو لإبراز اللمعة الذهبية
       scene.add(new THREE.AmbientLight(0xffffff, 0.65));
       const light1 = new THREE.DirectionalLight(0xffffff, 0.68);
       light1.position.set(25, 8, 15); 
@@ -87,6 +85,7 @@ export function MapWidget() {
                 opacity: node.material.opacity
               });
             } else {
+              // الهيكل الذهبي الملكي
               node.material = new THREE.MeshPhongMaterial({
                 color: 0xcccaac,
                 specular: 0x888888,    
@@ -137,6 +136,7 @@ export function MapWidget() {
       
       camera.projectionMatrix = new THREE.Matrix4().fromArray(matrix);
 
+      // معادلة الحجم الديناميكي
       const finalScale = tunerRef.current.scale * Math.pow(2, 20 - zoom); 
       carModelRef.current.scale.set(finalScale, finalScale, finalScale);
       carModelRef.current.rotation.y = -(carStateRef.current.heading * Math.PI) / 180 + Math.PI;
@@ -146,27 +146,6 @@ export function MapWidget() {
     };
 
     overlay.setMap(map);
-  }, []);
-
-  const handleGetCurrentLocation = useCallback(() => {
-    if (navigator.geolocation && mapInstanceRef.current) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const pos = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          };
-          setCarState({
-            location: pos,
-            heading: position.coords.heading || 0
-          });
-          mapInstanceRef.current?.setCenter(pos);
-          if (position.coords.heading !== null) {
-            mapInstanceRef.current?.setHeading(position.coords.heading);
-          }
-        }
-      );
-    }
   }, []);
 
   useEffect(() => {
@@ -216,7 +195,8 @@ export function MapWidget() {
 
     if (window.google && window.google.maps) {
       initMap();
-    } else {
+    } else if (!scriptLoadedRef.current) {
+      scriptLoadedRef.current = true;
       const scriptId = 'google-maps-sdk';
       if (!document.getElementById(scriptId)) {
         const script = document.createElement('script');
@@ -251,11 +231,6 @@ export function MapWidget() {
           </div>
           <h3 className="text-2xl font-headline font-bold text-white mt-4">Map System Offline</h3>
           <p className="text-sm text-white/40 max-w-xs mt-2">Check API configuration and billing status.</p>
-          <Button asChild className="mt-4 bg-white text-black font-bold rounded-2xl">
-            <a href="https://console.cloud.google.com/project/_/billing/enable" target="_blank" rel="noreferrer">
-              Enable Billing
-            </a>
-          </Button>
         </div>
       ) : (
         <div ref={mapRef} className="absolute inset-0 z-0" />
@@ -288,7 +263,14 @@ export function MapWidget() {
       )}
 
       <div className="absolute bottom-8 right-8 z-20 flex flex-col gap-4">
-        <Button className="w-16 h-16 rounded-full bg-blue-600 shadow-2xl hover:bg-blue-500 transition-all active:scale-95" onClick={handleGetCurrentLocation}>
+        <Button className="w-16 h-16 rounded-full bg-blue-600 shadow-2xl hover:bg-blue-500 transition-all active:scale-95" onClick={() => {
+          if (navigator.geolocation && mapInstanceRef.current) {
+            navigator.geolocation.getCurrentPosition((p) => {
+              const pos = { lat: p.coords.latitude, lng: p.coords.longitude };
+              mapInstanceRef.current?.setCenter(pos);
+            });
+          }
+        }}>
           <Target className="w-7 h-7 text-white" />
         </Button>
         <Button className="w-16 h-16 rounded-full bg-black/60 backdrop-blur-xl border border-white/10 shadow-2xl">
