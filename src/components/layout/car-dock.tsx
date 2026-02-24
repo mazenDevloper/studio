@@ -1,7 +1,7 @@
 
 "use client";
 
-import { LayoutDashboard, Music2, Map, Radio, Settings, GripVertical, ArrowLeft } from "lucide-react";
+import { LayoutDashboard, Radio, Music2, Map, Settings, GripVertical, ArrowLeft, Trophy } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -14,7 +14,7 @@ export function CarDock() {
   const apps = [
     { name: "Home", href: "/", icon: LayoutDashboard, color: "bg-blue-600" },
     { name: "Media", href: "/media", icon: Radio, color: "bg-red-500" },
-    { name: "Music", href: "#", icon: Music2, color: "bg-pink-500" },
+    { name: "Football", href: "/football", icon: Trophy, color: "bg-orange-600" },
     { name: "Maps", href: "#", icon: Map, color: "bg-green-500" },
     { name: "Settings", href: "#", icon: Settings, color: "bg-gray-600" },
   ];
@@ -45,7 +45,6 @@ export function CarDock() {
       </div>
 
       <div className="flex flex-col items-center gap-4 mt-auto">
-        {/* Global Circular Back Button at Bottom Left */}
         <Button
           variant="ghost"
           size="icon"
