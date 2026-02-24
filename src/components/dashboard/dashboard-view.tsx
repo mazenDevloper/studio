@@ -210,7 +210,7 @@ export function DashboardView() {
         </div>
       </div>
 
-      <div className="w-full glass-panel rounded-full p-4 shadow-xl">
+      <div className="w-full glass-panel rounded-full p-4 shadow-xl transform scale-50 mt-12 mb-[-4rem] origin-center">
         <PrayerTimelineWidget />
       </div>
 
