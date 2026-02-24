@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useMediaStore } from "@/lib/store";
@@ -112,7 +111,6 @@ export function GlobalVideoPlayer() {
         </>
       ) : (
         <div className="flex items-end gap-8 animate-in zoom-in-95 duration-700">
-          {/* Side Circle Buttons */}
           <div className="flex flex-col gap-6 mb-12">
               <Button 
                 onClick={(e) => { e.stopPropagation(); setIsMinimized(true); }} 
@@ -130,7 +128,6 @@ export function GlobalVideoPlayer() {
               </Button>
           </div>
 
-          {/* Main POPUP Frame */}
           <div className="w-[52vw] h-[55vh] glass-panel rounded-[3.5rem] border-white/20 flex flex-col shadow-[0_40px_100px_rgba(0,0,0,0.8)] overflow-hidden bg-black/90 relative">
             <div className="h-16 flex items-center justify-between px-8 bg-black/40 border-b border-white/10 backdrop-blur-xl">
               <div className="flex items-center gap-3">
@@ -138,7 +135,7 @@ export function GlobalVideoPlayer() {
                 <h3 className="font-bold text-[11px] text-white/90 font-headline truncate max-w-[320px] uppercase tracking-[0.2em]">{activeVideo.title}</h3>
               </div>
               <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); setActiveVideo(null); }} className="h-10 w-10 rounded-full text-white/40 hover:text-red-500 hover:bg-red-500/10 transition-all">
-                <X className="h-5 w-5" />
+                <X className="h-5 h-5" />
               </Button>
             </div>
             <div className="flex-1">

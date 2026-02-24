@@ -1,4 +1,3 @@
-
 export const AI_ASSISTANT_API_KEY = 'AIzaSyBMmtON9ww4dJxMHrl1wKyWTvI0ipJXJws'; 
 export const WEATHER_API_KEY = '7acefc26deee4904a2393917252207'; 
 export const GOOGLE_MAPS_API_KEY = 'AIzaSyBRqAHJ2elbE_Z7NXXYC50XZpqi6HbG6Rk';
@@ -6,9 +5,8 @@ export const FOOTBALL_API_KEY = '5faa81bde7c1843d6be4a4e3706a93da';
 export const FOOTBALL_API_BASE_URL = 'https://v3.football.api-sports.io';
 
 export const YT_KEYS_POOL = [
-    "AIzaSyBbhRcFh-u3bWcG8sPLNnOl5r_lMG8q7Zs", // المفتاح الجديد والافتراضي
+    "AIzaSyAjdVZ2Rodp6ZVEF1pZT195kAtGELolxSI", // مفتاح تجريبي جديد
     "AIzaSyCtgdzDMCpCbGe1vSAu0F4wBKERC77ac6I",
-    "AIzaSyAjdVZ2Rodp6ZVEF1pZT195kAtGELolxSI",
     "AIzaSyDULoFJLWNIO9hn0u8siLz-BzTi7eM-CX4",
     "AIzaSyBYThRM6tVnzgFgdHOUAN6DN8jQd54OKeg",
     "AIzaSyB7QdfI0br5BfP71hOr36hz2dRWG_l0G8k"
