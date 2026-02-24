@@ -32,7 +32,7 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground font-body select-none overflow-hidden h-screen w-screen;
+    @apply bg-background text-foreground font-body select-none w-full;
     background: radial-gradient(circle at 50% 50%, #1a1a2e 0%, #000000 100%);
     /* ضبط المقياس العام ليكون أقل ضخامة */
     zoom: 0.88;

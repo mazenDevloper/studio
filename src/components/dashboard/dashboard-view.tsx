@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
@@ -13,7 +12,6 @@ import { PlayingNowWidget } from "./widgets/playing-now-widget";
 import { LatestVideosWidget } from "./widgets/latest-videos-widget";
 import { YouTubeSavedWidget } from "./widgets/youtube-saved-widget";
 import { PrayerCountdownCard } from "./widgets/prayer-countdown-card";
-import { MatchScheduleWidget } from "@/components/football/match-schedule-widget";
 import { useMediaStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
@@ -105,7 +103,7 @@ export function DashboardView() {
   }, [router, toast]);
 
   return (
-    <div className="h-full w-full p-6 flex flex-col gap-8 relative overflow-y-auto pb-32">
+    <div className="h-full w-full p-6 flex flex-col gap-6 relative overflow-y-auto pb-32">
       <div className="absolute top-2 left-1/2 -translate-x-1/2 z-[50] opacity-80 pointer-events-none">
         <Image 
           src="https://dmusera.netlify.app/Lexus-Logo.wine.svg" 
@@ -116,11 +114,11 @@ export function DashboardView() {
         />
       </div>
 
-      {/* Main Grid: Split into 3 equal columns (4-4-4) to remove empty space on right */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-6 min-h-[650px]">
+      {/* Main Grid: Split into 3 equal columns (4-4-4) with reduced height */}
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-6 h-[520px]">
         {/* Left Column: Widgets Carousel & Countdown */}
         <div className="md:col-span-4 flex flex-col gap-6">
-          <div className="glass-panel rounded-[2.5rem] relative group overflow-hidden flex flex-col aspect-[3/4] w-full shadow-2xl">
+          <div className="glass-panel rounded-[2.5rem] relative group overflow-hidden flex flex-col aspect-video w-full shadow-2xl">
             <Carousel setApi={setApi} opts={{ loop: true }} className="flex-1 w-full h-full">
               <CarouselContent className="h-full">
                 <CarouselItem className="h-full">
@@ -180,7 +178,7 @@ export function DashboardView() {
             </div>
           </div>
 
-          <div className="flex-1 min-h-[200px]">
+          <div className="flex-1 min-h-[140px]">
             <PrayerCountdownCard />
           </div>
         </div>
@@ -196,7 +194,7 @@ export function DashboardView() {
               className="object-contain drop-shadow-[0_30px_60px_rgba(0,0,0,0.9)] group-hover:scale-105 transition-transform duration-700"
             />
           </div>
-          <div className="absolute bottom-10 flex gap-4 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-black/60 backdrop-blur-2xl p-3 rounded-full border border-white/10 shadow-2xl">
+          <div className="absolute bottom-6 flex gap-4 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-black/60 backdrop-blur-2xl p-3 rounded-full border border-white/10 shadow-2xl">
             <button className="flex items-center gap-2 px-6 py-3 bg-white/10 border border-white/10 rounded-full hover:bg-white/20 transition-all font-bold text-xs text-white">
               <RotateCcw className="w-4 h-4" /> إعادة تعيين
             </button>
@@ -214,10 +212,6 @@ export function DashboardView() {
 
       <div className="w-full glass-panel rounded-full p-4 shadow-xl mb-2">
         <PrayerTimelineWidget />
-      </div>
-
-      <div className="w-full space-y-2">
-        <MatchScheduleWidget />
       </div>
 
       <div className="w-full space-y-2">
