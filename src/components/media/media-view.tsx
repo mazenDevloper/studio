@@ -1,11 +1,10 @@
-
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Search, Plus, Play, Trash2, Youtube, Radio, Loader2, Check, ArrowLeft, Clock, Bookmark, X, Star, Mic } from "lucide-react";
+import { Search, Plus, Play, Trash2, Youtube, Radio, Loader2, Check, ArrowLeft, Clock, Bookmark, X, Star, Mic, Users } from "lucide-react";
 import { useMediaStore } from "@/lib/store";
 import { searchYouTubeChannels, searchYouTubeVideos, fetchChannelVideos, YouTubeChannel, YouTubeVideo } from "@/lib/youtube";
 import Image from "next/image";
@@ -168,8 +167,11 @@ export function MediaView() {
              </div>
              <div className="flex-1">
                 <h2 className="text-5xl font-headline font-bold text-white mb-3 tracking-tight">{selectedChannel.title}</h2>
-                <p className="text-white/60 text-lg line-clamp-2 max-w-3xl font-medium leading-relaxed">{selectedChannel.description}</p>
-                <div className="mt-8 flex items-center gap-5">
+                <div className="flex items-center gap-3 mb-6">
+                  <Users className="w-5 h-5 text-accent" />
+                  <span className="text-xl font-bold text-accent">{selectedChannel.subscriberCount} مشترك</span>
+                </div>
+                <div className="mt-4 flex items-center gap-5">
                   <Button
                     onClick={() => favoriteChannels.some(c => c.id === selectedChannel!.id) ? removeChannel(selectedChannel!.id) : addChannel(selectedChannel!)}
                     className={cn(
@@ -198,7 +200,7 @@ export function MediaView() {
               </Button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {isLoadingVideos ? (
               <div className="col-span-full py-40 flex flex-col items-center gap-6">
                 <Loader2 className="w-16 h-16 animate-spin text-primary" />
@@ -322,7 +324,10 @@ export function MediaView() {
                           </div>
                           <div className="flex-1 min-w-0 text-right">
                             <h4 className="font-black text-xl text-white truncate">{channel.title}</h4>
-                            <p className="text-white/40 text-sm truncate mt-1">{channel.description}</p>
+                            <div className="flex items-center justify-end gap-2 mt-2 opacity-60">
+                              <span className="text-sm font-bold text-accent">{channel.subscriberCount} مشترك</span>
+                              <Users className="w-4 h-4 text-accent" />
+                            </div>
                           </div>
                           <Button 
                             onClick={() => isSubscribed ? removeChannel(channel.id) : addChannel(channel)}

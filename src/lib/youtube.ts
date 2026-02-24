@@ -7,6 +7,7 @@ export interface YouTubeChannel {
   title: string;
   description: string;
   thumbnail: string;
+  subscriberCount?: string;
 }
 
 export interface YouTubeVideo {
@@ -21,9 +22,14 @@ export interface YouTubeVideo {
 const youtubeCache: Record<string, { data: any, timestamp: number }> = {};
 const CACHE_TTL = 1000 * 60 * 10;
 
-/**
- * دالة جلب البيانات بنظام التدوير الذكي للحفاظ على الكوتا.
- */
+function formatSubscriberCount(count: string): string {
+  const num = parseInt(count, 10);
+  if (isNaN(num)) return "";
+  if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+  if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+  return count;
+}
+
 async function fetchWithRotation(endpoint: string, params: Record<string, string>) {
   const queryParams = new URLSearchParams(params);
   const cacheKey = `${endpoint}?${queryParams.toString()}`;
@@ -61,18 +67,37 @@ async function fetchWithRotation(endpoint: string, params: Record<string, string
 
 export async function searchYouTubeChannels(query: string): Promise<YouTubeChannel[]> {
   if (!query) return [];
-  const data = await fetchWithRotation('search', {
+  
+  // الخطوة 1: البحث عن القنوات
+  const searchData = await fetchWithRotation('search', {
     part: 'snippet',
     type: 'channel',
     maxResults: '8',
     q: query
   });
-  if (!data || !data.items) return [];
-  return data.items.map((item: any) => ({
+  
+  if (!searchData || !searchData.items) return [];
+
+  // الخطوة 2: جلب إحصائيات القنوات (عدد المشتركين)
+  const channelIds = searchData.items.map((item: any) => item.snippet.channelId).join(',');
+  const statsData = await fetchWithRotation('channels', {
+    part: 'statistics',
+    id: channelIds
+  });
+
+  const statsMap: Record<string, string> = {};
+  if (statsData && statsData.items) {
+    statsData.items.forEach((item: any) => {
+      statsMap[item.id] = formatSubscriberCount(item.statistics.subscriberCount);
+    });
+  }
+
+  return searchData.items.map((item: any) => ({
     id: item.snippet.channelId,
     title: item.snippet.title,
     description: item.snippet.description,
     thumbnail: item.snippet.thumbnails.high?.url || item.snippet.thumbnails.default?.url,
+    subscriberCount: statsMap[item.snippet.channelId] || "---"
   }));
 }
 
@@ -95,9 +120,6 @@ export async function searchYouTubeVideos(query: string): Promise<YouTubeVideo[]
   }));
 }
 
-/**
- * دالة جلب فيديوهات القناة بنظام Quota Friendly ( playlistItems ).
- */
 export async function fetchChannelVideos(channelId: string): Promise<YouTubeVideo[]> {
   const uploadsPlaylistId = channelId.startsWith('UC') 
     ? channelId.replace('UC', 'UU') 
