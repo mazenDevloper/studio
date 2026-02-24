@@ -1,7 +1,7 @@
 
 "use client";
 
-import { LayoutDashboard, Radio, Settings, GripVertical, ArrowLeft, Trophy, ZoomIn, ZoomOut, Mic, Loader2 } from "lucide-react";
+import { LayoutDashboard, Radio, Settings, GripVertical, ArrowLeft, Trophy, ZoomIn, ZoomOut, Mic, Loader2, Compass } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -21,7 +21,7 @@ export function CarDock() {
     { name: "Home", href: "/", icon: LayoutDashboard, color: "bg-blue-600" },
     { name: "Media", href: "/media", icon: Radio, color: "bg-red-500" },
     { name: "Football", href: "/football", icon: Trophy, color: "bg-orange-600" },
-    { name: "Settings", href: "/settings", icon: Settings, color: "bg-gray-600" },
+    { name: "Settings", href: "/settings", icon: Settings, color: "bg-zinc-700" },
   ];
 
   const handleVoiceSearch = useCallback(() => {
@@ -30,8 +30,8 @@ export function CarDock() {
     if (!SpeechRecognition) {
       toast({
         variant: "destructive",
-        title: "خطأ في النظام",
-        description: "متصفحك لا يدعم خاصية البحث الصوتي.",
+        title: "System Error",
+        description: "Voice search is not supported by your browser.",
       });
       return;
     }
@@ -52,64 +52,77 @@ export function CarDock() {
   }, [router, toast]);
 
   return (
-    <div className="h-full w-24 bg-black/80 backdrop-blur-3xl border-r border-white/10 flex flex-col items-center py-6 gap-6 z-50">
-      <div className="mb-4">
-        <GripVertical className="text-white/20 w-6 h-6" />
+    <div className="h-full w-24 bg-black/90 backdrop-blur-3xl border-r border-white/5 flex flex-col items-center py-8 gap-8 z-[100] fixed left-0 top-0 shadow-[20px_0_50px_rgba(0,0,0,0.8)]">
+      <div className="mb-2">
+        <GripVertical className="text-white/10 w-6 h-6" />
       </div>
 
-      <div className="flex-1 flex flex-col items-center gap-4">
+      <div className="flex-1 flex flex-col items-center gap-6">
         {apps.map((app) => (
           <Link
             key={app.name}
             href={app.href}
             className={cn(
-              "w-16 h-16 rounded-[1.2rem] flex items-center justify-center transition-all duration-300 relative group",
+              "w-14 h-14 rounded-[1.2rem] flex items-center justify-center transition-all duration-500 relative group",
               app.color,
-              pathname === app.href ? "scale-110 active-glow ring-2 ring-white/50" : "opacity-60 grayscale-[0.3] hover:opacity-100"
+              pathname === app.href 
+                ? "scale-110 shadow-[0_0_25px_rgba(255,255,255,0.2)] ring-2 ring-white/20" 
+                : "opacity-40 grayscale hover:opacity-100 hover:grayscale-0"
             )}
           >
-            <app.icon className="w-8 h-8 text-white" />
+            <app.icon className="w-7 h-7 text-white" />
             {pathname === app.href && (
-              <div className="absolute -right-2 w-1.5 h-6 bg-white rounded-full" />
+              <div className="absolute -left-6 w-1.5 h-6 bg-white rounded-full shadow-[0_0_10px_white]" />
             )}
+            <div className="absolute left-full ml-4 px-3 py-1.5 bg-black/80 backdrop-blur-xl border border-white/10 rounded-lg text-[8px] font-black uppercase tracking-widest text-white opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-[200]">
+              {app.name}
+            </div>
           </Link>
         ))}
       </div>
 
-      <div className="flex flex-col items-center gap-4 mt-auto">
-        <Button
-          onClick={handleVoiceSearch}
-          className={cn(
-            "w-16 h-16 rounded-full transition-all border-2 flex items-center justify-center shadow-2xl",
-            isListening ? "bg-red-500 border-white animate-pulse" : "bg-primary border-white/10"
-          )}
-        >
-          {isListening ? <Loader2 className="w-8 h-8 animate-spin" /> : <Mic className="w-8 h-8" />}
-        </Button>
+      <div className="mt-auto flex flex-col items-center gap-6">
+        {/* Floating Tools Section */}
+        <div className="flex flex-col items-center gap-4 bg-white/5 p-2 rounded-3xl border border-white/5 backdrop-blur-2xl">
+          <Button
+            onClick={handleVoiceSearch}
+            className={cn(
+              "w-12 h-12 rounded-full transition-all duration-500 flex items-center justify-center",
+              isListening ? "bg-red-500 animate-pulse shadow-[0_0_20px_red]" : "bg-primary/20 text-primary border border-primary/20 hover:bg-primary/40"
+            )}
+          >
+            {isListening ? <Loader2 className="w-6 h-6 animate-spin text-white" /> : <Mic className="w-6 h-6" />}
+          </Button>
 
-        <div className="flex flex-col gap-2">
-          <Button size="icon" variant="ghost" onClick={() => updateMapSettings({ zoom: Math.min(21, mapSettings.zoom + 0.5) })} className="w-14 h-14 rounded-full bg-white/5 border border-white/10 text-primary">
-            <ZoomIn className="w-7 h-7" />
-          </Button>
-          <Button size="icon" variant="ghost" onClick={() => updateMapSettings({ zoom: Math.max(15, mapSettings.zoom - 0.5) })} className="w-14 h-14 rounded-full bg-white/5 border border-white/10 text-primary">
-            <ZoomOut className="w-7 h-7" />
-          </Button>
+          <div className="h-px w-8 bg-white/10" />
+
+          <div className="flex flex-col gap-2">
+            <Button size="icon" variant="ghost" onClick={() => updateMapSettings({ zoom: Math.min(21, mapSettings.zoom + 0.5) })} className="w-10 h-10 rounded-full bg-white/5 text-primary hover:bg-white/10">
+              <ZoomIn className="w-5 h-5" />
+            </Button>
+            <Button size="icon" variant="ghost" onClick={() => updateMapSettings({ zoom: Math.max(15, mapSettings.zoom - 0.5) })} className="w-10 h-10 rounded-full bg-white/5 text-primary hover:bg-white/10">
+              <ZoomOut className="w-5 h-5" />
+            </Button>
+          </div>
         </div>
 
         <Button
           variant="ghost"
           size="icon"
           onClick={() => router.back()}
-          className="w-16 h-16 rounded-full bg-white/10 border border-white/15 text-white shadow-2xl"
+          className="w-12 h-12 rounded-full bg-white/5 border border-white/10 text-white/40 hover:text-white hover:bg-white/10 transition-all"
         >
-          <ArrowLeft className="w-9 h-9" />
+          <ArrowLeft className="w-6 h-6" />
         </Button>
 
-        <div className="flex flex-col items-center gap-1 mt-2">
-          <div className="text-sm font-bold tracking-tighter text-white">
+        <div className="flex flex-col items-center gap-1.5 pb-2">
+          <div className="text-[10px] font-black tracking-tighter text-white/60">
             {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}
           </div>
-          <div className="text-[10px] font-bold text-muted-foreground uppercase">5G</div>
+          <div className="flex items-center gap-1">
+            <div className="w-1 h-1 rounded-full bg-accent animate-pulse" />
+            <span className="text-[7px] font-black text-white/20 uppercase tracking-widest">5G</span>
+          </div>
         </div>
       </div>
     </div>

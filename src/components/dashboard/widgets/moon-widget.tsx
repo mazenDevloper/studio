@@ -61,36 +61,36 @@ export function MoonWidget() {
   }, []);
 
   const formatPhase = (phase: any) => {
-    if (typeof phase !== 'string') return "Loading...";
+    if (typeof phase !== 'string') return "Scanning Orbit...";
     return phase.replace(/-/g, ' ');
   };
 
   return (
-    <div className="h-full w-full bg-black rounded-[2.5rem] border border-white/5 overflow-hidden relative group shadow-2xl">
+    <div className="h-full w-full bg-black rounded-[2.5rem] border border-white/5 overflow-hidden relative group shadow-2xl flex flex-col items-center justify-center">
       <div className="absolute inset-0 z-0">
         <Image 
           src="https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?auto=format&fit=crop&q=80&w=1000"
           alt="Space Background"
           fill
-          className="object-cover opacity-40 group-hover:scale-110 transition-transform duration-[10s]"
+          className="object-cover opacity-30 group-hover:scale-110 transition-transform duration-[10s]"
           data-ai-hint="space galaxy"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
       </div>
       
-      <CardContent className="p-8 h-full flex flex-col items-center justify-center gap-6 relative z-10">
-        <div className="relative w-48 h-48 flex-shrink-0">
+      <CardContent className="p-6 h-full flex flex-col items-center justify-center gap-4 relative z-10 w-full">
+        <div className="relative w-32 h-32 flex-shrink-0">
           {loading ? (
             <div className="w-full h-full rounded-full bg-white/5 flex items-center justify-center border border-white/10">
-              <Loader2 className="w-10 h-10 animate-spin text-blue-400" />
+              <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
             </div>
           ) : error ? (
             <div className="w-full h-full rounded-full bg-zinc-900 flex flex-col items-center justify-center border border-red-500/20 text-center p-4">
-              <AlertCircle className="w-8 h-8 text-red-500/50 mb-2" />
-              <span className="text-[10px] text-white/40 font-bold uppercase tracking-widest">Signal Lost</span>
+              <AlertCircle className="w-6 h-6 text-red-500/50 mb-2" />
+              <span className="text-[8px] text-white/40 font-bold uppercase tracking-widest">Offline</span>
             </div>
           ) : (
-            <div className="relative w-full h-full rounded-full overflow-hidden ring-[12px] ring-white/5 shadow-[0_0_80px_rgba(59,130,246,0.3)] bg-black">
+            <div className="relative w-full h-full rounded-full overflow-hidden ring-[8px] ring-white/5 shadow-[0_0_60px_rgba(59,130,246,0.2)] bg-black">
               {moonData?.image?.url && (
                 <Image
                   src={moonData.image.url}
@@ -101,27 +101,27 @@ export function MoonWidget() {
                   unoptimized
                 />
               )}
-              <div className="absolute inset-0 bg-gradient-to-tr from-black/70 via-transparent to-white/5 pointer-events-none" />
+              <div className="absolute inset-0 bg-gradient-to-tr from-black/60 via-transparent to-white/5 pointer-events-none" />
             </div>
           )}
         </div>
         
-        <div className="flex flex-col items-center text-center gap-2">
-          <div className="flex items-center gap-2 bg-white/10 px-4 py-1.5 rounded-full border border-white/10 backdrop-blur-md">
-            <MoonIcon className="w-4 h-4 text-blue-400" />
-            <span className="text-[10px] font-bold uppercase tracking-[0.4em] text-blue-400">
-              {error ? "Offline Tracking" : "NASA SVS Live"}
+        <div className="flex flex-col items-center text-center gap-1.5 w-full">
+          <div className="flex items-center gap-2 bg-white/5 px-3 py-1 rounded-full border border-white/5 backdrop-blur-md">
+            <MoonIcon className="w-3 h-3 text-blue-400" />
+            <span className="text-[8px] font-black uppercase tracking-[0.3em] text-blue-400/80">
+              {error ? "LOCAL SENSOR" : "NASA LIVE FEED"}
             </span>
           </div>
 
           <div className="space-y-0">
-            <h3 className="text-6xl font-black text-white leading-none drop-shadow-2xl">
-              {moonData && moonData.illumination ? Math.round(moonData.illumination) : "--"}%
+            <h3 className="text-4xl font-black text-white leading-none drop-shadow-2xl">
+              {moonData ? Math.round(moonData.illumination) : "--"}%
             </h3>
-            <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest mt-2">Illumination</p>
+            <p className="text-[8px] text-white/30 font-bold uppercase tracking-widest mt-1">Illumination</p>
           </div>
 
-          <div className="mt-2 text-primary font-bold uppercase tracking-widest text-[10px] bg-primary/10 px-3 py-1 rounded-lg border border-primary/20">
+          <div className="mt-1 text-primary/80 font-black uppercase tracking-[0.2em] text-[8px]">
             {moonData ? formatPhase(moonData.phase) : "Analyzing Orbit..."}
           </div>
         </div>
