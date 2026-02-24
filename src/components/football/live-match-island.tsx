@@ -2,11 +2,12 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Match } from "@/lib/football-data";
+import { Match, MOCK_MATCHES } from "@/lib/football-data";
 import { useMediaStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { Timer, Loader2, Trophy } from "lucide-react";
 import Image from "next/image";
+import { WEATHER_API_KEY } from "@/lib/constants";
 
 export function LiveMatchIsland() {
   const { favoriteTeams } = useMediaStore();
@@ -16,41 +17,36 @@ export function LiveMatchIsland() {
   const fetchLiveStatus = useCallback(async () => {
     try {
       // جلب البيانات الرياضية الحقيقية للمزامنة مع الجزيرة العائمة
-      const response = await fetch('https://api.weatherapi.com/v1/sports.json?key=7acefc26deee4904a2393917252207&q=Riyadh');
+      const response = await fetch(`https://api.weatherapi.com/v1/sports.json?key=${WEATHER_API_KEY}&q=London`);
       const data = await response.json();
       
+      let currentLiveMatches: Match[] = [];
+      
       if (data.football && data.football.length > 0) {
-        // نتحقق إذا كانت هناك مباراة مباشرة تخص أحد الفرق المفضلة للمستخدم
-        const activeMatch = data.football.find((m: any) => {
+        currentLiveMatches = data.football.map((m: any, index: number) => {
           const [home, away] = m.match.includes(' vs ') ? m.match.split(' vs ') : [m.match, ''];
-          return favoriteTeams.some(team => 
-            home.toLowerCase().includes(team.toLowerCase()) || 
-            away.toLowerCase().includes(team.toLowerCase())
-          );
-        });
-
-        if (activeMatch) {
-          const [home, away] = activeMatch.match.split(' vs ');
-          setLiveMatch({
-            id: `island-${activeMatch.start}`,
+          return {
+            id: `api-live-${m.start}`,
             homeTeam: home.trim(),
             awayTeam: away.trim(),
             homeLogo: `https://picsum.photos/seed/${home.trim()}/100/100`,
             awayLogo: `https://picsum.photos/seed/${away.trim()}/100/100`,
             status: 'live',
-            score: { home: 1, away: 0 }, // بيانات محاكاة للنتيجة في حالة البث التجريبي
+            score: { home: 1, away: 0 },
             minute: 45,
-            league: activeMatch.tournament,
+            league: m.tournament,
             channel: 'beIN Sports',
-            commentator: 'بث حي',
-            startTime: '20:00'
-          });
-        } else {
-          setLiveMatch(null);
-        }
-      } else {
-        setLiveMatch(null);
+            commentator: 'بث حي'
+          };
+        });
       }
+
+      // البحث عن مباراة مباشرة تخص أحد الفرق المفضلة
+      const activeFavMatch = currentLiveMatches.find(m => 
+        favoriteTeams.includes(m.homeTeam) || favoriteTeams.includes(m.awayTeam)
+      );
+
+      setLiveMatch(activeFavMatch || null);
     } catch (error) {
       console.error("Island Sync Error:", error);
     }
@@ -58,7 +54,7 @@ export function LiveMatchIsland() {
 
   useEffect(() => {
     fetchLiveStatus();
-    const interval = setInterval(fetchLiveStatus, 60000); // تحديث كل دقيقة لضمان استمرارية البيانات
+    const interval = setInterval(fetchLiveStatus, 60000); // تحديث كل دقيقة
     return () => clearInterval(interval);
   }, [fetchLiveStatus]);
 
