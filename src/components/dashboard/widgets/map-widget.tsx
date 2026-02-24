@@ -50,7 +50,7 @@ export function MapWidget() {
       const scene = new THREE.Scene();
       const camera = new THREE.PerspectiveCamera();
       
-      // Studio Lighting
+      // Studio Lighting for High-End Specular Highlights
       scene.add(new THREE.AmbientLight(0xffffff, 0.65));
       const light1 = new THREE.DirectionalLight(0xffffff, 0.68);
       light1.position.set(25, 8, 15); 
@@ -69,6 +69,7 @@ export function MapWidget() {
                              (originalColor.r < 0.5 && originalColor.g < 0.5 && originalColor.b < 0.5);
 
             if (isTransparent || isNeutral) {
+              // Wheels and Glass: High contrast and transparency preservation
               node.material = new THREE.MeshPhongMaterial({
                 color: isTransparent ? originalColor : 0x050505,
                 specular: 0x444444,
@@ -78,6 +79,7 @@ export function MapWidget() {
                 opacity: node.material.opacity
               });
             } else {
+              // Body: Royal Deep Gold with specific specular settings
               node.material = new THREE.MeshPhongMaterial({
                 color: 0xcccaac, // Royal Gold Deep
                 specular: 0x888888,    
@@ -128,6 +130,7 @@ export function MapWidget() {
       
       camera.projectionMatrix = new THREE.Matrix4().fromArray(matrix);
 
+      // Scale adjustment based on zoom level
       const finalScale = tuner.scale * Math.pow(2, 20 - zoom); 
       carModelRef.current.scale.set(finalScale, finalScale, finalScale);
       carModelRef.current.rotation.y = -(carState.heading * Math.PI) / 180 + Math.PI;
@@ -179,12 +182,13 @@ export function MapWidget() {
 
         if (navigator.geolocation) {
           watchIdRef.current = navigator.geolocation.watchPosition((pos) => {
+            const newPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
             setCarState({
-              location: { lat: pos.coords.latitude, lng: pos.coords.longitude },
+              location: newPos,
               heading: pos.coords.heading || 0
             });
             if (mapInstanceRef.current) {
-              mapInstanceRef.current.setCenter({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+              mapInstanceRef.current.setCenter(newPos);
               mapInstanceRef.current.setHeading(pos.coords.heading || 0);
             }
           });
@@ -217,7 +221,10 @@ export function MapWidget() {
     <Card className="h-full w-full overflow-hidden border-none bg-black relative group rounded-[2.5rem] shadow-2xl">
       {isLoading && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <Loader2 className="w-10 h-10 animate-spin text-blue-500" />
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 className="w-10 h-10 animate-spin text-blue-500" />
+            <span className="text-white/60 font-bold text-xs uppercase tracking-widest">Initializing Navigation...</span>
+          </div>
         </div>
       )}
 
@@ -265,7 +272,7 @@ export function MapWidget() {
       )}
 
       <div className="absolute bottom-8 right-8 z-20 flex flex-col gap-4">
-        <Button className="w-16 h-16 rounded-full bg-blue-600 shadow-2xl" onClick={handleGetCurrentLocation}>
+        <Button className="w-16 h-16 rounded-full bg-blue-600 shadow-2xl hover:bg-blue-500 transition-all active:scale-95" onClick={handleGetCurrentLocation}>
           <Target className="w-7 h-7 text-white" />
         </Button>
         <Button className="w-16 h-16 rounded-full bg-black/60 backdrop-blur-xl border border-white/10 shadow-2xl">
