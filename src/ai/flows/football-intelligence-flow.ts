@@ -1,7 +1,7 @@
 
 'use server';
 /**
- * @fileOverview ذكاء اصطناعي رياضي متخصص في جلب وتنسيق المباريات والقنوات والمعلقين.
+ * @fileOverview ذكاء اصطناعي رياضي متطور يعمل كمحرك لبيانات Kooora.
  */
 
 import { ai } from '@/ai/genkit';
@@ -22,18 +22,19 @@ const MatchOutputSchema = z.object({
   }).optional(),
   minute: z.number().optional(),
   league: z.string(),
-  channel: z.string().describe('القناة الناقلة في الوطن العربي (SSC, beIN)'),
-  commentator: z.string().describe('اسم المعلق الشهير المتوقع أو الفعلي'),
+  leagueLogo: z.string().optional(),
+  channel: z.string().describe('القناة الناقلة المتوقعة في الوطن العربي (SSC, beIN)'),
+  commentator: z.string().describe('اسم المعلق المتوقع بناءً على أهمية المباراة'),
 });
 
 const FootballIntelligenceInputSchema = z.object({
-  type: z.enum(['today', 'live']).describe('نوع المباريات المطلوب جلبها.'),
+  type: z.enum(['today', 'live']).describe('نوع البيانات المطلوب معالجتها.'),
 });
 export type FootballIntelligenceInput = z.infer<typeof FootballIntelligenceInputSchema>;
 
 const FootballIntelligenceOutputSchema = z.object({
   matches: z.array(MatchOutputSchema),
-  summary: z.string().optional().describe('ملخص سريع ومحمس للمباريات باللغة العربية.'),
+  summary: z.string().optional().describe('ملخص تحليلي للمباريات بأسلوب Kooora.'),
   error: z.string().optional(),
 });
 export type FootballIntelligenceOutput = z.infer<typeof FootballIntelligenceOutputSchema>;
@@ -41,7 +42,7 @@ export type FootballIntelligenceOutput = z.infer<typeof FootballIntelligenceOutp
 const fetchMatchesTool = ai.defineTool(
   {
     name: 'fetchMatchesTool',
-    description: 'يجلب بيانات مباريات كرة القدم الحقيقية من API-Sports.',
+    description: 'يجلب بيانات مباريات كرة القدم الحقيقية من API-Sports لليوم.',
     inputSchema: z.object({ type: z.enum(['today', 'live']) }),
     outputSchema: z.any(),
   },
@@ -57,7 +58,7 @@ export async function getFootballIntelligence(
     return await footballIntelligenceFlow(input);
   } catch (error: any) {
     console.error("AI Flow Execution Error:", error);
-    return { matches: [], error: "NETWORK_ERROR_OR_TIMEOUT" };
+    return { matches: [], error: "CONNECTION_TIMEOUT" };
   }
 }
 
@@ -66,17 +67,16 @@ const prompt = ai.definePrompt({
   input: { schema: FootballIntelligenceInputSchema },
   output: { schema: FootballIntelligenceOutputSchema },
   tools: [fetchMatchesTool],
-  prompt: `أنت خبير ومحلل رياضي في موقع "كووورة". مهمتك هي جلب مباريات {{type}} وتنسيقها للمشجع العربي.
+  prompt: `أنت وكيل ذكاء اصطناعي رياضي متخصص يعمل كمحرك بيانات لموقع "كووورة". مهمتك هي تحليل مباريات {{type}} وتقديمها للمشجع العربي بأدق التفاصيل.
 
-1. استخدم fetchMatchesTool لجلب البيانات الحقيقية.
-2. قم بتحليل النتائج:
-   - للمباريات السعودية (دوري روشن، الكأس): اجعل القناة "SSC HD" والمعلقين المتوقعين (فهد العتيبي، مشاري القرني، عيسى الحربين).
-   - للمباريات الأوروبية (أبطال أوروبا، الدوري الإنجليزي، الإسباني): اجعل القناة "beIN Sports HD" والمعلقين المتوقعين (عصام الشوالي، حفيظ دراجي، خليل البلوشي).
-   - للمباريات العربية الأخرى: حدد القناة المناسبة (أبوظبي الرياضية، الكأس القطري).
-3. إذا كانت القنوات موجودة في بيانات الأداة (broadcasts)، استخدمها كأولوية.
-4. اكتب ملخصاً حماسياً باللغة العربية (جملتين) عن أهمية مباريات اليوم.
-5. رتب المباريات بحيث تظهر الدوريات الكبرى (السعودي، الإسباني، الإنجليزي، الأبطال) في المقدمة.
-6. إذا لم تكن هناك مباريات هامة، وضح ذلك في الملخص وأرجع مصفوفة فارغة.`,
+1. استدعِ fetchMatchesTool لجلب البيانات الحقيقية لليوم.
+2. قم بتحليل النتائج وتنسيقها:
+   - للمباريات السعودية: حدد القناة "SSC HD" والمعلقين (فهد العتيبي، عيسى الحربين، فارس عوض).
+   - للمباريات الأوروبية الكبرى: حدد القناة "beIN Sports HD" والمعلقين (عصام الشوالي، خليل البلوشي، حفيظ دراجي).
+   - رتب المباريات حسب الأهمية الجماهيرية.
+3. اكتب ملخصاً مشوقاً باللغة العربية في حقل summary يلخص أهم مواجهات الليلة وتوقعاتك لها.
+4. إذا كانت القنوات موجودة في بيانات الأداة (broadcasts)، استخدمها كأولوية، وإلا توقع الأنسب بناءً على شهرة الدوري.
+5. تأكد من إرجاع مصفوفة المباريات كاملة مع تحديث حقول channel و commentator لكل مباراة.`,
 });
 
 const footballIntelligenceFlow = ai.defineFlow(

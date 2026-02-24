@@ -9,7 +9,6 @@ import { Match } from "./football-data";
  */
 export async function fetchFootballData(type: 'today' | 'live'): Promise<Match[]> {
   const date = new Date().toISOString().split('T')[0];
-  // استخدام توقيت مكة المكرمة لضمان دقة مواعيد المباريات في الوطن العربي
   const url = type === 'live' 
     ? `${FOOTBALL_API_BASE_URL}/fixtures?live=all&timezone=Asia/Riyadh`
     : `${FOOTBALL_API_BASE_URL}/fixtures?date=${date}&timezone=Asia/Riyadh`;
@@ -21,25 +20,12 @@ export async function fetchFootballData(type: 'today' | 'live'): Promise<Match[]
         'x-apisports-key': FOOTBALL_API_KEY || '',
         'x-apisports-host': 'v3.football.api-sports.io'
       },
-      next: { revalidate: 300 } // تحديث كل 5 دقائق
+      next: { revalidate: 300 }
     });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error(`API Error: ${response.status}`, errorData);
-      return [];
-    }
-
+    if (!response.ok) return [];
     const data = await response.json();
-
-    if (data.errors && Object.keys(data.errors).length > 0) {
-      console.error("API Specific Errors:", data.errors);
-      return [];
-    }
-
-    if (!data.response || !Array.isArray(data.response)) {
-      return [];
-    }
+    if (!data.response || !Array.isArray(data.response)) return [];
 
     return data.response.map((item: any) => {
       const statusShort = item.fixture.status.short;
@@ -57,9 +43,6 @@ export async function fetchFootballData(type: 'today' | 'live'): Promise<Match[]
         hour12: false
       });
 
-      // استخراج القنوات الناقلة إذا توفرت من الـ API
-      const broadcasts = item.fixture.broadcasts || [];
-      
       return {
         id: item.fixture.id.toString(),
         homeTeam: item.teams.home.name,
@@ -74,16 +57,40 @@ export async function fetchFootballData(type: 'today' | 'live'): Promise<Match[]
         },
         minute: item.fixture.status.elapsed ?? 0,
         league: item.league.name,
-        channel: "يحدد لاحقاً", // سيقوم الذكاء الاصطناعي بتحديث هذا الحقل
-        commentator: "يحدد لاحقاً", // سيقوم الذكاء الاصطناعي بتحديث هذا الحقل
-        broadcasts: broadcasts.map((b: any) => ({
-          country: b.country,
-          channel: b.channel
-        }))
+        leagueLogo: item.league.logo,
+        channel: "يحدد لاحقاً",
+        commentator: "يحدد لاحقاً",
+        broadcasts: item.fixture.broadcasts || []
       } as Match;
     });
   } catch (error) {
     console.error("Network Fetch Error:", error);
+    return [];
+  }
+}
+
+export async function fetchStandings(leagueId: number) {
+  try {
+    const response = await fetch(`${FOOTBALL_API_BASE_URL}/standings?league=${leagueId}&season=2024`, {
+      method: 'GET',
+      headers: { 'x-apisports-key': FOOTBALL_API_KEY || '', 'x-apisports-host': 'v3.football.api-sports.io' }
+    });
+    const data = await response.json();
+    return data.response?.[0]?.league?.standings?.[0] || [];
+  } catch (error) {
+    return [];
+  }
+}
+
+export async function fetchTopScorers(leagueId: number) {
+  try {
+    const response = await fetch(`${FOOTBALL_API_BASE_URL}/players/topscorers?league=${leagueId}&season=2024`, {
+      method: 'GET',
+      headers: { 'x-apisports-key': FOOTBALL_API_KEY || '', 'x-apisports-host': 'v3.football.api-sports.io' }
+    });
+    const data = await response.json();
+    return data.response || [];
+  } catch (error) {
     return [];
   }
 }

@@ -2,14 +2,17 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Match } from "@/lib/football-data";
+import { Match, MAJOR_LEAGUES } from "@/lib/football-data";
 import { getFootballIntelligence } from "@/ai/flows/football-intelligence-flow";
+import { fetchStandings, fetchTopScorers } from "@/lib/football-api";
 import { useMediaStore } from "@/lib/store";
-import { Trophy, Tv, Mic2, Star, Calendar, RefreshCw, Loader2, Check, Sparkles, AlertCircle, WifiOff, LayoutGrid } from "lucide-react";
+import { Trophy, Tv, Mic2, Star, Calendar, RefreshCw, Loader2, Check, Sparkles, AlertCircle, WifiOff, LayoutGrid, Users, ListOrdered } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 export function FootballView() {
   const { favoriteTeams, toggleFavoriteTeam } = useMediaStore();
@@ -17,17 +20,20 @@ export function FootballView() {
   const [summary, setSummary] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  const [standings, setStandings] = useState<any[]>([]);
+  const [scorers, setScorers] = useState<any[]>([]);
+  const [selectedLeague, setSelectedLeague] = useState(MAJOR_LEAGUES[0].id);
+  const [statsLoading, setStatsLoading] = useState(false);
 
   const fetchMatches = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const response = await getFootballIntelligence({ type: 'today' });
-      
       if (response.error) {
         setError(response.error);
       } else if (response.matches) {
-        // ترتيب المباريات: المفضلة أولاً، ثم حسب الأهمية (دوري روشن، الأبطال، إلخ)
         const sortedData = [...response.matches].sort((a, b) => {
           const aFav = favoriteTeams.includes(a.homeTeam) || favoriteTeams.includes(a.awayTeam);
           const bFav = favoriteTeams.includes(b.homeTeam) || favoriteTeams.includes(b.awayTeam);
@@ -39,18 +45,34 @@ export function FootballView() {
         if (response.summary) setSummary(response.summary);
       }
     } catch (err) {
-      console.error("UI Fetch Error:", err);
       setError("FAILED_TO_LOAD");
     } finally {
       setLoading(false);
     }
   }, [favoriteTeams]);
 
+  const loadLeagueStats = useCallback(async (leagueId: number) => {
+    setStatsLoading(true);
+    try {
+      const [sData, tData] = await Promise.all([
+        fetchStandings(leagueId),
+        fetchTopScorers(leagueId)
+      ]);
+      setStandings(sData);
+      setScorers(tData);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setStatsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchMatches();
-    const interval = setInterval(fetchMatches, 300000); // تحديث كل 5 دقائق
+    loadLeagueStats(selectedLeague);
+    const interval = setInterval(fetchMatches, 300000);
     return () => clearInterval(interval);
-  }, [fetchMatches]);
+  }, [fetchMatches, selectedLeague, loadLeagueStats]);
 
   const liveMatches = matches.filter(m => m.status === 'live');
   const upcomingMatches = matches.filter(m => m.status === 'upcoming');
@@ -61,12 +83,12 @@ export function FootballView() {
       <header className="flex items-center justify-between">
         <div className="flex flex-col">
           <h1 className="text-4xl font-headline font-bold text-white tracking-tighter flex items-center gap-3">
-            مركز المباريات الذكي
+            Kooora AI Center
             <Sparkles className="w-6 h-6 text-accent animate-pulse" />
           </h1>
           <p className="text-muted-foreground text-sm font-medium uppercase tracking-widest opacity-60 flex items-center gap-2">
              <div className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
-             تغطية حية مدعومة بالذكاء الاصطناعي (Kooora AI)
+             تغطية حية وشاملة مدعومة بالذكاء الاصطناعي
           </p>
         </div>
         <Button 
@@ -80,23 +102,20 @@ export function FootballView() {
         </Button>
       </header>
 
-      {error ? (
-        <div className="p-12 text-center bg-zinc-900/50 backdrop-blur-3xl border border-white/5 rounded-[2.5rem] flex flex-col items-center gap-6 animate-in fade-in zoom-in-95">
-          <div className="w-20 h-20 rounded-full bg-red-500/10 flex items-center justify-center border border-red-500/20">
-            {error === "NETWORK_ERROR_OR_TIMEOUT" ? <WifiOff className="w-10 h-10 text-red-500" /> : <AlertCircle className="w-10 h-10 text-red-500" />}
-          </div>
-          <div className="space-y-2 text-center">
-            <h3 className="text-2xl font-bold text-white">عذراً، تعذر جلب المباريات</h3>
-            <p className="text-white/40 max-w-md mx-auto">
-              يبدو أن هناك مشكلة في الاتصال أو أن حصة الطلبات اليومية قد نفدت. يرجى المحاولة لاحقاً.
-            </p>
-          </div>
-          <Button onClick={fetchMatches} className="bg-primary hover:bg-primary/90 text-white rounded-full px-8 h-12 font-bold">
-            إعادة المحاولة الآن
-          </Button>
-        </div>
-      ) : (
-        <>
+      <Tabs defaultValue="matches" className="w-full">
+        <TabsList className="bg-white/5 p-1 rounded-full border border-white/10 h-14 mb-8">
+          <TabsTrigger value="matches" className="rounded-full px-8 data-[state=active]:bg-primary">
+            <Calendar className="w-4 h-4 mr-2" /> مباريات اليوم
+          </TabsTrigger>
+          <TabsTrigger value="standings" className="rounded-full px-8 data-[state=active]:bg-primary">
+            <ListOrdered className="w-4 h-4 mr-2" /> الترتيب
+          </TabsTrigger>
+          <TabsTrigger value="scorers" className="rounded-full px-8 data-[state=active]:bg-primary">
+            <Users className="w-4 h-4 mr-2" /> الهدافون
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="matches" className="space-y-8">
           {summary && !loading && (
             <div className="glass-panel p-6 rounded-[2rem] border-accent/20 bg-accent/5 animate-in fade-in slide-in-from-top-4">
               <p className="text-white/90 font-bold text-lg leading-relaxed text-right dir-rtl">
@@ -115,11 +134,7 @@ export function FootballView() {
                   </h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {liveMatches.map(match => (
-                      <MatchCard 
-                        key={match.id} 
-                        match={match} 
-                        isFavorite={favoriteTeams.includes(match.homeTeam) || favoriteTeams.includes(match.awayTeam)} 
-                      />
+                      <MatchCard key={match.id} match={match} isFavorite={favoriteTeams.includes(match.homeTeam) || favoriteTeams.includes(match.awayTeam)} />
                     ))}
                   </div>
                 </section>
@@ -132,103 +147,133 @@ export function FootballView() {
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {loading ? (
-                     [1,2,3,4].map(i => (
-                       <div key={i} className="h-44 rounded-[2.5rem] bg-white/5 p-6 flex flex-col gap-4">
-                         <div className="flex justify-between"><Skeleton className="h-4 w-24" /><Skeleton className="h-4 w-12" /></div>
-                         <div className="flex justify-around py-4"><Skeleton className="h-14 w-14 rounded-full" /><Skeleton className="h-10 w-20" /><Skeleton className="h-14 w-14 rounded-full" /></div>
-                       </div>
-                     ))
+                    [1,2,3,4].map(i => <Skeleton key={i} className="h-44 rounded-[2.5rem] bg-white/5" />)
                   ) : upcomingMatches.length > 0 ? (
                     upcomingMatches.map(match => (
-                      <MatchCard 
-                        key={match.id} 
-                        match={match} 
-                        isFavorite={favoriteTeams.includes(match.homeTeam) || favoriteTeams.includes(match.awayTeam)} 
-                      />
+                      <MatchCard key={match.id} match={match} isFavorite={favoriteTeams.includes(match.homeTeam) || favoriteTeams.includes(match.awayTeam)} />
                     ))
                   ) : (
-                    <div className="col-span-2 py-20 text-center bg-white/5 rounded-[2.5rem] border border-dashed border-white/10 flex flex-col items-center gap-4">
-                      <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center">
-                        <Trophy className="w-8 h-8 text-white/20" />
-                      </div>
-                      <div>
-                        <h3 className="text-white/60 font-bold text-lg">لا توجد مباريات كبرى اليوم</h3>
-                        <p className="text-white/30 text-sm mt-1">جرب تحديث البيانات أو التحقق لاحقاً</p>
-                      </div>
+                    <div className="col-span-2 py-20 text-center bg-white/5 rounded-[2.5rem] border border-dashed border-white/10">
+                      <p className="text-white/40">لا توجد مباريات كبرى اليوم</p>
                     </div>
                   )}
                 </div>
               </section>
-
-              {finishedMatches.length > 0 && (
-                <section className="space-y-4">
-                  <h2 className="text-lg font-bold font-headline text-white/40 flex items-center gap-3">
-                    <Trophy className="w-5 h-5" />
-                    نتائج مباريات اكتملت
-                  </h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 opacity-60">
-                    {finishedMatches.map(match => (
-                      <MatchCard 
-                        key={match.id} 
-                        match={match} 
-                        isFavorite={favoriteTeams.includes(match.homeTeam) || favoriteTeams.includes(match.awayTeam)} 
-                      />
-                    ))}
-                  </div>
-                </section>
-              )}
             </div>
 
             <div className="lg:col-span-4 space-y-6">
               <div className="glass-panel rounded-[2.5rem] p-8 border-white/10 bg-black/40">
                 <h3 className="text-lg font-bold font-headline text-white mb-6 flex items-center justify-between">
-                  تخصيص المفضلة
+                  فرقك المفضلة
                   <Star className="w-4 h-4 text-accent fill-current" />
                 </h3>
-                <p className="text-xs text-white/40 mb-6 leading-relaxed">
-                  اختر فرقك المفضلة لتظهر دائماً في أعلى الجدول وتفعل "الجزيرة العائمة" عند انطلاق المباراة.
-                </p>
                 <div className="flex flex-wrap gap-2">
-                  {['الهلال', 'النصر', 'الاتحاد', 'الأهلي', 'ريال مدريد', 'برشلونة', 'مانشستر سيتي', 'ليفربول', 'بايرن ميونخ', 'أرسنال', 'باريس سان جيرمان'].map(team => {
+                  {['الهلال', 'النصر', 'الاتحاد', 'الأهلي', 'ريال مدريد', 'برشلونة', 'مانشستر سيتي', 'ليفربول'].map(team => {
                     const isFav = favoriteTeams.includes(team);
                     return (
                       <Button
                         key={team}
                         onClick={() => toggleFavoriteTeam(team)}
                         variant={isFav ? "default" : "outline"}
-                        className={cn(
-                          "rounded-xl text-[10px] font-bold h-10 px-4 transition-all duration-300",
-                          isFav ? "bg-primary border-primary shadow-glow scale-105" : "border-white/10 bg-white/5 hover:border-white/30"
-                        )}
+                        className={cn("rounded-xl text-[10px] font-bold h-10 px-4", isFav && "bg-primary shadow-glow")}
                       >
-                        {isFav && <Check className="w-3 h-3 mr-1" />}
                         {team}
                       </Button>
                     );
                   })}
                 </div>
               </div>
-
-              <div className="glass-panel rounded-[2.5rem] p-6 border-white/10 bg-black/40">
-                 <div className="flex items-center gap-3 mb-4">
-                    <LayoutGrid className="w-5 h-5 text-accent" />
-                    <h3 className="text-sm font-bold text-white uppercase tracking-widest">تغطية المنطقة</h3>
-                 </div>
-                 <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                       <span className="text-xs text-white/60">الدوري السعودي</span>
-                       <span className="text-[10px] bg-primary/20 text-primary px-2 py-0.5 rounded-full font-bold">نشط</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                       <span className="text-xs text-white/60">الدوريات الأوروبية</span>
-                       <span className="text-[10px] bg-primary/20 text-primary px-2 py-0.5 rounded-full font-bold">نشط</span>
-                    </div>
-                 </div>
-              </div>
             </div>
           </div>
-        </>
-      )}
+        </TabsContent>
+
+        <TabsContent value="standings" className="space-y-6">
+          <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
+            {MAJOR_LEAGUES.map(league => (
+              <Button
+                key={league.id}
+                variant={selectedLeague === league.id ? "default" : "outline"}
+                onClick={() => setSelectedLeague(league.id)}
+                className="rounded-full"
+              >
+                {league.name}
+              </Button>
+            ))}
+          </div>
+
+          <div className="glass-panel rounded-[2rem] overflow-hidden border-white/10">
+            {statsLoading ? (
+              <div className="p-20 flex justify-center"><Loader2 className="w-10 h-10 animate-spin text-primary" /></div>
+            ) : (
+              <ScrollArea className="h-[500px]">
+                <table className="w-full text-right dir-rtl">
+                  <thead className="bg-white/5 text-white/40 text-xs font-bold uppercase tracking-widest">
+                    <tr>
+                      <th className="p-4">الترتيب</th>
+                      <th className="p-4 text-right">الفريق</th>
+                      <th className="p-4">لعب</th>
+                      <th className="p-4">فارق</th>
+                      <th className="p-4">نقاط</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {standings.map((team: any) => (
+                      <tr key={team.team.id} className="hover:bg-white/5 transition-colors">
+                        <td className="p-4 font-bold text-white/60">{team.rank}</td>
+                        <td className="p-4 flex items-center gap-3">
+                          <Image src={team.team.logo} alt={team.team.name} width={24} height={24} className="object-contain" />
+                          <span className="font-bold text-white">{team.team.name}</span>
+                        </td>
+                        <td className="p-4 text-white/80">{team.all.played}</td>
+                        <td className="p-4 text-accent">{team.goalsDiff}</td>
+                        <td className="p-4 font-black text-primary">{team.points}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </ScrollArea>
+            )}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="scorers" className="space-y-6">
+          <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
+            {MAJOR_LEAGUES.map(league => (
+              <Button
+                key={league.id}
+                variant={selectedLeague === league.id ? "default" : "outline"}
+                onClick={() => setSelectedLeague(league.id)}
+                className="rounded-full"
+              >
+                {league.name}
+              </Button>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {statsLoading ? (
+              [1,2,3,4,5,6].map(i => <Skeleton key={i} className="h-24 rounded-2xl bg-white/5" />)
+            ) : (
+              scorers.map((item: any, idx) => (
+                <div key={item.player.id} className="glass-panel p-4 rounded-2xl flex items-center gap-4">
+                  <div className="text-2xl font-black text-white/20 w-8">{idx + 1}</div>
+                  <div className="relative w-12 h-12 rounded-full overflow-hidden border-2 border-primary/20">
+                    <Image src={item.player.photo} alt={item.player.name} fill className="object-cover" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-bold text-white truncate">{item.player.name}</h4>
+                    <p className="text-xs text-white/40">{item.statistics[0].team.name}</p>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-xl font-black text-primary">{item.statistics[0].goals.total}</div>
+                    <div className="text-[8px] font-bold text-white/20 uppercase">أهداف</div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
@@ -246,7 +291,10 @@ function MatchCard({ match, isFavorite }: { match: Match; isFavorite: boolean })
       )}
 
       <div className="flex items-center justify-between text-[9px] font-black text-white/40 uppercase tracking-widest relative z-10">
-        <span className="truncate max-w-[150px] bg-white/5 px-2 py-0.5 rounded-full border border-white/5">{match.league}</span>
+        <div className="flex items-center gap-2 bg-white/5 px-2 py-1 rounded-full border border-white/5">
+          {match.leagueLogo && <Image src={match.leagueLogo} alt="" width={12} height={12} className="object-contain opacity-60" />}
+          <span className="truncate max-w-[150px]">{match.league}</span>
+        </div>
         <span className={cn(
           "px-3 py-1 rounded-full border font-black",
           match.status === 'live' ? "bg-red-500/10 text-red-500 border-red-500/20 animate-pulse" : "bg-white/5 text-white/40 border-white/10"
