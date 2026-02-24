@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { Card } from "@/components/ui/card";
-import { Compass, Navigation, MapPin, Search, Clock, Zap, Bookmark, Star, Trash2, Map as MapIcon, AlertTriangle, ExternalLink } from "lucide-react";
+import { Compass, Navigation, MapPin, Search, Clock, Zap, Bookmark, Star, Trash2, Map as MapIcon, AlertTriangle, ExternalLink, Target } from "lucide-react";
 import { GOOGLE_MAPS_API_KEY } from "@/lib/constants";
 import { useMediaStore, SavedPlace } from "@/lib/store";
 import { Input } from "@/components/ui/input";
@@ -48,6 +48,7 @@ export function MapWidget() {
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [apiError, setApiError] = useState<boolean>(false);
   const [directionsRenderer, setDirectionsRenderer] = useState<google.maps.DirectionsRenderer | null>(null);
+  const [currentMarker, setCurrentMarker] = useState<google.maps.Marker | null>(null);
   const [navigationData, setNavigationData] = useState<{
     destination: string;
     distance: string;
@@ -62,6 +63,25 @@ export function MapWidget() {
 
   const startNavigation = useCallback((destination: google.maps.LatLng, name: string = "Target Location") => {
     if (!map || !directionsRenderer) return;
+
+    // Remove existing marker if any
+    if (currentMarker) currentMarker.setMap(null);
+
+    // Create new marker
+    const marker = new google.maps.Marker({
+      position: destination,
+      map: map,
+      animation: google.maps.Animation.DROP,
+      icon: {
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: 10,
+        fillColor: "#3b82f6",
+        fillOpacity: 1,
+        strokeWeight: 4,
+        strokeColor: "#ffffff",
+      }
+    });
+    setCurrentMarker(marker);
 
     const directionsService = new google.maps.DirectionsService();
     directionsService.route(
@@ -95,7 +115,39 @@ export function MapWidget() {
         }
       }
     );
-  }, [map, directionsRenderer]);
+  }, [map, directionsRenderer, currentMarker]);
+
+  const handleGetCurrentLocation = () => {
+    if (navigator.geolocation && map) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const pos = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          };
+          map.setCenter(pos);
+          map.setZoom(17);
+          
+          new google.maps.Marker({
+            position: pos,
+            map: map,
+            title: "Your Location",
+            icon: {
+              path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+              scale: 6,
+              fillColor: "#10b981",
+              fillOpacity: 1,
+              strokeWeight: 2,
+              strokeColor: "#ffffff",
+            }
+          });
+        },
+        () => {
+          console.error("Error: The Geolocation service failed.");
+        }
+      );
+    }
+  };
 
   const initGoogleMap = useCallback(() => {
     if (mapRef.current && !map) {
@@ -154,18 +206,12 @@ export function MapWidget() {
   }, [map, startNavigation]);
 
   useEffect(() => {
-    // Handle Google Maps authentication failures (like BillingNotEnabled)
     window.gm_authFailure = () => {
       setApiError(true);
     };
 
     if (window.google && window.google.maps) {
       initGoogleMap();
-      return;
-    }
-
-    if (document.getElementById('google-maps-script')) {
-      window.initMap = initGoogleMap;
       return;
     }
 
@@ -289,6 +335,7 @@ export function MapWidget() {
                 setNavigationData(null);
                 directionsRenderer?.setDirections({ routes: [] });
                 if (map) map.setZoom(15);
+                setCurrentMarker(null);
                 setCurrentPlace(null);
               }}
             >
@@ -304,6 +351,12 @@ export function MapWidget() {
           onClick={() => setShowSavedPlaces(!showSavedPlaces)}
         >
           <Bookmark className={`w-7 h-7 ${showSavedPlaces ? "text-yellow-500 fill-current" : "text-white"}`} />
+        </Button>
+        <Button 
+          className="w-16 h-16 rounded-full bg-blue-600 backdrop-blur-3xl flex items-center justify-center border border-white/10 shadow-2xl hover:bg-blue-500 transition-all"
+          onClick={handleGetCurrentLocation}
+        >
+          <Target className="w-7 h-7 text-white" />
         </Button>
         {!apiError && (
           <Button 

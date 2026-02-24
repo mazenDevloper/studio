@@ -4,6 +4,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { prayerTimesData, convertTo12Hour } from "@/lib/constants";
 import { Clock, Timer, Calendar } from "lucide-react";
+import Image from "next/image";
 
 export function DateAndClockWidget() {
   const [mounted, setMounted] = useState(false);
@@ -66,29 +67,43 @@ export function DateAndClockWidget() {
   const monthName = now.toLocaleDateString('ar-EG', { month: 'long' });
 
   return (
-    <div className="h-full w-full flex flex-col items-center justify-center p-8 bg-gradient-to-br from-indigo-900/40 via-transparent to-transparent">
-      <div className="flex items-center gap-3 mb-2 text-white/40 font-bold uppercase tracking-[0.2em] text-[10px]">
-        <Calendar className="w-3 h-3 text-accent" />
-        {dayName} {dayNum} {monthName}
+    <div className="h-full w-full flex flex-col items-center justify-center p-8 relative overflow-hidden bg-black rounded-[2.5rem]">
+      {/* Background Image Fill */}
+      <div className="absolute inset-0 z-0">
+        <Image 
+          src="https://images.unsplash.com/photo-1534067783941-51c9c23ecefd?auto=format&fit=crop&q=80&w=1000"
+          alt="Atmospheric Background"
+          fill
+          className="object-cover opacity-30 group-hover:scale-105 transition-transform duration-[8s]"
+          data-ai-hint="mountain night"
+        />
+        <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/60 via-black/40 to-black" />
       </div>
-      
-      <div className="text-7xl font-black text-white tracking-tighter mb-2 drop-shadow-2xl">
-        {timeString}
-      </div>
-      
-      {nextPrayer && (
-        <div className="mt-4 flex flex-col items-center gap-1">
-          <div className="flex items-center gap-2 bg-white/10 px-4 py-1.5 rounded-full border border-white/10">
-            <span className="text-[10px] font-bold text-blue-300 uppercase tracking-widest">الصلاة القادمة: {nextPrayer.name}</span>
-          </div>
-          <span className="text-4xl font-black text-accent drop-shadow-lg mt-2">
-            {convertTo12Hour(nextPrayer.time)}
-          </span>
-          <div className="text-[10px] font-bold text-white/30 uppercase mt-1 tracking-widest">
-            متبقي {nextPrayer.countdown}
-          </div>
+
+      <div className="relative z-10 flex flex-col items-center">
+        <div className="flex items-center gap-3 mb-4 bg-white/10 px-5 py-2 rounded-full border border-white/10 backdrop-blur-md">
+          <Calendar className="w-4 h-4 text-accent" />
+          <span className="text-[12px] text-white/90 font-bold uppercase tracking-[0.2em]">{dayName} {dayNum} {monthName}</span>
         </div>
-      )}
+        
+        <div className="text-8xl font-black text-white tracking-tighter mb-4 drop-shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
+          {timeString}
+        </div>
+        
+        {nextPrayer && (
+          <div className="mt-4 flex flex-col items-center gap-2">
+            <div className="bg-primary/20 text-primary px-6 py-2 rounded-full border border-primary/30 backdrop-blur-md">
+              <span className="text-xs font-black uppercase tracking-widest">الصلاة القادمة: {nextPrayer.name}</span>
+            </div>
+            <span className="text-5xl font-black text-accent drop-shadow-2xl mt-2">
+              {convertTo12Hour(nextPrayer.time)}
+            </span>
+            <div className="text-xs font-bold text-white/40 uppercase mt-1 tracking-[0.3em] flex items-center gap-2">
+              <Timer className="w-4 h-4" /> متبقي {nextPrayer.countdown}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

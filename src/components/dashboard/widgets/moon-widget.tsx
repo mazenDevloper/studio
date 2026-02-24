@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -58,18 +59,27 @@ export function MoonWidget() {
   };
 
   return (
-    <div className="h-full bg-zinc-900/60 backdrop-blur-3xl rounded-[2.5rem] border border-white/5 overflow-hidden relative group shadow-2xl">
-      <div className="absolute top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2 w-48 h-48 bg-blue-500/10 rounded-full blur-[80px] pointer-events-none" />
+    <div className="h-full w-full bg-black rounded-[2.5rem] border border-white/5 overflow-hidden relative group shadow-2xl">
+      {/* Full Background Image */}
+      <div className="absolute inset-0 z-0">
+        <Image 
+          src="https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?auto=format&fit=crop&q=80&w=1000"
+          alt="Space Background"
+          fill
+          className="object-cover opacity-40 group-hover:scale-110 transition-transform duration-[10s]"
+          data-ai-hint="space galaxy"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
+      </div>
       
-      <CardContent className="p-8 h-full flex items-center justify-around gap-6 relative z-10">
-        {/* Main Element: The Moon */}
-        <div className="relative w-44 h-44 flex-shrink-0">
+      <CardContent className="p-8 h-full flex flex-col items-center justify-center gap-6 relative z-10">
+        <div className="relative w-48 h-48 flex-shrink-0">
           {loading ? (
             <div className="w-full h-full rounded-full bg-white/5 flex items-center justify-center border border-white/10">
               <Loader2 className="w-10 h-10 animate-spin text-blue-400" />
             </div>
           ) : (
-            <div className="relative w-full h-full rounded-full overflow-hidden ring-[12px] ring-white/5 shadow-[0_0_50px_rgba(255,255,255,0.05)] bg-black">
+            <div className="relative w-full h-full rounded-full overflow-hidden ring-[12px] ring-white/5 shadow-[0_0_80px_rgba(59,130,246,0.3)] bg-black">
               {moonData?.image?.url && (
                 <Image
                   src={moonData.image.url}
@@ -85,23 +95,21 @@ export function MoonWidget() {
           )}
         </div>
         
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col items-center text-center gap-2">
+          <div className="flex items-center gap-2 bg-white/10 px-4 py-1.5 rounded-full border border-white/10 backdrop-blur-md">
             <MoonIcon className="w-4 h-4 text-blue-400" />
             <span className="text-[10px] font-bold uppercase tracking-[0.4em] text-blue-400">NASA SVS Live</span>
           </div>
 
-          <div className="space-y-1">
-            <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Illumination</p>
-            <h3 className="text-5xl font-bold font-headline text-white leading-none">
+          <div className="space-y-0">
+            <h3 className="text-6xl font-black text-white leading-none drop-shadow-2xl">
               {moonData && moonData.illumination ? Math.round(moonData.illumination) : "..."}%
             </h3>
+            <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest mt-2">Illumination</p>
           </div>
 
-          <div className="py-2 px-4 rounded-xl bg-white/5 border border-white/5 w-fit">
-            <span className="text-[10px] text-white/60 font-bold uppercase tracking-wider capitalize">
-              {moonData ? formatPhase(moonData.phase) : "Analyzing..."}
-            </span>
+          <div className="mt-2 text-primary font-bold uppercase tracking-widest text-[10px] bg-primary/10 px-3 py-1 rounded-lg border border-primary/20">
+            {moonData ? formatPhase(moonData.phase) : "Analyzing..."}
           </div>
         </div>
       </CardContent>
