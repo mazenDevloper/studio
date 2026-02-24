@@ -23,6 +23,11 @@ export interface Reminder {
   endHour: number;
 }
 
+interface VideoProgress {
+  videoId: string;
+  progress: number;
+}
+
 interface MediaState {
   favoriteChannels: YouTubeChannel[];
   savedVideos: YouTubeVideo[];
@@ -30,11 +35,13 @@ interface MediaState {
   savedPlaces: SavedPlace[];
   reciterKeywords: string[];
   reminders: Reminder[];
+  videoProgress: Record<string, number>;
   
   // Player State
   activeVideo: YouTubeVideo | null;
   isPlaying: boolean;
   isMinimized: boolean;
+  isFullScreen: boolean;
   
   addChannel: (channel: YouTubeChannel) => void;
   removeChannel: (id: string) => void;
@@ -46,11 +53,13 @@ interface MediaState {
   addReciterKeyword: (keyword: string) => void;
   removeReciterKeyword: (keyword: string) => void;
   toggleReminder: (id: string) => void;
+  updateVideoProgress: (videoId: string, seconds: number) => void;
   
   // Player Actions
   setActiveVideo: (video: YouTubeVideo | null) => void;
   setIsPlaying: (playing: boolean) => void;
   setIsMinimized: (minimized: boolean) => void;
+  setIsFullScreen: (fullScreen: boolean) => void;
   toggleMinimize: () => void;
 }
 
@@ -130,10 +139,12 @@ export const useMediaStore = create<MediaState>()(
       savedPlaces: [],
       reciterKeywords: INITIAL_RECITERS,
       reminders: INITIAL_REMINDERS,
+      videoProgress: {},
       
       activeVideo: null,
       isPlaying: false,
       isMinimized: false,
+      isFullScreen: false,
 
       addChannel: (channel) =>
         set((state) => ({
@@ -191,14 +202,24 @@ export const useMediaStore = create<MediaState>()(
             r.id === id ? { ...r, completed: !r.completed } : r
           )
         })),
+      updateVideoProgress: (videoId, seconds) =>
+        set((state) => ({
+          videoProgress: { ...state.videoProgress, [videoId]: seconds }
+        })),
 
-      setActiveVideo: (video) => set({ activeVideo: video, isPlaying: !!video, isMinimized: false }),
+      setActiveVideo: (video) => set({ 
+        activeVideo: video, 
+        isPlaying: !!video, 
+        isMinimized: false,
+        isFullScreen: false 
+      }),
       setIsPlaying: (playing) => set({ isPlaying: playing }),
-      setIsMinimized: (minimized) => set({ isMinimized: minimized }),
-      toggleMinimize: () => set((state) => ({ isMinimized: !state.isMinimized }))
+      setIsMinimized: (minimized) => set({ isMinimized: minimized, isFullScreen: false }),
+      setIsFullScreen: (fullScreen) => set({ isFullScreen: fullScreen, isMinimized: false }),
+      toggleMinimize: () => set((state) => ({ isMinimized: !state.isMinimized, isFullScreen: false }))
     }),
     {
-      name: "drivecast-media-storage-v12",
+      name: "drivecast-media-storage-v13",
       partialize: (state) => ({
         favoriteChannels: state.favoriteChannels,
         savedVideos: state.savedVideos,
@@ -206,6 +227,7 @@ export const useMediaStore = create<MediaState>()(
         savedPlaces: state.savedPlaces,
         reciterKeywords: state.reciterKeywords,
         reminders: state.reminders,
+        videoProgress: state.videoProgress,
       }),
     }
   )
