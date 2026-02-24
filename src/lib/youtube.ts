@@ -35,7 +35,7 @@ export async function searchYouTubeChannels(query: string): Promise<YouTubeChann
 
   try {
     const response = await fetch(url);
-    if (!response.ok) throw new Error("YouTube API Error");
+    if (!response.ok) return [];
     const data = await response.json();
 
     return data.items.map((item: any) => ({
@@ -58,7 +58,7 @@ export async function searchYouTubeVideos(query: string): Promise<YouTubeVideo[]
 
   try {
     const response = await fetch(url);
-    if (!response.ok) throw new Error("YouTube API Error");
+    if (!response.ok) return [];
     const data = await response.json();
 
     return data.items.map((item: any) => ({
@@ -81,8 +81,13 @@ export async function fetchChannelVideos(channelId: string): Promise<YouTubeVide
 
   try {
     const response = await fetch(url);
-    if (!response.ok) throw new Error("YouTube API Error");
+    if (!response.ok) {
+        console.warn(`YouTube Channel API Error for ID: ${channelId}. Skipping...`);
+        return [];
+    }
     const data = await response.json();
+
+    if (!data.items) return [];
 
     return data.items.map((item: any) => ({
       id: item.id.videoId,

@@ -36,7 +36,6 @@ export function PrayerTimelineWidget() {
       return h * 60 + m;
     };
 
-    // Find the next prayer index
     let nextIdx = list.findIndex(p => timeToMinutes(p.time) > currentMinutes);
     if (nextIdx === -1) nextIdx = 0;
 
@@ -74,29 +73,29 @@ export function PrayerTimelineWidget() {
               
               <div className={cn(
                 "flex flex-col items-center p-2 rounded-2xl transition-all",
-                isNext && "bg-accent/10 ring-2 ring-accent/30 shadow-[0_0_20px_rgba(65,184,131,0.2)]"
+                isNext && "bg-accent/20 ring-2 ring-accent/60 shadow-[0_0_30px_rgba(65,184,131,0.4)]"
               )}>
                 <span className={cn(
                   "text-[10px] font-black uppercase tracking-[0.2em] mb-1",
-                  isNext ? "text-accent" : "text-white/40"
+                  isNext ? "text-accent animate-pulse" : "text-white/40"
                 )}>
                   {prayer.name}
                 </span>
                 <span className={cn(
                   "text-xl font-black tracking-tighter",
-                  isNext ? "text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]" : "text-white/60"
+                  isNext ? "text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.8)]" : "text-white/60"
                 )}>
                   {convertTo12Hour(prayer.time)}
                 </span>
               </div>
 
               {isNext && (
-                <div className="flex flex-col border-l-2 border-accent/40 pl-5 py-1 animate-in fade-in slide-in-from-left-4 duration-700">
+                <div className="flex flex-col border-l-2 border-accent/60 pl-5 py-1 animate-in fade-in slide-in-from-left-4 duration-700 bg-accent/5 rounded-r-xl px-4">
                   <div className="flex items-center gap-1.5">
                     <div className="w-2 h-2 rounded-full bg-accent animate-ping" />
-                    <span className="text-[9px] font-black text-accent/80 uppercase tracking-[0.2em]">وقت الإقامة</span>
+                    <span className="text-[9px] font-black text-accent uppercase tracking-[0.2em]">الإقامة المشعة</span>
                   </div>
-                  <span className="text-lg font-black text-accent drop-shadow-[0_0_15px_rgba(16,185,129,0.4)]">
+                  <span className="text-xl font-black text-accent drop-shadow-[0_0_20px_rgba(16,185,129,0.7)]">
                     {convertTo12Hour(prayer.iqamahTime)}
                   </span>
                 </div>

@@ -38,7 +38,6 @@ export function PrayerCountdownCard() {
       { name: "العشاء", time: pTimes.isha, iqamah: 20 },
     ];
 
-    // Check if we are currently in an iqamah waiting period
     for (let p of prayers) {
       const azanMins = timeToMinutes(p.time);
       const iqamahMins = azanMins + p.iqamah;
@@ -54,7 +53,6 @@ export function PrayerCountdownCard() {
       }
     }
 
-    // Otherwise, find the next azan
     let next = prayers.find(p => timeToMinutes(p.time) > currentMinutes);
     if (!next) next = prayers[0];
 
@@ -85,46 +83,46 @@ export function PrayerCountdownCard() {
   return (
     <div className={cn(
       "h-full w-full glass-panel rounded-[2.5rem] p-6 flex flex-col justify-center items-center text-center transition-all duration-700 relative overflow-hidden",
-      isIqamah ? "bg-accent/20 border-accent/60 shadow-[0_0_50px_rgba(65,184,131,0.4)] ring-4 ring-accent/20" : "bg-white/5"
+      isIqamah ? "bg-accent/20 border-accent/80 shadow-[0_0_60px_rgba(65,184,131,0.5)] ring-4 ring-accent/30" : "bg-white/5"
     )}>
       {isIqamah && (
         <>
-          <div className="absolute inset-0 bg-gradient-to-t from-accent/10 to-transparent animate-pulse" />
+          <div className="absolute inset-0 bg-gradient-to-t from-accent/20 to-transparent animate-pulse" />
           <div className="absolute top-4 right-4 animate-spin-slow">
-            <Sparkles className="w-6 h-6 text-accent opacity-60" />
+            <Sparkles className="w-8 h-8 text-accent opacity-80" />
           </div>
         </>
       )}
 
       <div className="flex items-center gap-2 mb-4 relative z-10">
         <div className={cn(
-          "px-5 py-2 rounded-full text-[11px] font-black uppercase tracking-widest border flex items-center gap-3",
+          "px-6 py-2 rounded-full text-[12px] font-black uppercase tracking-widest border flex items-center gap-3 transition-all",
           isIqamah 
-            ? "bg-accent text-black border-white/20 animate-bounce" 
+            ? "bg-accent text-black border-white/40 shadow-[0_0_20px_rgba(16,185,129,1)] animate-bounce" 
             : "bg-primary/20 text-primary border-primary/20"
         )}>
-          {isIqamah ? <BellRing className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
+          {isIqamah ? <BellRing className="w-5 h-5 animate-pulse" /> : <Clock className="w-4 h-4" />}
           {isIqamah ? `حان وقت صلاة ${prayerStatus.name}` : `الصلاة القادمة: ${prayerStatus.name}`}
         </div>
       </div>
 
       <div className={cn(
-        "text-7xl font-black tracking-tighter drop-shadow-[0_10px_30px_rgba(0,0,0,0.5)] font-mono relative z-10",
-        isIqamah ? "text-white" : "text-white"
+        "text-7xl font-black tracking-tighter drop-shadow-[0_10px_40px_rgba(0,0,0,0.6)] font-mono relative z-10",
+        isIqamah ? "text-white scale-110" : "text-white"
       )}>
         {prayerStatus.remaining}
       </div>
 
-      <div className="mt-5 flex flex-col items-center gap-2 relative z-10">
+      <div className="mt-6 flex flex-col items-center gap-2 relative z-10">
         <div className={cn(
-          "flex items-center gap-2 font-bold text-sm uppercase tracking-[0.2em]",
-          isIqamah ? "text-black bg-white/90 px-4 py-1 rounded-full" : "text-white/40"
+          "flex items-center gap-3 font-black text-sm uppercase tracking-[0.2em]",
+          isIqamah ? "text-black bg-white px-5 py-2 rounded-full shadow-lg" : "text-white/40"
         )}>
-          <Timer className={cn("w-5 h-5", isIqamah ? "text-accent animate-pulse" : "text-primary")} />
-          {isIqamah ? "يتم الآن انتظار الإقامة" : `موعد الأذان: ${prayerStatus.time}`}
+          <Timer className={cn("w-6 h-6", isIqamah ? "text-accent animate-pulse" : "text-primary")} />
+          {isIqamah ? "يتم الآن انتظار الإقامة المشعة" : `موعد الأذان: ${prayerStatus.time}`}
         </div>
         {isIqamah && (
-          <span className="text-[11px] text-white font-black uppercase tracking-[0.3em] mt-2 animate-pulse">
+          <span className="text-[12px] text-white font-black uppercase tracking-[0.4em] mt-3 animate-pulse drop-shadow-md">
             استعد للصلاة يرحمك الله
           </span>
         )}
