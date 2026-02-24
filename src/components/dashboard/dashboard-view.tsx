@@ -116,8 +116,10 @@ export function DashboardView() {
         />
       </div>
 
+      {/* Main Grid: Split into 3 equal columns (4-4-4) to remove empty space on right */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6 min-h-[650px]">
-        <div className="md:col-span-3 flex flex-col gap-6">
+        {/* Left Column: Widgets Carousel & Countdown */}
+        <div className="md:col-span-4 flex flex-col gap-6">
           <div className="glass-panel rounded-[2.5rem] relative group overflow-hidden flex flex-col aspect-[3/4] w-full shadow-2xl">
             <Carousel setApi={setApi} opts={{ loop: true }} className="flex-1 w-full h-full">
               <CarouselContent className="h-full">
@@ -183,7 +185,8 @@ export function DashboardView() {
           </div>
         </div>
 
-        <div className="md:col-span-5 glass-panel rounded-[2.5rem] relative group flex flex-col items-center justify-center overflow-hidden">
+        {/* Middle Column: Car Showcase */}
+        <div className="md:col-span-4 glass-panel rounded-[2.5rem] relative group flex flex-col items-center justify-center overflow-hidden">
           <div className="flex-1 flex items-center justify-center w-full p-8">
             <Image 
               src="https://dmusera.netlify.app/es350gb.png" 
@@ -203,6 +206,7 @@ export function DashboardView() {
           </div>
         </div>
 
+        {/* Right Column: Interactive Map */}
         <div className="md:col-span-4 glass-panel rounded-[2.5rem] overflow-hidden relative group shadow-2xl">
           <MapWidget />
         </div>
