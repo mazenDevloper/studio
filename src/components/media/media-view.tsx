@@ -76,7 +76,11 @@ export function MediaView() {
     setIsLoadingVideos(true);
     try {
       const videos = await fetchChannelVideos(channel.id);
-      setChannelVideos(videos);
+      // Sort videos by date descending (latest first)
+      const sortedVideos = [...videos].sort((a, b) => 
+        new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
+      );
+      setChannelVideos(sortedVideos);
     } catch (error) {
       console.error("Failed to fetch channel videos", error);
     } finally {
@@ -131,13 +135,15 @@ export function MediaView() {
 
       {selectedChannel ? (
         <div className="space-y-6 animate-in fade-in slide-in-from-left-4 duration-500">
-          <Button 
-            onClick={() => setSelectedChannel(null)}
-            variant="ghost"
-            className="text-white hover:bg-white/10 rounded-xl"
-          >
-            <ArrowLeft className="w-5 h-5 mr-2" /> العودة للقنوات
-          </Button>
+          <div className="flex items-center gap-4">
+            <Button 
+              onClick={() => setSelectedChannel(null)}
+              variant="secondary"
+              className="bg-white/10 text-white hover:bg-white/20 rounded-2xl px-6 h-12 font-bold shadow-xl border border-white/10"
+            >
+              <ArrowLeft className="w-6 h-6 mr-2" /> العودة للقنوات
+            </Button>
+          </div>
 
           <div className="flex items-center gap-6 p-8 rounded-3xl bg-white/5 border border-white/10 backdrop-blur-xl">
              <div className="relative w-24 h-24 rounded-full overflow-hidden border-2 border-primary shadow-2xl">
@@ -161,7 +167,7 @@ export function MediaView() {
                 return (
                   <Card 
                     key={video.id} 
-                    className="group relative overflow-hidden bg-white/5 border-none rounded-3xl transition-all hover:scale-[1.02] cursor-pointer"
+                    className="group relative overflow-hidden bg-white/5 border-none rounded-3xl transition-all hover:scale-[1.02] cursor-pointer shadow-xl"
                     onClick={() => setActiveVideo(video)}
                   >
                     <div className="aspect-video relative overflow-hidden">
@@ -214,7 +220,7 @@ export function MediaView() {
                 <Card 
                   key={video.id} 
                   onClick={() => setActiveVideo(video)}
-                  className="group relative overflow-hidden bg-white/5 border-none rounded-2xl transition-all hover:scale-[1.02] cursor-pointer"
+                  className="group relative overflow-hidden bg-white/5 border-none rounded-2xl transition-all hover:scale-[1.02] cursor-pointer shadow-lg"
                 >
                   <div className="aspect-video relative overflow-hidden">
                     <Image src={video.thumbnail} alt={video.title} fill className="object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
@@ -252,7 +258,7 @@ export function MediaView() {
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
                 <div className="flex flex-col items-center gap-3 group cursor-pointer">
-                  <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full border-2 border-dashed border-white/20 flex items-center justify-center bg-white/5 group-hover:bg-white/10 group-hover:border-primary transition-all duration-300">
+                  <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full border-2 border-dashed border-white/20 flex items-center justify-center bg-white/5 group-hover:bg-white/10 group-hover:border-primary transition-all duration-300 shadow-xl">
                     <Plus className="w-10 h-10 text-white/40 group-hover:text-primary transition-colors" />
                   </div>
                   <span className="font-bold text-sm text-white/60 group-hover:text-white transition-colors">إضافة قناة</span>
@@ -284,7 +290,7 @@ export function MediaView() {
                     {channelResults.map((channel) => {
                       const isSubscribed = favoriteChannels.some(c => c.id === channel.id);
                       return (
-                        <div key={channel.id} className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors">
+                        <div key={channel.id} className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors shadow-lg">
                           <div className="relative w-16 h-16 rounded-full overflow-hidden border border-white/10">
                             <Image src={channel.thumbnail} alt={channel.title} fill className="object-cover" />
                           </div>
@@ -332,7 +338,7 @@ export function MediaView() {
                     onClick={(e) => { e.stopPropagation(); toggleStarChannel(channel.id); }}
                     className={cn(
                       "absolute top-0 left-0 sm:left-2 w-8 h-8 rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-all z-10 border border-white/10 backdrop-blur-md",
-                      isStarred ? "bg-accent text-black" : "bg-black/40 text-white/40"
+                      isStarred ? "bg-accent text-black shadow-[0_0_15px_hsl(var(--accent))]" : "bg-black/40 text-white/40"
                     )}
                   >
                     <Star className={cn("w-4 h-4", isStarred && "fill-current")} />
@@ -346,7 +352,7 @@ export function MediaView() {
                     <Trash2 className="w-4 h-4" />
                   </button>
 
-                  <span className="font-bold text-sm text-center text-white/80 group-hover:text-white truncate w-full px-2">{channel.title}</span>
+                  <span className="font-bold text-sm text-center text-white/80 group-hover:text-white truncate w-full px-2 font-headline">{channel.title}</span>
                 </div>
               );
             })}
