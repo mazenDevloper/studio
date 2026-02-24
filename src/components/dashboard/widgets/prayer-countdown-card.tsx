@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { prayerTimesData, convertTo12Hour } from "@/lib/constants";
-import { Timer, Clock } from "lucide-react";
+import { Timer, Clock, BellRing } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function PrayerCountdownCard() {
@@ -38,34 +38,38 @@ export function PrayerCountdownCard() {
       { name: "العشاء", time: pTimes.isha, iqamah: 20 },
     ];
 
+    // Check if we are currently in an iqamah waiting period
     for (let p of prayers) {
       const azanMins = timeToMinutes(p.time);
       const iqamahMins = azanMins + p.iqamah;
       if (currentMinutes >= azanMins && currentMinutes < iqamahMins) {
-        const remaining = iqamahMins - currentMinutes;
+        const remainingMinutes = iqamahMins - currentMinutes - 1;
+        const remainingSeconds = 59 - now.getSeconds();
         return {
           type: "iqamah",
           name: p.name,
-          remaining: `${remaining.toString().padStart(2, '0')}:${(59 - now.getSeconds()).toString().padStart(2, '0')}`,
+          remaining: `${remainingMinutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`,
           time: convertTo12Hour(p.time)
         };
       }
     }
 
+    // Otherwise, find the next azan
     let next = prayers.find(p => timeToMinutes(p.time) > currentMinutes);
     if (!next) next = prayers[0];
 
     const targetMins = timeToMinutes(next.time);
-    let diff = targetMins - currentMinutes;
-    if (diff < 0) diff += 24 * 60;
+    let diffInMinutes = targetMins - currentMinutes - 1;
+    if (diffInMinutes < 0) diffInMinutes += 24 * 60;
     
-    const hours = Math.floor(diff / 60);
-    const mins = diff % 60;
+    const hours = Math.floor(diffInMinutes / 60);
+    const mins = diffInMinutes % 60;
+    const secs = 59 - now.getSeconds();
 
     return {
       type: "azan",
       name: next.name,
-      remaining: `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${(59 - now.getSeconds()).toString().padStart(2, '0')}`,
+      remaining: `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`,
       time: convertTo12Hour(next.time)
     };
   }, [now]);
@@ -76,29 +80,46 @@ export function PrayerCountdownCard() {
     </div>
   );
 
-  const isActive = prayerStatus.type === "iqamah";
+  const isIqamah = prayerStatus.type === "iqamah";
 
   return (
     <div className={cn(
-      "h-full w-full glass-panel rounded-[2.5rem] p-6 flex flex-col justify-center items-center text-center transition-all duration-500",
-      isActive ? "bg-accent/10 border-accent/20" : "bg-white/5"
+      "h-full w-full glass-panel rounded-[2.5rem] p-6 flex flex-col justify-center items-center text-center transition-all duration-700 relative overflow-hidden",
+      isIqamah ? "bg-accent/15 border-accent/40 shadow-[0_0_40px_rgba(16,185,129,0.2)]" : "bg-white/5"
     )}>
-      <div className="flex items-center gap-2 mb-2">
+      {isIqamah && (
+        <div className="absolute inset-0 bg-gradient-to-t from-accent/5 to-transparent animate-pulse" />
+      )}
+
+      <div className="flex items-center gap-2 mb-4 relative z-10">
         <div className={cn(
-          "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border",
-          isActive ? "bg-accent/20 text-accent border-accent/20 animate-pulse" : "bg-primary/20 text-primary border-primary/20"
+          "px-4 py-1.5 rounded-full text-[11px] font-black uppercase tracking-widest border flex items-center gap-2",
+          isIqamah 
+            ? "bg-accent/20 text-accent border-accent/30 animate-bounce" 
+            : "bg-primary/20 text-primary border-primary/20"
         )}>
-          {isActive ? `انتظار الإقامة: ${prayerStatus.name}` : `الصلاة القادمة: ${prayerStatus.name}`}
+          {isIqamah && <BellRing className="w-3 h-3" />}
+          {isIqamah ? `انتظار الإقامة: صلاة ${prayerStatus.name}` : `الصلاة القادمة: ${prayerStatus.name}`}
         </div>
       </div>
 
-      <div className="text-5xl font-black text-white tracking-tighter drop-shadow-2xl font-mono">
+      <div className={cn(
+        "text-6xl font-black tracking-tighter drop-shadow-2xl font-mono relative z-10",
+        isIqamah ? "text-accent" : "text-white"
+      )}>
         {prayerStatus.remaining}
       </div>
 
-      <div className="mt-2 flex items-center gap-2 text-white/40 font-bold text-xs uppercase tracking-widest">
-        <Timer className={cn("w-3 h-3", isActive ? "text-accent" : "text-primary")} />
-        {isActive ? "تقام قريباً" : `الأذان عند ${prayerStatus.time}`}
+      <div className="mt-4 flex flex-col items-center gap-1 relative z-10">
+        <div className="flex items-center gap-2 text-white/40 font-bold text-xs uppercase tracking-[0.2em]">
+          <Timer className={cn("w-4 h-4", isIqamah ? "text-accent animate-spin-slow" : "text-primary")} />
+          {isIqamah ? "تقام الصلاة الآن" : `موعد الأذان: ${prayerStatus.time}`}
+        </div>
+        {isIqamah && (
+          <span className="text-[10px] text-accent font-black uppercase tracking-widest mt-1">
+            يرجى الاستعداد للصلاة
+          </span>
+        )}
       </div>
     </div>
   );
