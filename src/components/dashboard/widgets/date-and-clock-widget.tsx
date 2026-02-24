@@ -1,8 +1,7 @@
-
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { prayerTimesData } from "@/lib/constants";
+import { prayerTimesData, convertTo12Hour } from "@/lib/constants";
 import { Clock, Timer } from "lucide-react";
 
 export function DateAndClockWidget() {
@@ -48,42 +47,29 @@ export function DateAndClockWidget() {
 
     return {
       name: next.name,
+      time: next.time,
       countdown: `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`
     };
   }, [now]);
 
-  if (!mounted || !now) {
-    return <div className="h-full bg-zinc-900/40 animate-pulse rounded-[2.5rem]" />;
-  }
+  if (!mounted || !now) return null;
 
   const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
   return (
-    <div className="h-full bg-zinc-900/60 backdrop-blur-3xl rounded-[2.5rem] border border-white/5 p-8 flex flex-col justify-center items-center relative shadow-2xl overflow-hidden group">
-      <div className="absolute top-6 left-8 flex items-center gap-2">
-        <Clock className="w-4 h-4 text-primary" />
-        <span className="text-[10px] text-white/40 font-bold uppercase tracking-[0.2em]">Live Precision</span>
+    <div className="h-full w-full flex flex-col items-center justify-center p-6 bg-gradient-to-br from-indigo-900/40 to-transparent">
+      <div className="text-7xl font-black text-white tracking-tighter mb-2 drop-shadow-2xl">
+        {timeString}
       </div>
-
-      <div className="flex flex-col items-center">
-        <div className="text-7xl font-bold font-headline text-white tracking-tighter drop-shadow-2xl">
-          {timeString}
-        </div>
-      </div>
-
+      
       {nextPrayer && (
-        <div className="mt-8 flex items-center gap-6 bg-primary/10 border border-primary/20 px-8 py-4 rounded-3xl">
-          <div className="flex flex-col">
-            <span className="text-[8px] text-primary font-bold uppercase tracking-widest">Next Prayer</span>
-            <span className="text-sm font-bold text-white">{nextPrayer.name}</span>
+        <div className="mt-4 flex flex-col items-center gap-1">
+          <div className="flex items-center gap-2 bg-white/10 px-4 py-1.5 rounded-full border border-white/10">
+            <span className="text-xs font-bold text-blue-300 uppercase tracking-widest">الأذان القادم: {nextPrayer.name}</span>
           </div>
-          <div className="h-8 w-px bg-primary/20" />
-          <div className="flex items-center gap-3">
-            <Timer className="w-5 h-5 text-primary animate-pulse" />
-            <span className="text-3xl font-bold font-headline text-primary tracking-widest">
-              {nextPrayer.countdown}
-            </span>
-          </div>
+          <span className="text-4xl font-black text-accent drop-shadow-lg mt-2">
+            {convertTo12Hour(nextPrayer.time)}
+          </span>
         </div>
       )}
     </div>

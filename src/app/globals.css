@@ -32,45 +32,56 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground font-body select-none;
+    @apply bg-background text-foreground font-body select-none overflow-hidden;
+    background: radial-gradient(circle at 50% 50%, #1a1a2e 0%, #000000 100%);
   }
   h1, h2, h3, h4, h5, h6 {
     @apply font-headline;
   }
 }
 
-.car-squircle {
-  border-radius: 22%;
-  @supports (mask-image: paint(squircle)) {
-    border-radius: 0;
-    mask-image: paint(squircle);
-    --squircle-radius: 40;
-  }
+.glass-panel {
+  @apply bg-white/5 backdrop-blur-2xl border border-white/10 shadow-2xl;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.glass-panel {
-  @apply bg-card/40 backdrop-blur-2xl border border-white/10;
+.glass-panel:hover {
+  @apply bg-white/10 border-white/20;
+}
+
+.active-glow {
+  box-shadow: 0 0 30px -5px hsl(var(--primary) / 0.5);
+}
+
+.capsule-player {
+  @apply bg-black/60 backdrop-blur-3xl border border-white/10 rounded-full shadow-2xl;
+}
+
+@keyframes marquee {
+  0% { transform: translateX(100%); }
+  100% { transform: translateX(-100%); }
+}
+
+.animate-marquee {
+  display: inline-block;
+  animation: marquee 10s linear infinite;
 }
 
 ::-webkit-scrollbar {
   width: 0px;
 }
 
-.ios-shadow {
-  box-shadow: 0 10px 30px -10px rgba(0,0,0,0.5);
-}
-
-.active-glow {
-  box-shadow: 0 0 20px -5px hsl(var(--primary));
-}
-
-@keyframes siri-pulse {
-  0%, 100% { opacity: 0.5; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.1); }
+.metric-box {
+  @apply bg-black/40 p-2 rounded-xl text-center border border-white/5;
 }
 
 .siri-gradient {
   background: linear-gradient(90deg, #4285f4, #9b72cb, #d96a6f, #f4c20d);
   background-size: 300% 300%;
   animation: siri-pulse 4s ease-in-out infinite;
+}
+
+@keyframes siri-pulse {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.05); }
 }
