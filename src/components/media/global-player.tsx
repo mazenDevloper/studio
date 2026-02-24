@@ -26,6 +26,16 @@ export function GlobalVideoPlayer() {
   const [mounted, setMounted] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
+  // Focus transition logic: when video becomes active, move pointer to player controls
+  useEffect(() => {
+    if (activeVideo && !isMinimized) {
+      setTimeout(() => {
+        const firstControl = document.querySelector('[data-nav-id="player-minimize-btn"]') as HTMLElement;
+        if (firstControl) firstControl.focus();
+      }, 500);
+    }
+  }, [activeVideo, isMinimized]);
+
   useEffect(() => {
     if (activeVideo && iframeRef.current?.contentWindow) {
       const command = isPlaying ? 'playVideo' : 'pauseVideo';

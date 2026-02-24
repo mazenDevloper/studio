@@ -45,7 +45,7 @@ export function RemotePointer() {
 
   const navigate = useCallback((direction: string) => {
     setIsVisible(true);
-    // البحث في كامل المستند ليشمل الـ Portals (Dialogs/Popups)
+    // Find all focusable elements including those in portals
     const focusables = Array.from(document.querySelectorAll(".focusable")) as HTMLElement[];
     if (focusables.length === 0) return;
 
@@ -89,7 +89,6 @@ export function RemotePointer() {
       if (e.key === "Enter") {
         const current = document.activeElement as HTMLElement;
         if (current && current.classList.contains("focusable")) {
-          // محاكاة الضغط للعناصر التي لا تستجيب للتركيز التقليدي
           current.click();
         }
       }
@@ -98,6 +97,18 @@ export function RemotePointer() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [navigate]);
+
+  // Listen for manual focus changes to update pointer
+  useEffect(() => {
+    const handleFocus = (e: FocusEvent) => {
+      const target = e.target as HTMLElement;
+      if (target && target.classList && target.classList.contains("focusable")) {
+        updatePointer(target);
+      }
+    };
+    window.addEventListener("focus", handleFocus, true);
+    return () => window.removeEventListener("focus", handleFocus, true);
+  }, [updatePointer]);
 
   if (!isVisible || !pointerData) return null;
 
