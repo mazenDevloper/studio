@@ -1,17 +1,24 @@
 
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { cn } from "@/lib/utils";
 
 export function RemotePointer() {
   const [focusedId, setFocusedId] = useState<string | null>(null);
-  const [pointerRect, setPointerRect] = useState<DOMRect | null>(null);
+  const [pointerData, setPointerData] = useState<{
+    rect: DOMRect;
+    borderRadius: string;
+  } | null>(null);
   const [isVisible, setIsVisible] = useState(false);
 
   const updatePointer = useCallback((el: HTMLElement) => {
     const rect = el.getBoundingClientRect();
-    setPointerRect(rect);
+    const style = window.getComputedStyle(el);
+    setPointerData({
+      rect,
+      borderRadius: style.borderRadius
+    });
     setFocusedId(el.getAttribute("data-nav-id") || el.id || "unknown");
     el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }, []);
@@ -23,14 +30,11 @@ export function RemotePointer() {
     const dx = p2.x - p1.x;
     const dy = p2.y - p1.y;
 
-    // Filter by direction with a small buffer for slightly misaligned elements
     if (direction === "ArrowRight" && dx <= 5) return Infinity;
     if (direction === "ArrowLeft" && dx >= -5) return Infinity;
     if (direction === "ArrowDown" && dy <= 5) return Infinity;
     if (direction === "ArrowUp" && dy >= -5) return Infinity;
 
-    // Spatial weight: heavily prioritize elements in the same "lane" to make it feel smarter
-    // Especially important for moving between Sidebar (Dock) and Main Content
     const orthogonalWeight = 12.0; 
     if (direction === "ArrowRight" || direction === "ArrowLeft") {
       return Math.sqrt(Math.pow(dx, 2) + Math.pow(dy * orthogonalWeight, 2));
@@ -41,6 +45,7 @@ export function RemotePointer() {
 
   const navigate = useCallback((direction: string) => {
     setIsVisible(true);
+    // البحث في كامل المستند ليشمل الـ Portals (Dialogs/Popups)
     const focusables = Array.from(document.querySelectorAll(".focusable")) as HTMLElement[];
     if (focusables.length === 0) return;
 
@@ -50,7 +55,6 @@ export function RemotePointer() {
     let next: HTMLElement | null = null;
 
     if (!isCurrentFocusable) {
-      // Start from the first visible focusable if nothing is focused
       next = focusables[0];
     } else {
       const currentRect = current.getBoundingClientRect();
@@ -85,6 +89,7 @@ export function RemotePointer() {
       if (e.key === "Enter") {
         const current = document.activeElement as HTMLElement;
         if (current && current.classList.contains("focusable")) {
+          // محاكاة الضغط للعناصر التي لا تستجيب للتركيز التقليدي
           current.click();
         }
       }
@@ -94,19 +99,25 @@ export function RemotePointer() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [navigate]);
 
-  if (!isVisible || !pointerRect) return null;
+  if (!isVisible || !pointerData) return null;
+
+  const { rect, borderRadius } = pointerData;
 
   return (
     <div 
-      className="fixed pointer-events-none z-[1000] transition-all duration-300 ease-out"
+      className="fixed pointer-events-none z-[2000] transition-all duration-300 ease-out"
       style={{
-        top: pointerRect.top - 4,
-        left: pointerRect.left - 4,
-        width: pointerRect.width + 8,
-        height: pointerRect.height + 8,
+        top: rect.top - 4,
+        left: rect.left - 4,
+        width: rect.width + 8,
+        height: rect.height + 8,
+        borderRadius: borderRadius !== '0px' ? `calc(${borderRadius} + 4px)` : '12px'
       }}
     >
-      <div className="w-full h-full rounded-[inherit] border-4 border-primary shadow-[0_0_40px_hsl(var(--primary)/0.6)] animate-pulse" />
+      <div 
+        className="w-full h-full border-4 border-primary shadow-[0_0_40px_hsl(var(--primary)/0.6)] animate-pulse" 
+        style={{ borderRadius: 'inherit' }}
+      />
       <div className="absolute -top-3 -left-3 w-6 h-6 bg-primary rounded-full blur-sm opacity-50" />
     </div>
   );

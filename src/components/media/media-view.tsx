@@ -237,7 +237,9 @@ export function MediaView() {
                         size="icon"
                         variant="ghost"
                         onClick={(e) => handleToggleSave(e, video)}
-                        className={cn("w-14 h-14 rounded-full backdrop-blur-3xl border border-white/15 transition-all", isSaved ? "bg-accent text-black shadow-glow" : "bg-black/50 text-white hover:bg-black/70")}
+                        className={cn("w-14 h-14 rounded-full backdrop-blur-3xl border border-white/15 transition-all focusable", isSaved ? "bg-accent text-black shadow-glow" : "bg-black/50 text-white hover:bg-black/70")}
+                        data-nav-id={`save-channel-video-${idx}`}
+                        tabIndex={0}
                        >
                          <Bookmark className={cn("w-7 h-7", isSaved && "fill-current")} />
                        </Button>

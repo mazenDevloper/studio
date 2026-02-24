@@ -26,7 +26,6 @@ export function GlobalVideoPlayer() {
   const [mounted, setMounted] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
-  // Sync isPlaying state with YouTube IFrame
   useEffect(() => {
     if (activeVideo && iframeRef.current?.contentWindow) {
       const command = isPlaying ? 'playVideo' : 'pauseVideo';
@@ -62,7 +61,7 @@ export function GlobalVideoPlayer() {
   return (
     <div 
       className={cn(
-        "fixed z-[200] transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)]",
+        "fixed z-[2000] transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)]",
         isMinimized 
           ? "bottom-10 left-1/2 -translate-x-1/2 w-[520px] h-24 capsule-player z-[210] cursor-pointer hover:scale-105 active:scale-95" 
           : isFullScreen
@@ -117,7 +116,9 @@ export function GlobalVideoPlayer() {
                   e.stopPropagation(); 
                   setIsPlaying(!isPlaying); 
                 }} 
-                className="h-14 w-14 rounded-full text-white hover:bg-white/10 active:scale-90 transition-all shadow-xl"
+                className="h-14 w-14 rounded-full text-white hover:bg-white/10 active:scale-90 transition-all shadow-xl focusable"
+                data-nav-id="mini-play-btn"
+                tabIndex={0}
               >
                 {isPlaying ? <Pause className="w-8 h-8 fill-current" /> : <Play className="w-8 h-8 fill-current ml-1" />}
               </Button>
@@ -128,7 +129,9 @@ export function GlobalVideoPlayer() {
                   e.stopPropagation(); 
                   setActiveVideo(null); 
                 }} 
-                className="h-14 w-14 rounded-full text-red-500 hover:bg-red-500/10 active:scale-90 transition-all shadow-xl"
+                className="h-14 w-14 rounded-full text-red-500 hover:bg-red-500/10 active:scale-90 transition-all shadow-xl focusable"
+                data-nav-id="mini-close-btn"
+                tabIndex={0}
               >
                 <X className="w-6 h-6" />
               </Button>
@@ -139,16 +142,18 @@ export function GlobalVideoPlayer() {
       {/* FLOATING CONTROLS: Center Bottom during Playback */}
       {!isMinimized && (
         <div className={cn(
-          "fixed bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-6 z-[220] transition-all duration-700",
+          "fixed bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-6 z-[2200] transition-all duration-700",
           isFullScreen ? "scale-110" : "scale-100"
         )}>
             <div className="flex items-center gap-4 bg-black/80 backdrop-blur-3xl p-3 rounded-full border border-white/20 shadow-[0_20px_60px_rgba(0,0,0,1)]">
                <Button 
                 onClick={(e) => { e.stopPropagation(); setIsMinimized(!isMinimized); }} 
                 className={cn(
-                  "w-16 h-16 rounded-full border-2 transition-all flex flex-col items-center justify-center gap-1",
+                  "w-16 h-16 rounded-full border-2 transition-all flex flex-col items-center justify-center gap-1 focusable",
                   isMinimized ? "bg-accent/20 border-accent text-accent" : "bg-white/5 border-white/10 text-white"
                 )}
+                data-nav-id="player-minimize-btn"
+                tabIndex={0}
                >
                  {isMinimized ? <Maximize2 className="w-7 h-7" /> : <ChevronDown className="w-7 h-7" />}
                  <span className="text-[8px] font-black uppercase">{isMinimized ? 'Expand' : 'Pin'}</span>
@@ -157,9 +162,11 @@ export function GlobalVideoPlayer() {
                <Button 
                 onClick={(e) => { e.stopPropagation(); setIsFullScreen(!isFullScreen); }} 
                 className={cn(
-                  "w-16 h-16 rounded-full border-2 transition-all flex flex-col items-center justify-center gap-1",
+                  "w-16 h-16 rounded-full border-2 transition-all flex flex-col items-center justify-center gap-1 focusable",
                   isFullScreen ? "bg-primary/20 border-primary text-primary" : "bg-white/5 border-white/10 text-white"
                 )}
+                data-nav-id="player-fullscreen-btn"
+                tabIndex={0}
                >
                  <Monitor className="w-7 h-7" />
                  <span className="text-[8px] font-black uppercase">Cinema</span>
@@ -167,7 +174,9 @@ export function GlobalVideoPlayer() {
 
                <Button 
                 onClick={(e) => { e.stopPropagation(); toggleSaveVideo(activeVideo); }}
-                className={cn("w-16 h-16 rounded-full border-2 transition-all", isSaved ? "bg-accent/20 border-accent text-accent" : "bg-white/5 border-white/10 text-white")}
+                className={cn("w-16 h-16 rounded-full border-2 transition-all focusable", isSaved ? "bg-accent/20 border-accent text-accent" : "bg-white/5 border-white/10 text-white")}
+                data-nav-id="player-save-btn"
+                tabIndex={0}
                >
                  <Bookmark className={cn("w-7 h-7", isSaved && "fill-current")} />
                </Button>
@@ -178,7 +187,9 @@ export function GlobalVideoPlayer() {
                 variant="destructive" 
                 size="icon" 
                 onClick={(e) => { e.stopPropagation(); setActiveVideo(null); }} 
-                className="w-16 h-16 rounded-full shadow-2xl"
+                className="w-16 h-16 rounded-full shadow-2xl focusable"
+                data-nav-id="player-close-btn"
+                tabIndex={0}
                >
                   <X className="w-8 h-8" />
                </Button>
