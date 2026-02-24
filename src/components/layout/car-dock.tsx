@@ -15,8 +15,7 @@ export function CarDock() {
     { name: "Home", href: "/", icon: LayoutDashboard, color: "bg-blue-600" },
     { name: "Media", href: "/media", icon: Radio, color: "bg-red-500" },
     { name: "Football", href: "/football", icon: Trophy, color: "bg-orange-600" },
-    { name: "Maps", href: "#", icon: Map, color: "bg-green-500" },
-    { name: "Settings", href: "#", icon: Settings, color: "bg-gray-600" },
+    { name: "Settings", href: "/settings", icon: Settings, color: "bg-gray-600" },
   ];
 
   return (
@@ -33,7 +32,7 @@ export function CarDock() {
             className={cn(
               "w-16 h-16 rounded-[1.2rem] flex items-center justify-center transition-all duration-300 relative group",
               app.color,
-              pathname === app.href ? "scale-110 active-glow" : "opacity-60 grayscale-[0.3] hover:opacity-100"
+              pathname === app.href ? "scale-110 active-glow ring-2 ring-white/50" : "opacity-60 grayscale-[0.3] hover:opacity-100"
             )}
           >
             <app.icon className="w-8 h-8 text-white" />

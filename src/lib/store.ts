@@ -52,6 +52,8 @@ interface MediaState {
   removePlace: (id: string) => void;
   addReciterKeyword: (keyword: string) => void;
   removeReciterKeyword: (keyword: string) => void;
+  addReminder: (reminder: Reminder) => void;
+  removeReminder: (id: string) => void;
   toggleReminder: (id: string) => void;
   updateVideoProgress: (videoId: string, seconds: number) => void;
   toggleFavoriteTeam: (teamName: string) => void;
@@ -259,6 +261,22 @@ export const useMediaStore = create<MediaState>()(
         });
       },
 
+      addReminder: (reminder) => {
+        set((state) => {
+          const newState = { reminders: [...state.reminders, reminder] };
+          syncToCloud({ ...state, ...newState });
+          return newState;
+        });
+      },
+
+      removeReminder: (id) => {
+        set((state) => {
+          const newState = { reminders: state.reminders.filter(r => r.id !== id) };
+          syncToCloud({ ...state, ...newState });
+          return newState;
+        });
+      },
+
       toggleReminder: (id) => {
         set((state) => {
           const newState = {
@@ -293,7 +311,7 @@ export const useMediaStore = create<MediaState>()(
       toggleMinimize: () => set((state) => ({ isMinimized: !state.isMinimized, isFullScreen: false }))
     }),
     {
-      name: "drivecast-cloud-sync-v1",
+      name: "drivecast-cloud-sync-v2",
     }
   )
 );
