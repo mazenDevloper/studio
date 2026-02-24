@@ -45,19 +45,22 @@ export function CarDock() {
       </div>
 
       <div className="flex flex-col items-center gap-4 mt-auto">
-        {/* Global Back Button at Bottom Left */}
+        {/* Global Circular Back Button at Bottom Left */}
         <Button
           variant="ghost"
           size="icon"
           onClick={() => router.back()}
-          className="w-16 h-16 rounded-[1.2rem] bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-all active:scale-90 shadow-xl"
+          className="w-16 h-16 rounded-full bg-white/10 border border-white/15 text-white hover:bg-white/20 hover:scale-105 transition-all active:scale-90 shadow-2xl"
+          title="رجوع"
         >
-          <ArrowLeft className="w-8 h-8" />
+          <ArrowLeft className="w-9 h-9" />
         </Button>
 
-        <div className="flex flex-col items-center gap-1">
-          <div className="text-sm font-bold tracking-tighter">14:48</div>
-          <div className="text-[10px] font-bold text-muted-foreground">5G</div>
+        <div className="flex flex-col items-center gap-1 mt-2">
+          <div className="text-sm font-bold tracking-tighter text-white">
+            {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}
+          </div>
+          <div className="text-[10px] font-bold text-muted-foreground uppercase">5G</div>
         </div>
       </div>
     </div>
