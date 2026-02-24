@@ -2,7 +2,7 @@
 "use client";
 
 import { useMediaStore } from "@/lib/store";
-import { X, Maximize2, Play, Pause, SkipForward, SkipBack, Music, LayoutGrid, Youtube as YoutubeIcon, ArrowLeft } from "lucide-react";
+import { X, Maximize2, Play, Pause, SkipForward, SkipBack, Music, LayoutGrid, Youtube as YoutubeIcon, ArrowLeft, Minimize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
@@ -120,22 +120,10 @@ export function GlobalVideoPlayer() {
             <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/80 to-transparent pointer-events-none" />
           </div>
           
-          <div className="h-32 bg-zinc-900/95 backdrop-blur-3xl border-t border-white/10 flex items-center justify-between px-12">
+          <div className="h-40 bg-zinc-900/95 backdrop-blur-3xl border-t border-white/10 flex items-center justify-between px-12 pb-4">
+            {/* Left Controls */}
             <div className="flex items-center gap-4 w-1/3">
-              {/* Easy Access Controls Bottom-Left */}
-              <div className="flex items-center gap-2">
-                <Button 
-                  variant="ghost" 
-                  size="icon"
-                  onClick={() => {
-                    toggleMinimize();
-                  }}
-                  className="h-14 w-14 rounded-full bg-white/5 hover:bg-white/10 text-primary border border-white/5 transition-all active:scale-95 shadow-xl"
-                  title="تصغير للكبسولة"
-                >
-                  <LayoutGrid className="w-6 h-6" />
-                </Button>
-
+              <div className="flex items-center gap-3">
                 <Button 
                   variant="ghost" 
                   size="icon"
@@ -143,7 +131,7 @@ export function GlobalVideoPlayer() {
                   className="h-14 w-14 rounded-full bg-white/5 hover:bg-white/10 text-white border border-white/5 transition-all active:scale-95 shadow-xl"
                   title="رجوع"
                 >
-                  <ArrowLeft className="w-6 h-6" />
+                  <ArrowLeft className="w-7 h-7" />
                 </Button>
 
                 <div className="h-10 w-[1px] bg-white/10 mx-2" />
@@ -167,19 +155,39 @@ export function GlobalVideoPlayer() {
               </div>
             </div>
 
-            <div className="flex items-center justify-center gap-10 w-1/3">
-              <Button variant="ghost" size="icon" className="h-14 w-14 rounded-full text-white/20 hover:text-white transition-all active:scale-90"><SkipBack className="w-8 h-8 fill-current" /></Button>
+            {/* Middle Controls - Focus Center */}
+            <div className="flex flex-col items-center justify-center gap-3 w-1/3">
+              <div className="flex items-center gap-8">
+                <Button variant="ghost" size="icon" className="h-14 w-14 rounded-full text-white/20 hover:text-white transition-all active:scale-90">
+                  <SkipBack className="w-8 h-8 fill-current" />
+                </Button>
+                <Button 
+                  variant="default" 
+                  size="icon" 
+                  onClick={() => setIsPlaying(!isPlaying)}
+                  className="h-20 w-20 rounded-full bg-white text-black hover:scale-110 transition-all shadow-[0_0_40px_rgba(255,255,255,0.2)] active:scale-95 group"
+                >
+                  {isPlaying ? <Pause className="w-10 h-10 fill-current" /> : <Play className="w-10 h-10 fill-current ml-1" />}
+                </Button>
+                <Button variant="ghost" size="icon" className="h-14 w-14 rounded-full text-white/20 hover:text-white transition-all active:scale-90">
+                  <SkipForward className="w-8 h-8 fill-current" />
+                </Button>
+              </div>
+              
+              {/* Standard Minimize Button - Centralized Below Playback */}
               <Button 
-                variant="default" 
-                size="icon" 
-                onClick={() => setIsPlaying(!isPlaying)}
-                className="h-24 w-24 rounded-full bg-white text-black hover:scale-110 transition-all shadow-[0_0_40px_rgba(255,255,255,0.2)] active:scale-95 group"
+                variant="ghost" 
+                size="icon"
+                onClick={() => toggleMinimize()}
+                className="h-16 w-16 rounded-full bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 transition-all active:scale-95 shadow-lg flex flex-col items-center justify-center"
+                title="تصغير للكبسولة"
               >
-                {isPlaying ? <Pause className="w-12 h-12 fill-current group-hover:scale-110 transition-transform" /> : <Play className="w-12 h-12 fill-current ml-2 group-hover:scale-110 transition-transform" />}
+                <Minimize2 className="w-8 h-8" />
+                <span className="text-[8px] font-black uppercase mt-1">Capsule</span>
               </Button>
-              <Button variant="ghost" size="icon" className="h-14 w-14 rounded-full text-white/20 hover:text-white transition-all active:scale-90"><SkipForward className="w-8 h-8 fill-current" /></Button>
             </div>
 
+            {/* Right Controls */}
             <div className="w-1/3 flex justify-end gap-4">
                <div className="flex flex-col items-end">
                   <span className="text-[10px] font-black text-primary uppercase tracking-[0.3em]">Audio Focus</span>
