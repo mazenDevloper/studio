@@ -86,10 +86,10 @@ export function FootballView() {
             Kooora AI Center
             <Sparkles className="w-6 h-6 text-accent animate-pulse" />
           </h1>
-          <p className="text-muted-foreground text-sm font-medium uppercase tracking-widest opacity-60 flex items-center gap-2">
-             <div className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
+          <div className="text-muted-foreground text-sm font-medium uppercase tracking-widest opacity-60 flex items-center gap-2">
+             <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
              تغطية حية وشاملة مدعومة بالذكاء الاصطناعي
-          </p>
+          </div>
         </div>
         <Button 
           variant="outline" 

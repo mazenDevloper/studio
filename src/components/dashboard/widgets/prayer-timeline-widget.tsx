@@ -67,13 +67,13 @@ export function PrayerTimelineWidget() {
             )}>
               {isNext && (
                 <div className="absolute -top-6 left-1/2 -translate-x-1/2 animate-bounce">
-                  <Sparkles className="w-5 h-5 text-accent fill-current drop-shadow-[0_0_15px_hsl(var(--accent))]" />
+                  <Sparkles className="w-6 h-6 text-accent fill-current drop-shadow-[0_0_20px_hsl(var(--accent))]" />
                 </div>
               )}
               
               <div className={cn(
-                "flex flex-col items-center p-3 rounded-2xl transition-all duration-500",
-                isNext && "bg-accent/10 ring-2 ring-accent/60 shadow-[0_0_40px_rgba(65,184,131,0.5)]"
+                "flex flex-col items-center p-3 rounded-2xl transition-all duration-500 border border-transparent",
+                isNext && "bg-accent/10 border-accent/40 ring-2 ring-accent/60 shadow-[0_0_50px_rgba(65,184,131,0.6)]"
               )}>
                 <span className={cn(
                   "text-[10px] font-black uppercase tracking-[0.2em] mb-1",
@@ -90,12 +90,12 @@ export function PrayerTimelineWidget() {
               </div>
 
               {isNext && (
-                <div className="flex flex-col border-l-2 border-accent/60 pl-6 py-2 animate-in fade-in slide-in-from-left-4 duration-700 bg-accent/10 rounded-r-2xl px-5 shadow-[0_0_25px_rgba(65,184,131,0.2)]">
+                <div className="flex flex-col border-l-2 border-accent/60 pl-6 py-2 animate-in fade-in slide-in-from-left-4 duration-700 bg-accent/15 rounded-r-2xl px-5 shadow-[0_0_30px_rgba(65,184,131,0.3)]">
                   <div className="flex items-center gap-2">
                     <Timer className="w-4 h-4 text-accent animate-spin-slow" />
-                    <span className="text-[9px] font-black text-accent uppercase tracking-[0.3em] drop-shadow-sm">الإقامة المشعة</span>
+                    <span className="text-[10px] font-black text-accent uppercase tracking-[0.3em] drop-shadow-[0_0_10px_rgba(65,184,131,0.5)]">الإقامة المشعة</span>
                   </div>
-                  <span className="text-2xl font-black text-accent drop-shadow-[0_0_20px_rgba(16,185,129,0.8)]">
+                  <span className="text-2xl font-black text-accent drop-shadow-[0_0_20px_rgba(16,185,129,0.9)]">
                     {convertTo12Hour(prayer.iqamahTime)}
                   </span>
                 </div>
