@@ -1,3 +1,4 @@
+
 "use client";
 
 import { LayoutDashboard, Radio, Settings, GripVertical, ArrowLeft, Trophy, ZoomIn, ZoomOut, Mic, Loader2 } from "lucide-react";
@@ -61,12 +62,13 @@ export function CarDock() {
           <Link
             key={app.name}
             href={app.href}
+            data-nav-id={`dock-${app.name}`}
             className={cn(
-              "w-14 h-14 rounded-[1.2rem] flex items-center justify-center transition-all duration-500 relative group",
+              "w-14 h-14 rounded-[1.2rem] flex items-center justify-center transition-all duration-500 relative group focusable outline-none",
               app.color,
               pathname === app.href 
                 ? "scale-110 shadow-[0_0_25px_rgba(255,255,255,0.2)] ring-2 ring-white/20" 
-                : "opacity-40 grayscale hover:opacity-100 hover:grayscale-0"
+                : "opacity-40 grayscale hover:opacity-100 hover:grayscale-0 focus:opacity-100 focus:grayscale-0"
             )}
           >
             <app.icon className="w-7 h-7 text-white" />
@@ -81,9 +83,10 @@ export function CarDock() {
         <div className="flex flex-col items-center gap-4 bg-white/5 p-2 rounded-3xl border border-white/5 backdrop-blur-2xl">
           <Button
             onClick={handleVoiceSearch}
+            data-nav-id="dock-mic"
             className={cn(
-              "w-12 h-12 rounded-full transition-all duration-500 flex items-center justify-center",
-              isListening ? "bg-red-500 animate-pulse shadow-[0_0_20px_red]" : "bg-primary/20 text-primary border border-primary/20 hover:bg-primary/40"
+              "w-12 h-12 rounded-full transition-all duration-500 flex items-center justify-center focusable outline-none",
+              isListening ? "bg-red-500 animate-pulse shadow-[0_0_20px_red]" : "bg-primary/20 text-primary border border-primary/20 hover:bg-primary/40 focus:bg-primary/40"
             )}
           >
             {isListening ? <Loader2 className="w-6 h-6 animate-spin text-white" /> : <Mic className="w-6 h-6" />}
@@ -92,10 +95,22 @@ export function CarDock() {
           <div className="h-px w-8 bg-white/10" />
 
           <div className="flex flex-col gap-2">
-            <Button size="icon" variant="ghost" onClick={() => updateMapSettings({ zoom: Math.min(21, mapSettings.zoom + 0.5) })} className="w-10 h-10 rounded-full bg-white/5 text-primary hover:bg-white/10">
+            <Button 
+              size="icon" 
+              variant="ghost" 
+              data-nav-id="dock-zoom-in"
+              onClick={() => updateMapSettings({ zoom: Math.min(21, mapSettings.zoom + 0.5) })} 
+              className="w-10 h-10 rounded-full bg-white/5 text-primary hover:bg-white/10 focusable outline-none"
+            >
               <ZoomIn className="w-5 h-5" />
             </Button>
-            <Button size="icon" variant="ghost" onClick={() => updateMapSettings({ zoom: Math.max(15, mapSettings.zoom - 0.5) })} className="w-10 h-10 rounded-full bg-white/5 text-primary hover:bg-white/10">
+            <Button 
+              size="icon" 
+              variant="ghost" 
+              data-nav-id="dock-zoom-out"
+              onClick={() => updateMapSettings({ zoom: Math.max(15, mapSettings.zoom - 0.5) })} 
+              className="w-10 h-10 rounded-full bg-white/5 text-primary hover:bg-white/10 focusable outline-none"
+            >
               <ZoomOut className="w-5 h-5" />
             </Button>
           </div>
@@ -104,8 +119,9 @@ export function CarDock() {
         <Button
           variant="ghost"
           size="icon"
+          data-nav-id="dock-back"
           onClick={() => router.back()}
-          className="w-12 h-12 rounded-full bg-white/5 border border-white/10 text-white/40 hover:text-white hover:bg-white/10 transition-all"
+          className="w-12 h-12 rounded-full bg-white/5 border border-white/10 text-white/40 hover:text-white hover:bg-white/10 focusable transition-all outline-none"
         >
           <ArrowLeft className="w-6 h-6" />
         </Button>

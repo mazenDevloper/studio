@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -69,7 +70,11 @@ export function DashboardView() {
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6 h-[460px]">
         {/* Left Column - 50/50 Split */}
         <div className="md:col-span-4 flex flex-col gap-6 h-full">
-          <div className="glass-panel rounded-[2.5rem] relative group overflow-hidden flex flex-col w-full shadow-2xl h-1/2">
+          <div 
+            className="glass-panel rounded-[2.5rem] relative group overflow-hidden flex flex-col w-full shadow-2xl h-1/2 focusable outline-none"
+            tabIndex={0}
+            data-nav-id="widget-carousel"
+          >
             <Carousel setApi={setApi} opts={{ loop: true }} className="flex-1 w-full h-full">
               <CarouselContent className="h-full">
                 <CarouselItem className="h-full flex items-center justify-center">
@@ -127,13 +132,17 @@ export function DashboardView() {
             </div>
           </div>
 
-          <div className="h-1/2 w-full">
+          <div className="h-1/2 w-full focusable outline-none rounded-[2.5rem]" tabIndex={0} data-nav-id="widget-prayer-countdown">
             <PrayerCountdownCard />
           </div>
         </div>
 
         {/* Middle Column - Car Image (Covering) */}
-        <div className="md:col-span-4 glass-panel rounded-[2.5rem] relative group flex flex-col items-center justify-center overflow-hidden h-full shadow-2xl">
+        <div 
+          className="md:col-span-4 glass-panel rounded-[2.5rem] relative group flex flex-col items-center justify-center overflow-hidden h-full shadow-2xl focusable outline-none"
+          tabIndex={0}
+          data-nav-id="widget-car"
+        >
           <div className="absolute inset-0 flex items-center justify-center w-full h-full">
             <Image 
               src="https://dmusera.netlify.app/es350gb.png" 
@@ -142,11 +151,11 @@ export function DashboardView() {
               className="object-cover scale-[1.6] group-hover:scale-[1.7] transition-transform duration-1000 brightness-75 group-hover:brightness-100"
             />
           </div>
-          <div className="absolute bottom-10 flex gap-4 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-black/80 backdrop-blur-3xl p-3 rounded-full border border-white/20 shadow-2xl z-20">
-            <button className="flex items-center gap-2 px-6 py-2.5 bg-white/5 border border-white/10 rounded-full hover:bg-white/10 transition-all font-black text-[9px] text-white uppercase tracking-[0.2em]">
+          <div className="absolute bottom-10 flex gap-4 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-500 bg-black/80 backdrop-blur-3xl p-3 rounded-full border border-white/20 shadow-2xl z-20">
+            <button className="flex items-center gap-2 px-6 py-2.5 bg-white/5 border border-white/10 rounded-full hover:bg-white/10 transition-all font-black text-[9px] text-white uppercase tracking-[0.2em] focusable outline-none">
               <RotateCcw className="w-4 h-4" /> Reset
             </button>
-            <button className="flex items-center gap-2 px-6 py-2.5 bg-white/5 border border-white/10 rounded-full hover:bg-white/10 transition-all font-black text-[9px] text-white uppercase tracking-[0.2em]">
+            <button className="flex items-center gap-2 px-6 py-2.5 bg-white/5 border border-white/10 rounded-full hover:bg-white/10 transition-all font-black text-[9px] text-white uppercase tracking-[0.2em] focusable outline-none">
               <Upload className="w-4 h-4" /> Sync
             </button>
           </div>
@@ -154,12 +163,20 @@ export function DashboardView() {
         </div>
 
         {/* Right Column - Map */}
-        <div className="md:col-span-4 glass-panel rounded-[2.5rem] overflow-hidden relative group shadow-2xl h-full">
+        <div 
+          className="md:col-span-4 glass-panel rounded-[2.5rem] overflow-hidden relative group shadow-2xl h-full focusable outline-none"
+          tabIndex={0}
+          data-nav-id="widget-map"
+        >
           <MapWidget />
         </div>
       </div>
 
-      <div className="w-full glass-panel rounded-full p-4 shadow-xl transform scale-[0.8] mt-6 mb-[-0.5rem] origin-center">
+      <div 
+        className="w-full glass-panel rounded-full p-4 shadow-xl transform scale-[0.8] mt-6 mb-[-0.5rem] origin-center focusable outline-none"
+        tabIndex={0}
+        data-nav-id="widget-prayer-timeline"
+      >
         <PrayerTimelineWidget />
       </div>
 

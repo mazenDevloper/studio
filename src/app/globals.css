@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -34,7 +35,6 @@
   body {
     @apply bg-background text-foreground font-body select-none w-full;
     background: radial-gradient(circle at 50% 50%, #1a1a2e 0%, #000000 100%);
-    /* ضبط المقياس العام ليكون أقل ضخامة */
     zoom: 0.88;
     -moz-transform: scale(0.88);
     -moz-transform-origin: 0 0;
@@ -42,6 +42,15 @@
   h1, h2, h3, h4, h5, h6 {
     @apply font-headline;
   }
+}
+
+.focusable {
+  @apply transition-all duration-300;
+}
+
+.focusable:focus {
+  @apply outline-none ring-2 ring-primary ring-offset-2 ring-offset-black scale-105 z-50;
+  box-shadow: 0 0 30px hsl(var(--primary) / 0.8);
 }
 
 .glass-panel {
