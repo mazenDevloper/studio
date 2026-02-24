@@ -5,7 +5,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Match } from "@/lib/football-data";
 import { getFootballIntelligence } from "@/ai/flows/football-intelligence-flow";
 import { useMediaStore } from "@/lib/store";
-import { Trophy, Tv, Mic2, Star, Calendar, RefreshCw, Loader2, Check, Sparkles, AlertCircle } from "lucide-react";
+import { Trophy, Tv, Mic2, Star, Calendar, RefreshCw, Loader2, Check, Sparkles, AlertCircle, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
@@ -22,13 +22,11 @@ export function FootballView() {
     setLoading(true);
     setError(null);
     try {
-      // جلب البيانات عبر الذكاء الاصطناعي
       const response = await getFootballIntelligence({ type: 'today' });
       
       if (response.error) {
-        setError("فشل الاتصال بنظام البيانات الذكي. يرجى المحاولة لاحقاً.");
+        setError(response.error);
       } else if (response.matches) {
-        // فرز المباريات: المفضلة أولاً
         const sortedData = response.matches.sort((a, b) => {
           const aFav = favoriteTeams.includes(a.homeTeam) || favoriteTeams.includes(a.awayTeam);
           const bFav = favoriteTeams.includes(b.homeTeam) || favoriteTeams.includes(b.awayTeam);
@@ -37,14 +35,11 @@ export function FootballView() {
           return 0;
         });
         setMatches(sortedData as any);
+        if (response.summary) setSummary(response.summary);
       }
-      
-      if (response.summary) {
-        setSummary(response.summary);
-      }
-    } catch (error) {
-      console.error("Football AI Integration Error:", error);
-      setError("حدث خطأ غير متوقع أثناء تحديث المباريات.");
+    } catch (err) {
+      console.error("UI Fetch Error:", err);
+      setError("FAILED_TO_LOAD");
     } finally {
       setLoading(false);
     }
@@ -52,7 +47,7 @@ export function FootballView() {
 
   useEffect(() => {
     fetchMatches();
-    const interval = setInterval(fetchMatches, 300000); // تحديث كل 5 دقائق
+    const interval = setInterval(fetchMatches, 300000);
     return () => clearInterval(interval);
   }, [fetchMatches]);
 
@@ -84,127 +79,138 @@ export function FootballView() {
         </Button>
       </header>
 
-      {summary && !loading && (
-        <div className="glass-panel p-6 rounded-[2rem] border-accent/20 bg-accent/5 animate-in fade-in slide-in-from-top-4">
-          <p className="text-white/90 font-bold text-lg leading-relaxed text-right dir-rtl">
-             {summary}
-          </p>
+      {error ? (
+        <div className="p-12 text-center bg-zinc-900/50 backdrop-blur-3xl border border-white/5 rounded-[2.5rem] flex flex-col items-center gap-6 animate-in fade-in zoom-in-95">
+          <div className="w-20 h-20 rounded-full bg-red-500/10 flex items-center justify-center border border-red-500/20">
+            {error === "NETWORK_ERROR_OR_TIMEOUT" ? <WifiOff className="w-10 h-10 text-red-500" /> : <AlertCircle className="w-10 h-10 text-red-500" />}
+          </div>
+          <div className="space-y-2">
+            <h3 className="text-2xl font-bold text-white">عذراً، تعذر جلب البيانات</h3>
+            <p className="text-white/40 max-w-md mx-auto">
+              يبدو أن هناك ضغطاً على الخوادم أو مشكلة في الاتصال. يرجى المحاولة مرة أخرى لاحقاً.
+            </p>
+          </div>
+          <Button onClick={fetchMatches} className="bg-primary hover:bg-primary/90 text-white rounded-full px-8 h-12">
+            إعادة المحاولة الآن
+          </Button>
         </div>
-      )}
-
-      {error && (
-        <div className="p-8 text-center bg-red-500/10 border border-red-500/20 rounded-[2.5rem] flex flex-col items-center gap-4">
-          <AlertCircle className="w-12 h-12 text-red-500" />
-          <p className="text-white/80 font-bold">{error}</p>
-          <Button onClick={fetchMatches} variant="outline" className="rounded-full border-red-500/30">إعادة المحاولة</Button>
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        <div className="lg:col-span-8 space-y-8">
-          {liveMatches.length > 0 && (
-            <section className="space-y-4">
-              <h2 className="text-xl font-bold font-headline text-red-500 flex items-center gap-3">
-                <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping" />
-                مباشر الآن
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {liveMatches.map(match => (
-                  <MatchCard 
-                    key={match.id} 
-                    match={match} 
-                    isFavorite={favoriteTeams.includes(match.homeTeam) || favoriteTeams.includes(match.awayTeam)} 
-                  />
-                ))}
-              </div>
-            </section>
+      ) : (
+        <>
+          {summary && !loading && (
+            <div className="glass-panel p-6 rounded-[2rem] border-accent/20 bg-accent/5 animate-in fade-in slide-in-from-top-4">
+              <p className="text-white/90 font-bold text-lg leading-relaxed text-right dir-rtl">
+                 {summary}
+              </p>
+            </div>
           )}
 
-          <section className="space-y-4">
-            <h2 className="text-xl font-bold font-headline text-white flex items-center gap-3">
-              <Calendar className="w-5 h-5 text-primary" />
-              جدول مباريات اليوم
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {loading ? (
-                 [1,2,3,4].map(i => (
-                   <div key={i} className="h-44 rounded-[2.5rem] bg-white/5 p-6 flex flex-col gap-4">
-                     <div className="flex justify-between"><Skeleton className="h-4 w-24" /><Skeleton className="h-4 w-12" /></div>
-                     <div className="flex justify-around py-4"><Skeleton className="h-14 w-14 rounded-full" /><Skeleton className="h-10 w-20" /><Skeleton className="h-14 w-14 rounded-full" /></div>
-                   </div>
-                 ))
-              ) : upcomingMatches.length > 0 ? (
-                upcomingMatches.map(match => (
-                  <MatchCard 
-                    key={match.id} 
-                    match={match} 
-                    isFavorite={favoriteTeams.includes(match.homeTeam) || favoriteTeams.includes(match.awayTeam)} 
-                  />
-                ))
-              ) : (
-                <div className="col-span-2 py-20 text-center bg-white/5 rounded-[2.5rem] border border-dashed border-white/10 flex flex-col items-center gap-4">
-                  <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center">
-                    <Trophy className="w-8 h-8 text-white/20" />
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <div className="lg:col-span-8 space-y-8">
+              {liveMatches.length > 0 && (
+                <section className="space-y-4">
+                  <h2 className="text-xl font-bold font-headline text-red-500 flex items-center gap-3">
+                    <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping" />
+                    مباشر الآن
+                  </h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {liveMatches.map(match => (
+                      <MatchCard 
+                        key={match.id} 
+                        match={match} 
+                        isFavorite={favoriteTeams.includes(match.homeTeam) || favoriteTeams.includes(match.awayTeam)} 
+                      />
+                    ))}
                   </div>
-                  <div>
-                    <h3 className="text-white/60 font-bold text-lg">لا توجد مباريات كبرى اليوم</h3>
-                    <p className="text-white/30 text-sm mt-1">جرب تحديث البيانات أو التحقق لاحقاً</p>
-                  </div>
+                </section>
+              )}
+
+              <section className="space-y-4">
+                <h2 className="text-xl font-bold font-headline text-white flex items-center gap-3">
+                  <Calendar className="w-5 h-5 text-primary" />
+                  جدول مباريات اليوم
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {loading ? (
+                     [1,2,3,4].map(i => (
+                       <div key={i} className="h-44 rounded-[2.5rem] bg-white/5 p-6 flex flex-col gap-4">
+                         <div className="flex justify-between"><Skeleton className="h-4 w-24" /><Skeleton className="h-4 w-12" /></div>
+                         <div className="flex justify-around py-4"><Skeleton className="h-14 w-14 rounded-full" /><Skeleton className="h-10 w-20" /><Skeleton className="h-14 w-14 rounded-full" /></div>
+                       </div>
+                     ))
+                  ) : upcomingMatches.length > 0 ? (
+                    upcomingMatches.map(match => (
+                      <MatchCard 
+                        key={match.id} 
+                        match={match} 
+                        isFavorite={favoriteTeams.includes(match.homeTeam) || favoriteTeams.includes(match.awayTeam)} 
+                      />
+                    ))
+                  ) : (
+                    <div className="col-span-2 py-20 text-center bg-white/5 rounded-[2.5rem] border border-dashed border-white/10 flex flex-col items-center gap-4">
+                      <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center">
+                        <Trophy className="w-8 h-8 text-white/20" />
+                      </div>
+                      <div>
+                        <h3 className="text-white/60 font-bold text-lg">لا توجد مباريات كبرى اليوم</h3>
+                        <p className="text-white/30 text-sm mt-1">جرب تحديث البيانات أو التحقق لاحقاً</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
+              </section>
+
+              {finishedMatches.length > 0 && (
+                <section className="space-y-4">
+                  <h2 className="text-lg font-bold font-headline text-white/40 flex items-center gap-3">
+                    <Trophy className="w-5 h-5" />
+                    نتائج مباريات اكتملت
+                  </h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 opacity-60">
+                    {finishedMatches.map(match => (
+                      <MatchCard 
+                        key={match.id} 
+                        match={match} 
+                        isFavorite={favoriteTeams.includes(match.homeTeam) || favoriteTeams.includes(match.awayTeam)} 
+                      />
+                    ))}
+                  </div>
+                </section>
               )}
             </div>
-          </section>
 
-          {finishedMatches.length > 0 && (
-            <section className="space-y-4">
-              <h2 className="text-lg font-bold font-headline text-white/40 flex items-center gap-3">
-                <Trophy className="w-5 h-5" />
-                نتائج مباريات اكتملت
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 opacity-60">
-                {finishedMatches.map(match => (
-                  <MatchCard 
-                    key={match.id} 
-                    match={match} 
-                    isFavorite={favoriteTeams.includes(match.homeTeam) || favoriteTeams.includes(match.awayTeam)} 
-                  />
-                ))}
+            <div className="lg:col-span-4 space-y-6">
+              <div className="glass-panel rounded-[2.5rem] p-8 border-white/10 bg-black/40">
+                <h3 className="text-lg font-bold font-headline text-white mb-6 flex items-center justify-between">
+                  تخصيص المفضلة
+                  <Star className="w-4 h-4 text-accent fill-current" />
+                </h3>
+                <p className="text-xs text-white/40 mb-6 leading-relaxed">
+                  اختر فرقك المفضلة لتظهر دائماً في أعلى الجدول وتفعل "الجزيرة العائمة" عند انطلاق المباراة.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {['الهلال', 'النصر', 'الاتحاد', 'الأهلي', 'ريال مدريد', 'برشلونة', 'مانشستر سيتي', 'ليفربول', 'بايرن ميونخ', 'أرسنال', 'باريس سان جيرمان'].map(team => {
+                    const isFav = favoriteTeams.includes(team);
+                    return (
+                      <Button
+                        key={team}
+                        onClick={() => toggleFavoriteTeam(team)}
+                        variant={isFav ? "default" : "outline"}
+                        className={cn(
+                          "rounded-xl text-[10px] font-bold h-10 px-4 transition-all duration-300",
+                          isFav ? "bg-primary border-primary shadow-glow scale-105" : "border-white/10 bg-white/5 hover:border-white/30"
+                        )}
+                      >
+                        {isFav && <Check className="w-3 h-3 mr-1" />}
+                        {team}
+                      </Button>
+                    );
+                  })}
+                </div>
               </div>
-            </section>
-          )}
-        </div>
-
-        <div className="lg:col-span-4 space-y-6">
-          <div className="glass-panel rounded-[2.5rem] p-8 border-white/10 bg-black/40">
-            <h3 className="text-lg font-bold font-headline text-white mb-6 flex items-center justify-between">
-              تخصيص المفضلة
-              <Star className="w-4 h-4 text-accent fill-current" />
-            </h3>
-            <p className="text-xs text-white/40 mb-6 leading-relaxed">
-              اختر فرقك المفضلة لتظهر دائماً في أعلى الجدول وتفعل "الجزيرة العائمة" عند انطلاق المباراة.
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {['الهلال', 'النصر', 'الاتحاد', 'الأهلي', 'ريال مدريد', 'برشلونة', 'مانشستر سيتي', 'ليفربول', 'بايرن ميونخ', 'أرسنال', 'باريس سان جيرمان'].map(team => {
-                const isFav = favoriteTeams.includes(team);
-                return (
-                  <Button
-                    key={team}
-                    onClick={() => toggleFavoriteTeam(team)}
-                    variant={isFav ? "default" : "outline"}
-                    className={cn(
-                      "rounded-xl text-[10px] font-bold h-10 px-4 transition-all duration-300",
-                      isFav ? "bg-primary border-primary shadow-glow scale-105" : "border-white/10 bg-white/5 hover:border-white/30"
-                    )}
-                  >
-                    {isFav && <Check className="w-3 h-3 mr-1" />}
-                    {team}
-                  </Button>
-                );
-              })}
             </div>
           </div>
-        </div>
-      </div>
+        </>
+      )}
     </div>
   );
 }
