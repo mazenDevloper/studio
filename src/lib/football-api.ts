@@ -14,13 +14,16 @@ export async function fetchFootballData(type: 'today' | 'live'): Promise<Match[]
     const response = await fetch(url, {
       method: 'GET',
       headers: {
-        'x-apisports-key': FOOTBALL_API_KEY,
+        'x-apisports-key': FOOTBALL_API_KEY || '',
         'x-apisports-host': 'v3.football.api-sports.io'
       },
       cache: 'no-store'
     });
 
-    if (!response.ok) return [];
+    if (!response.ok) {
+      console.warn("Football API Response Error:", response.status);
+      return [];
+    }
 
     const data = await response.json();
     if (!data.response) return [];

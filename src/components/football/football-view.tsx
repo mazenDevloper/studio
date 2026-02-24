@@ -153,7 +153,7 @@ export function FootballView() {
                     ))
                   ) : (
                     <div className="col-span-2 py-20 text-center bg-white/5 rounded-[2.5rem] border border-dashed border-white/10">
-                      <p className="text-white/40">لا توجد مباريات كبرى اليوم</p>
+                      <p className="text-white/40 italic">لا توجد مباريات هامة قريباً - تأكد من الاتصال</p>
                     </div>
                   )}
                 </div>
@@ -199,7 +199,6 @@ export function FootballView() {
               </Button>
             ))}
           </div>
-
           <div className="glass-panel rounded-[2rem] overflow-hidden border-white/10">
             {statsLoading ? (
               <div className="p-20 flex justify-center"><Loader2 className="w-10 h-10 animate-spin text-primary" /></div>
@@ -207,13 +206,7 @@ export function FootballView() {
               <ScrollArea className="h-[500px]">
                 <table className="w-full text-right dir-rtl">
                   <thead className="bg-white/5 text-white/40 text-xs font-bold uppercase tracking-widest">
-                    <tr>
-                      <th className="p-4">الترتيب</th>
-                      <th className="p-4 text-right">الفريق</th>
-                      <th className="p-4">لعب</th>
-                      <th className="p-4">فارق</th>
-                      <th className="p-4">نقاط</th>
-                    </tr>
+                    <tr><th className="p-4">الترتيب</th><th className="p-4 text-right">الفريق</th><th className="p-4">لعب</th><th className="p-4">فارق</th><th className="p-4">نقاط</th></tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">
                     {standings.map((team: any) => (
@@ -238,17 +231,9 @@ export function FootballView() {
         <TabsContent value="scorers" className="space-y-6">
           <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
             {MAJOR_LEAGUES.map(league => (
-              <Button
-                key={league.id}
-                variant={selectedLeague === league.id ? "default" : "outline"}
-                onClick={() => setSelectedLeague(league.id)}
-                className="rounded-full"
-              >
-                {league.name}
-              </Button>
+              <Button key={league.id} variant={selectedLeague === league.id ? "default" : "outline"} onClick={() => setSelectedLeague(league.id)} className="rounded-full">{league.name}</Button>
             ))}
           </div>
-
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {statsLoading ? (
               [1,2,3,4,5,6].map(i => <Skeleton key={i} className="h-24 rounded-2xl bg-white/5" />)
@@ -288,7 +273,6 @@ function MatchCard({ match, isFavorite }: { match: Match; isFavorite: boolean })
           <Star className="w-2.5 h-2.5 text-primary fill-current" />
         </div>
       )}
-
       <div className="flex items-center justify-between text-[9px] font-black text-white/40 uppercase tracking-widest relative z-10">
         <div className="flex items-center gap-2 bg-white/5 px-2 py-1 rounded-full border border-white/5">
           {match.leagueLogo && <Image src={match.leagueLogo} alt="" width={12} height={12} className="object-contain opacity-60" />}
@@ -301,40 +285,24 @@ function MatchCard({ match, isFavorite }: { match: Match; isFavorite: boolean })
           {match.status === 'live' ? 'مباشر' : match.status === 'upcoming' ? match.startTime : 'انتهت'}
         </span>
       </div>
-
       <div className="flex items-center justify-around gap-2 py-4 relative z-10">
         <div className="flex flex-col items-center gap-3 w-24">
-          <div className="relative w-14 h-14 drop-shadow-2xl transition-transform group-hover:scale-110">
-            <Image src={match.homeLogo} alt={match.homeTeam} fill className="object-contain" />
-          </div>
+          <div className="relative w-14 h-14 drop-shadow-2xl transition-transform group-hover:scale-110"><Image src={match.homeLogo} alt={match.homeTeam} fill className="object-contain" /></div>
           <span className="text-[11px] font-black text-white text-center truncate w-full">{match.homeTeam}</span>
         </div>
-
         <div className="flex flex-col items-center min-w-[100px]">
-          <span className="text-4xl font-black text-white tracking-tighter drop-shadow-2xl">
-            {match.status === 'upcoming' ? 'VS' : `${match.score?.home} - ${match.score?.away}`}
-          </span>
-          {match.status === 'live' && (
-            <div className="flex items-center gap-1.5 mt-1 bg-primary/10 px-2 py-0.5 rounded-full border border-primary/20">
-              <span className="text-[10px] font-black text-primary animate-pulse">{match.minute}'</span>
-            </div>
-          )}
+          <span className="text-4xl font-black text-white tracking-tighter drop-shadow-2xl">{match.status === 'upcoming' ? 'VS' : `${match.score?.home} - ${match.score?.away}`}</span>
+          {match.status === 'live' && <div className="flex items-center gap-1.5 mt-1 bg-primary/10 px-2 py-0.5 rounded-full border border-primary/20"><span className="text-[10px] font-black text-primary animate-pulse">{match.minute}'</span></div>}
         </div>
-
         <div className="flex flex-col items-center gap-3 w-24">
-          <div className="relative w-14 h-14 drop-shadow-2xl transition-transform group-hover:scale-110">
-            <Image src={match.awayLogo} alt={match.awayTeam} fill className="object-contain" />
-          </div>
+          <div className="relative w-14 h-14 drop-shadow-2xl transition-transform group-hover:scale-110"><Image src={match.awayLogo} alt={match.awayTeam} fill className="object-contain" /></div>
           <span className="text-[11px] font-black text-white text-center truncate w-full">{match.awayTeam}</span>
         </div>
       </div>
-
       <div className="pt-4 border-t border-white/5 flex items-center justify-between relative z-10">
         <div className="flex items-center gap-2 bg-black/20 px-3 py-1 rounded-full border border-white/5">
           <Tv className="w-3.5 h-3.5 text-accent" />
-          <span className="text-[10px] font-black text-white/70 uppercase tracking-tighter">
-            {match.channel || "SSC / beIN"}
-          </span>
+          <span className="text-[10px] font-black text-white/70 uppercase tracking-tighter">{match.channel || "SSC / beIN"}</span>
         </div>
         <div className="flex items-center gap-2 opacity-40">
           <Mic2 className="w-3.5 h-3.5" />
