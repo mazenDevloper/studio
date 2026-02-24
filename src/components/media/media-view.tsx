@@ -165,48 +165,77 @@ export function MediaView() {
 
       {selectedChannel ? (
         <div className="space-y-6 animate-in fade-in slide-in-from-left-4 duration-500 pb-20">
-          <div className="flex items-center gap-6 p-8 rounded-3xl bg-white/5 border border-white/10 backdrop-blur-xl relative">
-             <div className="relative w-24 h-24 rounded-full overflow-hidden border-2 border-primary shadow-2xl">
+          <div className="flex items-center gap-6 p-10 rounded-[3rem] bg-white/5 border border-white/10 backdrop-blur-2xl relative shadow-2xl">
+             <div className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-primary shadow-2xl shrink-0">
                 <Image src={selectedChannel.thumbnail} alt={selectedChannel.title} fill className="object-cover" />
              </div>
              <div className="flex-1">
-                <h2 className="text-3xl font-headline font-bold text-white mb-1">{selectedChannel.title}</h2>
-                <p className="text-muted-foreground text-sm line-clamp-2 max-w-xl">{selectedChannel.description}</p>
+                <h2 className="text-4xl font-headline font-bold text-white mb-2">{selectedChannel.title}</h2>
+                <p className="text-white/60 text-base line-clamp-2 max-w-2xl">{selectedChannel.description}</p>
+                <div className="mt-6 flex items-center gap-4">
+                  <Button
+                    onClick={() => favoriteChannels.some(c => c.id === selectedChannel.id) ? removeChannel(selectedChannel.id) : addChannel(selectedChannel)}
+                    className={cn(
+                      "rounded-full h-14 px-10 text-lg font-black shadow-xl transition-all",
+                      favoriteChannels.some(c => c.id === selectedChannel.id) ? "bg-accent text-black hover:bg-accent/80" : "bg-white text-black hover:bg-primary hover:text-white"
+                    )}
+                  >
+                    {favoriteChannels.some(c => c.id === selectedChannel.id) ? <Check className="w-6 h-6 mr-3" /> : <Plus className="w-6 h-6 mr-3" />}
+                    {favoriteChannels.some(c => c.id === selectedChannel.id) ? 'مشترك' : 'اشتراك'}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => toggleStarChannel(selectedChannel.id)}
+                    className={cn("w-14 h-14 rounded-full border border-white/10", starredChannelIds.includes(selectedChannel.id) ? "bg-accent/20 text-accent shadow-glow" : "text-white/40")}
+                  >
+                    <Star className={cn("w-7 h-7", starredChannelIds.includes(selectedChannel.id) && "fill-current")} />
+                  </Button>
+                </div>
              </div>
              <Button
                 onClick={() => setSelectedChannel(null)}
-                className="absolute -top-4 -right-4 w-12 h-12 rounded-full bg-white/10 border border-white/20 text-white backdrop-blur-2xl shadow-2xl hover:bg-white/20 transition-all active:scale-95"
+                className="absolute top-8 right-8 w-12 h-12 rounded-full bg-white/10 border border-white/20 text-white backdrop-blur-3xl shadow-2xl hover:bg-white/20 transition-all active:scale-95"
               >
                 <X className="w-6 h-6" />
               </Button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {isLoadingVideos ? (
-              <div className="col-span-full py-20 flex justify-center"><Loader2 className="w-10 h-10 animate-spin text-primary" /></div>
+              <div className="col-span-full py-32 flex flex-col items-center gap-4">
+                <Loader2 className="w-12 h-12 animate-spin text-primary" />
+                <span className="text-white/40 font-bold uppercase tracking-[0.3em]">جاري مزامنة القناة...</span>
+              </div>
             ) : channelVideos.map((video) => {
               const isSaved = savedVideos.some(v => v.id === video.id);
               return (
                 <Card 
                   key={video.id} 
-                  className="group relative overflow-hidden bg-white/5 border-none rounded-3xl transition-all hover:scale-[1.02] cursor-pointer shadow-xl"
+                  className="group relative overflow-hidden bg-white/5 border-none rounded-[2.5rem] transition-all hover:scale-[1.02] cursor-pointer shadow-2xl"
                   onClick={() => setActiveVideo(video)}
                 >
                   <div className="aspect-video relative overflow-hidden">
-                    <Image src={video.thumbnail} alt={video.title} fill className="object-cover opacity-80" />
-                    <div className="absolute top-3 right-3 z-20">
+                    <Image src={video.thumbnail} alt={video.title} fill className="object-cover opacity-80 group-hover:opacity-100 transition-all duration-700" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                    <div className="absolute top-4 right-4 z-20">
                        <Button
                         size="icon"
                         variant="ghost"
                         onClick={(e) => handleToggleSave(e, video)}
-                        className={cn("w-10 h-10 rounded-full backdrop-blur-3xl border border-white/10", isSaved ? "bg-accent text-black" : "bg-black/40 text-white")}
+                        className={cn("w-12 h-12 rounded-full backdrop-blur-3xl border border-white/10 transition-all", isSaved ? "bg-accent text-black shadow-glow" : "bg-black/40 text-white hover:bg-black/60")}
                        >
-                         <Bookmark className={cn("w-5 h-5", isSaved && "fill-current")} />
+                         <Bookmark className={cn("w-6 h-6", isSaved && "fill-current")} />
                        </Button>
                     </div>
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-3xl flex items-center justify-center border border-white/20 scale-75 group-hover:scale-100 transition-transform">
+                        <Play className="w-8 h-8 text-white fill-white ml-1" />
+                      </div>
+                    </div>
                   </div>
-                  <CardContent className="p-4">
-                    <h3 className="font-bold text-sm line-clamp-2 text-white font-headline leading-tight">{video.title}</h3>
+                  <CardContent className="p-6">
+                    <h3 className="font-bold text-base line-clamp-2 text-white font-headline leading-tight">{video.title}</h3>
                   </CardContent>
                 </Card>
               );
@@ -244,10 +273,10 @@ export function MediaView() {
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
                 <div className="flex flex-col items-center gap-3 group cursor-pointer">
-                  <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full border-2 border-dashed border-white/20 flex items-center justify-center bg-white/5 group-hover:bg-white/10 group-hover:border-primary transition-all duration-300">
-                    <Plus className="w-10 h-10 text-white/40 group-hover:text-primary" />
+                  <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full border-2 border-dashed border-white/20 flex items-center justify-center bg-white/5 group-hover:bg-white/10 group-hover:border-primary transition-all duration-300 shadow-xl">
+                    <Plus className="w-10 h-10 text-white/40 group-hover:text-primary transition-all" />
                   </div>
-                  <span className="font-bold text-sm text-white/60">إضافة قناة</span>
+                  <span className="font-bold text-sm text-white/60 group-hover:text-primary">إضافة قناة</span>
                 </div>
               </DialogTrigger>
               <DialogContent className="max-w-2xl bg-zinc-900 border-white/10 rounded-[2.5rem] p-0 overflow-hidden shadow-2xl">
@@ -296,18 +325,18 @@ export function MediaView() {
             {favoriteChannels.map((channel) => {
               const isStarred = starredChannelIds.includes(channel.id);
               return (
-                <div key={channel.id} className="flex flex-col items-center gap-3 group relative">
+                <div key={channel.id} className="flex flex-col items-center gap-3 group relative animate-in zoom-in-95 duration-500">
                   <div 
                     className="w-24 h-24 sm:w-32 sm:h-32 rounded-full overflow-hidden border-2 border-white/10 group-hover:border-primary transition-all duration-500 cursor-pointer shadow-xl relative"
                     onClick={() => handleSelectChannel(channel)}
                   >
-                    <Image src={channel.thumbnail} alt={channel.title} fill className="object-cover group-hover:scale-110 transition-transform" />
+                    <Image src={channel.thumbnail} alt={channel.title} fill className="object-cover group-hover:scale-110 transition-transform duration-700" />
                     <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors" />
                   </div>
-                  <button onClick={(e) => { e.stopPropagation(); toggleStarChannel(channel.id); }} className={cn("absolute top-0 left-0 w-8 h-8 rounded-full flex items-center justify-center border border-white/10 backdrop-blur-md", isStarred ? "bg-accent text-black shadow-glow" : "bg-black/40 text-white/40")}>
+                  <button onClick={(e) => { e.stopPropagation(); toggleStarChannel(channel.id); }} className={cn("absolute top-0 left-0 w-8 h-8 rounded-full flex items-center justify-center border border-white/10 backdrop-blur-md transition-all active:scale-90", isStarred ? "bg-accent text-black shadow-glow" : "bg-black/40 text-white/40 hover:text-white")}>
                     <Star className={cn("w-4 h-4", isStarred && "fill-current")} />
                   </button>
-                  <button onClick={(e) => { e.stopPropagation(); removeChannel(channel.id); }} className="absolute top-0 right-0 w-8 h-8 rounded-full bg-destructive text-white flex items-center justify-center shadow-lg hover:scale-110 transition-all">
+                  <button onClick={(e) => { e.stopPropagation(); removeChannel(channel.id); }} className="absolute top-0 right-0 w-8 h-8 rounded-full bg-destructive text-white flex items-center justify-center shadow-lg hover:scale-110 transition-all active:scale-90">
                     <Trash2 className="w-4 h-4" />
                   </button>
                   <span className="font-bold text-sm text-center text-white/80 group-hover:text-white truncate w-full px-2">{channel.title}</span>
@@ -317,9 +346,15 @@ export function MediaView() {
           </div>
 
           {favoriteChannels.length === 0 && (
-            <div className="text-center py-24 bg-white/5 rounded-[3rem] border-2 border-dashed border-white/5">
-              <h3 className="text-2xl font-bold text-white/40 uppercase tracking-widest">اين الفيديوهات</h3>
-              <p className="text-muted-foreground mt-2">اضغط على "إضافة قناة" للبدء في تخصيص مكتبتك</p>
+            <div className="text-center py-32 bg-white/5 rounded-[3rem] border-2 border-dashed border-white/10 flex flex-col items-center gap-6">
+              <div className="w-24 h-24 rounded-full bg-white/5 flex items-center justify-center border border-white/10">
+                <Youtube className="w-10 h-10 text-white/20" />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-3xl font-bold text-white/40 uppercase tracking-[0.2em]">اين الفيديوهات</h3>
+                <p className="text-muted-foreground text-base">ابدأ بإضافة قنواتك المفضلة لبناء مكتبتك الشخصية</p>
+              </div>
+              <Button onClick={() => setIsDialogOpen(true)} className="rounded-full bg-primary text-white font-bold h-12 px-8">إضافة قناة الآن</Button>
             </div>
           )}
         </section>

@@ -83,7 +83,9 @@ export function PrayerCountdownCard() {
   return (
     <div className={cn(
       "h-full w-full glass-panel rounded-[2.5rem] p-8 flex flex-col justify-center items-center text-center transition-all duration-1000 relative overflow-hidden shadow-2xl",
-      isIqamah ? "bg-accent/25 border-accent/90 shadow-[0_0_100px_rgba(65,184,131,0.7)] ring-8 ring-accent/30" : "bg-white/5 border-white/10"
+      isIqamah 
+        ? "bg-accent/25 border-accent/90 shadow-[0_0_100px_rgba(65,184,131,0.7)] ring-8 ring-accent/30" 
+        : "bg-white/5 border-white/10"
     )}>
       {isIqamah && (
         <>
@@ -92,6 +94,10 @@ export function PrayerCountdownCard() {
             <Sparkles className="w-16 h-16 text-accent opacity-90 drop-shadow-[0_0_25px_hsl(var(--accent))]" />
           </div>
         </>
+      )}
+
+      {!isIqamah && (
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent opacity-50" />
       )}
 
       <div className="flex items-center gap-3 mb-6 relative z-10">

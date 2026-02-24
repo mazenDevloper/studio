@@ -128,7 +128,7 @@ export function FootballView() {
               {liveMatches.length > 0 && (
                 <section className="space-y-4">
                   <h2 className="text-xl font-bold font-headline text-red-500 flex items-center gap-3">
-                    <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping" />
+                    <span className="inline-block w-2.5 h-2.5 rounded-full bg-red-500 animate-ping" />
                     مباشر الآن
                   </h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
