@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { WEATHER_API_KEY } from "@/lib/constants";
-import { Mic, Navigation, Maximize2, RotateCcw, Upload } from "lucide-react";
+import { Mic, Navigation, Maximize2, RotateCcw, Upload, MapPin } from "lucide-react";
 import Image from "next/image";
 import { MapWidget } from "./widgets/map-widget";
 import { PrayerTimelineWidget } from "./widgets/prayer-timeline-widget";
@@ -67,10 +67,10 @@ export function DashboardView() {
       </div>
 
       {/* Main Grid: 3 Main Columns */}
-      <div className="grid grid-cols-12 gap-6 min-h-[650px]">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-6 min-h-[650px]">
         
         {/* Column 1: Left (Carousel + Countdown) - Span 3 */}
-        <div className="col-span-3 flex flex-col gap-6">
+        <div className="md:col-span-3 flex flex-col gap-6">
           {/* Smart Stack (Carousel) - 4x3 H:W ratio */}
           <div className="glass-panel rounded-[2.5rem] relative group overflow-hidden flex flex-col aspect-[3/4] w-full shadow-2xl">
             <Carousel setApi={setApi} opts={{ loop: true }} className="flex-1 w-full h-full">
@@ -140,7 +140,7 @@ export function DashboardView() {
         </div>
 
         {/* Column 2: Middle (Car Display) - Span 5 */}
-        <div className="col-span-5 glass-panel rounded-[2.5rem] relative group flex flex-col items-center justify-center overflow-hidden">
+        <div className="md:col-span-5 glass-panel rounded-[2.5rem] relative group flex flex-col items-center justify-center overflow-hidden">
           <div className="flex-1 flex items-center justify-center w-full p-8">
             <Image 
               src="https://dmusera.netlify.app/es350gb.png" 
@@ -161,17 +161,8 @@ export function DashboardView() {
         </div>
 
         {/* Column 3: Right (Map Display) - Span 4 */}
-        <div className="col-span-4 glass-panel rounded-[2.5rem] overflow-hidden relative group shadow-2xl">
+        <div className="md:col-span-4 glass-panel rounded-[2.5rem] overflow-hidden relative group shadow-2xl">
           <MapWidget />
-          <div className="absolute top-8 right-8 z-20">
-            <button className="w-14 h-14 rounded-2xl bg-black/60 backdrop-blur-xl border border-white/10 flex items-center justify-center hover:bg-primary transition-all shadow-xl">
-              <Maximize2 className="w-7 h-7 text-white" />
-            </button>
-          </div>
-          <div className="absolute bottom-8 left-8 z-20 bg-black/60 backdrop-blur-xl p-4 rounded-2xl border border-white/10 flex items-center gap-4 shadow-xl">
-            <Navigation className="w-6 h-6 text-blue-400" />
-            <span className="text-sm font-bold text-white/90">صلالة، سلطنة عمان</span>
-          </div>
         </div>
       </div>
 

@@ -38,7 +38,6 @@ export function PrayerCountdownCard() {
       { name: "العشاء", time: pTimes.isha, iqamah: 20 },
     ];
 
-    // Check if we are in iqamah wait period
     for (let p of prayers) {
       const azanMins = timeToMinutes(p.time);
       const iqamahMins = azanMins + p.iqamah;
@@ -53,7 +52,6 @@ export function PrayerCountdownCard() {
       }
     }
 
-    // Default to next azan
     let next = prayers.find(p => timeToMinutes(p.time) > currentMinutes);
     if (!next) next = prayers[0];
 

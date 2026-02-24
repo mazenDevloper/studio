@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useMediaStore } from "@/lib/store";
@@ -10,6 +11,7 @@ import { useState, useEffect } from "react";
 export function GlobalVideoPlayer() {
   const { activeVideo, isPlaying, isMinimized, setActiveVideo, setIsPlaying, setIsMinimized, toggleMinimize } = useMediaStore();
   const [mounted, setMounted] = useState(false);
+  const [rate, setRate] = useState(1.0);
 
   useEffect(() => {
     setMounted(true);
@@ -17,16 +19,17 @@ export function GlobalVideoPlayer() {
 
   if (!mounted || !activeVideo) return null;
 
+  const rates = [1.0, 1.25, 1.5, 1.65];
+
   return (
     <div 
       className={cn(
         "fixed z-[100] transition-all duration-500 ease-in-out shadow-2xl overflow-hidden",
         isMinimized 
-          ? "bottom-8 right-32 w-[45%] h-20 capsule-player" 
+          ? "bottom-8 right-8 w-[400px] h-20 capsule-player" 
           : "inset-0 bg-black flex flex-col"
       )}
     >
-      {/* Capsule Content (Minimized) */}
       {isMinimized ? (
         <div className="flex items-center justify-between px-4 h-full w-full gap-4">
            <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -39,15 +42,25 @@ export function GlobalVideoPlayer() {
               <div className="flex-1 min-w-0">
                 <h4 className="text-xs font-black text-white truncate">{activeVideo.title}</h4>
                 <div className="flex gap-1 mt-1">
-                  <span className="bg-blue-500/20 text-[8px] text-blue-300 px-2 py-0.5 rounded-full font-bold uppercase tracking-widest">1.0x</span>
-                  <span className="bg-white/5 text-[8px] text-white/40 px-2 py-0.5 rounded-full font-bold uppercase tracking-widest">1.25x</span>
+                  {rates.map(r => (
+                    <button 
+                      key={r}
+                      onClick={(e) => { e.stopPropagation(); setRate(r); }}
+                      className={cn(
+                        "text-[8px] px-2 py-0.5 rounded-full font-bold uppercase tracking-widest transition-all",
+                        rate === r ? "bg-yellow-400 text-black shadow-[0_0_10px_rgba(250,204,21,0.5)]" : "bg-white/5 text-white/40"
+                      )}
+                    >
+                      {r}x
+                    </button>
+                  ))}
                 </div>
               </div>
            </div>
            
            <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" onClick={() => setIsPlaying(!isPlaying)} className="h-10 w-10 rounded-full hover:bg-white/10">
-                {isPlaying ? <Pause className="w-5 h-5 fill-current" /> : <Play className="w-5 h-5 fill-current" />}
+              <Button variant="ghost" size="icon" onClick={() => setIsPlaying(!isPlaying)} className="h-10 w-10 rounded-full hover:bg-white/10 text-white">
+                {isPlaying ? <Pause className="w-5 h-5 fill-current" /> : <Play className="w-5 h-5 fill-current ml-1" />}
               </Button>
               <Button variant="ghost" size="icon" onClick={() => setIsMinimized(false)} className="h-10 w-10 rounded-full bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white">
                 <Maximize2 className="w-4 h-4" />
@@ -59,19 +72,16 @@ export function GlobalVideoPlayer() {
         </div>
       ) : (
         <>
-          {/* Full Player Header */}
           <div className="h-20 flex items-center justify-between px-8 bg-black/40 backdrop-blur-xl border-b border-white/5">
             <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center">
-                <Play className="w-5 h-5 text-white fill-white" />
-              </div>
+              <Play className="w-5 h-5 text-red-600 fill-red-600" />
               <h3 className="font-bold text-lg text-white font-headline truncate max-w-xl">{activeVideo.title}</h3>
             </div>
             <div className="flex items-center gap-3">
-              <Button variant="ghost" size="icon" onClick={toggleMinimize} className="w-12 h-12 rounded-full hover:bg-white/10">
+              <Button variant="ghost" size="icon" onClick={toggleMinimize} className="w-12 h-12 rounded-full hover:bg-white/10 text-white">
                 <Maximize2 className="w-6 h-6 rotate-180" />
               </Button>
-              <Button variant="ghost" size="icon" onClick={() => setActiveVideo(null)} className="w-12 h-12 rounded-full hover:bg-white/10">
+              <Button variant="ghost" size="icon" onClick={() => setActiveVideo(null)} className="w-12 h-12 rounded-full hover:bg-white/10 text-white">
                 <X className="w-6 h-6" />
               </Button>
             </div>
@@ -80,7 +90,7 @@ export function GlobalVideoPlayer() {
           <div className="flex-1 relative bg-black">
             <iframe
               className="w-full h-full"
-              src={`https://www.youtube.com/embed/${activeVideo.id}?autoplay=1&controls=1&modestbranding=1&rel=0`}
+              src={`https://www.youtube.com/embed/${activeVideo.id}?autoplay=1&controls=1&modestbranding=1&rel=0&playbackRate=${rate}`}
               title="YouTube video player"
               frameBorder="0"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -88,7 +98,6 @@ export function GlobalVideoPlayer() {
             ></iframe>
           </div>
           
-          {/* Full Player Controls */}
           <div className="h-24 bg-zinc-900/80 backdrop-blur-2xl border-t border-white/5 flex items-center justify-center px-10 gap-12">
             <Button variant="ghost" size="icon" className="h-14 w-14 rounded-full text-white/40 hover:text-white"><SkipBack className="w-8 h-8 fill-current" /></Button>
             <Button 
