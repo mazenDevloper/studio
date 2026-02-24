@@ -26,10 +26,9 @@ export async function fetchFootballData(type: 'today' | 'live'): Promise<Match[]
         'x-apisports-host': 'v3.football.api-sports.io'
       },
       cache: 'no-store'
-    });
+    }).catch(() => null);
 
-    if (!response.ok) {
-      console.error(`Football API responded with status: ${response.status}`);
+    if (!response || !response.ok) {
       return [];
     }
 
@@ -67,14 +66,12 @@ export async function fetchFootballData(type: 'today' | 'live'): Promise<Match[]
         minute: item.fixture.status.elapsed ?? 0,
         league: item.league.name,
         leagueLogo: item.league.logo,
-        channel: "يحدد لاحقاً",
+        channel: "SSC / beIN",
         commentator: "يحدد لاحقاً",
         broadcasts: item.fixture.broadcasts || []
       } as Match;
     });
   } catch (error) {
-    // معالجة خطأ Failed to fetch بصمت لمنع ظهور شاشة الخطأ الحمراء للمستخدم
-    console.warn("Football API Network Error - Check connection or API Key status.");
     return [];
   }
 }

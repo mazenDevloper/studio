@@ -1,6 +1,6 @@
 
 export const firebaseConfig = {
-  apiKey: "AIzaSyDummyKey-For-Prototyping",
+  apiKey: "AIzaSyBMmtON9ww4dJxMHrl1wKyWTvI0ipJXJws",
   authDomain: "drivecast-carplay.firebaseapp.com",
   projectId: "drivecast-carplay",
   storageBucket: "drivecast-carplay.appspot.com",
