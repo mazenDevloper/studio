@@ -170,22 +170,22 @@ export function MediaView() {
                 <p className="text-white/60 text-lg line-clamp-2 max-w-3xl font-medium leading-relaxed">{selectedChannel.description}</p>
                 <div className="mt-8 flex items-center gap-5">
                   <Button
-                    onClick={() => favoriteChannels.some(c => c.id === selectedChannel.id) ? removeChannel(selectedChannel.id) : addChannel(selectedChannel)}
+                    onClick={() => favoriteChannels.some(c => c.id === selectedChannel!.id) ? removeChannel(selectedChannel!.id) : addChannel(selectedChannel!)}
                     className={cn(
                       "rounded-full h-16 px-12 text-xl font-black shadow-2xl transition-all",
-                      favoriteChannels.some(c => c.id === selectedChannel.id) ? "bg-accent text-black hover:bg-accent/80" : "bg-white text-black hover:bg-primary hover:text-white"
+                      favoriteChannels.some(c => c.id === selectedChannel!.id) ? "bg-accent text-black hover:bg-accent/80" : "bg-white text-black hover:bg-primary hover:text-white"
                     )}
                   >
-                    {favoriteChannels.some(c => c.id === selectedChannel.id) ? <Check className="w-8 h-8 mr-4" /> : <Plus className="w-8 h-8 mr-4" />}
-                    {favoriteChannels.some(c => c.id === selectedChannel.id) ? 'مشترك' : 'اشتراك'}
+                    {favoriteChannels.some(c => c.id === selectedChannel!.id) ? <Check className="w-8 h-8 mr-4" /> : <Plus className="w-8 h-8 mr-4" />}
+                    {favoriteChannels.some(c => c.id === selectedChannel!.id) ? 'مشترك' : 'اشتراك'}
                   </Button>
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => toggleStarChannel(selectedChannel.id)}
-                    className={cn("w-16 h-16 rounded-full border border-white/10 backdrop-blur-md transition-all", starredChannelIds.includes(selectedChannel.id) ? "bg-accent/20 text-accent shadow-glow" : "text-white/40 hover:text-white")}
+                    onClick={() => toggleStarChannel(selectedChannel!.id)}
+                    className={cn("w-16 h-16 rounded-full border border-white/10 backdrop-blur-md transition-all", starredChannelIds.includes(selectedChannel!.id) ? "bg-accent/20 text-accent shadow-glow" : "text-white/40 hover:text-white")}
                   >
-                    <Star className={cn("w-8 h-8", starredChannelIds.includes(selectedChannel.id) && "fill-current")} />
+                    <Star className={cn("w-8 h-8", starredChannelIds.includes(selectedChannel!.id) && "fill-current")} />
                   </Button>
                 </div>
              </div>
@@ -197,7 +197,8 @@ export function MediaView() {
               </Button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+          {/* Grid updated to 3 columns on medium screens and above */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {isLoadingVideos ? (
               <div className="col-span-full py-40 flex flex-col items-center gap-6">
                 <Loader2 className="w-16 h-16 animate-spin text-primary" />
@@ -257,7 +258,8 @@ export function MediaView() {
               إغلاق النتائج
             </Button>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          {/* Grid updated to 3 columns on medium screens */}
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-8">
             {videoResults.map((video) => (
               <Card 
                 key={video.id} 

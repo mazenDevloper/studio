@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
@@ -68,7 +67,6 @@ export function DateAndClockWidget() {
 
   return (
     <div className="h-full w-full flex flex-col items-center justify-center p-8 relative overflow-hidden bg-black rounded-[2.5rem]">
-      {/* Background Image Fill */}
       <div className="absolute inset-0 z-0">
         <Image 
           src="https://images.unsplash.com/photo-1534067783941-51c9c23ecefd?auto=format&fit=crop&q=80&w=1000"
@@ -81,12 +79,12 @@ export function DateAndClockWidget() {
       </div>
 
       <div className="relative z-10 flex flex-col items-center">
-        <div className="flex items-center gap-3 mb-4 bg-white/10 px-4 py-1.5 rounded-full border border-white/10 backdrop-blur-md">
+        <div className="flex items-center gap-3 mb-3 bg-white/10 px-4 py-1.5 rounded-full border border-white/10 backdrop-blur-md">
           <Calendar className="w-3.5 h-3.5 text-accent" />
           <span className="text-[10px] text-white/90 font-bold uppercase tracking-[0.2em]">{dayName} {dayNum} {monthName}</span>
         </div>
         
-        <div className="text-6xl font-black text-white tracking-tighter mb-4 drop-shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
+        <div className="text-5xl font-black text-white tracking-tighter mb-4 drop-shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
           {timeString}
         </div>
         
@@ -95,7 +93,7 @@ export function DateAndClockWidget() {
             <div className="bg-primary/20 text-primary px-4 py-1 rounded-full border border-primary/30 backdrop-blur-md">
               <span className="text-[10px] font-black uppercase tracking-widest">الصلاة القادمة: {nextPrayer.name}</span>
             </div>
-            <span className="text-4xl font-black text-accent drop-shadow-2xl mt-1">
+            <span className="text-3xl font-black text-accent drop-shadow-2xl mt-1">
               {convertTo12Hour(nextPrayer.time)}
             </span>
             <div className="text-[9px] font-bold text-white/40 uppercase mt-1 tracking-[0.3em] flex items-center gap-2">
