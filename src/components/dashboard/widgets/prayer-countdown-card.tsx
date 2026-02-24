@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
@@ -82,7 +81,7 @@ export function PrayerCountdownCard() {
 
   return (
     <div className={cn(
-      "h-full w-full glass-panel rounded-[2.5rem] p-6 flex flex-col justify-center items-center text-center transition-all duration-1000 relative overflow-hidden shadow-2xl",
+      "h-full w-full glass-panel rounded-[2.5rem] p-4 flex flex-col justify-center items-center text-center transition-all duration-1000 relative overflow-hidden shadow-2xl",
       isIqamah 
         ? "bg-accent/25 border-accent/90 shadow-[0_0_100px_rgba(65,184,131,0.7)] ring-8 ring-accent/30" 
         : "bg-white/5 border-white/10"
@@ -90,8 +89,8 @@ export function PrayerCountdownCard() {
       {isIqamah && (
         <>
           <div className="absolute inset-0 bg-gradient-to-t from-accent/40 via-transparent to-transparent animate-pulse" />
-          <div className="absolute top-8 right-8 animate-spin-slow">
-            <Sparkles className="w-12 h-12 text-accent opacity-90 drop-shadow-[0_0_25px_hsl(var(--accent))]" />
+          <div className="absolute top-4 right-4 animate-spin-slow opacity-50">
+            <Sparkles className="w-8 h-8 text-accent drop-shadow-[0_0_25px_hsl(var(--accent))]" />
           </div>
         </>
       )}
@@ -100,31 +99,32 @@ export function PrayerCountdownCard() {
         <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent opacity-50" />
       )}
 
-      <div className="flex items-center gap-2 mb-4 relative z-10">
+      <div className="flex items-center gap-2 mb-3 relative z-10">
         <div className={cn(
-          "px-4 py-2 rounded-full text-[11px] font-black uppercase tracking-[0.15em] border-2 flex items-center gap-3 transition-all duration-700",
+          "px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-[0.15em] border-2 flex items-center gap-2 transition-all duration-700",
           isIqamah 
-            ? "bg-accent text-black border-white/60 shadow-[0_0_40px_rgba(16,185,129,1)] scale-110" 
+            ? "bg-accent text-black border-white/60 shadow-[0_0_40px_rgba(16,185,129,1)]" 
             : "bg-primary/20 text-primary border-primary/40 shadow-glow"
         )}>
-          {isIqamah ? <BellRing className="w-4 h-4 animate-pulse" /> : <Clock className="w-3 h-3" />}
+          {isIqamah ? <BellRing className="w-3.5 h-3.5 animate-pulse" /> : <Clock className="w-2.5 h-2.5" />}
           {isIqamah ? `صلاة ${prayerStatus.name}` : `الصلاة القادمة: ${prayerStatus.name}`}
         </div>
       </div>
 
+      {/* تقليل حجم الخط لمنع القص وضمان ظهور الوقت بالكامل */}
       <div className={cn(
-        "text-4xl md:text-5xl font-black tracking-tighter drop-shadow-[0_15px_70px_rgba(0,0,0,0.9)] font-mono relative z-10 tabular-nums",
-        isIqamah ? "text-white scale-110 transition-transform duration-1000" : "text-white"
+        "text-3xl font-black tracking-tighter drop-shadow-[0_10px_40px_rgba(0,0,0,0.9)] font-mono relative z-10 tabular-nums",
+        isIqamah ? "text-white scale-105 transition-transform duration-1000" : "text-white"
       )}>
         {prayerStatus.remaining}
       </div>
 
-      <div className="mt-4 flex flex-col items-center gap-3 relative z-10">
+      <div className="mt-3 flex flex-col items-center gap-2 relative z-10">
         <div className={cn(
-          "flex items-center gap-3 font-black text-[9px] uppercase tracking-[0.2em]",
-          isIqamah ? "text-black bg-white px-4 py-1.5 rounded-full shadow-[0_0_40px_white]" : "text-white/40"
+          "flex items-center gap-2 font-black text-[8px] uppercase tracking-[0.2em]",
+          isIqamah ? "text-black bg-white px-3 py-1 rounded-full shadow-[0_0_40px_white]" : "text-white/40"
         )}>
-          <Timer className={cn("w-4 h-4", isIqamah ? "text-accent animate-pulse" : "text-primary")} />
+          <Timer className={cn("w-3 h-3", isIqamah ? "text-accent animate-pulse" : "text-primary")} />
           {isIqamah ? "الإقامة جارية" : `الأذان: ${prayerStatus.time}`}
         </div>
       </div>

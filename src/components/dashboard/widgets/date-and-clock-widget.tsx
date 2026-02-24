@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
@@ -80,25 +79,26 @@ export function DateAndClockWidget() {
       </div>
 
       <div className="relative z-10 flex flex-col items-center">
-        <div className="flex items-center gap-3 mb-3 bg-white/10 px-4 py-1.5 rounded-full border border-white/10 backdrop-blur-md">
-          <Calendar className="w-3.5 h-3.5 text-accent" />
-          <span className="text-[10px] text-white/90 font-bold uppercase tracking-[0.2em]">{dayName} {dayNum} {monthName}</span>
+        <div className="flex items-center gap-2 mb-3 bg-white/10 px-3 py-1 rounded-full border border-white/10 backdrop-blur-md">
+          <Calendar className="w-3 h-3 text-accent" />
+          <span className="text-[9px] text-white/90 font-bold uppercase tracking-[0.2em]">{dayName} {dayNum} {monthName}</span>
         </div>
         
-        <div className="text-4xl font-black text-white tracking-tighter mb-4 drop-shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
+        {/* تصغير حجم خط الساعة لمنع الضخامة */}
+        <div className="text-3xl font-black text-white tracking-tighter mb-4 drop-shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
           {timeString}
         </div>
         
         {nextPrayer && (
-          <div className="mt-2 flex flex-col items-center gap-2">
-            <div className="bg-primary/20 text-primary px-4 py-1 rounded-full border border-primary/30 backdrop-blur-md">
-              <span className="text-[9px] font-black uppercase tracking-widest">الصلاة القادمة: {nextPrayer.name}</span>
+          <div className="mt-2 flex flex-col items-center gap-1.5">
+            <div className="bg-primary/20 text-primary px-3 py-0.5 rounded-full border border-primary/30 backdrop-blur-md">
+              <span className="text-[8px] font-black uppercase tracking-widest">الصلاة القادمة: {nextPrayer.name}</span>
             </div>
-            <span className="text-2xl font-black text-accent drop-shadow-2xl mt-1">
+            <span className="text-xl font-black text-accent drop-shadow-2xl">
               {convertTo12Hour(nextPrayer.time)}
             </span>
-            <div className="text-[8px] font-bold text-white/40 uppercase mt-1 tracking-[0.3em] flex items-center gap-2">
-              <Timer className="w-3.5 h-3.5" /> متبقي {nextPrayer.countdown}
+            <div className="text-[7px] font-bold text-white/40 uppercase mt-1 tracking-[0.3em] flex items-center gap-1.5">
+              <Timer className="w-3 h-3" /> متبقي {nextPrayer.countdown}
             </div>
           </div>
         )}
