@@ -26,6 +26,13 @@ export interface Reminder {
   endHour: number;
 }
 
+export interface MapSettings {
+  zoom: number;
+  tilt: number;
+  carScale: number;
+  backgroundIndex: number;
+}
+
 interface MediaState {
   favoriteChannels: YouTubeChannel[];
   savedVideos: YouTubeVideo[];
@@ -35,6 +42,7 @@ interface MediaState {
   reminders: Reminder[];
   videoProgress: Record<string, number>;
   favoriteTeams: string[];
+  mapSettings: MapSettings;
   
   // Player State
   activeVideo: YouTubeVideo | null;
@@ -42,7 +50,7 @@ interface MediaState {
   isMinimized: boolean;
   isFullScreen: boolean;
   
-  // Storage Actions
+  // Actions
   addChannel: (channel: YouTubeChannel) => void;
   removeChannel: (id: string) => void;
   toggleSaveVideo: (video: YouTubeVideo) => void;
@@ -57,6 +65,7 @@ interface MediaState {
   toggleReminder: (id: string) => void;
   updateVideoProgress: (videoId: string, seconds: number) => void;
   toggleFavoriteTeam: (teamName: string) => void;
+  updateMapSettings: (settings: Partial<MapSettings>) => void;
   
   // Sync Actions
   loadFromFirestore: (userId: string) => Promise<void>;
@@ -113,6 +122,7 @@ const syncToCloud = async (state: Partial<MediaState>) => {
     reminders: state.reminders,
     videoProgress: state.videoProgress,
     favoriteTeams: state.favoriteTeams,
+    mapSettings: state.mapSettings,
   };
   
   Object.keys(dataToSync).forEach(key => 
@@ -133,6 +143,12 @@ export const useMediaStore = create<MediaState>()(
       reminders: INITIAL_REMINDERS,
       videoProgress: {},
       favoriteTeams: ['الهلال', 'ريال مدريد'],
+      mapSettings: {
+        zoom: 19.5,
+        tilt: 65,
+        carScale: 1.02,
+        backgroundIndex: 0
+      },
       
       activeVideo: null,
       isPlaying: false,
@@ -145,6 +161,14 @@ export const useMediaStore = create<MediaState>()(
         if (snap.exists()) {
           set(snap.data() as any);
         }
+      },
+
+      updateMapSettings: (settings) => {
+        set((state) => {
+          const newState = { mapSettings: { ...state.mapSettings, ...settings } };
+          syncToCloud({ ...state, ...newState });
+          return newState;
+        });
       },
 
       toggleFavoriteTeam: (teamName) => {

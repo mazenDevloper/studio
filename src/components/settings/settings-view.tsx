@@ -16,19 +16,39 @@ import {
   Key, 
   RefreshCw,
   Clock,
-  Palette
+  Palette,
+  Monitor,
+  Maximize,
+  Compass,
+  Image as ImageIcon
 } from "lucide-react";
 import { YT_KEYS_POOL } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Slider } from "@/components/ui/slider";
 import { AVAILABLE_TEAMS } from "@/lib/football-data";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
+const BACKGROUNDS = [
+  "https://images.unsplash.com/photo-1534067783941-51c9c23ecefd",
+  "https://images.unsplash.com/photo-1446776811953-b23d57bd21aa",
+  "https://images.unsplash.com/photo-1594911772125-07fc7a2d8d9f",
+  "https://images.unsplash.com/photo-1478760329108-5c3ed9d495a0"
+];
+
 export function SettingsView() {
-  const { reminders, addReminder, removeReminder, favoriteTeams, toggleFavoriteTeam } = useMediaStore();
+  const { 
+    reminders, 
+    addReminder, 
+    removeReminder, 
+    favoriteTeams, 
+    toggleFavoriteTeam, 
+    mapSettings, 
+    updateMapSettings 
+  } = useMediaStore();
   const { toast } = useToast();
   
   const [newReminder, setNewReminder] = useState({ label: "", startHour: 6, endHour: 22 });
@@ -49,6 +69,13 @@ export function SettingsView() {
     toast({ title: "تمت الإضافة", description: "تمت إضافة التذكير بنجاح." });
   };
 
+  const saveToCache = () => {
+    toast({
+      title: "تم الحفظ",
+      description: "تم حفظ كافة الإعدادات في الذاكرة المحلية والتحميل السحابي.",
+    });
+  };
+
   return (
     <div className="p-12 space-y-12 max-w-6xl mx-auto pb-40 animate-in fade-in duration-700">
       <header className="flex flex-col gap-4">
@@ -58,21 +85,103 @@ export function SettingsView() {
         <p className="text-white/40 font-bold uppercase tracking-[0.6em] text-sm">System Configuration & Preferences</p>
       </header>
 
-      <Tabs defaultValue="youtube" className="w-full">
-        <TabsList className="bg-white/5 p-1 rounded-full border border-white/10 h-16 mb-12 flex justify-start w-fit">
-          <TabsTrigger value="youtube" className="rounded-full px-10 h-full data-[state=active]:bg-primary data-[state=active]:text-white font-bold text-lg">
+      <Tabs defaultValue="appearance" className="w-full">
+        <TabsList className="bg-white/5 p-1 rounded-full border border-white/10 h-16 mb-12 flex justify-start w-fit overflow-x-auto no-scrollbar">
+          <TabsTrigger value="appearance" className="rounded-full px-10 h-full data-[state=active]:bg-primary data-[state=active]:text-white font-bold text-lg whitespace-nowrap">
+            <Palette className="w-5 h-5 mr-3" /> المظهر والزوم
+          </TabsTrigger>
+          <TabsTrigger value="youtube" className="rounded-full px-10 h-full data-[state=active]:bg-primary data-[state=active]:text-white font-bold text-lg whitespace-nowrap">
             <Youtube className="w-5 h-5 mr-3" /> YouTube
           </TabsTrigger>
-          <TabsTrigger value="reminders" className="rounded-full px-10 h-full data-[state=active]:bg-primary data-[state=active]:text-white font-bold text-lg">
+          <TabsTrigger value="reminders" className="rounded-full px-10 h-full data-[state=active]:bg-primary data-[state=active]:text-white font-bold text-lg whitespace-nowrap">
             <Bell className="w-5 h-5 mr-3" /> التذكيرات
           </TabsTrigger>
-          <TabsTrigger value="football" className="rounded-full px-10 h-full data-[state=active]:bg-primary data-[state=active]:text-white font-bold text-lg">
+          <TabsTrigger value="football" className="rounded-full px-10 h-full data-[state=active]:bg-primary data-[state=active]:text-white font-bold text-lg whitespace-nowrap">
             <Trophy className="w-5 h-5 mr-3" /> الرياضة
           </TabsTrigger>
-          <TabsTrigger value="system" className="rounded-full px-10 h-full data-[state=active]:bg-primary data-[state=active]:text-white font-bold text-lg">
+          <TabsTrigger value="system" className="rounded-full px-10 h-full data-[state=active]:bg-primary data-[state=active]:text-white font-bold text-lg whitespace-nowrap">
             <Info className="w-5 h-5 mr-3" /> النظام
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="appearance" className="space-y-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <Card className="bg-zinc-900/50 border-white/10 rounded-[3rem] p-10 space-y-8">
+              <CardTitle className="text-2xl font-black text-white flex items-center gap-4">
+                <Maximize className="w-6 h-6 text-primary" /> التحكم بالزوم والمنظور
+              </CardTitle>
+              
+              <div className="space-y-6">
+                <div className="space-y-4">
+                  <div className="flex justify-between">
+                    <label className="text-xs font-black text-white/40 uppercase tracking-widest">مستوى الزوم (Map Zoom)</label>
+                    <span className="text-primary font-bold">{mapSettings.zoom.toFixed(1)}</span>
+                  </div>
+                  <Slider 
+                    value={[mapSettings.zoom]} 
+                    min={15} max={21} step={0.1} 
+                    onValueChange={([val]) => updateMapSettings({ zoom: val })} 
+                  />
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex justify-between">
+                    <label className="text-xs font-black text-white/40 uppercase tracking-widest">إمالة الكاميرا (Tilt)</label>
+                    <span className="text-primary font-bold">{mapSettings.tilt}°</span>
+                  </div>
+                  <Slider 
+                    value={[mapSettings.tilt]} 
+                    min={0} max={85} step={5} 
+                    onValueChange={([val]) => updateMapSettings({ tilt: val })} 
+                  />
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex justify-between">
+                    <label className="text-xs font-black text-white/40 uppercase tracking-widest">حجم السيارة (Car Scale)</label>
+                    <span className="text-primary font-bold">{mapSettings.carScale.toFixed(2)}</span>
+                  </div>
+                  <Slider 
+                    value={[mapSettings.carScale]} 
+                    min={0.5} max={2.5} step={0.05} 
+                    onValueChange={([val]) => updateMapSettings({ carScale: val })} 
+                  />
+                </div>
+              </div>
+
+              <Button onClick={saveToCache} className="w-full h-16 rounded-2xl bg-primary text-white text-lg font-black shadow-2xl">
+                <Save className="w-6 h-6 mr-3" /> حفظ إعدادات المنظور
+              </Button>
+            </Card>
+
+            <Card className="bg-zinc-900/50 border-white/10 rounded-[3rem] p-10 space-y-8">
+              <CardTitle className="text-2xl font-black text-white flex items-center gap-4">
+                <ImageIcon className="w-6 h-6 text-accent" /> خلفية النظام (Atmospheric)
+              </CardTitle>
+              
+              <div className="grid grid-cols-2 gap-4 h-64">
+                {BACKGROUNDS.map((bg, idx) => (
+                  <button 
+                    key={idx}
+                    onClick={() => updateMapSettings({ backgroundIndex: idx })}
+                    className={cn(
+                      "relative rounded-2xl overflow-hidden border-4 transition-all",
+                      mapSettings.backgroundIndex === idx ? "border-primary scale-105 shadow-glow" : "border-transparent opacity-40 hover:opacity-100"
+                    )}
+                  >
+                    <img src={`${bg}?auto=format&fit=crop&q=40&w=300`} className="w-full h-full object-cover" alt={`Background ${idx}`} />
+                    {mapSettings.backgroundIndex === idx && (
+                      <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
+                        <Save className="w-8 h-8 text-white" />
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-white/40 text-center uppercase tracking-widest font-bold">اختر طابعك البصري المفضل للواجهة</p>
+            </Card>
+          </div>
+        </TabsContent>
 
         <TabsContent value="youtube" className="space-y-8">
           <Card className="bg-zinc-900/50 border-white/10 rounded-[3rem] overflow-hidden">
