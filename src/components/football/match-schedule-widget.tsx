@@ -1,11 +1,10 @@
-
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
 import { AVAILABLE_TEAMS, Match } from "@/lib/football-data";
 import { useMediaStore } from "@/lib/store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Trophy, Tv, Mic2, Star, RefreshCw, Loader2 } from "lucide-react";
+import { Trophy, Tv, Mic2, Star, RefreshCw, Loader2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -17,11 +16,16 @@ export function MatchScheduleWidget() {
   const { favoriteTeams, toggleFavoriteTeam } = useMediaStore();
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   const loadMatches = useCallback(async () => {
     setLoading(true);
+    setError(false);
     try {
       const data = await fetchFootballData('today');
+      if (data.length === 0 && !loading) {
+        // Might be a fetch failure or actually no matches
+      }
       // ترتيب المباريات بحيث تظهر فرق المستخدم المفضلة أولاً
       const sorted = [...data].sort((a, b) => {
         const aFav = favoriteTeams.includes(a.homeTeam) || favoriteTeams.includes(a.awayTeam);
@@ -31,12 +35,14 @@ export function MatchScheduleWidget() {
         return 0;
       });
       setMatches(sorted);
+      if (data.length === 0) setError(true);
     } catch (error) {
       console.error("Failed to load dashboard matches", error);
+      setError(true);
     } finally {
       setLoading(false);
     }
-  }, [favoriteTeams]);
+  }, [favoriteTeams, loading]);
 
   useEffect(() => {
     loadMatches();
@@ -94,10 +100,18 @@ export function MatchScheduleWidget() {
         </div>
       </CardHeader>
 
-      <CardContent className="p-8 pt-0">
-        {loading && matches.length === 0 ? (
-          <div className="flex justify-center py-12">
+      <CardContent className="p-8 pt-0 min-h-[150px] flex items-center">
+        {loading ? (
+          <div className="flex w-full justify-center py-12">
             <Loader2 className="w-10 h-10 animate-spin text-primary" />
+          </div>
+        ) : error && matches.length === 0 ? (
+          <div className="w-full py-12 flex flex-col items-center justify-center gap-4 bg-white/5 rounded-[2.5rem] border border-dashed border-white/10">
+            <AlertCircle className="w-10 h-10 text-red-500/50" />
+            <p className="text-white/40 italic text-sm">يفشل في جلب البيانات حالياً. يرجى التحقق من الاتصال.</p>
+            <Button variant="outline" size="sm" onClick={loadMatches} className="rounded-full border-white/10">
+              إعادة المحاولة
+            </Button>
           </div>
         ) : (
           <ScrollArea className="w-full whitespace-nowrap">

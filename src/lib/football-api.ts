@@ -1,4 +1,3 @@
-
 'use client';
 
 import { FOOTBALL_API_KEY, FOOTBALL_API_BASE_URL } from "./constants";
@@ -29,6 +28,7 @@ export async function fetchFootballData(type: 'today' | 'live'): Promise<Match[]
     }).catch(() => null);
 
     if (!response || !response.ok) {
+      console.error("Football API response not OK");
       return [];
     }
 
@@ -72,6 +72,7 @@ export async function fetchFootballData(type: 'today' | 'live'): Promise<Match[]
       } as Match;
     });
   } catch (error) {
+    console.error("Fetch football data error:", error);
     return [];
   }
 }
@@ -80,11 +81,16 @@ export async function fetchStandings(leagueId: number) {
   try {
     const response = await fetch(`${FOOTBALL_API_BASE_URL}/standings?league=${leagueId}&season=2024`, {
       method: 'GET',
-      headers: { 'x-apisports-key': FOOTBALL_API_KEY || '', 'x-apisports-host': 'v3.football.api-sports.io' }
+      headers: { 
+        'x-apisports-key': FOOTBALL_API_KEY || '', 
+        'x-apisports-host': 'v3.football.api-sports.io' 
+      }
     });
+    if (!response.ok) return [];
     const data = await response.json();
     return data.response?.[0]?.league?.standings?.[0] || [];
   } catch (error) {
+    console.error("Fetch standings error:", error);
     return [];
   }
 }
@@ -93,11 +99,16 @@ export async function fetchTopScorers(leagueId: number) {
   try {
     const response = await fetch(`${FOOTBALL_API_BASE_URL}/players/topscorers?league=${leagueId}&season=2024`, {
       method: 'GET',
-      headers: { 'x-apisports-key': FOOTBALL_API_KEY || '', 'x-apisports-host': 'v3.football.api-sports.io' }
+      headers: { 
+        'x-apisports-key': FOOTBALL_API_KEY || '', 
+        'x-apisports-host': 'v3.football.api-sports.io' 
+      }
     });
+    if (!response.ok) return [];
     const data = await response.json();
     return data.response || [];
   } catch (error) {
+    console.error("Fetch top scorers error:", error);
     return [];
   }
 }
