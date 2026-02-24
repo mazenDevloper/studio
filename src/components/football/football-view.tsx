@@ -1,11 +1,10 @@
-
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
 import { Match } from "@/lib/football-data";
-import { fetchFootballData } from "@/lib/football-api";
+import { getFootballIntelligence } from "@/ai/flows/football-intelligence-flow";
 import { useMediaStore } from "@/lib/store";
-import { Trophy, Tv, Mic2, Star, Calendar, RefreshCw, Loader2, Check } from "lucide-react";
+import { Trophy, Tv, Mic2, Star, Calendar, RefreshCw, Loader2, Check, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
@@ -13,23 +12,32 @@ import { cn } from "@/lib/utils";
 export function FootballView() {
   const { favoriteTeams, toggleFavoriteTeam } = useMediaStore();
   const [matches, setMatches] = useState<Match[]>([]);
+  const [summary, setSummary] = useState<string>("");
   const [loading, setLoading] = useState(true);
 
   const fetchMatches = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await fetchFootballData('today');
-      // فرز المباريات: المفضلة أولاً
-      const sortedData = data.sort((a, b) => {
-        const aFav = favoriteTeams.includes(a.homeTeam) || favoriteTeams.includes(a.awayTeam);
-        const bFav = favoriteTeams.includes(b.homeTeam) || favoriteTeams.includes(b.awayTeam);
-        if (aFav && !bFav) return -1;
-        if (!aFav && bFav) return 1;
-        return 0;
-      });
-      setMatches(sortedData);
+      // جلب البيانات عبر الذكاء الاصطناعي
+      const response = await getFootballIntelligence({ type: 'today' });
+      
+      if (response.matches) {
+        // فرز المباريات: المفضلة أولاً
+        const sortedData = response.matches.sort((a, b) => {
+          const aFav = favoriteTeams.includes(a.homeTeam) || favoriteTeams.includes(a.awayTeam);
+          const bFav = favoriteTeams.includes(b.homeTeam) || favoriteTeams.includes(b.awayTeam);
+          if (aFav && !bFav) return -1;
+          if (!aFav && bFav) return 1;
+          return 0;
+        });
+        setMatches(sortedData as any);
+      }
+      
+      if (response.summary) {
+        setSummary(response.summary);
+      }
     } catch (error) {
-      console.error("Football API Integration Error:", error);
+      console.error("Football AI Integration Error:", error);
     } finally {
       setLoading(false);
     }
@@ -37,7 +45,7 @@ export function FootballView() {
 
   useEffect(() => {
     fetchMatches();
-    const interval = setInterval(fetchMatches, 120000); // تحديث كل دقيقتين
+    const interval = setInterval(fetchMatches, 300000); // تحديث كل 5 دقائق عبر الذكاء الاصطناعي
     return () => clearInterval(interval);
   }, [fetchMatches]);
 
@@ -49,10 +57,13 @@ export function FootballView() {
     <div className="p-8 space-y-8 max-w-7xl mx-auto pb-32">
       <header className="flex items-center justify-between">
         <div className="flex flex-col">
-          <h1 className="text-4xl font-headline font-bold text-white tracking-tighter">مركز المباريات المباشر</h1>
+          <h1 className="text-4xl font-headline font-bold text-white tracking-tighter flex items-center gap-3">
+            مركز المباريات الذكي
+            <Sparkles className="w-6 h-6 text-accent animate-pulse" />
+          </h1>
           <p className="text-muted-foreground text-sm font-medium uppercase tracking-widest opacity-60 flex items-center gap-2">
              <div className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
-             بيانات حية من API-Sports (Real-time)
+             بيانات حية محسنة بالذكاء الاصطناعي (Arab World Focus)
           </p>
         </div>
         <Button 
@@ -62,17 +73,25 @@ export function FootballView() {
           className="rounded-full bg-white/5 border-white/10 text-white h-12 px-6 hover:bg-white/10"
         >
           {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
-          تحديث النتائج
+          تحديث البيانات
         </Button>
       </header>
+
+      {summary && (
+        <div className="glass-panel p-6 rounded-[2rem] border-accent/20 bg-accent/5 animate-in fade-in slide-in-from-top-4">
+          <p className="text-white/90 font-bold text-lg leading-relaxed text-right dir-rtl">
+             {summary}
+          </p>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-8 space-y-8">
           {liveMatches.length > 0 && (
             <section className="space-y-4">
               <h2 className="text-xl font-bold font-headline text-red-500 flex items-center gap-3">
-                <div className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
-                مباريات مباشرة الآن
+                <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping" />
+                مباشر الآن
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {liveMatches.map(match => (
@@ -89,7 +108,7 @@ export function FootballView() {
           <section className="space-y-4">
             <h2 className="text-xl font-bold font-headline text-white flex items-center gap-3">
               <Calendar className="w-5 h-5 text-primary" />
-              جدول مباريات اليوم
+              أهم مباريات اليوم
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {upcomingMatches.length > 0 ? upcomingMatches.map(match => (
@@ -98,9 +117,11 @@ export function FootballView() {
                   match={match} 
                   isFavorite={favoriteTeams.includes(match.homeTeam) || favoriteTeams.includes(match.awayTeam)} 
                 />
-              )) : (
+              )) : loading ? (
+                 [1,2,3,4].map(i => <div key={i} className="h-40 rounded-[2.5rem] bg-white/5 animate-pulse" />)
+              ) : (
                 <div className="col-span-2 py-12 text-center bg-white/5 rounded-[2.5rem] border border-dashed border-white/10">
-                  <p className="text-white/20 font-bold uppercase tracking-widest text-xs">لا توجد مباريات قادمة اليوم</p>
+                  <p className="text-white/20 font-bold uppercase tracking-widest text-xs">لا توجد مباريات هامة قريباً</p>
                 </div>
               )}
             </div>
@@ -110,7 +131,7 @@ export function FootballView() {
             <section className="space-y-4">
               <h2 className="text-lg font-bold font-headline text-white/40 flex items-center gap-3">
                 <Trophy className="w-5 h-5" />
-                انتهت اليوم
+                نتائج مكتملة
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 opacity-60">
                 {finishedMatches.map(match => (
@@ -128,7 +149,7 @@ export function FootballView() {
         <div className="lg:col-span-4 space-y-6">
           <div className="glass-panel rounded-[2.5rem] p-8 border-white/10 bg-black/40">
             <h3 className="text-lg font-bold font-headline text-white mb-6 flex items-center justify-between">
-              تخصيص الفرق المفضلة
+              تخصيص المفضلة
               <Star className="w-4 h-4 text-accent fill-current" />
             </h3>
             <div className="flex flex-wrap gap-2">
@@ -150,12 +171,6 @@ export function FootballView() {
                 );
               })}
             </div>
-            <div className="mt-8 p-4 rounded-2xl bg-white/5 border border-white/5 space-y-3">
-              <h4 className="text-[10px] font-black text-accent uppercase tracking-widest">تنبيهات الجزيرة العائمة</h4>
-              <p className="text-[11px] text-white/40 leading-relaxed">
-                ستظهر نتائج مباريات فرقك المفضلة تلقائياً في أعلى الشاشة بمجرد انطلاق الصافرة.
-              </p>
-            </div>
           </div>
         </div>
       </div>
@@ -164,8 +179,6 @@ export function FootballView() {
 }
 
 function MatchCard({ match, isFavorite }: { match: Match; isFavorite: boolean }) {
-  const activeBroadcast = match.broadcasts.find(b => b.country === 'Saudi Arabia' || b.country === 'MENA') || match.broadcasts[0];
-
   return (
     <div className={cn(
       "p-6 rounded-[2.5rem] border transition-all duration-500 hover:scale-[1.02] flex flex-col gap-4 relative overflow-hidden group",
@@ -212,7 +225,7 @@ function MatchCard({ match, isFavorite }: { match: Match; isFavorite: boolean })
         <div className="flex items-center gap-2 bg-black/20 px-3 py-1 rounded-full border border-white/5">
           <Tv className="w-3.5 h-3.5 text-accent" />
           <span className="text-[10px] font-black text-white/70 uppercase tracking-tighter">
-            {activeBroadcast?.channel || match.channel}
+            {match.channel}
           </span>
         </div>
         <div className="flex items-center gap-2 opacity-40">
