@@ -19,85 +19,99 @@ export interface YouTubeVideo {
   channelTitle?: string;
 }
 
-let keyIndex = 0;
-
-function getApiKey() {
-  const key = YT_KEYS_POOL[keyIndex];
-  keyIndex = (keyIndex + 1) % YT_KEYS_POOL.length;
-  return key;
+/**
+ * Robust fetch with key rotation.
+ * Tries each key in the pool until success or all fail.
+ */
+async function fetchWithRotation(endpoint: string, params: Record<string, string>) {
+  const queryParams = new URLSearchParams(params);
+  
+  for (let i = 0; i < YT_KEYS_POOL.length; i++) {
+    const key = YT_KEYS_POOL[i];
+    const url = `https://www.googleapis.com/youtube/v3/${endpoint}?${queryParams.toString()}&key=${key}`;
+    
+    try {
+      const response = await fetch(url);
+      if (response.ok) {
+        return await response.json();
+      }
+      
+      // If quota exceeded or forbidden, try next key
+      if (response.status === 403 || response.status === 429) {
+        console.warn(`YouTube API Key ${i} exhausted. Trying next...`);
+        continue;
+      }
+      
+      // Other errors might be permanent for this query
+      return null;
+    } catch (error) {
+      console.error(`Fetch error with key ${i}:`, error);
+      continue;
+    }
+  }
+  
+  console.error("All YouTube API keys exhausted or failed.");
+  return null;
 }
 
 export async function searchYouTubeChannels(query: string): Promise<YouTubeChannel[]> {
   if (!query) return [];
 
-  const apiKey = getApiKey();
-  const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=channel&maxResults=8&q=${encodeURIComponent(query)}&key=${apiKey}`;
+  const data = await fetchWithRotation('search', {
+    part: 'snippet',
+    type: 'channel',
+    maxResults: '8',
+    q: query
+  });
 
-  try {
-    const response = await fetch(url);
-    if (!response.ok) return [];
-    const data = await response.json();
+  if (!data || !data.items) return [];
 
-    return data.items.map((item: any) => ({
-      id: item.snippet.channelId,
-      title: item.snippet.title,
-      description: item.snippet.description,
-      thumbnail: item.snippet.thumbnails.high?.url || item.snippet.thumbnails.default?.url,
-    }));
-  } catch (error) {
-    console.error("YouTube Search Failed:", error);
-    return [];
-  }
+  return data.items.map((item: any) => ({
+    id: item.snippet.channelId,
+    title: item.snippet.title,
+    description: item.snippet.description,
+    thumbnail: item.snippet.thumbnails.high?.url || item.snippet.thumbnails.default?.url,
+  }));
 }
 
 export async function searchYouTubeVideos(query: string): Promise<YouTubeVideo[]> {
   if (!query) return [];
 
-  const apiKey = getApiKey();
-  const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=12&q=${encodeURIComponent(query)}&key=${apiKey}`;
+  const data = await fetchWithRotation('search', {
+    part: 'snippet',
+    type: 'video',
+    maxResults: '12',
+    q: query
+  });
 
-  try {
-    const response = await fetch(url);
-    if (!response.ok) return [];
-    const data = await response.json();
+  if (!data || !data.items) return [];
 
-    return data.items.map((item: any) => ({
-      id: item.id.videoId,
-      title: item.snippet.title,
-      description: item.snippet.description,
-      thumbnail: item.snippet.thumbnails.high?.url || item.snippet.thumbnails.default?.url,
-      publishedAt: item.snippet.publishedAt,
-      channelTitle: item.snippet.channelTitle
-    }));
-  } catch (error) {
-    console.error("YouTube Video Search Failed:", error);
-    return [];
-  }
+  return data.items.map((item: any) => ({
+    id: item.id.videoId,
+    title: item.snippet.title,
+    description: item.snippet.description,
+    thumbnail: item.snippet.thumbnails.high?.url || item.snippet.thumbnails.default?.url,
+    publishedAt: item.snippet.publishedAt,
+    channelTitle: item.snippet.channelTitle
+  }));
 }
 
 export async function fetchChannelVideos(channelId: string): Promise<YouTubeVideo[]> {
-  const apiKey = getApiKey();
-  const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&maxResults=12&order=date&type=video&key=${apiKey}`;
+  const data = await fetchWithRotation('search', {
+    part: 'snippet',
+    channelId: channelId,
+    maxResults: '12',
+    order: 'date',
+    type: 'video'
+  });
 
-  try {
-    const response = await fetch(url);
-    if (!response.ok) {
-        console.warn(`YouTube Channel API Error for ID: ${channelId}. Skipping...`);
-        return [];
-    }
-    const data = await response.json();
+  if (!data || !data.items) return [];
 
-    if (!data.items) return [];
-
-    return data.items.map((item: any) => ({
-      id: item.id.videoId,
-      title: item.snippet.title,
-      description: item.snippet.description,
-      thumbnail: item.snippet.thumbnails.high?.url || item.snippet.thumbnails.default?.url,
-      publishedAt: item.snippet.publishedAt,
-    }));
-  } catch (error) {
-    console.error("YouTube Fetch Videos Failed:", error);
-    return [];
-  }
+  return data.items.map((item: any) => ({
+    id: item.id.videoId,
+    title: item.snippet.title,
+    description: item.snippet.description,
+    thumbnail: item.snippet.thumbnails.high?.url || item.snippet.thumbnails.default?.url,
+    publishedAt: item.snippet.publishedAt,
+  }));
 }
