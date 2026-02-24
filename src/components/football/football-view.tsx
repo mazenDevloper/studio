@@ -117,9 +117,9 @@ export function FootballView() {
         <TabsContent value="matches" className="space-y-8">
           {summary && !loading && (
             <div className="glass-panel p-6 rounded-[2rem] border-accent/20 bg-accent/5 animate-in fade-in slide-in-from-top-4">
-              <p className="text-white/90 font-bold text-lg leading-relaxed text-right dir-rtl">
+              <div className="text-white/90 font-bold text-lg leading-relaxed text-right dir-rtl">
                  {summary}
-              </p>
+              </div>
             </div>
           )}
 
