@@ -68,7 +68,7 @@ export function DashboardView() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6 h-[460px]">
-        {/* Left Column - 50/50 split */}
+        {/* Left Column */}
         <div className="md:col-span-4 flex flex-col gap-6 h-full">
           <div className="glass-panel rounded-[2.5rem] relative group overflow-hidden flex flex-col w-full shadow-2xl h-1/2">
             <Carousel setApi={setApi} opts={{ loop: true }} className="flex-1 w-full h-full">
@@ -136,25 +136,26 @@ export function DashboardView() {
           </div>
         </div>
 
-        {/* Middle Column */}
-        <div className="md:col-span-4 glass-panel rounded-[2.5rem] relative group flex flex-col items-center justify-center overflow-hidden h-full">
-          <div className="flex-1 flex items-center justify-center w-full p-8">
+        {/* Middle Column - Car ES350 covering all widget */}
+        <div className="md:col-span-4 glass-panel rounded-[2.5rem] relative group flex flex-col items-center justify-center overflow-hidden h-full shadow-2xl">
+          <div className="absolute inset-0 flex items-center justify-center w-full">
             <Image 
               src="https://dmusera.netlify.app/es350gb.png" 
               alt="Lexus ES350" 
-              width={600} 
-              height={300}
-              className="object-contain drop-shadow-[0_30px_60px_rgba(0,0,0,0.9)] group-hover:scale-105 transition-transform duration-700"
+              fill
+              className="object-contain drop-shadow-[0_40px_80px_rgba(0,0,0,0.9)] scale-[1.2] group-hover:scale-[1.3] transition-transform duration-1000"
             />
           </div>
-          <div className="absolute bottom-6 flex gap-4 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-black/60 backdrop-blur-2xl p-2 rounded-full border border-white/10 shadow-2xl">
-            <button className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/5 rounded-full hover:bg-white/10 transition-all font-bold text-[10px] text-white uppercase tracking-widest">
-              <RotateCcw className="w-3.5 h-3.5" /> Reset
+          <div className="absolute bottom-10 flex gap-4 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-black/80 backdrop-blur-3xl p-3 rounded-full border border-white/20 shadow-2xl z-20">
+            <button className="flex items-center gap-2 px-6 py-2.5 bg-white/5 border border-white/10 rounded-full hover:bg-white/10 transition-all font-black text-[9px] text-white uppercase tracking-[0.2em]">
+              <RotateCcw className="w-4 h-4" /> Reset
             </button>
-            <button className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/5 rounded-full hover:bg-white/10 transition-all font-bold text-[10px] text-white uppercase tracking-widest">
-              <Upload className="w-3.5 h-3.5" /> Sync
+            <button className="flex items-center gap-2 px-6 py-2.5 bg-white/5 border border-white/10 rounded-full hover:bg-white/10 transition-all font-black text-[9px] text-white uppercase tracking-[0.2em]">
+              <Upload className="w-4 h-4" /> Sync
             </button>
           </div>
+          {/* Ambient Lighting */}
+          <div className="absolute inset-0 bg-gradient-to-t from-primary/5 via-transparent to-transparent pointer-events-none" />
         </div>
 
         {/* Right Column */}
