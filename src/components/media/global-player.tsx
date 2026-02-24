@@ -49,18 +49,6 @@ export function GlobalVideoPlayer() {
     setMounted(true);
   }, []);
 
-  // Update progress every 5 seconds if playing
-  useEffect(() => {
-    if (!isPlaying || !activeVideo) return;
-    
-    const interval = setInterval(() => {
-      // In a real scenario, we'd get current time from YouTube API
-      // Here we just simulate or keep track of start
-    }, 5000);
-    
-    return () => clearInterval(interval);
-  }, [isPlaying, activeVideo]);
-
   if (!mounted || !activeVideo) return null;
 
   const isSaved = savedVideos.some(v => v.id === activeVideo.id);
@@ -123,7 +111,6 @@ export function GlobalVideoPlayer() {
         </div>
       ) : isFullScreen ? (
         <>
-          {/* Full Screen Header */}
           <div className="h-16 flex items-center justify-between px-8 bg-black/60 backdrop-blur-2xl border-b border-white/5">
             <div className="flex items-center gap-4">
               <YoutubeIcon className="w-5 h-5 text-red-600" />
@@ -158,7 +145,6 @@ export function GlobalVideoPlayer() {
             ></iframe>
           </div>
 
-          {/* Full Screen Footer Controls */}
           <div className="h-24 bg-zinc-900/95 backdrop-blur-3xl border-t border-white/10 flex items-center justify-between px-10">
             <div className="w-1/4">
               <Button 
@@ -211,20 +197,8 @@ export function GlobalVideoPlayer() {
           </div>
         </>
       ) : (
-        /* Popup Layout based on User Image Reference */
         <>
-          {/* Control Buttons on the left of the Popup */}
           <div className="flex flex-col gap-4 mb-4">
-             <Button 
-                variant="default" 
-                size="icon"
-                onClick={(e) => { e.stopPropagation(); setIsMinimized(true); }}
-                className="w-20 h-20 rounded-full bg-primary text-white border-4 border-white/10 shadow-[0_0_30px_rgba(59,130,246,0.4)] hover:scale-110 transition-all flex flex-col items-center justify-center"
-              >
-                <Minimize2 className="w-8 h-8 mb-1" />
-                <span className="text-[8px] font-black uppercase leading-none text-center">Minimize<br/>Capsule</span>
-              </Button>
-
               <Button 
                 variant="default" 
                 size="icon"
@@ -236,9 +210,7 @@ export function GlobalVideoPlayer() {
               </Button>
           </div>
 
-          {/* The Video Popup Window */}
           <div className="w-[45vw] h-[50vh] glass-panel rounded-[2.5rem] border-white/20 flex flex-col scale-in-center shadow-[0_30px_100px_rgba(0,0,0,0.8)] overflow-hidden">
-            {/* Header */}
             <div className="h-12 flex items-center justify-between px-6 bg-black/40 backdrop-blur-xl border-b border-white/5">
               <div className="flex items-center gap-3">
                 <YoutubeIcon className="w-4 h-4 text-red-600" />
@@ -249,7 +221,6 @@ export function GlobalVideoPlayer() {
               </Button>
             </div>
 
-            {/* Video Area */}
             <div className="flex-1 bg-black relative">
               <iframe
                 ref={iframeRef}
@@ -262,7 +233,6 @@ export function GlobalVideoPlayer() {
               ></iframe>
             </div>
 
-            {/* Compact Control Footer */}
             <div className="h-16 bg-black/60 backdrop-blur-2xl border-t border-white/5 flex items-center justify-between px-6">
                <Button 
                 variant="ghost" 
@@ -273,14 +243,26 @@ export function GlobalVideoPlayer() {
                 <ArrowLeft className="w-5 h-5" />
               </Button>
 
-              <Button 
-                variant="default" 
-                size="icon" 
-                onClick={(e) => { e.stopPropagation(); setIsPlaying(!isPlaying); }}
-                className="h-12 w-12 rounded-full bg-white text-black"
-              >
-                {isPlaying ? <Pause className="w-6 h-6 fill-current" /> : <Play className="w-6 h-6 fill-current ml-1" />}
-              </Button>
+              <div className="flex items-center gap-4">
+                <Button 
+                  variant="default" 
+                  size="icon" 
+                  onClick={(e) => { e.stopPropagation(); setIsPlaying(!isPlaying); }}
+                  className="h-12 w-12 rounded-full bg-white text-black"
+                >
+                  {isPlaying ? <Pause className="w-6 h-6 fill-current" /> : <Play className="w-6 h-6 fill-current ml-1" />}
+                </Button>
+                
+                {/* Standard Minimize Button in the center bottom */}
+                <Button 
+                  variant="outline" 
+                  size="icon"
+                  onClick={(e) => { e.stopPropagation(); setIsMinimized(true); }}
+                  className="h-10 w-10 rounded-full bg-white/10 border-white/20 text-white hover:bg-white/20"
+                >
+                  <Minimize2 className="w-5 h-5" />
+                </Button>
+              </div>
 
               <Button 
                 variant="ghost" 

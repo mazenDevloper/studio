@@ -3,19 +3,24 @@
 
 import { useEffect, useState } from "react";
 import { MOCK_MATCHES, Match } from "@/lib/football-data";
+import { useMediaStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { Trophy, Timer } from "lucide-react";
 import Image from "next/image";
 
 export function LiveMatchIsland() {
+  const { favoriteTeams } = useMediaStore();
   const [liveMatch, setLiveMatch] = useState<Match | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
 
   useEffect(() => {
-    // Simulate finding a live match
-    const match = MOCK_MATCHES.find(m => m.status === 'live');
-    if (match) setLiveMatch(match);
-  }, []);
+    // Show island only if a LIVE match involves one of the user's favorite teams
+    const match = MOCK_MATCHES.find(m => 
+      m.status === 'live' && 
+      (favoriteTeams.includes(m.homeTeam) || favoriteTeams.includes(m.awayTeam))
+    );
+    setLiveMatch(match || null);
+  }, [favoriteTeams]);
 
   if (!liveMatch) return null;
 

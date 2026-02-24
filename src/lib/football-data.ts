@@ -22,9 +22,7 @@ export const MOCK_MATCHES: Match[] = [
     homeLogo: 'https://picsum.photos/seed/hilal/100/100',
     awayLogo: 'https://picsum.photos/seed/nassr/100/100',
     startTime: '20:00',
-    status: 'live',
-    score: { home: 2, away: 1 },
-    minute: 65,
+    status: 'upcoming', // Changed to upcoming so it doesn't show island unless triggered/favorites match
     league: 'دوري روشن السعودي',
     channel: 'SSC 1 HD',
     commentator: 'فهد العتيبي'
