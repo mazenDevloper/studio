@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
@@ -8,7 +9,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { YouTubeChannel, YouTubeVideo, fetchChannelVideos } from "@/lib/youtube";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import Image from "next/image";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useMediaStore } from "@/lib/store";
 
 interface Props {
@@ -19,7 +19,6 @@ export function LatestVideosWidget({ channels }: Props) {
   const { setActiveVideo } = useMediaStore();
   const [videos, setVideos] = useState<YouTubeVideo[]>([]);
   const [loading, setLoading] = useState(false);
-  const [playingVideoId, setPlayingVideoId] = useState<string | null>(null);
 
   const fetchLatest = useCallback(async () => {
     if (channels.length === 0) {
@@ -44,13 +43,17 @@ export function LatestVideosWidget({ channels }: Props) {
 
   useEffect(() => {
     fetchLatest();
+    // التحديث التلقائي كل 6 ساعات فقط لتقليل استهلاك الكوتا
+    const SIX_HOURS = 6 * 60 * 60 * 1000;
+    const interval = setInterval(fetchLatest, SIX_HOURS);
+    return () => clearInterval(interval);
   }, [fetchLatest]);
 
   return (
-    <Card className="border-none bg-zinc-900/50 rounded-[2.5rem] ios-shadow overflow-hidden">
+    <Card className="border-none bg-zinc-900/50 rounded-[2.5rem] shadow-2xl overflow-hidden">
       <CardHeader className="p-8 flex flex-row items-center justify-between space-y-0 pb-4">
         <CardTitle className="text-xl font-bold font-headline text-white flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-accent flex items-center justify-center ios-shadow">
+          <div className="w-10 h-10 rounded-2xl bg-accent flex items-center justify-center shadow-lg">
             <Star className="h-6 w-6 text-black fill-current" />
           </div>
           Starred Transmissions
@@ -73,7 +76,7 @@ export function LatestVideosWidget({ channels }: Props) {
           <div className="py-12 text-center bg-white/5 rounded-[2rem] border border-dashed border-white/5">
             <p className="text-muted-foreground italic text-lg font-medium">Star channels in Media to track latest broadcasts here.</p>
           </div>
-        ) : loading ? (
+        ) : loading && videos.length === 0 ? (
           <div className="flex gap-6 overflow-hidden">
             {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-48 w-80 rounded-[2rem] bg-zinc-800 flex-shrink-0" />)}
           </div>
@@ -83,7 +86,7 @@ export function LatestVideosWidget({ channels }: Props) {
               {videos.map((video, idx) => (
                 <div 
                   key={video.id} 
-                  className="w-80 group relative overflow-hidden bg-zinc-900/80 border-none rounded-[2rem] transition-all hover:scale-[1.02] cursor-pointer ios-shadow focusable"
+                  className="w-80 group relative overflow-hidden bg-zinc-900/80 border-none rounded-[2rem] transition-all hover:scale-[1.02] cursor-pointer shadow-xl focusable"
                   onClick={() => setActiveVideo(video)}
                   data-nav-id={`starred-video-${idx}`}
                   tabIndex={0}

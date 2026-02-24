@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -172,7 +173,7 @@ export function DashboardView() {
       </div>
 
       <div 
-        className="w-full glass-panel rounded-full p-4 shadow-xl transform scale-[0.8] mt-6 mb-[-0.5rem] origin-center focusable outline-none"
+        className="w-full glass-panel rounded-full p-4 shadow-xl transform scale-[0.8] mt-8 mb-[-0.5rem] origin-center focusable outline-none"
         tabIndex={0}
         data-nav-id="widget-prayer-timeline"
       >
