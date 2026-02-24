@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { Card } from "@/components/ui/card";
-import { Compass, Plus, Minus, ChevronUp, ChevronDown, Target, Loader2, AlertTriangle, Save } from "lucide-react";
+import { Compass, Plus, Minus, ChevronUp, ChevronDown, Target, Loader2, AlertTriangle } from "lucide-react";
 import { GOOGLE_MAPS_API_KEY } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { useMediaStore } from "@/lib/store";
@@ -43,8 +43,16 @@ export function MapWidget() {
   useEffect(() => { 
     mapSettingsRef.current = mapSettings; 
     if (mapInstanceRef.current) {
-      mapInstanceRef.current.setZoom(mapSettings.zoom);
-      mapInstanceRef.current.setTilt(mapSettings.tilt);
+      // تحديث الخريطة بشكل لحظي بناءً على الإعدادات الجديدة
+      mapInstanceRef.current.moveCamera({
+        zoom: mapSettings.zoom,
+        tilt: mapSettings.tilt,
+        center: carStateRef.current.location
+      });
+      // طلب إعادة رسم الطبقة الثلاثية الأبعاد لتعديل حجم السيارة
+      if (carOverlayRef.current) {
+        carOverlayRef.current.requestRedraw();
+      }
     }
   }, [mapSettings]);
 
@@ -135,6 +143,7 @@ export function MapWidget() {
       
       camera.projectionMatrix = new THREE.Matrix4().fromArray(matrix);
 
+      // تطبيق حجم السيارة المحدث لحظياً من الإعدادات
       const finalScale = mapSettingsRef.current.carScale * Math.pow(2, 20 - zoom); 
       carModelRef.current.scale.set(finalScale, finalScale, finalScale);
       carModelRef.current.rotation.y = -(carStateRef.current.heading * Math.PI) / 180 + Math.PI;
@@ -179,7 +188,8 @@ export function MapWidget() {
                mapInstanceRef.current.moveCamera({
                  center: newPos,
                  heading: newHeading,
-                 tilt: mapSettingsRef.current.tilt
+                 tilt: mapSettingsRef.current.tilt,
+                 zoom: mapSettingsRef.current.zoom
                });
             }
           }, (err) => {

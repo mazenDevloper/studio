@@ -71,8 +71,8 @@ export function SettingsView() {
 
   const saveToCache = () => {
     toast({
-      title: "تم الحفظ بنجاح",
-      description: "تم تخزين إعدادات الزوم والمنظور في الذاكرة المحلية المستديمة.",
+      title: "تم حفظ الإعدادات",
+      description: "تم تحديث ذاكرة النظام المستديمة بكافة تفضيلات العرض والملاحة.",
     });
   };
 
@@ -107,50 +107,56 @@ export function SettingsView() {
         <TabsContent value="appearance" className="space-y-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <Card className="bg-zinc-900/50 border-white/10 rounded-[3rem] p-10 space-y-8">
-              <CardTitle className="text-2xl font-black text-white flex items-center gap-4">
-                <Maximize className="w-6 h-6 text-primary" /> زوم المتصفح والتحكم بالمنظور
-              </CardTitle>
+              <CardHeader className="p-0 mb-4">
+                <CardTitle className="text-2xl font-black text-white flex items-center gap-4">
+                  <Maximize className="w-8 h-8 text-primary" /> زوم المتصفح والمنظور
+                </CardTitle>
+                <CardDescription className="text-white/40 font-bold uppercase tracking-widest text-xs mt-2">تفاعل مباشر مع الخريطة الحقيقية</CardDescription>
+              </CardHeader>
               
-              <div className="space-y-6">
+              <div className="space-y-8">
                 <div className="space-y-4">
-                  <div className="flex justify-between">
-                    <label className="text-xs font-black text-white/40 uppercase tracking-widest">زوم المتصفح (Map Zoom)</label>
-                    <span className="text-primary font-bold">{mapSettings.zoom.toFixed(1)}</span>
+                  <div className="flex justify-between items-center">
+                    <label className="text-xs font-black text-white/40 uppercase tracking-[0.2em]">مستوى زوم المتصفح (Real Zoom)</label>
+                    <span className="text-primary font-black text-lg bg-primary/10 px-4 py-1 rounded-lg border border-primary/20">{mapSettings.zoom.toFixed(1)}</span>
                   </div>
                   <Slider 
                     value={[mapSettings.zoom]} 
                     min={15} max={21} step={0.1} 
                     onValueChange={([val]) => updateMapSettings({ zoom: val })} 
+                    className="cursor-pointer"
                   />
                 </div>
 
                 <div className="space-y-4">
-                  <div className="flex justify-between">
-                    <label className="text-xs font-black text-white/40 uppercase tracking-widest">إمالة الكاميرا (Tilt)</label>
-                    <span className="text-primary font-bold">{mapSettings.tilt}°</span>
+                  <div className="flex justify-between items-center">
+                    <label className="text-xs font-black text-white/40 uppercase tracking-[0.2em]">إمالة الكاميرا (Real Tilt)</label>
+                    <span className="text-primary font-black text-lg bg-primary/10 px-4 py-1 rounded-lg border border-primary/20">{mapSettings.tilt}°</span>
                   </div>
                   <Slider 
                     value={[mapSettings.tilt]} 
                     min={0} max={85} step={5} 
                     onValueChange={([val]) => updateMapSettings({ tilt: val })} 
+                    className="cursor-pointer"
                   />
                 </div>
 
                 <div className="space-y-4">
-                  <div className="flex justify-between">
-                    <label className="text-xs font-black text-white/40 uppercase tracking-widest">حجم السيارة (Car Scale)</label>
-                    <span className="text-primary font-bold">{mapSettings.carScale.toFixed(2)}</span>
+                  <div className="flex justify-between items-center">
+                    <label className="text-xs font-black text-white/40 uppercase tracking-[0.2em]">حجم السيارة (3D Scale)</label>
+                    <span className="text-primary font-black text-lg bg-primary/10 px-4 py-1 rounded-lg border border-primary/20">{mapSettings.carScale.toFixed(2)}</span>
                   </div>
                   <Slider 
                     value={[mapSettings.carScale]} 
                     min={0.5} max={2.5} step={0.05} 
                     onValueChange={([val]) => updateMapSettings({ carScale: val })} 
+                    className="cursor-pointer"
                   />
                 </div>
               </div>
 
-              <Button onClick={saveToCache} className="w-full h-16 rounded-2xl bg-primary text-white text-lg font-black shadow-2xl">
-                <Save className="w-6 h-6 mr-3" /> حفظ إعدادات الكاش
+              <Button onClick={saveToCache} className="w-full h-16 rounded-2xl bg-primary text-white text-lg font-black shadow-2xl mt-4 hover:scale-[1.02] transition-all">
+                <Save className="w-6 h-6 mr-3" /> تثبيت وحفظ في الكاش
               </Button>
             </Card>
 
@@ -165,20 +171,20 @@ export function SettingsView() {
                     key={idx}
                     onClick={() => updateMapSettings({ backgroundIndex: idx })}
                     className={cn(
-                      "relative rounded-2xl overflow-hidden border-4 transition-all",
+                      "relative rounded-2xl overflow-hidden border-4 transition-all group",
                       mapSettings.backgroundIndex === idx ? "border-primary scale-105 shadow-glow" : "border-transparent opacity-40 hover:opacity-100"
                     )}
                   >
-                    <img src={`${bg}?auto=format&fit=crop&q=40&w=300`} className="w-full h-full object-cover" alt={`Background ${idx}`} />
+                    <img src={`${bg}?auto=format&fit=crop&q=40&w=300`} className="w-full h-full object-cover transition-transform group-hover:scale-110" alt={`Background ${idx}`} />
                     {mapSettings.backgroundIndex === idx && (
                       <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
-                        <Save className="w-8 h-8 text-white" />
+                        <Save className="w-8 h-8 text-white animate-pulse" />
                       </div>
                     )}
                   </button>
                 ))}
               </div>
-              <p className="text-xs text-white/40 text-center uppercase tracking-widest font-bold">يتم الحفظ تلقائياً في ذاكرة الكاش</p>
+              <p className="text-xs text-white/40 text-center uppercase tracking-widest font-black opacity-60">سيتم تطبيق الخلفية فوراً في كافة الواجهات</p>
             </Card>
           </div>
         </TabsContent>

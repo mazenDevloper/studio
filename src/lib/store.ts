@@ -335,7 +335,7 @@ export const useMediaStore = create<MediaState>()(
       toggleMinimize: () => set((state) => ({ isMinimized: !state.isMinimized, isFullScreen: false }))
     }),
     {
-      name: "drivecast-cloud-sync-v2",
+      name: "drivecast-persistent-v3",
     }
   )
 );
