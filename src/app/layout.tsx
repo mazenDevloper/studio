@@ -4,6 +4,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { GlobalVideoPlayer } from "@/components/media/global-player";
 import { FirebaseClientProvider } from "@/firebase";
+import { LiveMatchIsland } from "@/components/football/live-match-island";
 
 export const metadata: Metadata = {
   title: 'DriveCast | CarPlay',
@@ -24,6 +25,7 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased bg-black text-foreground overflow-hidden h-screen w-screen flex relative">
         <FirebaseClientProvider>
+          <LiveMatchIsland />
           {children}
           <GlobalVideoPlayer />
           <Toaster />

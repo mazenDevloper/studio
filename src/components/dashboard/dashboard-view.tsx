@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { WEATHER_API_KEY } from "@/lib/constants";
-import { Mic, Navigation, Maximize2, RotateCcw, Upload, MapPin } from "lucide-react";
+import { Mic, RotateCcw, Upload } from "lucide-react";
 import Image from "next/image";
 import { MapWidget } from "./widgets/map-widget";
 import { PrayerTimelineWidget } from "./widgets/prayer-timeline-widget";
@@ -13,6 +13,7 @@ import { PlayingNowWidget } from "./widgets/playing-now-widget";
 import { LatestVideosWidget } from "./widgets/latest-videos-widget";
 import { YouTubeSavedWidget } from "./widgets/youtube-saved-widget";
 import { PrayerCountdownCard } from "./widgets/prayer-countdown-card";
+import { MatchScheduleWidget } from "@/components/football/match-schedule-widget";
 import { useMediaStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import {
@@ -29,7 +30,6 @@ export function DashboardView() {
   const [current, setCurrent] = useState(0);
   const [count, setCount] = useState(0);
 
-  // Filter channels to only include starred ones for suggestions
   const starredChannels = favoriteChannels.filter(c => starredChannelIds.includes(c.id));
 
   useEffect(() => {
@@ -58,7 +58,6 @@ export function DashboardView() {
 
   return (
     <div className="h-full w-full p-6 flex flex-col gap-8 relative overflow-y-auto pb-32">
-      {/* Top Floating Logo */}
       <div className="absolute top-2 left-1/2 -translate-x-1/2 z-[50] opacity-80 pointer-events-none">
         <Image 
           src="https://dmusera.netlify.app/Lexus-Logo.wine.svg" 
@@ -69,12 +68,8 @@ export function DashboardView() {
         />
       </div>
 
-      {/* Main Grid: 3 Main Columns */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6 min-h-[650px]">
-        
-        {/* Column 1: Left (Carousel + Countdown) - Span 3 */}
         <div className="md:col-span-3 flex flex-col gap-6">
-          {/* Smart Stack (Carousel) - 4x3 H:W ratio */}
           <div className="glass-panel rounded-[2.5rem] relative group overflow-hidden flex flex-col aspect-[3/4] w-full shadow-2xl">
             <Carousel setApi={setApi} opts={{ loop: true }} className="flex-1 w-full h-full">
               <CarouselContent className="h-full">
@@ -122,7 +117,6 @@ export function DashboardView() {
               </CarouselContent>
             </Carousel>
 
-            {/* Dots Indicator: Fixed bottom center */}
             <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 z-20">
               {Array.from({ length: count }).map((_, i) => (
                 <div
@@ -136,13 +130,11 @@ export function DashboardView() {
             </div>
           </div>
 
-          {/* Prayer Countdown Widget (Below Carousel) */}
           <div className="flex-1 min-h-[200px]">
             <PrayerCountdownCard />
           </div>
         </div>
 
-        {/* Column 2: Middle (Car Display) - Span 5 */}
         <div className="md:col-span-5 glass-panel rounded-[2.5rem] relative group flex flex-col items-center justify-center overflow-hidden">
           <div className="flex-1 flex items-center justify-center w-full p-8">
             <Image 
@@ -163,28 +155,27 @@ export function DashboardView() {
           </div>
         </div>
 
-        {/* Column 3: Right (Map Display) - Span 4 */}
         <div className="md:col-span-4 glass-panel rounded-[2.5rem] overflow-hidden relative group shadow-2xl">
           <MapWidget />
         </div>
       </div>
 
-      {/* Standalone Prayer Timeline Bar - Above Video Bars */}
       <div className="w-full glass-panel rounded-full p-4 shadow-xl mb-2">
         <PrayerTimelineWidget />
       </div>
 
-      {/* Suggested Bar Section */}
+      <div className="w-full space-y-2">
+        <MatchScheduleWidget />
+      </div>
+
       <div className="w-full space-y-2">
         <LatestVideosWidget channels={starredChannels} />
       </div>
 
-      {/* Saved Video Bar Section */}
       <div className="w-full space-y-2">
         <YouTubeSavedWidget />
       </div>
 
-      {/* Floating Mic Button */}
       <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100]">
         <div className="w-20 h-20 rounded-full bg-primary flex items-center justify-center shadow-[0_0_30px_rgba(59,130,246,0.6)] active-glow cursor-pointer hover:scale-110 transition-all border-4 border-white/10 backdrop-blur-xl">
           <Mic className="w-10 h-10 text-white" />

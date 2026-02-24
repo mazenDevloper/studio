@@ -34,6 +34,7 @@ interface MediaState {
   reciterKeywords: string[];
   reminders: Reminder[];
   videoProgress: Record<string, number>;
+  favoriteTeams: string[];
   
   // Player State
   activeVideo: YouTubeVideo | null;
@@ -53,6 +54,7 @@ interface MediaState {
   removeReciterKeyword: (keyword: string) => void;
   toggleReminder: (id: string) => void;
   updateVideoProgress: (videoId: string, seconds: number) => void;
+  toggleFavoriteTeam: (teamName: string) => void;
   
   // Sync Actions
   loadFromFirestore: (userId: string) => Promise<void>;
@@ -95,7 +97,6 @@ const INITIAL_REMINDERS: Reminder[] = [
 
 const { db, auth } = initializeFirebase();
 
-// Helper to sync state to Firestore
 const syncToCloud = async (state: Partial<MediaState>) => {
   const user = auth.currentUser;
   if (!user) return;
@@ -109,9 +110,9 @@ const syncToCloud = async (state: Partial<MediaState>) => {
     reciterKeywords: state.reciterKeywords,
     reminders: state.reminders,
     videoProgress: state.videoProgress,
+    favoriteTeams: state.favoriteTeams,
   };
   
-  // Clean undefined values
   Object.keys(dataToSync).forEach(key => 
     (dataToSync as any)[key] === undefined && delete (dataToSync as any)[key]
   );
@@ -129,6 +130,7 @@ export const useMediaStore = create<MediaState>()(
       reciterKeywords: INITIAL_RECITERS,
       reminders: INITIAL_REMINDERS,
       videoProgress: {},
+      favoriteTeams: ['الهلال', 'ريال مدريد'],
       
       activeVideo: null,
       isPlaying: false,
@@ -141,6 +143,18 @@ export const useMediaStore = create<MediaState>()(
         if (snap.exists()) {
           set(snap.data() as any);
         }
+      },
+
+      toggleFavoriteTeam: (teamName) => {
+        set((state) => {
+          const newState = {
+            favoriteTeams: state.favoriteTeams.includes(teamName)
+              ? state.favoriteTeams.filter(t => t !== teamName)
+              : [...state.favoriteTeams, teamName]
+          };
+          syncToCloud({ ...state, ...newState });
+          return newState;
+        });
       },
 
       addChannel: (channel) => {
@@ -284,13 +298,10 @@ export const useMediaStore = create<MediaState>()(
   )
 );
 
-// Setup Auth Listener to handle cloud loading
 if (typeof window !== "undefined") {
   onAuthStateChanged(auth, (user) => {
     if (user) {
       useMediaStore.getState().loadFromFirestore(user.uid);
-      
-      // Listen for real-time updates from other devices/tabs
       onSnapshot(doc(db, "users", user.uid), (snap) => {
         if (snap.exists()) {
           useMediaStore.setState(snap.data() as any);

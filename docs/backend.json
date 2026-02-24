@@ -11,7 +11,8 @@
         "savedVideos": { "type": "array" },
         "reminders": { "type": "array" },
         "reciterKeywords": { "type": "array" },
-        "videoProgress": { "type": "object" }
+        "videoProgress": { "type": "object" },
+        "favoriteTeams": { "type": "array" }
       }
     }
   },
