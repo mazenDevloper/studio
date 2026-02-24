@@ -5,7 +5,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Match } from "@/lib/football-data";
 import { useMediaStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { Timer, Loader2 } from "lucide-react";
+import { Timer, Loader2, Trophy } from "lucide-react";
 import Image from "next/image";
 
 export function LiveMatchIsland() {
@@ -15,35 +15,41 @@ export function LiveMatchIsland() {
 
   const fetchLiveStatus = useCallback(async () => {
     try {
-      const response = await fetch('https://api.weatherapi.com/v1/sports.json?key=7acefc26deee4904a2393917252207&q=London');
+      // جلب البيانات الرياضية الحقيقية للمزامنة مع الجزيرة العائمة
+      const response = await fetch('https://api.weatherapi.com/v1/sports.json?key=7acefc26deee4904a2393917252207&q=Riyadh');
       const data = await response.json();
       
       if (data.football && data.football.length > 0) {
-        // نتحقق إذا كانت المباراة تخص فريقاً مفضلاً
-        const foundMatch = data.football.find((m: any) => 
-          favoriteTeams.includes(m.match.split(' vs ')[0]) || 
-          favoriteTeams.includes(m.match.split(' vs ')[1]) ||
-          favoriteTeams.includes("أرسنال") // تجريبي
-        );
+        // نتحقق إذا كانت هناك مباراة مباشرة تخص أحد الفرق المفضلة للمستخدم
+        const activeMatch = data.football.find((m: any) => {
+          const [home, away] = m.match.includes(' vs ') ? m.match.split(' vs ') : [m.match, ''];
+          return favoriteTeams.some(team => 
+            home.toLowerCase().includes(team.toLowerCase()) || 
+            away.toLowerCase().includes(team.toLowerCase())
+          );
+        });
 
-        if (foundMatch) {
+        if (activeMatch) {
+          const [home, away] = activeMatch.match.split(' vs ');
           setLiveMatch({
-            id: 'live-id',
-            homeTeam: "أرسنال",
-            awayTeam: "مان سيتي",
-            homeLogo: 'https://picsum.photos/seed/ars/100/100',
-            awayLogo: 'https://picsum.photos/seed/mci/100/100',
+            id: `island-${activeMatch.start}`,
+            homeTeam: home.trim(),
+            awayTeam: away.trim(),
+            homeLogo: `https://picsum.photos/seed/${home.trim()}/100/100`,
+            awayLogo: `https://picsum.photos/seed/${away.trim()}/100/100`,
             status: 'live',
-            score: { home: 1, away: 0 },
-            minute: 42,
-            league: foundMatch.tournament,
+            score: { home: 1, away: 0 }, // بيانات محاكاة للنتيجة في حالة البث التجريبي
+            minute: 45,
+            league: activeMatch.tournament,
             channel: 'beIN Sports',
-            commentator: 'حفيظ دراجي',
+            commentator: 'بث حي',
             startTime: '20:00'
           });
         } else {
           setLiveMatch(null);
         }
+      } else {
+        setLiveMatch(null);
       }
     } catch (error) {
       console.error("Island Sync Error:", error);
@@ -52,7 +58,7 @@ export function LiveMatchIsland() {
 
   useEffect(() => {
     fetchLiveStatus();
-    const interval = setInterval(fetchLiveStatus, 60000); // تحديث كل دقيقة
+    const interval = setInterval(fetchLiveStatus, 60000); // تحديث كل دقيقة لضمان استمرارية البيانات
     return () => clearInterval(interval);
   }, [fetchLiveStatus]);
 
@@ -63,54 +69,59 @@ export function LiveMatchIsland() {
       <div 
         onClick={() => setIsExpanded(!isExpanded)}
         className={cn(
-          "bg-black/80 backdrop-blur-3xl border border-white/15 rounded-full shadow-[0_15px_50px_rgba(0,0,0,0.9)] transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] cursor-pointer overflow-hidden",
-          isExpanded ? "w-[500px] h-28 px-8" : "w-64 h-12 px-4"
+          "bg-black/90 backdrop-blur-3xl border border-white/20 rounded-full shadow-[0_20px_60px_rgba(0,0,0,1)] transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] cursor-pointer overflow-hidden ring-1 ring-white/10",
+          isExpanded ? "w-[520px] h-32 px-10" : "w-72 h-14 px-6"
         )}
       >
         <div className="h-full flex items-center justify-between">
           {!isExpanded ? (
-            <div className="flex items-center justify-between w-full animate-in fade-in duration-500">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                <span className="text-[10px] font-black text-white/60 uppercase tracking-widest">مباشر</span>
-              </div>
+            <div className="flex items-center justify-between w-full animate-in fade-in slide-in-from-top-2 duration-500">
               <div className="flex items-center gap-3">
-                <span className="text-xs font-bold text-white">{liveMatch.homeTeam}</span>
-                <span className="text-sm font-black text-primary">{liveMatch.score?.home} - {liveMatch.score?.away}</span>
-                <span className="text-xs font-bold text-white">{liveMatch.awayTeam}</span>
+                <div className="w-2.5 h-2.5 rounded-full bg-red-600 animate-pulse shadow-[0_0_10px_red]" />
+                <span className="text-[10px] font-black text-white/50 uppercase tracking-[0.2em]">LIVE</span>
               </div>
-              <div className="flex items-center gap-1">
-                <Timer className="w-3 h-3 text-accent" />
+              <div className="flex items-center gap-4">
+                <span className="text-sm font-black text-white tracking-tighter">{liveMatch.homeTeam}</span>
+                <div className="bg-white/10 px-3 py-1 rounded-lg">
+                  <span className="text-lg font-black text-primary">{liveMatch.score?.home} - {liveMatch.score?.away}</span>
+                </div>
+                <span className="text-sm font-black text-white tracking-tighter">{liveMatch.awayTeam}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Timer className="w-3.5 h-3.5 text-accent" />
                 <span className="text-[10px] font-black text-accent">{liveMatch.minute}'</span>
               </div>
             </div>
           ) : (
-            <div className="flex items-center justify-between w-full animate-in fade-in zoom-in-95 duration-500">
-              <div className="flex flex-col items-center gap-1 w-24">
-                <div className="relative w-12 h-12">
+            <div className="flex items-center justify-between w-full animate-in fade-in zoom-in-95 duration-700">
+              <div className="flex flex-col items-center gap-2 w-28 group">
+                <div className="relative w-14 h-14 transition-transform group-hover:scale-110 duration-500">
                   <Image src={liveMatch.homeLogo} alt={liveMatch.homeTeam} fill className="object-contain" />
                 </div>
-                <span className="text-[10px] font-black text-white/80 truncate w-full text-center">{liveMatch.homeTeam}</span>
+                <span className="text-[11px] font-black text-white/80 truncate w-full text-center uppercase tracking-tighter">{liveMatch.homeTeam}</span>
               </div>
 
-              <div className="flex flex-col items-center gap-2">
-                <div className="text-[9px] font-black text-white/40 uppercase tracking-widest bg-white/5 px-2 py-0.5 rounded-full">{liveMatch.league}</div>
-                <div className="flex items-center gap-6">
-                  <span className="text-5xl font-black text-white drop-shadow-2xl">{liveMatch.score?.home}</span>
-                  <div className="flex flex-col items-center">
-                    <span className="text-xl font-black text-primary tracking-tighter animate-pulse">{liveMatch.minute}'</span>
-                    <div className="h-0.5 w-10 bg-primary/20 rounded-full" />
+              <div className="flex flex-col items-center gap-3">
+                <div className="text-[9px] font-black text-white/40 uppercase tracking-[0.3em] bg-white/5 px-4 py-1 rounded-full border border-white/5">{liveMatch.league}</div>
+                <div className="flex items-center gap-8">
+                  <span className="text-6xl font-black text-white drop-shadow-[0_10px_30px_rgba(255,255,255,0.2)]">{liveMatch.score?.home}</span>
+                  <div className="flex flex-col items-center gap-1">
+                    <span className="text-2xl font-black text-primary tracking-tighter animate-pulse">{liveMatch.minute}'</span>
+                    <div className="h-1 w-12 bg-primary/20 rounded-full" />
                   </div>
-                  <span className="text-5xl font-black text-white drop-shadow-2xl">{liveMatch.score?.away}</span>
+                  <span className="text-6xl font-black text-white drop-shadow-[0_10px_30px_rgba(255,255,255,0.2)]">{liveMatch.score?.away}</span>
                 </div>
-                <div className="text-[10px] font-bold text-accent uppercase tracking-[0.3em]">{liveMatch.channel}</div>
+                <div className="text-[10px] font-bold text-accent uppercase tracking-[0.4em] flex items-center gap-2">
+                   <div className="w-1 h-1 rounded-full bg-accent" />
+                   {liveMatch.channel}
+                </div>
               </div>
 
-              <div className="flex flex-col items-center gap-1 w-24">
-                <div className="relative w-12 h-12">
+              <div className="flex flex-col items-center gap-2 w-28 group">
+                <div className="relative w-14 h-14 transition-transform group-hover:scale-110 duration-500">
                   <Image src={liveMatch.awayLogo} alt={liveMatch.awayTeam} fill className="object-contain" />
                 </div>
-                <span className="text-[10px] font-black text-white/80 truncate w-full text-center">{liveMatch.awayTeam}</span>
+                <span className="text-[11px] font-black text-white/80 truncate w-full text-center uppercase tracking-tighter">{liveMatch.awayTeam}</span>
               </div>
             </div>
           )}
