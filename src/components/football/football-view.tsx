@@ -5,7 +5,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Match } from "@/lib/football-data";
 import { getFootballIntelligence } from "@/ai/flows/football-intelligence-flow";
 import { useMediaStore } from "@/lib/store";
-import { Trophy, Tv, Mic2, Star, Calendar, RefreshCw, Loader2, Check, Sparkles, AlertCircle, WifiOff } from "lucide-react";
+import { Trophy, Tv, Mic2, Star, Calendar, RefreshCw, Loader2, Check, Sparkles, AlertCircle, WifiOff, LayoutGrid } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
@@ -27,7 +27,8 @@ export function FootballView() {
       if (response.error) {
         setError(response.error);
       } else if (response.matches) {
-        const sortedData = response.matches.sort((a, b) => {
+        // ترتيب المباريات: المفضلة أولاً، ثم حسب الأهمية (دوري روشن، الأبطال، إلخ)
+        const sortedData = [...response.matches].sort((a, b) => {
           const aFav = favoriteTeams.includes(a.homeTeam) || favoriteTeams.includes(a.awayTeam);
           const bFav = favoriteTeams.includes(b.homeTeam) || favoriteTeams.includes(b.awayTeam);
           if (aFav && !bFav) return -1;
@@ -47,7 +48,7 @@ export function FootballView() {
 
   useEffect(() => {
     fetchMatches();
-    const interval = setInterval(fetchMatches, 300000);
+    const interval = setInterval(fetchMatches, 300000); // تحديث كل 5 دقائق
     return () => clearInterval(interval);
   }, [fetchMatches]);
 
@@ -65,7 +66,7 @@ export function FootballView() {
           </h1>
           <p className="text-muted-foreground text-sm font-medium uppercase tracking-widest opacity-60 flex items-center gap-2">
              <div className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
-             تغطية حية مدعومة بالذكاء الاصطناعي
+             تغطية حية مدعومة بالذكاء الاصطناعي (Kooora AI)
           </p>
         </div>
         <Button 
@@ -84,13 +85,13 @@ export function FootballView() {
           <div className="w-20 h-20 rounded-full bg-red-500/10 flex items-center justify-center border border-red-500/20">
             {error === "NETWORK_ERROR_OR_TIMEOUT" ? <WifiOff className="w-10 h-10 text-red-500" /> : <AlertCircle className="w-10 h-10 text-red-500" />}
           </div>
-          <div className="space-y-2">
-            <h3 className="text-2xl font-bold text-white">عذراً، تعذر جلب البيانات</h3>
+          <div className="space-y-2 text-center">
+            <h3 className="text-2xl font-bold text-white">عذراً، تعذر جلب المباريات</h3>
             <p className="text-white/40 max-w-md mx-auto">
-              يبدو أن هناك ضغطاً على الخوادم أو مشكلة في الاتصال. يرجى المحاولة مرة أخرى لاحقاً.
+              يبدو أن هناك مشكلة في الاتصال أو أن حصة الطلبات اليومية قد نفدت. يرجى المحاولة لاحقاً.
             </p>
           </div>
-          <Button onClick={fetchMatches} className="bg-primary hover:bg-primary/90 text-white rounded-full px-8 h-12">
+          <Button onClick={fetchMatches} className="bg-primary hover:bg-primary/90 text-white rounded-full px-8 h-12 font-bold">
             إعادة المحاولة الآن
           </Button>
         </div>
@@ -207,6 +208,23 @@ export function FootballView() {
                   })}
                 </div>
               </div>
+
+              <div className="glass-panel rounded-[2.5rem] p-6 border-white/10 bg-black/40">
+                 <div className="flex items-center gap-3 mb-4">
+                    <LayoutGrid className="w-5 h-5 text-accent" />
+                    <h3 className="text-sm font-bold text-white uppercase tracking-widest">تغطية المنطقة</h3>
+                 </div>
+                 <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                       <span className="text-xs text-white/60">الدوري السعودي</span>
+                       <span className="text-[10px] bg-primary/20 text-primary px-2 py-0.5 rounded-full font-bold">نشط</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                       <span className="text-xs text-white/60">الدوريات الأوروبية</span>
+                       <span className="text-[10px] bg-primary/20 text-primary px-2 py-0.5 rounded-full font-bold">نشط</span>
+                    </div>
+                 </div>
+              </div>
             </div>
           </div>
         </>
@@ -268,12 +286,12 @@ function MatchCard({ match, isFavorite }: { match: Match; isFavorite: boolean })
         <div className="flex items-center gap-2 bg-black/20 px-3 py-1 rounded-full border border-white/5">
           <Tv className="w-3.5 h-3.5 text-accent" />
           <span className="text-[10px] font-black text-white/70 uppercase tracking-tighter">
-            {match.channel}
+            {match.channel || "SSC / beIN"}
           </span>
         </div>
         <div className="flex items-center gap-2 opacity-40">
           <Mic2 className="w-3.5 h-3.5" />
-          <span className="text-[10px] font-bold">{match.commentator}</span>
+          <span className="text-[10px] font-bold">{match.commentator || "يحدد لاحقاً"}</span>
         </div>
       </div>
     </div>

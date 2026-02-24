@@ -5,12 +5,13 @@ import { FOOTBALL_API_KEY, FOOTBALL_API_BASE_URL } from "./constants";
 import { Match } from "./football-data";
 
 /**
- * دالة جلب البيانات مع تحسينات الأداء ومعالجة الأخطاء
+ * دالة جلب البيانات الرياضية مع تحسينات لدعم القنوات والمعلقين
  */
 export async function fetchFootballData(type: 'today' | 'live'): Promise<Match[]> {
   const date = new Date().toISOString().split('T')[0];
+  // استخدام توقيت مكة المكرمة لضمان دقة مواعيد المباريات في الوطن العربي
   const url = type === 'live' 
-    ? `${FOOTBALL_API_BASE_URL}/fixtures?live=all`
+    ? `${FOOTBALL_API_BASE_URL}/fixtures?live=all&timezone=Asia/Riyadh`
     : `${FOOTBALL_API_BASE_URL}/fixtures?date=${date}&timezone=Asia/Riyadh`;
 
   try {
@@ -20,11 +21,12 @@ export async function fetchFootballData(type: 'today' | 'live'): Promise<Match[]
         'x-apisports-key': FOOTBALL_API_KEY || '',
         'x-apisports-host': 'v3.football.api-sports.io'
       },
-      cache: 'no-store'
+      next: { revalidate: 300 } // تحديث كل 5 دقائق
     });
 
     if (!response.ok) {
-      console.error(`API Error: ${response.status}`);
+      const errorData = await response.json().catch(() => ({}));
+      console.error(`API Error: ${response.status}`, errorData);
       return [];
     }
 
@@ -55,6 +57,9 @@ export async function fetchFootballData(type: 'today' | 'live'): Promise<Match[]
         hour12: false
       });
 
+      // استخراج القنوات الناقلة إذا توفرت من الـ API
+      const broadcasts = item.fixture.broadcasts || [];
+      
       return {
         id: item.fixture.id.toString(),
         homeTeam: item.teams.home.name,
@@ -69,16 +74,16 @@ export async function fetchFootballData(type: 'today' | 'live'): Promise<Match[]
         },
         minute: item.fixture.status.elapsed ?? 0,
         league: item.league.name,
-        channel: "beIN Sports / SSC", 
-        commentator: "يحدد لاحقاً",
-        broadcasts: item.fixture.broadcasts || [
-          { country: 'MENA', channel: 'beIN Sports HD' },
-          { country: 'Saudi Arabia', channel: 'SSC HD' }
-        ]
+        channel: "يحدد لاحقاً", // سيقوم الذكاء الاصطناعي بتحديث هذا الحقل
+        commentator: "يحدد لاحقاً", // سيقوم الذكاء الاصطناعي بتحديث هذا الحقل
+        broadcasts: broadcasts.map((b: any) => ({
+          country: b.country,
+          channel: b.channel
+        }))
       } as Match;
     });
   } catch (error) {
-    console.error("Network or Parsing Error:", error);
+    console.error("Network Fetch Error:", error);
     return [];
   }
 }
