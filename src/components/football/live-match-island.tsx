@@ -14,12 +14,11 @@ export function LiveMatchIsland() {
 
   const fetchLiveStatus = useCallback(async () => {
     try {
-      // Logic for dynamic island:
-      // Only show if a match status is 'live' AND one of the teams is in favoriteTeams
-      
-      // Simulation of current real-time data
+      // Integration with API-Football refined structure
+      // In a real scenario, this would be a filtered fetch for 'live' fixtures
       const currentMatches: Match[] = MOCK_MATCHES;
 
+      // Filter for live matches involving favorite teams
       const activeFavMatch = currentMatches.find(m => 
         m.status === 'live' && 
         (favoriteTeams.includes(m.homeTeam) || favoriteTeams.includes(m.awayTeam))
@@ -38,6 +37,9 @@ export function LiveMatchIsland() {
   }, [fetchLiveStatus]);
 
   if (!liveMatch) return null;
+
+  // Extract relevant channel from broadcasts for the island
+  const activeBroadcast = liveMatch.broadcasts.find(b => b.country === 'Saudi Arabia' || b.country === 'MENA') || liveMatch.broadcasts[0];
 
   return (
     <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[200] pointer-events-auto">
@@ -89,7 +91,7 @@ export function LiveMatchIsland() {
                 <div className="flex flex-col items-center gap-1">
                   <div className="text-[10px] font-bold text-accent uppercase tracking-[0.4em] flex items-center gap-2">
                      <Tv className="w-3 h-3" />
-                     {liveMatch.broadcasts && liveMatch.broadcasts.length > 0 ? liveMatch.broadcasts[0].channel : liveMatch.channel}
+                     {activeBroadcast?.channel || liveMatch.channel}
                   </div>
                   <span className="text-[9px] text-white/30 font-bold uppercase">{liveMatch.commentator}</span>
                 </div>

@@ -1,3 +1,8 @@
+export interface Broadcast {
+  country: string;
+  channel: string;
+}
+
 export interface Match {
   id: string;
   homeTeam: string;
@@ -11,8 +16,12 @@ export interface Match {
   league: string;
   channel: string;
   commentator: string;
-  broadcasts?: { country: string; channel: string }[];
+  broadcasts: Broadcast[];
 }
+
+// Generate dynamic mock data based on today's date
+const now = new Date();
+const today = now.toISOString().split('T')[0];
 
 export const MOCK_MATCHES: Match[] = [
   {
@@ -22,11 +31,16 @@ export const MOCK_MATCHES: Match[] = [
     homeLogo: 'https://picsum.photos/seed/hilal/100/100',
     awayLogo: 'https://picsum.photos/seed/nassr/100/100',
     startTime: '20:00',
-    status: 'upcoming',
+    status: 'live',
+    score: { home: 2, away: 1 },
+    minute: 65,
     league: 'دوري روشن السعودي',
     channel: 'SSC 1 HD',
     commentator: 'فهد العتيبي',
-    broadcasts: [{ country: 'Saudi Arabia', channel: 'SSC 1 HD' }]
+    broadcasts: [
+      { country: 'Saudi Arabia', channel: 'SSC 1 HD' },
+      { country: 'Global', channel: 'Shahid VIP' }
+    ]
   },
   {
     id: '2',
@@ -39,7 +53,10 @@ export const MOCK_MATCHES: Match[] = [
     league: 'الدوري الإسباني',
     channel: 'beIN Sports HD 1',
     commentator: 'حفيظ دراجي',
-    broadcasts: [{ country: 'Global', channel: 'beIN Sports HD 1' }]
+    broadcasts: [
+      { country: 'MENA', channel: 'beIN Sports HD 1' },
+      { country: 'Spain', channel: 'Movistar LaLiga' }
+    ]
   },
   {
     id: '3',
@@ -53,7 +70,10 @@ export const MOCK_MATCHES: Match[] = [
     league: 'الدوري الإنجليزي',
     channel: 'beIN Sports HD 2',
     commentator: 'خليل البلوشي',
-    broadcasts: [{ country: 'Global', channel: 'beIN Sports HD 2' }]
+    broadcasts: [
+      { country: 'MENA', channel: 'beIN Sports HD 2' },
+      { country: 'UK', channel: 'Sky Sports' }
+    ]
   }
 ];
 

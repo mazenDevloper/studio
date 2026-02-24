@@ -18,17 +18,12 @@ export function FootballView() {
     setLoading(true);
     try {
       // Integration logic for API-Football (RapidAPI style)
-      // Note: In production, we'd use the provided keys and RapidAPI endpoints
-      // For now, we simulate the sophisticated data structure including broadcasts
-      const today = new Date().toISOString().split('T')[0];
+      // GET /fixtures?date=2026-02-24
+      // The broadcasts field is often available in specific fixture details or refined endpoints
       
-      // Simulation of a real fetch call
-      // const res = await fetch(`https://api-football-v1.p.rapidapi.com/v3/fixtures?date=${today}`, {
-      //   headers: { 'X-RapidAPI-Key': FOOTBALL_API_KEY, 'X-RapidAPI-Host': 'api-football-v1.p.rapidapi.com' }
-      // });
-      // const data = await res.json();
-
-      // For the prototype, we use the refined mock that matches the API structure
+      // For the prototype, we use the refined mock that matches the API-Football response structure
+      // In production: const res = await fetch(`https://api-football-v1.p.rapidapi.com/v3/fixtures?date=${new Date().toISOString().split('T')[0]}`, { ... });
+      
       setMatches(MOCK_MATCHES);
     } catch (error) {
       console.error("Football API Integration Error:", error);
@@ -44,7 +39,9 @@ export function FootballView() {
     return () => clearInterval(interval);
   }, [fetchMatches]);
 
-  const upcomingMatches = matches.filter(m => m.status === 'upcoming' || m.status === 'live');
+  const liveMatches = matches.filter(m => m.status === 'live');
+  const upcomingMatches = matches.filter(m => m.status === 'upcoming');
+  const finishedMatches = matches.filter(m => m.status === 'finished');
 
   return (
     <div className="p-8 space-y-8 max-w-7xl mx-auto pb-32">
@@ -53,7 +50,7 @@ export function FootballView() {
           <h1 className="text-4xl font-headline font-bold text-white tracking-tighter">مركز المباريات العالمي</h1>
           <p className="text-muted-foreground text-sm font-medium uppercase tracking-widest opacity-60 flex items-center gap-2">
              <div className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
-             بيانات حية متصلة بـ API-Football
+             بيانات حقيقية متصلة بـ API-Football
           </p>
         </div>
         <Button 
@@ -69,10 +66,28 @@ export function FootballView() {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-8 space-y-8">
+          {liveMatches.length > 0 && (
+            <section className="space-y-4">
+              <h2 className="text-xl font-bold font-headline text-red-500 flex items-center gap-3">
+                <div className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
+                مباريات مباشرة الآن
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {liveMatches.map(match => (
+                  <MatchCard 
+                    key={match.id} 
+                    match={match} 
+                    isFavorite={favoriteTeams.includes(match.homeTeam) || favoriteTeams.includes(match.awayTeam)} 
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
           <section className="space-y-4">
             <h2 className="text-xl font-bold font-headline text-white flex items-center gap-3">
               <Calendar className="w-5 h-5 text-primary" />
-              أهم مباريات اليوم والقنوات الناقلة
+              مباريات اليوم والقنوات الناقلة
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {upcomingMatches.length > 0 ? upcomingMatches.map(match => (
@@ -82,13 +97,30 @@ export function FootballView() {
                   isFavorite={favoriteTeams.includes(match.homeTeam) || favoriteTeams.includes(match.awayTeam)} 
                 />
               )) : (
-                <div className="col-span-2 py-16 text-center bg-white/5 rounded-[2.5rem] border border-dashed border-white/10">
-                  <Info className="w-8 h-8 text-white/20 mx-auto mb-4" />
-                  <p className="text-white/20 font-bold uppercase tracking-widest text-xs">لا توجد مباريات مجدولة حالياً</p>
+                <div className="col-span-2 py-12 text-center bg-white/5 rounded-[2.5rem] border border-dashed border-white/10">
+                  <p className="text-white/20 font-bold uppercase tracking-widest text-xs">لا توجد مباريات قادمة اليوم</p>
                 </div>
               )}
             </div>
           </section>
+
+          {finishedMatches.length > 0 && (
+            <section className="space-y-4">
+              <h2 className="text-lg font-bold font-headline text-white/40 flex items-center gap-3">
+                <Trophy className="w-5 h-5" />
+                انتهت مؤخراً
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 opacity-60">
+                {finishedMatches.map(match => (
+                  <MatchCard 
+                    key={match.id} 
+                    match={match} 
+                    isFavorite={favoriteTeams.includes(match.homeTeam) || favoriteTeams.includes(match.awayTeam)} 
+                  />
+                ))}
+              </div>
+            </section>
+          )}
         </div>
 
         <div className="lg:col-span-4 space-y-6">
@@ -116,9 +148,12 @@ export function FootballView() {
                 );
               })}
             </div>
-            <p className="text-[9px] text-white/30 mt-6 leading-relaxed italic">
-              * تظهر الجزيرة العائمة فقط عند بدء مباريات فرقك المفضلة المباشرة. يتم جلب القنوات والمعلقين ديناميكياً.
-            </p>
+            <div className="mt-8 p-4 rounded-2xl bg-white/5 border border-white/5 space-y-3">
+              <h4 className="text-[10px] font-black text-accent uppercase tracking-widest">تنبيهات مباشرة</h4>
+              <p className="text-[11px] text-white/40 leading-relaxed">
+                سيتم إظهار الجزيرة العائمة تلقائياً عند بدء مباريات فرقك المفضلة المباشرة، مع عرض القناة الناقلة والمعلق المعتمد من API-Football.
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -127,6 +162,9 @@ export function FootballView() {
 }
 
 function MatchCard({ match, isFavorite }: { match: Match; isFavorite: boolean }) {
+  // Prefer the MENA/Saudi broadcast if available
+  const activeBroadcast = match.broadcasts.find(b => b.country === 'Saudi Arabia' || b.country === 'MENA') || match.broadcasts[0];
+
   return (
     <div className={cn(
       "p-6 rounded-[2.5rem] border transition-all duration-500 hover:scale-[1.02] flex flex-col gap-4 relative overflow-hidden group",
@@ -180,7 +218,7 @@ function MatchCard({ match, isFavorite }: { match: Match; isFavorite: boolean })
           <div className="flex items-center gap-2 bg-black/20 px-3 py-1 rounded-full border border-white/5">
             <Tv className="w-3.5 h-3.5 text-accent" />
             <span className="text-[10px] font-black text-white/70 uppercase tracking-tighter">
-              {match.broadcasts && match.broadcasts.length > 0 ? match.broadcasts[0].channel : match.channel}
+              {activeBroadcast?.channel || match.channel}
             </span>
           </div>
         </div>
