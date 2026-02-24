@@ -3,11 +3,9 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { Card } from "@/components/ui/card";
-import { Compass, Navigation, Search, Save, Plus, Minus, ChevronUp, ChevronDown, Flag, Target, Loader2, AlertTriangle, ExternalLink } from "lucide-react";
+import { Compass, Plus, Minus, ChevronUp, ChevronDown, Target, Loader2, AlertTriangle, Save } from "lucide-react";
 import { GOOGLE_MAPS_API_KEY } from "@/lib/constants";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
@@ -20,12 +18,8 @@ const DARK_MAP_STYLE = [
   { "featureType": "water", "elementType": "geometry", "stylers": [{ "color": "#000000" }] }
 ];
 
-const HOME1_COORDS = { lat: 17.067330, lng: 54.160190 }; 
-const HOME2_COORDS = { lat: 17.081852, lng: 54.158345 };
-
 export function MapWidget() {
   const mapRef = useRef<HTMLDivElement>(null);
-  const searchInputRef = useRef<HTMLInputElement>(null);
   const mapInstanceRef = useRef<google.maps.Map | null>(null);
   const carOverlayRef = useRef<google.maps.WebGLOverlayView | null>(null);
   const carModelRef = useRef<THREE.Group | null>(null);
@@ -33,10 +27,6 @@ export function MapWidget() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [apiError, setApiError] = useState(false);
-  const [trafficStats, setTrafficData] = useState({
-    home1: { delay: -1, colorClass: 'bg-zinc-800' },
-    home2: { delay: -1, colorClass: 'bg-zinc-800' }
-  });
 
   const [tuner, setTuner] = useState({
     zoom: 19.5,
@@ -50,13 +40,6 @@ export function MapWidget() {
     heading: 0
   });
 
-  const getTrafficColorClass = (delayPercentage: number) => {
-    if (delayPercentage === -1) return 'bg-zinc-800 text-white/50';
-    if (delayPercentage < 5) return 'bg-emerald-600 text-white shadow-[0_0_15px_rgba(16,185,129,0.4)]';
-    if (delayPercentage < 20) return 'bg-amber-500 text-black shadow-[0_0_15px_rgba(245,158,11,0.4)]';
-    return 'bg-red-600 text-white shadow-[0_0_15px_rgba(239,68,68,0.4)]';
-  };
-
   const setup3DCarSystem = useCallback((map: google.maps.Map) => {
     if (carOverlayRef.current) return;
 
@@ -67,6 +50,7 @@ export function MapWidget() {
       const scene = new THREE.Scene();
       const camera = new THREE.PerspectiveCamera();
       
+      // Studio Lighting
       scene.add(new THREE.AmbientLight(0xffffff, 0.65));
       const light1 = new THREE.DirectionalLight(0xffffff, 0.68);
       light1.position.set(25, 8, 15); 
@@ -155,17 +139,6 @@ export function MapWidget() {
     overlay.setMap(map);
   }, [carState, tuner]);
 
-  const updateTrafficIndicators = useCallback(async () => {
-    // Simulated traffic check logic based on code ref
-    const delay1 = Math.floor(Math.random() * 30);
-    const delay2 = Math.floor(Math.random() * 15);
-
-    setTrafficData({
-      home1: { delay: delay1, colorClass: getTrafficColorClass(delay1) },
-      home2: { delay: delay2, colorClass: getTrafficColorClass(delay2) }
-    });
-  }, []);
-
   const handleGetCurrentLocation = () => {
     if (navigator.geolocation && mapInstanceRef.current) {
       navigator.geolocation.getCurrentPosition(
@@ -218,7 +191,6 @@ export function MapWidget() {
         }
 
         setIsLoading(false);
-        updateTrafficIndicators();
       } catch (e) {
         console.error("Map Init Error", e);
         setApiError(true);
@@ -239,7 +211,7 @@ export function MapWidget() {
     return () => {
       if (watchIdRef.current) navigator.geolocation.clearWatch(watchIdRef.current);
     };
-  }, [updateTrafficIndicators, setup3DCarSystem]);
+  }, [setup3DCarSystem]);
 
   return (
     <Card className="h-full w-full overflow-hidden border-none bg-black relative group rounded-[2.5rem] shadow-2xl">
@@ -289,24 +261,6 @@ export function MapWidget() {
           <Button size="icon" className="h-12 w-12 rounded-2xl bg-blue-600 text-white shadow-lg" onClick={() => alert("✅ Saved Settings")}>
             <Save className="w-5 h-5" />
           </Button>
-        </div>
-      )}
-
-      {/* Traffic Indicators */}
-      {!apiError && !isLoading && (
-        <div className="absolute top-6 left-6 z-20 flex flex-col gap-2 w-[280px]">
-          <div className="relative w-full">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-white/40" />
-            <Input className="pl-12 h-14 bg-black/60 backdrop-blur-xl border-white/5 rounded-2xl text-white font-bold" placeholder="Destination..." />
-          </div>
-          <div className="flex gap-2">
-            <Button variant="secondary" onClick={() => updateTrafficIndicators()} className={cn("flex-1 h-12 rounded-xl font-bold border border-white/10", trafficStats.home1.colorClass)}>
-              إشارات ق {trafficStats.home1.delay}%
-            </Button>
-            <Button variant="secondary" onClick={() => updateTrafficIndicators()} className={cn("flex-1 h-12 rounded-xl font-bold border border-white/10", trafficStats.home2.colorClass)}>
-              تقاطع ش {trafficStats.home2.delay}%
-            </Button>
-          </div>
         </div>
       )}
 
