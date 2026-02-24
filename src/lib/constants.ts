@@ -5,11 +5,11 @@ export const FOOTBALL_API_KEY = '5faa81bde7c1843d6be4a4e3706a93da';
 export const FOOTBALL_API_BASE_URL = 'https://v3.football.api-sports.io';
 
 export const YT_KEYS_POOL = [
-    "AIzaSyAjdVZ2Rodp6ZVEF1pZT195kAtGELolxSI", // مفتاح تجريبي جديد
+    "AIzaSyCcB-bW1b1bSu3hzROVhSbRT-D894zHYeg", // المفتاح الجديد الموفر للكوتا
     "AIzaSyCtgdzDMCpCbGe1vSAu0F4wBKERC77ac6I",
+    "AIzaSyAjdVZ2Rodp6ZVEF1pZT195kAtGELolxSI",
     "AIzaSyDULoFJLWNIO9hn0u8siLz-BzTi7eM-CX4",
-    "AIzaSyBYThRM6tVnzgFgdHOUAN6DN8jQd54OKeg",
-    "AIzaSyB7QdfI0br5BfP71hOr36hz2dRWG_l0G8k"
+    "AIzaSyBYThRM6tVnzgFgdHOUAN6DN8jQd54OKeg"
 ];
 
 export const prayerTimesData = [

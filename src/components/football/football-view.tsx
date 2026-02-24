@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
@@ -153,7 +152,7 @@ export function FootballView() {
                     ))
                   ) : (
                     <div className="col-span-2 py-20 text-center bg-white/5 rounded-[2.5rem] border border-dashed border-white/10">
-                      <p className="text-white/40 italic">لا توجد مباريات هامة قريباً - تأكد من الاتصال</p>
+                      <div className="text-white/40 italic">لا توجد مباريات هامة قريباً - تأكد من الاتصال</div>
                     </div>
                   )}
                 </div>

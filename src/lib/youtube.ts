@@ -22,8 +22,7 @@ const youtubeCache: Record<string, { data: any, timestamp: number }> = {};
 const CACHE_TTL = 1000 * 60 * 10;
 
 /**
- * دالة جلب البيانات بنظام التدوير الذكي.
- * صممت لتكون Quota Friendly عبر دعم playlistItems كخيار أساسي.
+ * دالة جلب البيانات بنظام التدوير الذكي للحفاظ على الكوتا.
  */
 async function fetchWithRotation(endpoint: string, params: Record<string, string>) {
   const queryParams = new URLSearchParams(params);
@@ -97,7 +96,7 @@ export async function searchYouTubeVideos(query: string): Promise<YouTubeVideo[]
 }
 
 /**
- * استخدام playlistItems بدلاً من search لتقليل التكلفة من 100 وحدة إلى وحدة واحدة فقط.
+ * دالة جلب فيديوهات القناة بنظام Quota Friendly ( playlistItems ).
  */
 export async function fetchChannelVideos(channelId: string): Promise<YouTubeVideo[]> {
   const uploadsPlaylistId = channelId.startsWith('UC') 
@@ -107,14 +106,14 @@ export async function fetchChannelVideos(channelId: string): Promise<YouTubeVide
   const data = await fetchWithRotation('playlistItems', {
     part: 'snippet',
     playlistId: uploadsPlaylistId,
-    maxResults: '15'
+    maxResults: '20'
   });
 
   if (!data || !data.items) {
     const fallbackData = await fetchWithRotation('search', {
       part: 'snippet',
       channelId: channelId,
-      maxResults: '15',
+      maxResults: '20',
       order: 'date',
       type: 'video'
     });
