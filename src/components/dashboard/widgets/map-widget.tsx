@@ -1,15 +1,16 @@
 
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { Card } from "@/components/ui/card";
-import { Compass, Navigation, MapPin, Search, Clock, Zap, Bookmark, Star, Trash2, Map as MapIcon, AlertTriangle, ExternalLink, Target, Loader2 } from "lucide-react";
+import { Compass, Navigation, MapPin, Search, Clock, Zap, Bookmark, Star, Trash2, Map as MapIcon, AlertTriangle, ExternalLink, Target, Loader2, Flag } from "lucide-react";
 import { GOOGLE_MAPS_API_KEY } from "@/lib/constants";
 import { useMediaStore, SavedPlace } from "@/lib/store";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
+import { cn } from "@/lib/utils";
 
 const DARK_MAP_STYLE = [
   { "elementType": "geometry", "stylers": [{ "color": "#212121" }] },
@@ -26,6 +27,9 @@ const DARK_MAP_STYLE = [
   { "featureType": "water", "elementType": "geometry", "stylers": [{ "color": "#000000" }] }
 ];
 
+const HOME1_COORDS = { lat: 17.067330, lng: 54.160190 }; 
+const HOME2_COORDS = { lat: 17.081852, lng: 54.158345 };
+
 declare global {
   interface Window {
     initGoogleMaps: () => void;
@@ -38,6 +42,7 @@ export function MapWidget() {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const mapInstanceRef = useRef<google.maps.Map | null>(null);
   const directionsRendererRef = useRef<google.maps.DirectionsRenderer | null>(null);
+  const directionsServiceRef = useRef<google.maps.DirectionsService | null>(null);
   const currentMarkerRef = useRef<google.maps.Marker | null>(null);
 
   const [isLoading, setIsLoading] = useState(true);
@@ -48,15 +53,101 @@ export function MapWidget() {
     duration: string;
     eta: string;
   } | null>(null);
+  
+  const [trafficStats, setTrafficData] = useState<{
+    home1: { delay: number; colorClass: string };
+    home2: { delay: number; colorClass: string };
+  }>({
+    home1: { delay: -1, colorClass: 'bg-zinc-800' },
+    home2: { delay: -1, colorClass: 'bg-zinc-800' }
+  });
+
   const [showSavedPlaces, setShowSavedPlaces] = useState(false);
   const { savedPlaces, savePlace, removePlace } = useMediaStore();
   const [currentPlace, setCurrentPlace] = useState<SavedPlace | null>(null);
 
   const mapPlaceholder = PlaceHolderImages.find(img => img.id === 'map-placeholder');
 
+  const getTrafficColorClass = (delayPercentage: number) => {
+    if (delayPercentage === -1) return 'bg-zinc-800 text-white/50';
+    if (delayPercentage < 5) return 'bg-emerald-600 text-white shadow-[0_0_15px_rgba(16,185,129,0.4)]';
+    if (delayPercentage < 20) return 'bg-amber-500 text-black shadow-[0_0_15px_rgba(245,158,11,0.4)]';
+    return 'bg-red-600 text-white shadow-[0_0_15px_rgba(239,68,68,0.4)]';
+  };
+
+  const fetchTrafficStatus = async (destination: { lat: number; lng: number }) => {
+    if (!window.google || !mapInstanceRef.current || !directionsServiceRef.current) return -1;
+
+    const origin = mapInstanceRef.current.getCenter();
+    if (!origin) return -1;
+
+    try {
+      const response = await directionsServiceRef.current.route({
+        origin: origin,
+        destination: destination,
+        travelMode: google.maps.TravelMode.DRIVING,
+        drivingOptions: {
+          departureTime: new Date(),
+          trafficModel: google.maps.TrafficModel.BEST_GUESS
+        }
+      });
+
+      if (response.status === 'OK') {
+        const leg = response.routes[0].legs[0];
+        const durationInTraffic = leg.duration_in_traffic?.value || leg.duration?.value || 0;
+        const predictedDuration = leg.duration?.value || 1;
+
+        if (predictedDuration > 0) {
+          const delay = Math.round(((durationInTraffic - predictedDuration) / predictedDuration) * 100);
+          return Math.max(0, delay);
+        }
+      }
+      return -1;
+    } catch (e) {
+      console.error("Traffic status fetch failed:", e);
+      return -1;
+    }
+  };
+
+  const updateTrafficIndicators = useCallback(async () => {
+    const delay1 = await fetchTrafficStatus(HOME1_COORDS);
+    const delay2 = await fetchTrafficStatus(HOME2_COORDS);
+
+    setTrafficData({
+      home1: { delay: delay1, colorClass: getTrafficColorClass(delay1) },
+      home2: { delay: delay2, colorClass: getTrafficColorClass(delay2) }
+    });
+  }, []);
+
+  const displayLocationMarker = (coords: { lat: number; lng: number }, title: string) => {
+    if (!mapInstanceRef.current) return;
+
+    const tempMarker = new google.maps.Marker({
+      position: coords,
+      map: mapInstanceRef.current,
+      title: title,
+      animation: google.maps.Animation.BOUNCE,
+      icon: {
+        path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+        scale: 8,
+        fillColor: "#FF00FF",
+        fillOpacity: 0.9,
+        strokeColor: "#FFFFFF",
+        strokeWeight: 2
+      }
+    });
+
+    mapInstanceRef.current.setCenter(coords);
+    mapInstanceRef.current.setZoom(16);
+
+    setTimeout(() => {
+      tempMarker.setMap(null);
+    }, 10000);
+  };
+
   const startNavigation = (destination: google.maps.LatLng, name: string = "Target Location") => {
     const map = mapInstanceRef.current;
-    if (!map) return;
+    if (!map || !directionsServiceRef.current || !directionsRendererRef.current) return;
 
     if (currentMarkerRef.current) currentMarkerRef.current.setMap(null);
 
@@ -75,8 +166,7 @@ export function MapWidget() {
     });
     currentMarkerRef.current = marker;
 
-    const directionsService = new google.maps.DirectionsService();
-    directionsService.route(
+    directionsServiceRef.current.route(
       {
         origin: map.getCenter()!,
         destination: destination,
@@ -88,7 +178,7 @@ export function MapWidget() {
           const leg = result.routes[0].legs[0];
           
           const arrivalTime = new Date();
-          arrivalTime.setSeconds(arrivalTime.setSeconds(0) + (leg.duration?.value || 0));
+          arrivalTime.setSeconds(arrivalTime.getSeconds() + (leg.duration?.value || 0));
 
           setNavigationData({
             destination: leg.end_address,
@@ -132,6 +222,7 @@ export function MapWidget() {
               strokeColor: "#ffffff",
             }
           });
+          updateTrafficIndicators();
         }
       );
     }
@@ -156,6 +247,7 @@ export function MapWidget() {
         });
         mapInstanceRef.current = map;
 
+        directionsServiceRef.current = new google.maps.DirectionsService();
         const renderer = new google.maps.DirectionsRenderer({
           map: map,
           suppressMarkers: false,
@@ -194,6 +286,7 @@ export function MapWidget() {
         }
 
         setIsLoading(false);
+        updateTrafficIndicators();
       } catch (e) {
         console.error("Map Init Error", e);
         setApiError(true);
@@ -215,10 +308,10 @@ export function MapWidget() {
       }
     }
 
-    return () => {
-      // Cleanup if needed
-    };
-  }, []);
+    const trafficInterval = setInterval(updateTrafficIndicators, 600000); // 10 minutes
+
+    return () => clearInterval(trafficInterval);
+  }, [updateTrafficIndicators]);
 
   return (
     <Card className="h-full w-full overflow-hidden border-none bg-black relative group rounded-[2.5rem] ios-shadow">
@@ -273,6 +366,32 @@ export function MapWidget() {
             className="w-full h-16 pl-14 pr-6 bg-black/80 backdrop-blur-3xl border-white/5 rounded-2xl text-white font-headline font-bold text-lg ios-shadow focus:ring-2 focus:ring-blue-500 transition-all placeholder:text-muted-foreground/50 disabled:opacity-50"
           />
         </div>
+
+        {/* Traffic Indicators Buttons */}
+        {!apiError && !isLoading && (
+          <div className="flex gap-2 w-full mt-2">
+            <Button
+              variant="secondary"
+              onClick={() => displayLocationMarker(HOME1_COORDS, 'إشارات ق')}
+              className={cn(
+                "flex-1 h-14 rounded-2xl font-bold transition-all border border-white/10 backdrop-blur-xl",
+                trafficStats.home1.colorClass
+              )}
+            >
+              إشارات ق {trafficStats.home1.delay !== -1 ? `(${trafficStats.home1.delay}%)` : ''}
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => displayLocationMarker(HOME2_COORDS, 'تقاطع ش')}
+              className={cn(
+                "flex-1 h-14 rounded-2xl font-bold transition-all border border-white/10 backdrop-blur-xl",
+                trafficStats.home2.colorClass
+              )}
+            >
+              تقاطع ش {trafficStats.home2.delay !== -1 ? `(${trafficStats.home2.delay}%)` : ''}
+            </Button>
+          </div>
+        )}
 
         {navigationData && !apiError && (
           <div className="p-6 rounded-[2.5rem] bg-black/90 backdrop-blur-3xl border border-white/10 space-y-5 w-full shadow-2xl animate-in fade-in slide-in-from-left-4 duration-500">
