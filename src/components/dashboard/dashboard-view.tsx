@@ -54,7 +54,7 @@ export function DashboardView() {
   }, [api]);
 
   return (
-    <div className="h-full w-full p-6 flex flex-col gap-6 relative overflow-y-auto pb-32">
+    <div className="h-full w-full p-6 flex flex-col gap-8 relative overflow-y-auto pb-32">
       {/* Top Floating Logo */}
       <div className="absolute top-2 left-1/2 -translate-x-1/2 z-[50] opacity-80 pointer-events-none">
         <Image 
@@ -67,12 +67,12 @@ export function DashboardView() {
       </div>
 
       {/* Main Grid: 3 Main Columns */}
-      <div className="grid grid-cols-12 gap-6 min-h-[600px]">
+      <div className="grid grid-cols-12 gap-6 min-h-[650px]">
         
         {/* Column 1: Left (Carousel + Countdown) - Span 3 */}
         <div className="col-span-3 flex flex-col gap-6">
-          {/* Smart Stack (Carousel) */}
-          <div className="glass-panel rounded-[2.5rem] relative group overflow-hidden flex flex-col aspect-[4/3] w-full">
+          {/* Smart Stack (Carousel) - 4x3 H:W ratio */}
+          <div className="glass-panel rounded-[2.5rem] relative group overflow-hidden flex flex-col aspect-[3/4] w-full shadow-2xl">
             <Carousel setApi={setApi} opts={{ loop: true }} className="flex-1 w-full h-full">
               <CarouselContent className="h-full">
                 <CarouselItem className="h-full">
@@ -85,26 +85,26 @@ export function DashboardView() {
                   <div className="h-full w-full p-6 flex flex-col items-center justify-center text-center">
                     {weather ? (
                       <>
-                        <div className="relative w-full mb-4">
-                          <span className="text-6xl font-black text-white/90 tracking-tighter drop-shadow-2xl">
+                        <div className="relative w-full mb-6">
+                          <span className="text-7xl font-black text-white/90 tracking-tighter drop-shadow-2xl">
                             {Math.round(weather.current.temp_c)}°
                           </span>
-                          <div className="absolute -top-4 -right-2">
-                            <img src={weather.current.condition.icon} alt="Weather" className="w-16 h-16 animate-pulse" />
+                          <div className="absolute -top-6 -right-2">
+                            <img src={weather.current.condition.icon} alt="Weather" className="w-20 h-20 animate-pulse" />
                           </div>
                         </div>
                         <div className="grid grid-cols-3 gap-2 w-full">
-                          <div className="metric-box py-3">
-                            <div className="text-blue-400 font-bold text-sm">{weather.current.humidity}%</div>
-                            <div className="text-[8px] text-white/40 font-bold uppercase">Hum</div>
+                          <div className="metric-box py-4">
+                            <div className="text-blue-400 font-bold text-base">{weather.current.humidity}%</div>
+                            <div className="text-[10px] text-white/40 font-bold uppercase tracking-widest">Hum</div>
                           </div>
-                          <div className="metric-box py-3">
-                            <div className="text-yellow-400 font-bold text-sm">{weather.current.uv}</div>
-                            <div className="text-[8px] text-white/40 font-bold uppercase">UV</div>
+                          <div className="metric-box py-4">
+                            <div className="text-yellow-400 font-bold text-base">{weather.current.uv}</div>
+                            <div className="text-[10px] text-white/40 font-bold uppercase tracking-widest">UV</div>
                           </div>
-                          <div className="metric-box py-3">
-                            <div className="text-accent font-bold text-sm">{Math.round(weather.current.temp_c)}°</div>
-                            <div className="text-[8px] text-white/40 font-bold uppercase">Temp</div>
+                          <div className="metric-box py-4">
+                            <div className="text-accent font-bold text-base">{Math.round(weather.current.temp_c)}°</div>
+                            <div className="text-[10px] text-white/40 font-bold uppercase tracking-widest">Temp</div>
                           </div>
                         </div>
                       </>
@@ -119,14 +119,14 @@ export function DashboardView() {
               </CarouselContent>
             </Carousel>
 
-            {/* Dots Indicator: Fixed center bottom */}
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
+            {/* Dots Indicator: Fixed bottom center */}
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 z-20">
               {Array.from({ length: count }).map((_, i) => (
                 <div
                   key={i}
                   className={cn(
-                    "h-1 rounded-full transition-all duration-500",
-                    current === i ? "w-6 bg-primary shadow-[0_0_8px_hsl(var(--primary))]" : "w-1 bg-white/20"
+                    "h-1.5 rounded-full transition-all duration-500",
+                    current === i ? "w-8 bg-primary shadow-[0_0_10px_hsl(var(--primary))]" : "w-1.5 bg-white/20"
                   )}
                 />
               ))}
@@ -134,66 +134,66 @@ export function DashboardView() {
           </div>
 
           {/* Prayer Countdown Widget (Below Carousel) */}
-          <div className="flex-1 min-h-[180px]">
+          <div className="flex-1 min-h-[200px]">
             <PrayerCountdownCard />
           </div>
         </div>
 
         {/* Column 2: Middle (Car Display) - Span 5 */}
         <div className="col-span-5 glass-panel rounded-[2.5rem] relative group flex flex-col items-center justify-center overflow-hidden">
-          <div className="flex-1 flex items-center justify-center w-full">
+          <div className="flex-1 flex items-center justify-center w-full p-8">
             <Image 
               src="https://dmusera.netlify.app/es350gb.png" 
               alt="Lexus ES350" 
-              width={500} 
-              height={250}
-              className="object-contain drop-shadow-[0_20px_50px_rgba(0,0,0,0.9)] group-hover:scale-105 transition-transform duration-700"
+              width={600} 
+              height={300}
+              className="object-contain drop-shadow-[0_30px_60px_rgba(0,0,0,0.9)] group-hover:scale-105 transition-transform duration-700"
             />
           </div>
-          <div className="absolute bottom-8 flex gap-4 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-black/40 backdrop-blur-xl p-2 rounded-full border border-white/5">
-            <button className="flex items-center gap-2 px-5 py-2.5 bg-white/10 border border-white/10 rounded-full hover:bg-white/20 transition-all font-bold text-xs text-white">
+          <div className="absolute bottom-10 flex gap-4 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-black/60 backdrop-blur-2xl p-3 rounded-full border border-white/10 shadow-2xl">
+            <button className="flex items-center gap-2 px-6 py-3 bg-white/10 border border-white/10 rounded-full hover:bg-white/20 transition-all font-bold text-xs text-white">
               <RotateCcw className="w-4 h-4" /> إعادة تعيين
             </button>
-            <button className="flex items-center gap-2 px-5 py-2.5 bg-white/10 border border-white/10 rounded-full hover:bg-white/20 transition-all font-bold text-xs text-white">
+            <button className="flex items-center gap-2 px-6 py-3 bg-white/10 border border-white/10 rounded-full hover:bg-white/20 transition-all font-bold text-xs text-white">
               <Upload className="w-4 h-4" /> تحميل
             </button>
           </div>
         </div>
 
         {/* Column 3: Right (Map Display) - Span 4 */}
-        <div className="col-span-4 glass-panel rounded-[2.5rem] overflow-hidden relative group">
+        <div className="col-span-4 glass-panel rounded-[2.5rem] overflow-hidden relative group shadow-2xl">
           <MapWidget />
-          <div className="absolute top-6 right-6 z-20">
-            <button className="w-12 h-12 rounded-2xl bg-black/60 backdrop-blur-xl border border-white/10 flex items-center justify-center hover:bg-primary transition-all">
-              <Maximize2 className="w-6 h-6 text-white" />
+          <div className="absolute top-8 right-8 z-20">
+            <button className="w-14 h-14 rounded-2xl bg-black/60 backdrop-blur-xl border border-white/10 flex items-center justify-center hover:bg-primary transition-all shadow-xl">
+              <Maximize2 className="w-7 h-7 text-white" />
             </button>
           </div>
-          <div className="absolute bottom-6 left-6 z-20 bg-black/60 backdrop-blur-xl p-3 rounded-2xl border border-white/10 flex items-center gap-3">
-            <Navigation className="w-5 h-5 text-blue-400" />
-            <span className="text-xs font-bold text-white/80">صلالة، سلطنة عمان</span>
+          <div className="absolute bottom-8 left-8 z-20 bg-black/60 backdrop-blur-xl p-4 rounded-2xl border border-white/10 flex items-center gap-4 shadow-xl">
+            <Navigation className="w-6 h-6 text-blue-400" />
+            <span className="text-sm font-bold text-white/90">صلالة، سلطنة عمان</span>
           </div>
         </div>
       </div>
 
+      {/* Standalone Prayer Timeline Bar - Above Video Bars */}
+      <div className="w-full glass-panel rounded-full p-4 shadow-xl mb-2">
+        <PrayerTimelineWidget />
+      </div>
+
       {/* Suggested Bar Section */}
-      <div className="w-full">
+      <div className="w-full space-y-2">
         <LatestVideosWidget channels={favoriteChannels} />
       </div>
 
       {/* Saved Video Bar Section */}
-      <div className="w-full">
+      <div className="w-full space-y-2">
         <YouTubeSavedWidget />
       </div>
 
-      {/* Floating Footer: Prayer Timeline */}
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-6xl z-[100] animate-in fade-in slide-in-from-bottom-4 duration-700">
-        <div className="bg-black/60 backdrop-blur-3xl border border-white/10 rounded-full p-2 shadow-2xl flex items-center gap-4">
-          <div className="w-14 h-14 rounded-full bg-primary flex items-center justify-center shadow-lg active-glow cursor-pointer hover:scale-110 transition-all">
-            <Mic className="w-7 h-7 text-white" />
-          </div>
-          <div className="flex-1">
-            <PrayerTimelineWidget />
-          </div>
+      {/* Floating Mic Button */}
+      <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100]">
+        <div className="w-20 h-20 rounded-full bg-primary flex items-center justify-center shadow-[0_0_30px_rgba(59,130,246,0.6)] active-glow cursor-pointer hover:scale-110 transition-all border-4 border-white/10 backdrop-blur-xl">
+          <Mic className="w-10 h-10 text-white" />
         </div>
       </div>
     </div>
