@@ -114,11 +114,11 @@ export function DashboardView() {
         />
       </div>
 
-      {/* Main Grid: Split into 3 equal columns (4-4-4) with reduced height */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-6 h-[520px]">
-        {/* Left Column: Widgets Carousel & Countdown */}
-        <div className="md:col-span-4 flex flex-col gap-6">
-          <div className="glass-panel rounded-[2.5rem] relative group overflow-hidden flex flex-col aspect-video w-full shadow-2xl">
+      {/* Main Grid: Height reduced to show timeline without scroll */}
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-6 h-[460px]">
+        {/* Left Column: Widgets Carousel (65%) & Countdown (35%) */}
+        <div className="md:col-span-4 flex flex-col gap-6 h-full">
+          <div className="glass-panel rounded-[2.5rem] relative group overflow-hidden flex flex-col w-full shadow-2xl h-[65%]">
             <Carousel setApi={setApi} opts={{ loop: true }} className="flex-1 w-full h-full">
               <CarouselContent className="h-full">
                 <CarouselItem className="h-full">
@@ -178,13 +178,13 @@ export function DashboardView() {
             </div>
           </div>
 
-          <div className="flex-1 min-h-[140px]">
+          <div className="h-[35%] w-full">
             <PrayerCountdownCard />
           </div>
         </div>
 
         {/* Middle Column: Car Showcase */}
-        <div className="md:col-span-4 glass-panel rounded-[2.5rem] relative group flex flex-col items-center justify-center overflow-hidden">
+        <div className="md:col-span-4 glass-panel rounded-[2.5rem] relative group flex flex-col items-center justify-center overflow-hidden h-full">
           <div className="flex-1 flex items-center justify-center w-full p-8">
             <Image 
               src="https://dmusera.netlify.app/es350gb.png" 
@@ -205,12 +205,12 @@ export function DashboardView() {
         </div>
 
         {/* Right Column: Interactive Map */}
-        <div className="md:col-span-4 glass-panel rounded-[2.5rem] overflow-hidden relative group shadow-2xl">
+        <div className="md:col-span-4 glass-panel rounded-[2.5rem] overflow-hidden relative group shadow-2xl h-full">
           <MapWidget />
         </div>
       </div>
 
-      <div className="w-full glass-panel rounded-full p-4 shadow-xl mb-2">
+      <div className="w-full glass-panel rounded-full p-4 shadow-xl">
         <PrayerTimelineWidget />
       </div>
 
