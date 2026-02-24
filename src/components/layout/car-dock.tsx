@@ -1,12 +1,15 @@
+
 "use client";
 
-import { LayoutDashboard, Music2, Map, Radio, Settings, GripVertical } from "lucide-react";
+import { LayoutDashboard, Music2, Map, Radio, Settings, GripVertical, ArrowLeft } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 export function CarDock() {
   const pathname = usePathname();
+  const router = useRouter();
 
   const apps = [
     { name: "Home", href: "/", icon: LayoutDashboard, color: "bg-blue-600" },
@@ -41,9 +44,21 @@ export function CarDock() {
         ))}
       </div>
 
-      <div className="flex flex-col items-center gap-1">
-        <div className="text-sm font-bold tracking-tighter">14:48</div>
-        <div className="text-[10px] font-bold text-muted-foreground">5G</div>
+      <div className="flex flex-col items-center gap-4 mt-auto">
+        {/* Global Back Button at Bottom Left */}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => router.back()}
+          className="w-16 h-16 rounded-[1.2rem] bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-all active:scale-90 shadow-xl"
+        >
+          <ArrowLeft className="w-8 h-8" />
+        </Button>
+
+        <div className="flex flex-col items-center gap-1">
+          <div className="text-sm font-bold tracking-tighter">14:48</div>
+          <div className="text-[10px] font-bold text-muted-foreground">5G</div>
+        </div>
       </div>
     </div>
   );

@@ -2,18 +2,19 @@
 "use client";
 
 import { useMediaStore } from "@/lib/store";
-import { X, Maximize2, Play, Pause, SkipForward, SkipBack, Music, MinusSquare, LayoutGrid } from "lucide-react";
+import { X, Maximize2, Play, Pause, SkipForward, SkipBack, Music, LayoutGrid, Youtube as YoutubeIcon, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 export function GlobalVideoPlayer() {
   const { activeVideo, isPlaying, isMinimized, setActiveVideo, setIsPlaying, setIsMinimized, toggleMinimize } = useMediaStore();
   const [mounted, setMounted] = useState(false);
   const [rate, setRate] = useState(1.0);
+  const router = useRouter();
 
-  // تحديث Media Session للتحكم من خارج المتصفح (في الخلفية)
   useEffect(() => {
     if ('mediaSession' in navigator && activeVideo) {
       navigator.mediaSession.metadata = new MediaMetadata({
@@ -99,14 +100,6 @@ export function GlobalVideoPlayer() {
               </div>
             </div>
             <div className="flex items-center gap-4">
-              <Button 
-                variant="ghost" 
-                onClick={toggleMinimize} 
-                className="flex items-center gap-2 px-6 h-12 rounded-full bg-white/5 hover:bg-white/10 text-white font-bold text-xs uppercase tracking-widest border border-white/5 transition-all active:scale-95"
-              >
-                <LayoutGrid className="w-4 h-4 text-primary" />
-                تصغير للكبسولة
-              </Button>
               <Button variant="ghost" size="icon" onClick={() => setActiveVideo(null)} className="w-12 h-12 rounded-full hover:bg-red-500/20 text-white/40 hover:text-red-500 transition-colors">
                 <X className="w-6 h-6" />
               </Button>
@@ -123,28 +116,54 @@ export function GlobalVideoPlayer() {
               allowFullScreen
             ></iframe>
             
-            {/* Overlay Gradient for Cinema Feel */}
             <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black/80 to-transparent pointer-events-none" />
             <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/80 to-transparent pointer-events-none" />
           </div>
           
           <div className="h-32 bg-zinc-900/95 backdrop-blur-3xl border-t border-white/10 flex items-center justify-between px-12">
             <div className="flex items-center gap-4 w-1/3">
-              <div className="flex gap-2">
-                {rates.map(r => (
-                  <Button 
-                    key={r} 
-                    variant="ghost" 
-                    size="sm"
-                    onClick={() => setRate(r)}
-                    className={cn(
-                      "rounded-xl px-4 font-black text-[10px] uppercase tracking-tighter h-10 transition-all",
-                      rate === r ? "bg-primary text-white" : "bg-white/5 text-white/40"
-                    )}
-                  >
-                    {r}x
-                  </Button>
-                ))}
+              {/* Easy Access Controls Bottom-Left */}
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  onClick={() => {
+                    toggleMinimize();
+                  }}
+                  className="h-14 w-14 rounded-full bg-white/5 hover:bg-white/10 text-primary border border-white/5 transition-all active:scale-95 shadow-xl"
+                  title="تصغير للكبسولة"
+                >
+                  <LayoutGrid className="w-6 h-6" />
+                </Button>
+
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  onClick={() => router.back()}
+                  className="h-14 w-14 rounded-full bg-white/5 hover:bg-white/10 text-white border border-white/5 transition-all active:scale-95 shadow-xl"
+                  title="رجوع"
+                >
+                  <ArrowLeft className="w-6 h-6" />
+                </Button>
+
+                <div className="h-10 w-[1px] bg-white/10 mx-2" />
+
+                <div className="flex gap-1.5">
+                  {rates.map(r => (
+                    <Button 
+                      key={r} 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => setRate(r)}
+                      className={cn(
+                        "rounded-xl px-3 font-black text-[10px] uppercase tracking-tighter h-10 transition-all",
+                        rate === r ? "bg-primary text-white" : "bg-white/5 text-white/40"
+                      )}
+                    >
+                      {r}x
+                    </Button>
+                  ))}
+                </div>
               </div>
             </div>
 
@@ -174,17 +193,5 @@ export function GlobalVideoPlayer() {
         </>
       )}
     </div>
-  );
-}
-
-function YoutubeIcon({ className }: { className?: string }) {
-  return (
-    <svg 
-      viewBox="0 0 24 24" 
-      fill="currentColor" 
-      className={className}
-    >
-      <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
-    </svg>
   );
 }
