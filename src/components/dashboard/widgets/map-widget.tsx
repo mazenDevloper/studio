@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { Card } from "@/components/ui/card";
-import { Compass, Navigation, MapPin, Search, Clock, Zap, Bookmark, Star, Trash2, Map as MapIcon, AlertTriangle, ExternalLink, Target, Loader2, Flag } from "lucide-react";
+import { Compass, Navigation, MapPin, Search, Clock, Zap, Bookmark, Star, Trash2, Map as MapIcon, AlertTriangle, ExternalLink, Target, Loader2, Flag, ChevronUp, ChevronDown, Plus, Minus, Save } from "lucide-react";
 import { GOOGLE_MAPS_API_KEY } from "@/lib/constants";
 import { useMediaStore, SavedPlace } from "@/lib/store";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,8 @@ import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { cn } from "@/lib/utils";
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 const DARK_MAP_STYLE = [
   { "elementType": "geometry", "stylers": [{ "color": "#212121" }] },
@@ -43,7 +45,8 @@ export function MapWidget() {
   const mapInstanceRef = useRef<google.maps.Map | null>(null);
   const directionsRendererRef = useRef<google.maps.DirectionsRenderer | null>(null);
   const directionsServiceRef = useRef<google.maps.DirectionsService | null>(null);
-  const currentMarkerRef = useRef<google.maps.Marker | null>(null);
+  const carOverlayRef = useRef<google.maps.WebGLOverlayView | null>(null);
+  const carModelRef = useRef<THREE.Group | null>(null);
 
   const [isLoading, setIsLoading] = useState(true);
   const [apiError, setApiError] = useState(false);
@@ -62,6 +65,18 @@ export function MapWidget() {
     home2: { delay: -1, colorClass: 'bg-zinc-800' }
   });
 
+  const [tuner, setTuner] = useState({
+    zoom: 19.5,
+    tilt: 65,
+    scale: 1.02,
+    offset: 45
+  });
+
+  const [carState, setCarState] = useState({
+    location: { lat: 17.067330, lng: 54.160190 },
+    heading: 0
+  });
+
   const [showSavedPlaces, setShowSavedPlaces] = useState(false);
   const { savedPlaces, savePlace, removePlace } = useMediaStore();
   const [currentPlace, setCurrentPlace] = useState<SavedPlace | null>(null);
@@ -74,6 +89,108 @@ export function MapWidget() {
     if (delayPercentage < 20) return 'bg-amber-500 text-black shadow-[0_0_15px_rgba(245,158,11,0.4)]';
     return 'bg-red-600 text-white shadow-[0_0_15px_rgba(239,68,68,0.4)]';
   };
+
+  const setup3DCarSystem = useCallback((map: google.maps.Map) => {
+    if (carOverlayRef.current) return;
+
+    const overlay = new google.maps.WebGLOverlayView();
+    carOverlayRef.current = overlay;
+
+    overlay.onAdd = () => {
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera();
+      
+      scene.add(new THREE.AmbientLight(0xffffff, 0.65));
+      const light1 = new THREE.DirectionalLight(0xffffff, 0.68);
+      light1.position.set(25, 8, 15); 
+      scene.add(light1);
+
+      const light2 = new THREE.DirectionalLight(0xffffff, 0.75);
+      light2.position.set(-25, 5, 15); 
+      scene.add(light2);
+
+      const loader = new GLTFLoader();
+      loader.load('https://dmusera.netlify.app/ES350E.gltf', (gltf) => {
+        const carModel = gltf.scene;
+        carModelRef.current = carModel;
+        
+        carModel.traverse((node: any) => {
+          if (node.isMesh) {
+            const originalColor = node.material.color.clone();
+            const isTransparent = node.material.transparent || node.material.opacity < 0.9;
+            const isNeutral = (originalColor.r === originalColor.g && originalColor.g === originalColor.b) || 
+                             (originalColor.r < 0.5 && originalColor.g < 0.5 && originalColor.b < 0.5);
+
+            if (isTransparent || isNeutral) {
+              node.material = new THREE.MeshPhongMaterial({
+                color: isTransparent ? originalColor : 0x050505,
+                specular: 0x444444,
+                shininess: 100,
+                side: THREE.DoubleSide,
+                transparent: isTransparent,
+                opacity: node.material.opacity
+              });
+            } else {
+              node.material = new THREE.MeshPhongMaterial({
+                color: 0xcccaac, // Royal Gold Deep
+                specular: 0x888888,    
+                shininess: 2000,       
+                emissive: 0x221100,    
+                emissiveIntensity: 0.2,
+                side: THREE.DoubleSide,
+                flatShading: false
+              });
+            }
+            node.material.needsUpdate = true;
+          }
+        });
+
+        carModel.rotation.x = Math.PI / 2;
+        scene.add(carModel);
+      });
+
+      (overlay as any).scene = scene;
+      (overlay as any).camera = camera;
+    };
+
+    overlay.onContextRestored = ({ gl }) => {
+      (overlay as any).renderer = new THREE.WebGLRenderer({
+        canvas: gl.canvas,
+        context: gl,
+        antialias: true,
+        alpha: true
+      });
+      (overlay as any).renderer.autoClear = false;
+    };
+
+    overlay.onDraw = ({ transformer }) => {
+      const renderer = (overlay as any).renderer;
+      const scene = (overlay as any).scene;
+      const camera = (overlay as any).camera;
+      
+      if (!renderer || !carModelRef.current || !mapInstanceRef.current) return;
+
+      renderer.resetState();
+
+      const zoom = mapInstanceRef.current.getZoom() || 19;
+      const matrix = transformer.fromLatLngAltitude({ 
+        lat: carState.location.lat, 
+        lng: carState.location.lng, 
+        altitude: 3.5 
+      });
+      
+      camera.projectionMatrix = new THREE.Matrix4().fromArray(matrix);
+
+      const finalScale = tuner.scale * Math.pow(2, 20 - zoom); 
+      carModelRef.current.scale.set(finalScale, finalScale, finalScale);
+      carModelRef.current.rotation.y = -(carState.heading * Math.PI) / 180 + Math.PI;
+
+      renderer.render(scene, camera);
+      overlay.requestRedraw(); 
+    };
+
+    overlay.setMap(map);
+  }, [carState, tuner]);
 
   const fetchTrafficStatus = async (destination: { lat: number; lng: number }) => {
     if (!window.google || !mapInstanceRef.current || !directionsServiceRef.current) return -1;
@@ -149,23 +266,6 @@ export function MapWidget() {
     const map = mapInstanceRef.current;
     if (!map || !directionsServiceRef.current || !directionsRendererRef.current) return;
 
-    if (currentMarkerRef.current) currentMarkerRef.current.setMap(null);
-
-    const marker = new google.maps.Marker({
-      position: destination,
-      map: map,
-      animation: google.maps.Animation.DROP,
-      icon: {
-        path: google.maps.SymbolPath.CIRCLE,
-        scale: 10,
-        fillColor: "#3b82f6",
-        fillOpacity: 1,
-        strokeWeight: 4,
-        strokeColor: "#ffffff",
-      }
-    });
-    currentMarkerRef.current = marker;
-
     directionsServiceRef.current.route(
       {
         origin: map.getCenter()!,
@@ -207,21 +307,13 @@ export function MapWidget() {
             lat: position.coords.latitude,
             lng: position.coords.longitude,
           };
-          mapInstanceRef.current?.setCenter(pos);
-          mapInstanceRef.current?.setZoom(17);
-          
-          new google.maps.Marker({
-            position: pos,
-            map: mapInstanceRef.current,
-            icon: {
-              path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
-              scale: 6,
-              fillColor: "#10b981",
-              fillOpacity: 1,
-              strokeWeight: 2,
-              strokeColor: "#ffffff",
-            }
+          setCarState({
+            location: pos,
+            heading: position.coords.heading || 0
           });
+          mapInstanceRef.current?.setCenter(pos);
+          mapInstanceRef.current?.setZoom(tuner.zoom);
+          mapInstanceRef.current?.setHeading(position.coords.heading || 0);
           updateTrafficIndicators();
         }
       );
@@ -239,18 +331,21 @@ export function MapWidget() {
 
       try {
         const map = new google.maps.Map(mapRef.current, {
-          center: { lat: 21.4225, lng: 39.8262 },
-          zoom: 15,
+          center: carState.location,
+          zoom: tuner.zoom,
+          tilt: tuner.tilt,
+          mapId: '6c6951a9289b612a97923702', // WebGL required ID
           disableDefaultUI: true,
           styles: DARK_MAP_STYLE,
-          gestureHandling: "greedy"
+          gestureHandling: "greedy",
+          renderingType: google.maps.RenderingType.VECTOR
         });
         mapInstanceRef.current = map;
 
         directionsServiceRef.current = new google.maps.DirectionsService();
         const renderer = new google.maps.DirectionsRenderer({
           map: map,
-          suppressMarkers: false,
+          suppressMarkers: true,
           polylineOptions: {
             strokeColor: "#3b82f6",
             strokeWeight: 6,
@@ -258,6 +353,8 @@ export function MapWidget() {
           }
         });
         directionsRendererRef.current = renderer;
+
+        setup3DCarSystem(map);
 
         map.addListener("click", (e: google.maps.MapMouseEvent) => {
           if (e.latLng) {
@@ -308,10 +405,10 @@ export function MapWidget() {
       }
     }
 
-    const trafficInterval = setInterval(updateTrafficIndicators, 600000); // 10 minutes
+    const trafficInterval = setInterval(updateTrafficIndicators, 600000); 
 
     return () => clearInterval(trafficInterval);
-  }, [updateTrafficIndicators]);
+  }, [updateTrafficIndicators, setup3DCarSystem]);
 
   return (
     <Card className="h-full w-full overflow-hidden border-none bg-black relative group rounded-[2.5rem] ios-shadow">
@@ -353,6 +450,68 @@ export function MapWidget() {
       )}
       
       <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/60 pointer-events-none z-10" />
+
+      {/* Map Tuner Controls */}
+      {!apiError && !isLoading && (
+        <div className="absolute top-6 right-6 z-20 flex flex-col gap-2">
+          <div className="flex flex-col gap-1 bg-black/60 backdrop-blur-xl p-2 rounded-2xl border border-white/10">
+            <Button 
+              size="icon" 
+              variant="ghost" 
+              onClick={() => setTuner(prev => ({ ...prev, scale: prev.scale + 0.05 }))}
+              className="h-10 w-10 text-white hover:bg-white/10"
+            >
+              <Plus className="w-4 h-4" />
+            </Button>
+            <span className="text-[10px] text-white/40 font-bold text-center uppercase tracking-tighter">Scale</span>
+            <Button 
+              size="icon" 
+              variant="ghost" 
+              onClick={() => setTuner(prev => ({ ...prev, scale: Math.max(0.1, prev.scale - 0.05) }))}
+              className="h-10 w-10 text-white hover:bg-white/10"
+            >
+              <Minus className="w-4 h-4" />
+            </Button>
+          </div>
+          <div className="flex flex-col gap-1 bg-black/60 backdrop-blur-xl p-2 rounded-2xl border border-white/10">
+            <Button 
+              size="icon" 
+              variant="ghost" 
+              onClick={() => {
+                const newTilt = Math.min(75, tuner.tilt + 5);
+                setTuner(prev => ({ ...prev, tilt: newTilt }));
+                mapInstanceRef.current?.setTilt(newTilt);
+              }}
+              className="h-10 w-10 text-white hover:bg-white/10"
+            >
+              <ChevronUp className="w-4 h-4" />
+            </Button>
+            <span className="text-[10px] text-white/40 font-bold text-center uppercase tracking-tighter">Tilt</span>
+            <Button 
+              size="icon" 
+              variant="ghost" 
+              onClick={() => {
+                const newTilt = Math.max(0, tuner.tilt - 5);
+                setTuner(prev => ({ ...prev, tilt: newTilt }));
+                mapInstanceRef.current?.setTilt(newTilt);
+              }}
+              className="h-10 w-10 text-white hover:bg-white/10"
+            >
+              <ChevronDown className="w-4 h-4" />
+            </Button>
+          </div>
+          <Button 
+            size="icon" 
+            className="h-12 w-12 rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-600/40"
+            onClick={() => {
+              localStorage.setItem('map_tuner_settings', JSON.stringify(tuner));
+              alert("✅ تم حفظ إعدادات العرض بنجاح!");
+            }}
+          >
+            <Save className="w-5 h-5" />
+          </Button>
+        </div>
+      )}
 
       <div className="absolute top-6 left-6 z-20 flex flex-col gap-4 items-start w-[380px]">
         <div className="relative w-full group">
@@ -441,7 +600,6 @@ export function MapWidget() {
                 setNavigationData(null);
                 directionsRendererRef.current?.setDirections({ routes: [] });
                 mapInstanceRef.current?.setZoom(15);
-                currentMarkerRef.current?.setMap(null);
                 setCurrentPlace(null);
               }}
             >
@@ -468,8 +626,9 @@ export function MapWidget() {
           <Button 
             className="w-16 h-16 rounded-full bg-zinc-900/90 backdrop-blur-3xl flex items-center justify-center border border-white/10 shadow-2xl hover:bg-white/10 transition-all"
             onClick={() => {
-              mapInstanceRef.current?.setCenter({ lat: 21.4225, lng: 39.8262 });
-              mapInstanceRef.current?.setZoom(15);
+              mapInstanceRef.current?.setCenter(carState.location);
+              mapInstanceRef.current?.setZoom(tuner.zoom);
+              mapInstanceRef.current?.setTilt(tuner.tilt);
             }}
           >
             <Compass className="w-7 h-7 text-white animate-[spin_15s_linear_infinite]" />
