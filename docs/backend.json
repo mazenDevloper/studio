@@ -1,0 +1,27 @@
+
+{
+  "entities": {
+    "UserMedia": {
+      "title": "User Media & Preferences",
+      "description": "Stores user's favorite channels, saved videos, and app preferences.",
+      "type": "object",
+      "properties": {
+        "favoriteChannels": { "type": "array" },
+        "starredChannelIds": { "type": "array" },
+        "savedVideos": { "type": "array" },
+        "reminders": { "type": "array" },
+        "reciterKeywords": { "type": "array" },
+        "videoProgress": { "type": "object" }
+      }
+    }
+  },
+  "auth": {
+    "providers": ["anonymous"]
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserMedia",
+      "description": "User specific data for channels, videos and settings."
+    }
+  }
+}

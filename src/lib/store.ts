@@ -4,6 +4,9 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { YouTubeChannel, YouTubeVideo } from "./youtube";
+import { doc, setDoc, getDoc, onSnapshot } from "firebase/firestore";
+import { initializeFirebase } from "@/firebase";
+import { onAuthStateChanged } from "firebase/auth";
 
 export interface SavedPlace {
   id: string;
@@ -23,11 +26,6 @@ export interface Reminder {
   endHour: number;
 }
 
-interface VideoProgress {
-  videoId: string;
-  progress: number;
-}
-
 interface MediaState {
   favoriteChannels: YouTubeChannel[];
   savedVideos: YouTubeVideo[];
@@ -43,6 +41,7 @@ interface MediaState {
   isMinimized: boolean;
   isFullScreen: boolean;
   
+  // Storage Actions
   addChannel: (channel: YouTubeChannel) => void;
   removeChannel: (id: string) => void;
   toggleSaveVideo: (video: YouTubeVideo) => void;
@@ -54,6 +53,9 @@ interface MediaState {
   removeReciterKeyword: (keyword: string) => void;
   toggleReminder: (id: string) => void;
   updateVideoProgress: (videoId: string, seconds: number) => void;
+  
+  // Sync Actions
+  loadFromFirestore: (userId: string) => Promise<void>;
   
   // Player Actions
   setActiveVideo: (video: YouTubeVideo | null) => void;
@@ -81,58 +83,45 @@ const INITIAL_CHANNELS: YouTubeChannel[] = [
     title: "ماهر المعيقلي",
     description: "تلاوات خاشعة بصوت الشيخ ماهر المعيقلي إمام الحرم المكي",
     thumbnail: "https://yt3.ggpht.com/ytc/AIdro_m_Hn6f_x-xS7_l7HlX7-0O_HjX3_8_H_7_8=s800-c-k-c0xffffffff-no-rj-mo",
-  },
-  {
-    id: "UCZPY2lpYyo6Y5mxk2CczJXg",
-    title: "عبدالرحمن السديس",
-    description: "القناة الرسمية لتلاوات معالي الشيخ د. عبدالرحمن السديس",
-    thumbnail: "https://yt3.ggpht.com/ytc/AIdro_n_Hn6f_x-xS7_l7HlX7-0O_HjX3_8_H_7_8=s800-c-k-c0xffffffff-no-rj-mo",
-  },
-  {
-    id: "UCCoB7Hf8gjQzpAyzhvx7Ktg",
-    title: "عبدالله الجهني",
-    description: "تلاوات القارئ عبدالله الجهني من الحرم المكي الشريف",
-    thumbnail: "https://yt3.ggpht.com/ckmdnEWNTubbWiNkxeW_-I3IR7UXAT4BsDmoS2I17J_xBlRqenu6kKLtakiJUg0YoIDx8SYpmQ=s800-c-k-c0xffffffff-no-rj-mo",
-  },
-  {
-    id: "UCg68G-zCVpAFbOhg1ZHnW6A",
-    title: "بندر بليلة",
-    description: "تلاوات خاشعة من الحرم المكي الشريف بصوت الشيخ بندر بليلة",
-    thumbnail: "https://yt3.ggpht.com/F0E3JTirKfg4_OQE63lTukKWHe8XKP7GgrmtcFOqsPYGLZ5b4oglfKl7_7ycLLw79-ZmIVWuBQ=s800-c-k-c0xffffffff-no-rj-mo",
-  },
-  {
-    id: "UC-G8RL7iYJt5L_-7F5bRKLA",
-    title: "مشاري راشد العفاسي",
-    description: "القناة الرسمية للشيخ مشاري راشد العفاسي",
-    thumbnail: "https://yt3.ggpht.com/5GnsOyTlPel6nD1qIFYWjQO_khnkQb4y6DOc37wjB44d23GAw5KfixWRpzN9Hi2ZxwFISY16=s800-c-k-c0xffffffff-no-rj-mo",
-  },
-  {
-    id: "UClncV9OLPto_MinRzGfjr2g",
-    title: "رعد الكردي",
-    description: "القناة الرسمية للقارئ رعد الكردي - تلاوات قرآنية",
-    thumbnail: "https://yt3.ggpht.com/ytc/AIdro_n_Hn6f_x-xS7_l7HlX7-0O_HjX3_8_H_7_8=s800-c-k-c0xffffffff-no-rj-mo",
   }
 ];
 
-const INITIAL_RECITERS = [
-  "ياسر الدوسري", "بندر بليلة", "سعود الشريم", "عبدالرحمن السديس", 
-  "ماهر المعيقلي", "منصور السالمي", "إسلام صبحي", "بدر التركي"
-];
+const INITIAL_RECITERS = ["ياسر الدوسري", "بندر بليلة", "سعود الشريم", "عبدالرحمن السديس", "ماهر المعيقلي"];
 
 const INITIAL_REMINDERS: Reminder[] = [
   { id: '1', label: 'أذكار الصباح', iconType: 'play', completed: false, color: 'text-teal-400', startHour: 4, endHour: 11 },
-  { id: '2', label: 'صلاة الضحى', iconType: 'play', completed: false, color: 'text-teal-400', startHour: 7, endHour: 11 },
   { id: '3', label: 'أذكار المساء', iconType: 'bell', completed: false, color: 'text-orange-400', startHour: 15, endHour: 19 },
-  { id: '4', label: 'السنن الرواتب', iconType: 'circle', completed: false, color: 'text-zinc-400', startHour: 4, endHour: 23 },
-  { id: '5', label: 'سورة الملك', iconType: 'bell', completed: false, color: 'text-orange-400', startHour: 19, endHour: 24 },
-  { id: '6', label: 'الورد اليومي', iconType: 'play', completed: false, color: 'text-teal-400', startHour: 0, endHour: 24 },
-  { id: '7', label: 'صلاة الوتر', iconType: 'bell', completed: false, color: 'text-orange-400', startHour: 20, endHour: 4 },
-  { id: '8', label: 'قيام الليل', iconType: 'bell', completed: false, color: 'text-orange-400', startHour: 1, endHour: 5 },
 ];
+
+const { db, auth } = initializeFirebase();
+
+// Helper to sync state to Firestore
+const syncToCloud = async (state: Partial<MediaState>) => {
+  const user = auth.currentUser;
+  if (!user) return;
+  
+  const userRef = doc(db, "users", user.uid);
+  const dataToSync = {
+    favoriteChannels: state.favoriteChannels,
+    savedVideos: state.savedVideos,
+    starredChannelIds: state.starredChannelIds,
+    savedPlaces: state.savedPlaces,
+    reciterKeywords: state.reciterKeywords,
+    reminders: state.reminders,
+    videoProgress: state.videoProgress,
+  };
+  
+  // Clean undefined values
+  Object.keys(dataToSync).forEach(key => 
+    (dataToSync as any)[key] === undefined && delete (dataToSync as any)[key]
+  );
+
+  setDoc(userRef, dataToSync, { merge: true }).catch(err => console.error("Firestore Sync Error:", err));
+};
 
 export const useMediaStore = create<MediaState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       favoriteChannels: INITIAL_CHANNELS,
       savedVideos: [],
       starredChannelIds: [],
@@ -146,66 +135,137 @@ export const useMediaStore = create<MediaState>()(
       isMinimized: false,
       isFullScreen: false,
 
-      addChannel: (channel) =>
-        set((state) => ({
-          favoriteChannels: state.favoriteChannels.some(c => c.id === channel.id)
-            ? state.favoriteChannels
-            : [...state.favoriteChannels, channel],
-        })),
-      removeChannel: (id) =>
-        set((state) => ({
-          favoriteChannels: state.favoriteChannels.filter((c) => c.id !== id),
-          starredChannelIds: state.starredChannelIds.filter(i => i !== id),
-        })),
-      toggleSaveVideo: (video) =>
+      loadFromFirestore: async (userId) => {
+        const userRef = doc(db, "users", userId);
+        const snap = await getDoc(userRef);
+        if (snap.exists()) {
+          set(snap.data() as any);
+        }
+      },
+
+      addChannel: (channel) => {
+        set((state) => {
+          const newState = {
+            favoriteChannels: state.favoriteChannels.some(c => c.id === channel.id)
+              ? state.favoriteChannels
+              : [...state.favoriteChannels, channel],
+          };
+          syncToCloud({ ...state, ...newState });
+          return newState;
+        });
+      },
+
+      removeChannel: (id) => {
+        set((state) => {
+          const newState = {
+            favoriteChannels: state.favoriteChannels.filter((c) => c.id !== id),
+            starredChannelIds: state.starredChannelIds.filter(i => i !== id),
+          };
+          syncToCloud({ ...state, ...newState });
+          return newState;
+        });
+      },
+
+      toggleSaveVideo: (video) => {
         set((state) => {
           const isSaved = state.savedVideos.some(v => v.id === video.id);
-          return {
+          const newState = {
             savedVideos: isSaved
               ? state.savedVideos.filter(v => v.id !== video.id)
               : [video, ...state.savedVideos]
           };
-        }),
-      removeVideo: (id) =>
-        set((state) => ({
-          savedVideos: state.savedVideos.filter(v => v.id !== id),
-        })),
-      toggleStarChannel: (id) =>
-        set((state) => ({
-          starredChannelIds: state.starredChannelIds.includes(id)
-            ? state.starredChannelIds.filter(i => i !== id)
-            : [...state.starredChannelIds, id]
-        })),
-      savePlace: (place) =>
-        set((state) => ({
-          savedPlaces: state.savedPlaces.some(p => p.id === place.id)
-            ? state.savedPlaces
-            : [place, ...state.savedPlaces]
-        })),
-      removePlace: (id) =>
-        set((state) => ({
-          savedPlaces: state.savedPlaces.filter(p => p.id !== id)
-        })),
-      addReciterKeyword: (keyword) =>
-        set((state) => ({
-          reciterKeywords: state.reciterKeywords.includes(keyword)
-            ? state.reciterKeywords
-            : [...state.reciterKeywords, keyword]
-        })),
-      removeReciterKeyword: (keyword) =>
-        set((state) => ({
-          reciterKeywords: state.reciterKeywords.filter(k => k !== keyword)
-        })),
-      toggleReminder: (id) =>
-        set((state) => ({
-          reminders: state.reminders.map(r => 
-            r.id === id ? { ...r, completed: !r.completed } : r
-          )
-        })),
-      updateVideoProgress: (videoId, seconds) =>
-        set((state) => ({
-          videoProgress: { ...state.videoProgress, [videoId]: seconds }
-        })),
+          syncToCloud({ ...state, ...newState });
+          return newState;
+        });
+      },
+
+      removeVideo: (id) => {
+        set((state) => {
+          const newState = {
+            savedVideos: state.savedVideos.filter(v => v.id !== id),
+          };
+          syncToCloud({ ...state, ...newState });
+          return newState;
+        });
+      },
+
+      toggleStarChannel: (id) => {
+        set((state) => {
+          const newState = {
+            starredChannelIds: state.starredChannelIds.includes(id)
+              ? state.starredChannelIds.filter(i => i !== id)
+              : [...state.starredChannelIds, id]
+          };
+          syncToCloud({ ...state, ...newState });
+          return newState;
+        });
+      },
+
+      savePlace: (place) => {
+        set((state) => {
+          const newState = {
+            savedPlaces: state.savedPlaces.some(p => p.id === place.id)
+              ? state.savedPlaces
+              : [place, ...state.savedPlaces]
+          };
+          syncToCloud({ ...state, ...newState });
+          return newState;
+        });
+      },
+
+      removePlace: (id) => {
+        set((state) => {
+          const newState = {
+            savedPlaces: state.savedPlaces.filter(p => p.id !== id)
+          };
+          syncToCloud({ ...state, ...newState });
+          return newState;
+        });
+      },
+
+      addReciterKeyword: (keyword) => {
+        set((state) => {
+          const newState = {
+            reciterKeywords: state.reciterKeywords.includes(keyword)
+              ? state.reciterKeywords
+              : [...state.reciterKeywords, keyword]
+          };
+          syncToCloud({ ...state, ...newState });
+          return newState;
+        });
+      },
+
+      removeReciterKeyword: (keyword) => {
+        set((state) => {
+          const newState = {
+            reciterKeywords: state.reciterKeywords.filter(k => k !== keyword)
+          };
+          syncToCloud({ ...state, ...newState });
+          return newState;
+        });
+      },
+
+      toggleReminder: (id) => {
+        set((state) => {
+          const newState = {
+            reminders: state.reminders.map(r => 
+              r.id === id ? { ...r, completed: !r.completed } : r
+            )
+          };
+          syncToCloud({ ...state, ...newState });
+          return newState;
+        });
+      },
+
+      updateVideoProgress: (videoId, seconds) => {
+        set((state) => {
+          const newState = {
+            videoProgress: { ...state.videoProgress, [videoId]: seconds }
+          };
+          syncToCloud({ ...state, ...newState });
+          return newState;
+        });
+      },
 
       setActiveVideo: (video) => set({ 
         activeVideo: video, 
@@ -219,16 +279,23 @@ export const useMediaStore = create<MediaState>()(
       toggleMinimize: () => set((state) => ({ isMinimized: !state.isMinimized, isFullScreen: false }))
     }),
     {
-      name: "drivecast-media-storage-v13",
-      partialize: (state) => ({
-        favoriteChannels: state.favoriteChannels,
-        savedVideos: state.savedVideos,
-        starredChannelIds: state.starredChannelIds,
-        savedPlaces: state.savedPlaces,
-        reciterKeywords: state.reciterKeywords,
-        reminders: state.reminders,
-        videoProgress: state.videoProgress,
-      }),
+      name: "drivecast-cloud-sync-v1",
     }
   )
 );
+
+// Setup Auth Listener to handle cloud loading
+if (typeof window !== "undefined") {
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      useMediaStore.getState().loadFromFirestore(user.uid);
+      
+      // Listen for real-time updates from other devices/tabs
+      onSnapshot(doc(db, "users", user.uid), (snap) => {
+        if (snap.exists()) {
+          useMediaStore.setState(snap.data() as any);
+        }
+      });
+    }
+  });
+}
