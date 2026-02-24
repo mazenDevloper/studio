@@ -72,7 +72,7 @@ export function MediaView() {
   }, [searchParams, handleVideoSearch]);
 
   const handleVoiceSearch = () => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitRecognition;
     if (!SpeechRecognition) {
       toast({ variant: "destructive", title: "خطأ", description: "البحث الصوتي غير مدعوم." });
       return;
@@ -201,7 +201,7 @@ export function MediaView() {
               </Button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-3 gap-8">
             {isLoadingVideos ? (
               <div className="col-span-full py-40 flex flex-col items-center gap-6">
                 <Loader2 className="w-16 h-16 animate-spin text-primary" />
@@ -251,17 +251,17 @@ export function MediaView() {
           <div className="flex items-center justify-between border-b border-white/10 pb-6">
             <h2 className="text-3xl font-black font-headline text-primary flex items-center gap-4 tracking-tight uppercase">
                <Search className="w-8 h-8" />
-               نتائج البحث المتقدمة
+               نتائج البحث
             </h2>
             <Button 
               variant="ghost" 
               onClick={() => setVideoResults([])}
               className="text-white/40 hover:text-white rounded-full h-12 px-6"
             >
-              إغلاق النتائج
+              إغلاق
             </Button>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-8">
+          <div className="grid grid-cols-3 gap-8">
             {videoResults.map((video) => (
               <Card 
                 key={video.id} 
@@ -287,13 +287,12 @@ export function MediaView() {
             </h2>
           </div>
           
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-10">
+          <div className="grid grid-cols-6 gap-10">
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
                 <div className="flex flex-col items-center gap-4 group cursor-pointer">
                   <div className="w-32 h-32 sm:w-40 sm:h-40 rounded-full border-4 border-dashed border-white/15 flex items-center justify-center bg-white/5 group-hover:bg-white/10 group-hover:border-primary transition-all duration-500 shadow-2xl relative">
                     <Plus className="w-14 h-14 text-white/20 group-hover:text-primary transition-all group-hover:scale-110" />
-                    <div className="absolute inset-0 rounded-full bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
                   <span className="font-black text-xs uppercase tracking-[0.3em] text-white/40 group-hover:text-primary transition-colors">إضافة قناة</span>
                 </div>
@@ -303,7 +302,7 @@ export function MediaView() {
                   <DialogTitle className="text-3xl font-black text-white mb-6 uppercase tracking-tight text-right">البحث عن الترددات</DialogTitle>
                   <div className="flex gap-4">
                     <Input 
-                      placeholder="اسم القناة أو المعرّف..." 
+                      placeholder="اسم القناة..." 
                       value={channelSearchQuery}
                       onChange={(e) => setChannelSearchQuery(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && handleChannelSearch()}
@@ -338,17 +337,8 @@ export function MediaView() {
                               isSubscribed ? "bg-accent/20 text-accent border border-accent/20" : "bg-primary text-white hover:scale-105"
                             )}
                           >
-                            {isSubscribed ? (
-                              <div className="flex items-center gap-2">
-                                <Check className="w-5 h-5" />
-                                <span>مشترك</span>
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-2">
-                                <Plus className="w-5 h-5" />
-                                <span>إضافة</span>
-                              </div>
-                            )}
+                            {isSubscribed ? <Check className="w-5 h-5 mr-2" /> : <Plus className="w-5 h-5 mr-2" />}
+                            {isSubscribed ? "مشترك" : "إضافة"}
                           </Button>
                         </div>
                       );
@@ -389,24 +379,6 @@ export function MediaView() {
               );
             })}
           </div>
-
-          {favoriteChannels.length === 0 && (
-            <div className="text-center py-48 bg-white/5 rounded-[4rem] border-4 border-dashed border-white/10 flex flex-col items-center gap-8 shadow-inner animate-pulse">
-              <div className="w-32 h-32 rounded-full bg-white/5 flex items-center justify-center border border-white/10">
-                <Youtube className="w-14 h-14 text-white/10" />
-              </div>
-              <div className="space-y-4">
-                <h3 className="text-4xl font-black text-white/20 uppercase tracking-[0.6em]">اين الفيديوهات</h3>
-                <p className="text-white/30 text-lg font-medium">قم بإضافة ترددات قنواتك المفضلة للبدء</p>
-              </div>
-              <Button 
-                onClick={() => setIsDialogOpen(true)} 
-                className="rounded-full bg-primary text-white font-black h-16 px-12 text-xl shadow-[0_20px_50px_rgba(59,130,246,0.4)] hover:scale-105 transition-all"
-              >
-                إضافة قناة الآن
-              </Button>
-            </div>
-          )}
         </section>
       )}
     </div>

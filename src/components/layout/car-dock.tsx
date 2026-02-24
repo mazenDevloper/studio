@@ -1,7 +1,7 @@
 
 "use client";
 
-import { LayoutDashboard, Radio, Settings, GripVertical, ArrowLeft, Trophy, ZoomIn, ZoomOut, Mic, Loader2, Compass } from "lucide-react";
+import { LayoutDashboard, Radio, Settings, GripVertical, ArrowLeft, Trophy, ZoomIn, ZoomOut, Mic, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -25,7 +25,7 @@ export function CarDock() {
   ];
 
   const handleVoiceSearch = useCallback(() => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitRecognition;
     
     if (!SpeechRecognition) {
       toast({
@@ -52,7 +52,7 @@ export function CarDock() {
   }, [router, toast]);
 
   return (
-    <div className="h-screen w-24 bg-black/90 backdrop-blur-3xl border-r border-white/5 flex flex-col items-center py-8 gap-8 z-[100] relative flex-shrink-0 shadow-[20px_0_50px_rgba(0,0,0,0.8)]">
+    <div className="fixed top-0 left-0 h-screen w-24 bg-black/90 backdrop-blur-3xl border-r border-white/5 flex flex-col items-center py-8 gap-8 z-[100] shadow-[20px_0_50px_rgba(0,0,0,0.8)]">
       <div className="mb-2">
         <GripVertical className="text-white/10 w-6 h-6" />
       </div>
@@ -74,9 +74,6 @@ export function CarDock() {
             {pathname === app.href && (
               <div className="absolute -left-6 w-1.5 h-6 bg-white rounded-full shadow-[0_0_10px_white]" />
             )}
-            <div className="absolute left-full ml-4 px-3 py-1.5 bg-black/80 backdrop-blur-xl border border-white/10 rounded-lg text-[8px] font-black uppercase tracking-widest text-white opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-[200]">
-              {app.name}
-            </div>
           </Link>
         ))}
       </div>
@@ -113,16 +110,6 @@ export function CarDock() {
         >
           <ArrowLeft className="w-6 h-6" />
         </Button>
-
-        <div className="flex flex-col items-center gap-1.5 pb-2">
-          <div className="text-[10px] font-black tracking-tighter text-white/60">
-            {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}
-          </div>
-          <div className="flex items-center gap-1">
-            <div className="w-1 h-1 rounded-full bg-accent animate-pulse" />
-            <span className="text-[7px] font-black text-white/20 uppercase tracking-widest">5G</span>
-          </div>
-        </div>
       </div>
     </div>
   );
