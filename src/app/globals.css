@@ -34,9 +34,9 @@
   body {
     @apply bg-background text-foreground font-body select-none overflow-hidden h-screen w-screen;
     background: radial-gradient(circle at 50% 50%, #1a1a2e 0%, #000000 100%);
-    /* تطبيق تصغير الواجهة بنسبة 30% */
-    zoom: 0.7;
-    -moz-transform: scale(0.7);
+    /* تطبيق مقياس واجهة متوازن بنسبة 80% */
+    zoom: 0.8;
+    -moz-transform: scale(0.8);
     -moz-transform-origin: 0 0;
   }
   h1, h2, h3, h4, h5, h6 {
