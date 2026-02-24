@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
@@ -101,18 +102,18 @@ export function PrayerCountdownCard() {
 
       <div className="flex items-center gap-2 mb-4 relative z-10">
         <div className={cn(
-          "px-6 py-2.5 rounded-full text-[12px] font-black uppercase tracking-[0.2em] border-2 flex items-center gap-3 transition-all duration-700",
+          "px-4 py-2 rounded-full text-[11px] font-black uppercase tracking-[0.15em] border-2 flex items-center gap-3 transition-all duration-700",
           isIqamah 
             ? "bg-accent text-black border-white/60 shadow-[0_0_40px_rgba(16,185,129,1)] scale-110" 
             : "bg-primary/20 text-primary border-primary/40 shadow-glow"
         )}>
-          {isIqamah ? <BellRing className="w-5 h-5 animate-pulse" /> : <Clock className="w-4 h-4" />}
+          {isIqamah ? <BellRing className="w-4 h-4 animate-pulse" /> : <Clock className="w-3 h-3" />}
           {isIqamah ? `صلاة ${prayerStatus.name}` : `الصلاة القادمة: ${prayerStatus.name}`}
         </div>
       </div>
 
       <div className={cn(
-        "text-5xl md:text-6xl font-black tracking-tighter drop-shadow-[0_15px_70px_rgba(0,0,0,0.9)] font-mono relative z-10 tabular-nums",
+        "text-4xl md:text-5xl font-black tracking-tighter drop-shadow-[0_15px_70px_rgba(0,0,0,0.9)] font-mono relative z-10 tabular-nums",
         isIqamah ? "text-white scale-110 transition-transform duration-1000" : "text-white"
       )}>
         {prayerStatus.remaining}
@@ -120,17 +121,12 @@ export function PrayerCountdownCard() {
 
       <div className="mt-4 flex flex-col items-center gap-3 relative z-10">
         <div className={cn(
-          "flex items-center gap-3 font-black text-[10px] uppercase tracking-[0.3em]",
-          isIqamah ? "text-black bg-white px-6 py-2 rounded-full shadow-[0_0_40px_white]" : "text-white/40"
+          "flex items-center gap-3 font-black text-[9px] uppercase tracking-[0.2em]",
+          isIqamah ? "text-black bg-white px-4 py-1.5 rounded-full shadow-[0_0_40px_white]" : "text-white/40"
         )}>
-          <Timer className={cn("w-5 h-5", isIqamah ? "text-accent animate-pulse" : "text-primary")} />
-          {isIqamah ? "الإقامة المشعة جارية" : `الأذان: ${prayerStatus.time}`}
+          <Timer className={cn("w-4 h-4", isIqamah ? "text-accent animate-pulse" : "text-primary")} />
+          {isIqamah ? "الإقامة جارية" : `الأذان: ${prayerStatus.time}`}
         </div>
-        {isIqamah && (
-          <span className="text-[10px] text-white font-black uppercase tracking-[0.5em] mt-1 animate-pulse drop-shadow-[0_0_15px_rgba(255,255,255,0.7)]">
-            أقم صلاتك تنعم بحياتك
-          </span>
-        )}
       </div>
     </div>
   );

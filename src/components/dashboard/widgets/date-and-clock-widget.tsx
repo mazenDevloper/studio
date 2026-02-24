@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
@@ -84,19 +85,19 @@ export function DateAndClockWidget() {
           <span className="text-[10px] text-white/90 font-bold uppercase tracking-[0.2em]">{dayName} {dayNum} {monthName}</span>
         </div>
         
-        <div className="text-5xl font-black text-white tracking-tighter mb-4 drop-shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
+        <div className="text-4xl font-black text-white tracking-tighter mb-4 drop-shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
           {timeString}
         </div>
         
         {nextPrayer && (
           <div className="mt-2 flex flex-col items-center gap-2">
             <div className="bg-primary/20 text-primary px-4 py-1 rounded-full border border-primary/30 backdrop-blur-md">
-              <span className="text-[10px] font-black uppercase tracking-widest">الصلاة القادمة: {nextPrayer.name}</span>
+              <span className="text-[9px] font-black uppercase tracking-widest">الصلاة القادمة: {nextPrayer.name}</span>
             </div>
-            <span className="text-3xl font-black text-accent drop-shadow-2xl mt-1">
+            <span className="text-2xl font-black text-accent drop-shadow-2xl mt-1">
               {convertTo12Hour(nextPrayer.time)}
             </span>
-            <div className="text-[9px] font-bold text-white/40 uppercase mt-1 tracking-[0.3em] flex items-center gap-2">
+            <div className="text-[8px] font-bold text-white/40 uppercase mt-1 tracking-[0.3em] flex items-center gap-2">
               <Timer className="w-3.5 h-3.5" /> متبقي {nextPrayer.countdown}
             </div>
           </div>
