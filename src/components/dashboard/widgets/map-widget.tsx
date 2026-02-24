@@ -40,6 +40,16 @@ export function MapWidget() {
     heading: 0
   });
 
+  const carStateRef = useRef(carState);
+  useEffect(() => {
+    carStateRef.current = carState;
+  }, [carState]);
+
+  const tunerRef = useRef(tuner);
+  useEffect(() => {
+    tunerRef.current = tuner;
+  }, [tuner]);
+
   const setup3DCarSystem = useCallback((map: google.maps.Map) => {
     if (carOverlayRef.current) return;
 
@@ -50,7 +60,6 @@ export function MapWidget() {
       const scene = new THREE.Scene();
       const camera = new THREE.PerspectiveCamera();
       
-      // Studio Lighting for High-End Specular Highlights
       scene.add(new THREE.AmbientLight(0xffffff, 0.65));
       const light1 = new THREE.DirectionalLight(0xffffff, 0.68);
       light1.position.set(25, 8, 15); 
@@ -69,7 +78,6 @@ export function MapWidget() {
                              (originalColor.r < 0.5 && originalColor.g < 0.5 && originalColor.b < 0.5);
 
             if (isTransparent || isNeutral) {
-              // Wheels and Glass: High contrast and transparency preservation
               node.material = new THREE.MeshPhongMaterial({
                 color: isTransparent ? originalColor : 0x050505,
                 specular: 0x444444,
@@ -79,9 +87,8 @@ export function MapWidget() {
                 opacity: node.material.opacity
               });
             } else {
-              // Body: Royal Deep Gold with specific specular settings
               node.material = new THREE.MeshPhongMaterial({
-                color: 0xcccaac, // Royal Gold Deep
+                color: 0xcccaac,
                 specular: 0x888888,    
                 shininess: 2000,       
                 emissive: 0x221100,    
@@ -123,26 +130,25 @@ export function MapWidget() {
 
       const zoom = mapInstanceRef.current.getZoom() || 19;
       const matrix = transformer.fromLatLngAltitude({ 
-        lat: carState.location.lat, 
-        lng: carState.location.lng, 
+        lat: carStateRef.current.location.lat, 
+        lng: carStateRef.current.location.lng, 
         altitude: 3.5 
       });
       
       camera.projectionMatrix = new THREE.Matrix4().fromArray(matrix);
 
-      // Scale adjustment based on zoom level
-      const finalScale = tuner.scale * Math.pow(2, 20 - zoom); 
+      const finalScale = tunerRef.current.scale * Math.pow(2, 20 - zoom); 
       carModelRef.current.scale.set(finalScale, finalScale, finalScale);
-      carModelRef.current.rotation.y = -(carState.heading * Math.PI) / 180 + Math.PI;
+      carModelRef.current.rotation.y = -(carStateRef.current.heading * Math.PI) / 180 + Math.PI;
 
       renderer.render(scene, camera);
       overlay.requestRedraw(); 
     };
 
     overlay.setMap(map);
-  }, [carState, tuner]);
+  }, []);
 
-  const handleGetCurrentLocation = () => {
+  const handleGetCurrentLocation = useCallback(() => {
     if (navigator.geolocation && mapInstanceRef.current) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
@@ -155,15 +161,17 @@ export function MapWidget() {
             heading: position.coords.heading || 0
           });
           mapInstanceRef.current?.setCenter(pos);
-          mapInstanceRef.current?.setHeading(position.coords.heading || 0);
+          if (position.coords.heading !== null) {
+            mapInstanceRef.current?.setHeading(position.coords.heading);
+          }
         }
       );
     }
-  };
+  }, []);
 
   useEffect(() => {
     const initMap = () => {
-      if (!mapRef.current) return;
+      if (!mapRef.current || mapInstanceRef.current) return;
 
       try {
         const map = new google.maps.Map(mapRef.current, {
@@ -188,10 +196,14 @@ export function MapWidget() {
               heading: pos.coords.heading || 0
             });
             if (mapInstanceRef.current) {
-              mapInstanceRef.current.setCenter(newPos);
-              mapInstanceRef.current.setHeading(pos.coords.heading || 0);
+               mapInstanceRef.current.setCenter(newPos);
+               if (pos.coords.heading !== null) {
+                 mapInstanceRef.current.setHeading(pos.coords.heading);
+               }
             }
-          });
+          }, (err) => {
+            console.error("Geo watch error", err);
+          }, { enableHighAccuracy: true });
         }
 
         setIsLoading(false);
@@ -205,11 +217,15 @@ export function MapWidget() {
     if (window.google && window.google.maps) {
       initMap();
     } else {
-      const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places&callback=initMap`;
-      script.async = true;
-      (window as any).initMap = initMap;
-      document.head.appendChild(script);
+      const scriptId = 'google-maps-sdk';
+      if (!document.getElementById(scriptId)) {
+        const script = document.createElement('script');
+        script.id = scriptId;
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places&callback=initMap`;
+        script.async = true;
+        (window as any).initMap = initMap;
+        document.head.appendChild(script);
+      }
     }
 
     return () => {
@@ -234,6 +250,7 @@ export function MapWidget() {
             <AlertTriangle className="w-10 h-10 text-red-500" />
           </div>
           <h3 className="text-2xl font-headline font-bold text-white mt-4">Map System Offline</h3>
+          <p className="text-sm text-white/40 max-w-xs mt-2">Check API configuration and billing status.</p>
           <Button asChild className="mt-4 bg-white text-black font-bold rounded-2xl">
             <a href="https://console.cloud.google.com/project/_/billing/enable" target="_blank" rel="noreferrer">
               Enable Billing
@@ -244,7 +261,6 @@ export function MapWidget() {
         <div ref={mapRef} className="absolute inset-0 z-0" />
       )}
       
-      {/* Map Tuner Controls */}
       {!apiError && !isLoading && (
         <div className="absolute top-6 right-6 z-20 flex flex-col gap-2">
           <div className="flex flex-col gap-1 bg-black/60 backdrop-blur-xl p-2 rounded-2xl border border-white/10">
