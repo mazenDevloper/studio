@@ -1,14 +1,16 @@
 
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Search, Plus, Play, Trash2, Youtube, Radio, Loader2, Check, ArrowLeft, Clock, Bookmark, X, PlusCircle, Star } from "lucide-react";
+import { Search, Plus, Play, Trash2, Youtube, Radio, Loader2, Check, ArrowLeft, Clock, Bookmark, X, PlusCircle, Star, Mic } from "lucide-react";
 import { useMediaStore } from "@/lib/store";
 import { searchYouTubeChannels, searchYouTubeVideos, fetchChannelVideos, YouTubeChannel, YouTubeVideo } from "@/lib/youtube";
 import Image from "next/image";
+import { useSearchParams } from "next/navigation";
+import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
   DialogContent,
@@ -31,12 +33,15 @@ export function MediaView() {
     toggleStarChannel
   } = useMediaStore();
 
+  const searchParams = useSearchParams();
+  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [videoResults, setVideoResults] = useState<YouTubeVideo[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [selectedChannel, setSelectedChannel] = useState<YouTubeChannel | null>(null);
   const [channelVideos, setChannelVideos] = useState<YouTubeVideo[]>([]);
   const [isLoadingVideos, setIsLoadingVideos] = useState(false);
+  const [isListening, setIsListening] = useState(false);
 
   // Channel Search Dialog State
   const [channelSearchQuery, setChannelSearchQuery] = useState("");
@@ -44,18 +49,52 @@ export function MediaView() {
   const [isSearchingChannels, setIsSearchingChannels] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  const handleVideoSearch = async () => {
-    if (!searchQuery.trim()) return;
+  const handleVideoSearch = useCallback(async (queryOverride?: string) => {
+    const finalQuery = queryOverride || searchQuery;
+    if (!finalQuery.trim()) return;
     setIsSearching(true);
     setSelectedChannel(null);
     try {
-      const results = await searchYouTubeVideos(searchQuery);
+      const results = await searchYouTubeVideos(finalQuery);
       setVideoResults(results);
     } catch (error) {
       console.error("Video search failed", error);
     } finally {
       setIsSearching(false);
     }
+  }, [searchQuery]);
+
+  useEffect(() => {
+    const q = searchParams.get('q');
+    if (q) {
+      setSearchQuery(q);
+      handleVideoSearch(q);
+    }
+  }, [searchParams, handleVideoSearch]);
+
+  const handleVoiceSearch = () => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    
+    if (!SpeechRecognition) {
+      toast({
+        variant: "destructive",
+        title: "خطأ",
+        description: "البحث الصوتي غير مدعوم في هذا المتصفح.",
+      });
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'ar-SA';
+    
+    recognition.onstart = () => setIsListening(true);
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      setSearchQuery(transcript);
+      handleVideoSearch(transcript);
+    };
+    recognition.onend = () => setIsListening(false);
+    recognition.start();
   };
 
   const handleChannelSearch = async () => {
@@ -109,22 +148,33 @@ export function MediaView() {
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
             <Input
               placeholder="البحث عن فيديوهات..."
-              className="pl-12 h-14 bg-white/5 border-white/10 rounded-2xl text-lg font-headline focus-visible:ring-primary backdrop-blur-xl"
+              className="pl-12 pr-12 h-14 bg-white/5 border-white/10 rounded-2xl text-lg font-headline focus-visible:ring-primary backdrop-blur-xl"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleVideoSearch()}
             />
-            {searchQuery && (
+            <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
+              {searchQuery && (
+                <button 
+                  onClick={() => { setSearchQuery(""); setVideoResults([]); }}
+                  className="text-muted-foreground hover:text-white"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              )}
               <button 
-                onClick={() => { setSearchQuery(""); setVideoResults([]); }}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-white"
+                onClick={handleVoiceSearch}
+                className={cn(
+                  "p-2 rounded-full transition-all",
+                  isListening ? "text-red-500 animate-pulse bg-red-500/10" : "text-muted-foreground hover:text-primary"
+                )}
               >
-                <X className="h-5 w-5" />
+                <Mic className="h-5 w-5" />
               </button>
-            )}
+            </div>
           </div>
           <Button 
-            onClick={handleVideoSearch} 
+            onClick={() => handleVideoSearch()} 
             disabled={isSearching}
             className="h-14 px-8 rounded-2xl bg-primary text-white font-bold hover:scale-[1.02] transition-all active:scale-95 disabled:opacity-50"
           >
@@ -369,4 +419,3 @@ export function MediaView() {
     </div>
   );
 }
-

@@ -1,9 +1,9 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { WEATHER_API_KEY } from "@/lib/constants";
-import { Mic, RotateCcw, Upload } from "lucide-react";
+import { Mic, RotateCcw, Upload, Loader2 } from "lucide-react";
 import Image from "next/image";
 import { MapWidget } from "./widgets/map-widget";
 import { PrayerTimelineWidget } from "./widgets/prayer-timeline-widget";
@@ -16,6 +16,8 @@ import { PrayerCountdownCard } from "./widgets/prayer-countdown-card";
 import { MatchScheduleWidget } from "@/components/football/match-schedule-widget";
 import { useMediaStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
+import { useRouter } from "next/navigation";
+import { useToast } from "@/hooks/use-toast";
 import {
   Carousel,
   CarouselContent,
@@ -29,6 +31,9 @@ export function DashboardView() {
   const [api, setApi] = useState<CarouselApi>();
   const [current, setCurrent] = useState(0);
   const [count, setCount] = useState(0);
+  const [isListening, setIsListening] = useState(false);
+  const router = useRouter();
+  const { toast } = useToast();
 
   const starredChannels = favoriteChannels.filter(c => starredChannelIds.includes(c.id));
 
@@ -55,6 +60,49 @@ export function DashboardView() {
 
     return () => clearInterval(interval);
   }, [api]);
+
+  const handleVoiceSearch = useCallback(() => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    
+    if (!SpeechRecognition) {
+      toast({
+        variant: "destructive",
+        title: "خطأ في النظام",
+        description: "متصفحك لا يدعم خاصية البحث الصوتي.",
+      });
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'ar-SA';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onstart = () => {
+      setIsListening(true);
+    };
+
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      setIsListening(false);
+      toast({
+        title: "جاري البحث...",
+        description: `أنت قلت: "${transcript}"`,
+      });
+      router.push(`/media?q=${encodeURIComponent(transcript)}`);
+    };
+
+    recognition.onerror = (event: any) => {
+      setIsListening(false);
+      console.error("Speech Recognition Error:", event.error);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognition.start();
+  }, [router, toast]);
 
   return (
     <div className="h-full w-full p-6 flex flex-col gap-8 relative overflow-y-auto pb-32">
@@ -177,9 +225,20 @@ export function DashboardView() {
       </div>
 
       <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100]">
-        <div className="w-20 h-20 rounded-full bg-primary flex items-center justify-center shadow-[0_0_30px_rgba(59,130,246,0.6)] active-glow cursor-pointer hover:scale-110 transition-all border-4 border-white/10 backdrop-blur-xl">
-          <Mic className="w-10 h-10 text-white" />
-        </div>
+        <button 
+          onClick={handleVoiceSearch}
+          disabled={isListening}
+          className={cn(
+            "w-20 h-20 rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(59,130,246,0.6)] cursor-pointer hover:scale-110 transition-all border-4 border-white/10 backdrop-blur-xl",
+            isListening ? "bg-red-500 animate-pulse shadow-[0_0_30px_rgba(239,68,68,0.6)]" : "bg-primary active-glow"
+          )}
+        >
+          {isListening ? (
+            <Loader2 className="w-10 h-10 text-white animate-spin" />
+          ) : (
+            <Mic className="w-10 h-10 text-white" />
+          )}
+        </button>
       </div>
     </div>
   );
