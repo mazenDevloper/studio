@@ -83,47 +83,47 @@ export function PrayerCountdownCard() {
   return (
     <div className={cn(
       "h-full w-full glass-panel rounded-[2.5rem] p-6 flex flex-col justify-center items-center text-center transition-all duration-700 relative overflow-hidden",
-      isIqamah ? "bg-accent/20 border-accent/80 shadow-[0_0_60px_rgba(65,184,131,0.5)] ring-4 ring-accent/30" : "bg-white/5"
+      isIqamah ? "bg-accent/20 border-accent/80 shadow-[0_0_80px_rgba(65,184,131,0.6)] ring-4 ring-accent/40" : "bg-white/5 border-white/10"
     )}>
       {isIqamah && (
         <>
-          <div className="absolute inset-0 bg-gradient-to-t from-accent/20 to-transparent animate-pulse" />
-          <div className="absolute top-4 right-4 animate-spin-slow">
-            <Sparkles className="w-8 h-8 text-accent opacity-80" />
+          <div className="absolute inset-0 bg-gradient-to-t from-accent/30 via-transparent to-transparent animate-pulse" />
+          <div className="absolute top-6 right-6 animate-spin-slow">
+            <Sparkles className="w-10 h-10 text-accent opacity-90 drop-shadow-[0_0_15px_hsl(var(--accent))]" />
           </div>
         </>
       )}
 
       <div className="flex items-center gap-2 mb-4 relative z-10">
         <div className={cn(
-          "px-6 py-2 rounded-full text-[12px] font-black uppercase tracking-widest border flex items-center gap-3 transition-all",
+          "px-8 py-3 rounded-full text-[14px] font-black uppercase tracking-[0.2em] border flex items-center gap-4 transition-all duration-500",
           isIqamah 
-            ? "bg-accent text-black border-white/40 shadow-[0_0_20px_rgba(16,185,129,1)] animate-bounce" 
-            : "bg-primary/20 text-primary border-primary/20"
+            ? "bg-accent text-black border-white/50 shadow-[0_0_30px_rgba(16,185,129,1)] scale-110" 
+            : "bg-primary/20 text-primary border-primary/30"
         )}>
-          {isIqamah ? <BellRing className="w-5 h-5 animate-pulse" /> : <Clock className="w-4 h-4" />}
+          {isIqamah ? <BellRing className="w-6 h-6 animate-pulse" /> : <Clock className="w-5 h-5" />}
           {isIqamah ? `حان وقت صلاة ${prayerStatus.name}` : `الصلاة القادمة: ${prayerStatus.name}`}
         </div>
       </div>
 
       <div className={cn(
-        "text-7xl font-black tracking-tighter drop-shadow-[0_10px_40px_rgba(0,0,0,0.6)] font-mono relative z-10",
-        isIqamah ? "text-white scale-110" : "text-white"
+        "text-8xl font-black tracking-tighter drop-shadow-[0_10px_60px_rgba(0,0,0,0.8)] font-mono relative z-10 tabular-nums",
+        isIqamah ? "text-white scale-125 transition-transform duration-1000" : "text-white"
       )}>
         {prayerStatus.remaining}
       </div>
 
-      <div className="mt-6 flex flex-col items-center gap-2 relative z-10">
+      <div className="mt-8 flex flex-col items-center gap-3 relative z-10">
         <div className={cn(
-          "flex items-center gap-3 font-black text-sm uppercase tracking-[0.2em]",
-          isIqamah ? "text-black bg-white px-5 py-2 rounded-full shadow-lg" : "text-white/40"
+          "flex items-center gap-4 font-black text-base uppercase tracking-[0.3em]",
+          isIqamah ? "text-black bg-white px-8 py-3 rounded-full shadow-2xl scale-105" : "text-white/40"
         )}>
-          <Timer className={cn("w-6 h-6", isIqamah ? "text-accent animate-pulse" : "text-primary")} />
-          {isIqamah ? "يتم الآن انتظار الإقامة المشعة" : `موعد الأذان: ${prayerStatus.time}`}
+          <Timer className={cn("w-7 h-7", isIqamah ? "text-accent animate-pulse" : "text-primary")} />
+          {isIqamah ? "الإقامة المشعة جارية" : `موعد الأذان: ${prayerStatus.time}`}
         </div>
         {isIqamah && (
-          <span className="text-[12px] text-white font-black uppercase tracking-[0.4em] mt-3 animate-pulse drop-shadow-md">
-            استعد للصلاة يرحمك الله
+          <span className="text-[13px] text-white font-black uppercase tracking-[0.5em] mt-4 animate-pulse drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]">
+            أقم صلاتك تنعم بحياتك
           </span>
         )}
       </div>

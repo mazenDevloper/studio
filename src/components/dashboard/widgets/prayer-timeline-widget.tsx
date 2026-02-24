@@ -4,7 +4,7 @@
 import { useMemo, useEffect, useState } from "react";
 import { prayerTimesData, convertTo12Hour } from "@/lib/constants";
 import { cn } from "@/lib/utils";
-import { Clock, Star, Sparkles } from "lucide-react";
+import { Clock, Star, Sparkles, Timer } from "lucide-react";
 
 export function PrayerTimelineWidget() {
   const [now, setNow] = useState<Date | null>(null);
@@ -66,14 +66,14 @@ export function PrayerTimelineWidget() {
               isNext ? "scale-110 opacity-100" : "opacity-30 grayscale"
             )}>
               {isNext && (
-                <div className="absolute -top-5 left-1/2 -translate-x-1/2 animate-bounce">
-                  <Sparkles className="w-4 h-4 text-accent fill-current drop-shadow-[0_0_8px_hsl(var(--accent))]" />
+                <div className="absolute -top-6 left-1/2 -translate-x-1/2 animate-bounce">
+                  <Sparkles className="w-5 h-5 text-accent fill-current drop-shadow-[0_0_15px_hsl(var(--accent))]" />
                 </div>
               )}
               
               <div className={cn(
-                "flex flex-col items-center p-2 rounded-2xl transition-all",
-                isNext && "bg-accent/20 ring-2 ring-accent/60 shadow-[0_0_30px_rgba(65,184,131,0.4)]"
+                "flex flex-col items-center p-3 rounded-2xl transition-all duration-500",
+                isNext && "bg-accent/10 ring-2 ring-accent/60 shadow-[0_0_40px_rgba(65,184,131,0.5)]"
               )}>
                 <span className={cn(
                   "text-[10px] font-black uppercase tracking-[0.2em] mb-1",
@@ -82,7 +82,7 @@ export function PrayerTimelineWidget() {
                   {prayer.name}
                 </span>
                 <span className={cn(
-                  "text-xl font-black tracking-tighter",
+                  "text-2xl font-black tracking-tighter",
                   isNext ? "text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.8)]" : "text-white/60"
                 )}>
                   {convertTo12Hour(prayer.time)}
@@ -90,12 +90,12 @@ export function PrayerTimelineWidget() {
               </div>
 
               {isNext && (
-                <div className="flex flex-col border-l-2 border-accent/60 pl-5 py-1 animate-in fade-in slide-in-from-left-4 duration-700 bg-accent/5 rounded-r-xl px-4">
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-2 h-2 rounded-full bg-accent animate-ping" />
-                    <span className="text-[9px] font-black text-accent uppercase tracking-[0.2em]">الإقامة المشعة</span>
+                <div className="flex flex-col border-l-2 border-accent/60 pl-6 py-2 animate-in fade-in slide-in-from-left-4 duration-700 bg-accent/10 rounded-r-2xl px-5 shadow-[0_0_25px_rgba(65,184,131,0.2)]">
+                  <div className="flex items-center gap-2">
+                    <Timer className="w-4 h-4 text-accent animate-spin-slow" />
+                    <span className="text-[9px] font-black text-accent uppercase tracking-[0.3em] drop-shadow-sm">الإقامة المشعة</span>
                   </div>
-                  <span className="text-xl font-black text-accent drop-shadow-[0_0_20px_rgba(16,185,129,0.7)]">
+                  <span className="text-2xl font-black text-accent drop-shadow-[0_0_20px_rgba(16,185,129,0.8)]">
                     {convertTo12Hour(prayer.iqamahTime)}
                   </span>
                 </div>
