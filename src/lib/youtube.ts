@@ -19,11 +19,20 @@ export interface YouTubeVideo {
   channelTitle?: string;
 }
 
+// ذاكرة تخزين مؤقت بسيطة لمنع الطلبات المكررة
+const youtubeCache: Record<string, { data: any, timestamp: number }> = {};
+const CACHE_TTL = 1000 * 60 * 10; // 10 دقائق
+
 /**
  * دالة جلب البيانات مع نظام التدوير التلقائي للمفاتيح لضمان الاستقرار.
  */
 async function fetchWithRotation(endpoint: string, params: Record<string, string>) {
   const queryParams = new URLSearchParams(params);
+  const cacheKey = `${endpoint}?${queryParams.toString()}`;
+
+  if (youtubeCache[cacheKey] && (Date.now() - youtubeCache[cacheKey].timestamp < CACHE_TTL)) {
+    return youtubeCache[cacheKey].data;
+  }
   
   for (let i = 0; i < YT_KEYS_POOL.length; i++) {
     const key = YT_KEYS_POOL[i];
@@ -31,17 +40,19 @@ async function fetchWithRotation(endpoint: string, params: Record<string, string
     
     try {
       const response = await fetch(url);
+      const data = await response.json();
+
       if (response.ok) {
-        return await response.json();
+        youtubeCache[cacheKey] = { data, timestamp: Date.now() };
+        return data;
       }
       
-      // إذا تم تجاوز الحصة أو منع الوصول، جرب المفتاح التالي
       if (response.status === 403 || response.status === 429) {
-        console.warn(`YouTube API Key ${i} exhausted. Rotation in progress...`);
+        console.warn(`YouTube API Key ${i} exhausted. Quota Error. Rotation in progress...`);
         continue;
       }
       
-      // أخطاء أخرى قد لا يحلها تغيير المفتاح
+      console.error(`YouTube API Error: ${data?.error?.message}`);
       return null;
     } catch (error) {
       console.error(`Network error with key index ${i}:`, error);
@@ -49,7 +60,6 @@ async function fetchWithRotation(endpoint: string, params: Record<string, string
     }
   }
   
-  console.error("All YouTube API keys exhausted or failed.");
   return null;
 }
 
@@ -95,22 +105,49 @@ export async function searchYouTubeVideos(query: string): Promise<YouTubeVideo[]
   }));
 }
 
+/**
+ * جلب فيديوهات القناة باستخدام playlistItems لتقليل استهلاك الحصة (1 وحدة بدلاً من 100).
+ */
 export async function fetchChannelVideos(channelId: string): Promise<YouTubeVideo[]> {
-  const data = await fetchWithRotation('search', {
+  // معرف قائمة الفيديوهات المرفوعة يكون عادةً باستبدال UC بـ UU في معرف القناة
+  const uploadsPlaylistId = channelId.startsWith('UC') 
+    ? channelId.replace('UC', 'UU') 
+    : channelId;
+
+  const data = await fetchWithRotation('playlistItems', {
     part: 'snippet',
-    channelId: channelId,
-    maxResults: '15',
-    order: 'date',
-    type: 'video'
+    playlistId: uploadsPlaylistId,
+    maxResults: '15'
   });
 
-  if (!data || !data.items) return [];
+  if (!data || !data.items) {
+    // محاولة أخيرة بالبحث التقليدي إذا فشل استنتاج قائمة التشغيل
+    const fallbackData = await fetchWithRotation('search', {
+      part: 'snippet',
+      channelId: channelId,
+      maxResults: '15',
+      order: 'date',
+      type: 'video'
+    });
+    
+    if (!fallbackData || !fallbackData.items) return [];
+    
+    return fallbackData.items.map((item: any) => ({
+      id: item.id.videoId,
+      title: item.snippet.title,
+      description: item.snippet.description,
+      thumbnail: item.snippet.thumbnails.high?.url || item.snippet.thumbnails.default?.url,
+      publishedAt: item.snippet.publishedAt,
+      channelTitle: item.snippet.channelTitle
+    }));
+  }
 
   return data.items.map((item: any) => ({
-    id: item.id.videoId,
+    id: item.snippet.resourceId.videoId,
     title: item.snippet.title,
     description: item.snippet.description,
     thumbnail: item.snippet.thumbnails.high?.url || item.snippet.thumbnails.default?.url,
     publishedAt: item.snippet.publishedAt,
+    channelTitle: item.snippet.channelTitle
   }));
 }

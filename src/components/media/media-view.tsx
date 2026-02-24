@@ -77,7 +77,7 @@ export function MediaView() {
       toast({ variant: "destructive", title: "خطأ", description: "البحث الصوتي غير مدعوم." });
       return;
     }
-    const recognition = new SpeechRecognition();
+    const recognition = new SearchRecognition();
     recognition.lang = 'ar-SA';
     recognition.onstart = () => setIsListening(true);
     recognition.onresult = (event: any) => {
@@ -107,10 +107,7 @@ export function MediaView() {
     setIsLoadingVideos(true);
     try {
       const videos = await fetchChannelVideos(channel.id);
-      const sortedVideos = [...videos].sort((a, b) => 
-        new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
-      );
-      setChannelVideos(sortedVideos);
+      setChannelVideos(videos);
     } catch (error) {
       console.error("Failed to fetch channel videos", error);
     } finally {

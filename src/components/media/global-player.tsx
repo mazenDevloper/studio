@@ -137,8 +137,8 @@ export function GlobalVideoPlayer() {
                 <YoutubeIcon className="w-5 h-5 text-red-600" />
                 <h3 className="font-bold text-[11px] text-white/90 font-headline truncate max-w-[320px] uppercase tracking-[0.2em]">{activeVideo.title}</h3>
               </div>
-              <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); setActiveVideo(null); }} className="w-10 h-10 rounded-full text-white/40 hover:text-red-500 hover:bg-red-500/10 transition-all">
-                <X className="w-5 h-5" />
+              <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); setActiveVideo(null); }} className="h-10 w-10 rounded-full text-white/40 hover:text-red-500 hover:bg-red-500/10 transition-all">
+                <X className="h-5 w-5" />
               </Button>
             </div>
             <div className="flex-1">
