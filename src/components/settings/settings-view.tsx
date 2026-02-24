@@ -71,8 +71,8 @@ export function SettingsView() {
 
   const saveToCache = () => {
     toast({
-      title: "تم الحفظ",
-      description: "تم حفظ كافة الإعدادات في الذاكرة المحلية والتحميل السحابي.",
+      title: "تم الحفظ بنجاح",
+      description: "تم تخزين إعدادات الزوم والمنظور في الذاكرة المحلية المستديمة.",
     });
   };
 
@@ -108,13 +108,13 @@ export function SettingsView() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <Card className="bg-zinc-900/50 border-white/10 rounded-[3rem] p-10 space-y-8">
               <CardTitle className="text-2xl font-black text-white flex items-center gap-4">
-                <Maximize className="w-6 h-6 text-primary" /> التحكم بالزوم والمنظور
+                <Maximize className="w-6 h-6 text-primary" /> زوم المتصفح والتحكم بالمنظور
               </CardTitle>
               
               <div className="space-y-6">
                 <div className="space-y-4">
                   <div className="flex justify-between">
-                    <label className="text-xs font-black text-white/40 uppercase tracking-widest">مستوى الزوم (Map Zoom)</label>
+                    <label className="text-xs font-black text-white/40 uppercase tracking-widest">زوم المتصفح (Map Zoom)</label>
                     <span className="text-primary font-bold">{mapSettings.zoom.toFixed(1)}</span>
                   </div>
                   <Slider 
@@ -150,13 +150,13 @@ export function SettingsView() {
               </div>
 
               <Button onClick={saveToCache} className="w-full h-16 rounded-2xl bg-primary text-white text-lg font-black shadow-2xl">
-                <Save className="w-6 h-6 mr-3" /> حفظ إعدادات المنظور
+                <Save className="w-6 h-6 mr-3" /> حفظ إعدادات الكاش
               </Button>
             </Card>
 
             <Card className="bg-zinc-900/50 border-white/10 rounded-[3rem] p-10 space-y-8">
               <CardTitle className="text-2xl font-black text-white flex items-center gap-4">
-                <ImageIcon className="w-6 h-6 text-accent" /> خلفية النظام (Atmospheric)
+                <ImageIcon className="w-6 h-6 text-accent" /> خلفية النظام السينمائية
               </CardTitle>
               
               <div className="grid grid-cols-2 gap-4 h-64">
@@ -178,7 +178,7 @@ export function SettingsView() {
                   </button>
                 ))}
               </div>
-              <p className="text-xs text-white/40 text-center uppercase tracking-widest font-bold">اختر طابعك البصري المفضل للواجهة</p>
+              <p className="text-xs text-white/40 text-center uppercase tracking-widest font-bold">يتم الحفظ تلقائياً في ذاكرة الكاش</p>
             </Card>
           </div>
         </TabsContent>

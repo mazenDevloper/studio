@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Compass, Plus, Minus, ChevronUp, ChevronDown, Target, Loader2, AlertTriangle, Save } from "lucide-react";
 import { GOOGLE_MAPS_API_KEY } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
+import { useMediaStore } from "@/lib/store";
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
@@ -26,16 +27,9 @@ export function MapWidget() {
   const watchIdRef = useRef<number | null>(null);
   const scriptLoadedRef = useRef(false);
 
+  const { mapSettings, updateMapSettings } = useMediaStore();
   const [isLoading, setIsLoading] = useState(true);
   const [apiError, setApiError] = useState(false);
-
-  // إعدادات التحكم في المنظور (Tuner)
-  const [tuner, setTuner] = useState({
-    zoom: 19.5,
-    tilt: 65,
-    scale: 1.02,
-    offset: 45
-  });
 
   const [carState, setCarState] = useState({
     location: { lat: 17.067330, lng: 54.160190 },
@@ -45,8 +39,14 @@ export function MapWidget() {
   const carStateRef = useRef(carState);
   useEffect(() => { carStateRef.current = carState; }, [carState]);
 
-  const tunerRef = useRef(tuner);
-  useEffect(() => { tunerRef.current = tuner; }, [tuner]);
+  const mapSettingsRef = useRef(mapSettings);
+  useEffect(() => { 
+    mapSettingsRef.current = mapSettings; 
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.setZoom(mapSettings.zoom);
+      mapInstanceRef.current.setTilt(mapSettings.tilt);
+    }
+  }, [mapSettings]);
 
   const setup3DCarSystem = useCallback((map: google.maps.Map) => {
     if (carOverlayRef.current) return;
@@ -58,7 +58,6 @@ export function MapWidget() {
       const scene = new THREE.Scene();
       const camera = new THREE.PerspectiveCamera();
       
-      // نظام إضاءة الاستوديو المطور من المرجع
       scene.add(new THREE.AmbientLight(0xffffff, 0.65));
       const light1 = new THREE.DirectionalLight(0xffffff, 0.68);
       light1.position.set(25, 8, 15); 
@@ -86,7 +85,6 @@ export function MapWidget() {
                 opacity: node.material.opacity
               });
             } else {
-              // الهيكل الذهبي الملكي (من المرجع)
               node.material = new THREE.MeshPhongMaterial({
                 color: 0xcccaac,
                 specular: 0x888888,    
@@ -137,8 +135,7 @@ export function MapWidget() {
       
       camera.projectionMatrix = new THREE.Matrix4().fromArray(matrix);
 
-      // معادلة الحجم الديناميكي (من المرجع)
-      const finalScale = tunerRef.current.scale * Math.pow(2, 20 - zoom); 
+      const finalScale = mapSettingsRef.current.carScale * Math.pow(2, 20 - zoom); 
       carModelRef.current.scale.set(finalScale, finalScale, finalScale);
       carModelRef.current.rotation.y = -(carStateRef.current.heading * Math.PI) / 180 + Math.PI;
 
@@ -156,8 +153,8 @@ export function MapWidget() {
       try {
         const map = new google.maps.Map(mapRef.current, {
           center: carState.location,
-          zoom: tuner.zoom,
-          tilt: tuner.tilt,
+          zoom: mapSettings.zoom,
+          tilt: mapSettings.tilt,
           mapId: '6c6951a9289b612a97923702', 
           disableDefaultUI: true,
           styles: DARK_MAP_STYLE,
@@ -168,7 +165,6 @@ export function MapWidget() {
 
         setup3DCarSystem(map);
 
-        // تفعيل التتبع المستمر بدقة متناهية (High Accuracy)
         if (navigator.geolocation) {
           watchIdRef.current = navigator.geolocation.watchPosition((pos) => {
             const newPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
@@ -180,11 +176,10 @@ export function MapWidget() {
             });
 
             if (mapInstanceRef.current) {
-               // تحديث الكاميرا لتتبع الحركة والتدوير
                mapInstanceRef.current.moveCamera({
                  center: newPos,
                  heading: newHeading,
-                 tilt: tunerRef.current.tilt
+                 tilt: mapSettingsRef.current.tilt
                });
             }
           }, (err) => {
@@ -250,26 +245,23 @@ export function MapWidget() {
       {!apiError && !isLoading && (
         <div className="absolute top-6 right-6 z-20 flex flex-col gap-2">
           <div className="flex flex-col gap-1 bg-black/60 backdrop-blur-xl p-2 rounded-2xl border border-white/10">
-            <Button size="icon" variant="ghost" onClick={() => setTuner(prev => ({ ...prev, scale: prev.scale + 0.05 }))} className="h-10 w-10 text-white">
+            <Button size="icon" variant="ghost" onClick={() => updateMapSettings({ carScale: mapSettings.carScale + 0.05 })} className="h-10 w-10 text-white">
               <Plus className="w-4 h-4" />
             </Button>
             <span className="text-[10px] text-white/40 font-bold text-center">CAR</span>
-            <Button size="icon" variant="ghost" onClick={() => setTuner(prev => ({ ...prev, scale: Math.max(0.1, prev.scale - 0.05) }))} className="h-10 w-10 text-white">
+            <Button size="icon" variant="ghost" onClick={() => updateMapSettings({ carScale: Math.max(0.1, mapSettings.carScale - 0.05) })} className="h-10 w-10 text-white">
               <Minus className="w-4 h-4" />
             </Button>
           </div>
           <div className="flex flex-col gap-1 bg-black/60 backdrop-blur-xl p-2 rounded-2xl border border-white/10">
-            <Button size="icon" variant="ghost" onClick={() => setTuner(prev => ({ ...prev, tilt: Math.min(75, tuner.tilt + 5) }))} className="h-10 w-10 text-white">
+            <Button size="icon" variant="ghost" onClick={() => updateMapSettings({ tilt: Math.min(75, mapSettings.tilt + 5) })} className="h-10 w-10 text-white">
               <ChevronUp className="w-4 h-4" />
             </Button>
             <span className="text-[10px] text-white/40 font-bold text-center">TILT</span>
-            <Button size="icon" variant="ghost" onClick={() => setTuner(prev => ({ ...prev, tilt: Math.max(0, tuner.tilt - 5) }))} className="h-10 w-10 text-white">
+            <Button size="icon" variant="ghost" onClick={() => updateMapSettings({ tilt: Math.max(0, mapSettings.tilt - 5) })} className="h-10 w-10 text-white">
               <ChevronDown className="w-4 h-4" />
             </Button>
           </div>
-          <Button size="icon" className="h-12 w-12 rounded-2xl bg-blue-600 text-white shadow-lg" onClick={() => alert("✅ تم حفظ الإعدادات")}>
-            <Save className="w-5 h-5" />
-          </Button>
         </div>
       )}
 
