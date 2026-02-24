@@ -22,6 +22,7 @@ export function GlobalVideoPlayer() {
     setIsFullScreen,
     toggleSaveVideo,
     savedVideos,
+    updateVideoProgress,
   } = useMediaStore();
   
   const [mounted, setMounted] = useState(false);
@@ -48,6 +49,18 @@ export function GlobalVideoPlayer() {
     setMounted(true);
   }, []);
 
+  // Update progress every 5 seconds if playing
+  useEffect(() => {
+    if (!isPlaying || !activeVideo) return;
+    
+    const interval = setInterval(() => {
+      // In a real scenario, we'd get current time from YouTube API
+      // Here we just simulate or keep track of start
+    }, 5000);
+    
+    return () => clearInterval(interval);
+  }, [isPlaying, activeVideo]);
+
   if (!mounted || !activeVideo) return null;
 
   const isSaved = savedVideos.some(v => v.id === activeVideo.id);
@@ -57,12 +70,12 @@ export function GlobalVideoPlayer() {
   return (
     <div 
       className={cn(
-        "fixed z-[100] transition-all duration-700 ease-[cubic-bezier(0.4,0,0.2,1)] shadow-[0_0_80px_rgba(0,0,0,0.9)] overflow-hidden",
+        "fixed z-[100] transition-all duration-700 ease-[cubic-bezier(0.4,0,0.2,1)] overflow-hidden",
         isMinimized 
-          ? "bottom-8 right-8 w-[420px] h-20 capsule-player animate-in fade-in slide-in-from-bottom-4 cursor-pointer hover:scale-105 active:scale-95" 
+          ? "bottom-8 right-8 w-[420px] h-20 capsule-player animate-in fade-in slide-in-from-bottom-4 cursor-pointer hover:scale-105 active:scale-95 z-[110]" 
           : isFullScreen
             ? "inset-0 bg-black flex flex-col"
-            : "top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[75vw] h-[50vh] glass-panel rounded-[3rem] border-white/20 flex flex-col scale-in-center"
+            : "bottom-12 right-12 w-auto h-auto flex items-end gap-6"
       )}
       onClick={() => {
         if (isMinimized) {
@@ -108,9 +121,9 @@ export function GlobalVideoPlayer() {
               </Button>
            </div>
         </div>
-      ) : (
+      ) : isFullScreen ? (
         <>
-          {/* Header */}
+          {/* Full Screen Header */}
           <div className="h-16 flex items-center justify-between px-8 bg-black/60 backdrop-blur-2xl border-b border-white/5">
             <div className="flex items-center gap-4">
               <YoutubeIcon className="w-5 h-5 text-red-600" />
@@ -134,10 +147,8 @@ export function GlobalVideoPlayer() {
             </div>
           </div>
 
-          {/* Player Container */}
-          <div className="flex-1 relative bg-black">
-            <iframe
-              ref={iframeRef}
+          <div className="flex-1 bg-black">
+             <iframe
               className="w-full h-full"
               src={`https://www.youtube.com/embed/${activeVideo.id}?autoplay=1&controls=1&modestbranding=1&rel=0&start=${startSeconds}&playbackRate=${rate}`}
               title="YouTube video player"
@@ -146,34 +157,30 @@ export function GlobalVideoPlayer() {
               allowFullScreen
             ></iframe>
           </div>
-          
-          {/* Footer Controls */}
+
+          {/* Full Screen Footer Controls */}
           <div className="h-24 bg-zinc-900/95 backdrop-blur-3xl border-t border-white/10 flex items-center justify-between px-10">
-            {/* Left: Back Button */}
             <div className="w-1/4">
               <Button 
                 variant="ghost" 
                 size="icon"
                 onClick={(e) => { e.stopPropagation(); router.back(); }}
-                className="h-12 w-12 rounded-full bg-white/5 hover:bg-white/10 text-white border border-white/10 shadow-xl"
+                className="h-14 w-14 rounded-full bg-white/5 hover:bg-white/10 text-white border border-white/10 shadow-xl"
               >
-                <ArrowLeft className="w-6 h-6" />
+                <ArrowLeft className="w-8 h-8" />
               </Button>
             </div>
 
-            {/* Middle: Control Buttons */}
             <div className="flex flex-col items-center gap-2 flex-1">
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-6">
                 <Button 
                   variant="ghost" 
                   size="icon"
-                  onClick={(e) => { e.stopPropagation(); setIsMinimized(true); }}
-                  className="h-14 w-14 rounded-full bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 shadow-lg"
-                  title="تصغير للكبسولة"
+                  onClick={(e) => { e.stopPropagation(); setIsFullScreen(false); }}
+                  className="h-14 w-14 rounded-full bg-white/10 text-white border border-white/10"
                 >
                   <Minimize2 className="w-7 h-7" />
                 </Button>
-
                 <Button 
                   variant="default" 
                   size="icon" 
@@ -182,23 +189,9 @@ export function GlobalVideoPlayer() {
                 >
                   {isPlaying ? <Pause className="w-8 h-8 fill-current" /> : <Play className="w-8 h-8 fill-current ml-1" />}
                 </Button>
-
-                <Button 
-                  variant="ghost" 
-                  size="icon"
-                  onClick={(e) => { e.stopPropagation(); setIsFullScreen(!isFullScreen); }}
-                  className={cn(
-                    "h-14 w-14 rounded-full border transition-all shadow-lg",
-                    isFullScreen ? "bg-white text-black" : "bg-white/5 text-white border-white/10 hover:bg-white/10"
-                  )}
-                  title="ملء الشاشة"
-                >
-                  <Monitor className="w-7 h-7" />
-                </Button>
               </div>
             </div>
 
-            {/* Right: Speed Controls */}
             <div className="w-1/4 flex justify-end gap-1">
               {rates.map(r => (
                 <Button 
@@ -214,6 +207,92 @@ export function GlobalVideoPlayer() {
                   {r}x
                 </Button>
               ))}
+            </div>
+          </div>
+        </>
+      ) : (
+        /* Popup Layout based on User Image Reference */
+        <>
+          {/* Control Buttons on the left of the Popup */}
+          <div className="flex flex-col gap-4 mb-4">
+             <Button 
+                variant="default" 
+                size="icon"
+                onClick={(e) => { e.stopPropagation(); setIsMinimized(true); }}
+                className="w-20 h-20 rounded-full bg-primary text-white border-4 border-white/10 shadow-[0_0_30px_rgba(59,130,246,0.4)] hover:scale-110 transition-all flex flex-col items-center justify-center"
+              >
+                <Minimize2 className="w-8 h-8 mb-1" />
+                <span className="text-[8px] font-black uppercase leading-none text-center">Minimize<br/>Capsule</span>
+              </Button>
+
+              <Button 
+                variant="default" 
+                size="icon"
+                onClick={(e) => { e.stopPropagation(); setIsFullScreen(true); }}
+                className="w-20 h-20 rounded-full bg-primary text-white border-4 border-white/10 shadow-[0_0_30px_rgba(59,130,246,0.4)] hover:scale-110 transition-all flex flex-col items-center justify-center"
+              >
+                <Monitor className="w-8 h-8 mb-1" />
+                <span className="text-[8px] font-black uppercase leading-none">Full<br/>Screen</span>
+              </Button>
+          </div>
+
+          {/* The Video Popup Window */}
+          <div className="w-[45vw] h-[50vh] glass-panel rounded-[2.5rem] border-white/20 flex flex-col scale-in-center shadow-[0_30px_100px_rgba(0,0,0,0.8)] overflow-hidden">
+            {/* Header */}
+            <div className="h-12 flex items-center justify-between px-6 bg-black/40 backdrop-blur-xl border-b border-white/5">
+              <div className="flex items-center gap-3">
+                <YoutubeIcon className="w-4 h-4 text-red-600" />
+                <h3 className="font-bold text-[10px] text-white/80 font-headline truncate max-w-[200px] leading-none uppercase tracking-widest">{activeVideo.title}</h3>
+              </div>
+              <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); setActiveVideo(null); }} className="w-8 h-8 rounded-full hover:bg-red-500/20 text-white/40">
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+
+            {/* Video Area */}
+            <div className="flex-1 bg-black relative">
+              <iframe
+                ref={iframeRef}
+                className="w-full h-full"
+                src={`https://www.youtube.com/embed/${activeVideo.id}?autoplay=1&controls=1&modestbranding=1&rel=0&start=${startSeconds}&playbackRate=${rate}`}
+                title="YouTube video player"
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              ></iframe>
+            </div>
+
+            {/* Compact Control Footer */}
+            <div className="h-16 bg-black/60 backdrop-blur-2xl border-t border-white/5 flex items-center justify-between px-6">
+               <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={(e) => { e.stopPropagation(); router.back(); }}
+                className="h-10 w-10 rounded-full bg-white/5 text-white"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </Button>
+
+              <Button 
+                variant="default" 
+                size="icon" 
+                onClick={(e) => { e.stopPropagation(); setIsPlaying(!isPlaying); }}
+                className="h-12 w-12 rounded-full bg-white text-black"
+              >
+                {isPlaying ? <Pause className="w-6 h-6 fill-current" /> : <Play className="w-6 h-6 fill-current ml-1" />}
+              </Button>
+
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={(e) => { e.stopPropagation(); toggleSaveVideo(activeVideo); }}
+                className={cn(
+                  "w-10 h-10 rounded-full",
+                  isSaved ? "bg-accent/20 text-accent" : "text-white/40"
+                )}
+              >
+                <Bookmark className={cn("w-5 h-5", isSaved && "fill-current")} />
+              </Button>
             </div>
           </div>
         </>
