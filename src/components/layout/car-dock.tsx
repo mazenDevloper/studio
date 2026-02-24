@@ -52,7 +52,7 @@ export function CarDock() {
   }, [router, toast]);
 
   return (
-    <div className="h-full w-24 bg-black/90 backdrop-blur-3xl border-r border-white/5 flex flex-col items-center py-8 gap-8 z-[100] fixed left-0 top-0 shadow-[20px_0_50px_rgba(0,0,0,0.8)]">
+    <div className="h-screen w-24 bg-black/90 backdrop-blur-3xl border-r border-white/5 flex flex-col items-center py-8 gap-8 z-[100] relative flex-shrink-0 shadow-[20px_0_50px_rgba(0,0,0,0.8)]">
       <div className="mb-2">
         <GripVertical className="text-white/10 w-6 h-6" />
       </div>
@@ -82,7 +82,6 @@ export function CarDock() {
       </div>
 
       <div className="mt-auto flex flex-col items-center gap-6">
-        {/* Floating Tools Section */}
         <div className="flex flex-col items-center gap-4 bg-white/5 p-2 rounded-3xl border border-white/5 backdrop-blur-2xl">
           <Button
             onClick={handleVoiceSearch}
