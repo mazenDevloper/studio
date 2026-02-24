@@ -28,7 +28,7 @@ export default function RootLayout({
           <div className="flex w-full h-full overflow-hidden">
             {/* The dock will be fixed via its own component, we provide spacing here */}
             <div className="w-24 shrink-0 h-full" /> 
-            <div className="flex-1 overflow-hidden relative h-full">
+            <div className="flex-1 overflow-auto relative h-full">
               {children}
             </div>
           </div>

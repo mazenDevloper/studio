@@ -132,12 +132,12 @@ export function DashboardView() {
 
         {/* Middle Column - Car Image (Covering) */}
         <div className="md:col-span-4 glass-panel rounded-[2.5rem] relative group flex flex-col items-center justify-center overflow-hidden h-full shadow-2xl">
-          <div className="absolute inset-0 flex items-center justify-center w-full">
+          <div className="absolute inset-0 flex items-center justify-center w-full h-full">
             <Image 
               src="https://dmusera.netlify.app/es350gb.png" 
               alt="Lexus ES350" 
               fill
-              className="object-cover scale-[1.4] group-hover:scale-[1.5] transition-transform duration-1000 brightness-75 group-hover:brightness-100"
+              className="object-cover scale-[1.6] group-hover:scale-[1.7] transition-transform duration-1000 brightness-75 group-hover:brightness-100"
             />
           </div>
           <div className="absolute bottom-10 flex gap-4 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-black/80 backdrop-blur-3xl p-3 rounded-full border border-white/20 shadow-2xl z-20">
@@ -157,7 +157,7 @@ export function DashboardView() {
         </div>
       </div>
 
-      <div className="w-full glass-panel rounded-full p-4 shadow-xl transform scale-[0.8] mt-4 mb-[-1rem] origin-center">
+      <div className="w-full glass-panel rounded-full p-4 shadow-xl transform scale-[0.8] mt-6 mb-[-0.5rem] origin-center">
         <PrayerTimelineWidget />
       </div>
 
