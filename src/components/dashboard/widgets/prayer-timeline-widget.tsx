@@ -1,9 +1,10 @@
+
 "use client";
 
 import { useMemo, useEffect, useState } from "react";
 import { prayerTimesData, convertTo12Hour } from "@/lib/constants";
 import { cn } from "@/lib/utils";
-import { Play } from "lucide-react";
+import { Play, Clock } from "lucide-react";
 
 export function PrayerTimelineWidget() {
   const [now, setNow] = useState<Date | null>(null);
@@ -37,32 +38,33 @@ export function PrayerTimelineWidget() {
   };
 
   return (
-    <div className="w-full glass-panel rounded-3xl p-4 flex items-center gap-4 overflow-x-auto">
-      <div className="flex-shrink-0 px-4 border-r border-white/10">
-        <button className="bg-primary/20 text-primary border border-primary/40 px-6 py-2 rounded-2xl font-bold text-sm hover:bg-primary transition-all flex items-center gap-2 group">
-          <Play className="w-4 h-4 fill-current group-hover:fill-white" />
-          تشغيل الكل
-        </button>
-      </div>
-      
-      <div className="flex-1 flex items-center justify-around gap-6">
+    <div className="w-full flex items-center justify-between px-6 py-1 overflow-x-auto no-scrollbar">
+      <div className="flex items-center gap-8 flex-1 justify-around">
         {pTimes.map((prayer) => {
           const prayerMins = timeToMinutes(prayer.time);
           const isActive = currentMinutes >= prayerMins && currentMinutes < prayerMins + 90;
           
           return (
             <div key={prayer.name} className={cn(
-              "flex items-center gap-4 transition-all duration-500",
-              isActive ? "scale-110 opacity-100" : "opacity-40"
+              "flex items-center gap-4 transition-all duration-700",
+              isActive ? "scale-110 opacity-100" : "opacity-30 grayscale"
             )}>
               <div className="flex flex-col">
-                <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">{prayer.name}</span>
-                <span className="text-xl font-black text-white">{convertTo12Hour(prayer.time)}</span>
+                <span className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em]">{prayer.name}</span>
+                <span className={cn(
+                  "text-lg font-black tracking-tighter",
+                  isActive ? "text-primary drop-shadow-[0_0_10px_rgba(59,130,246,0.5)]" : "text-white"
+                )}>
+                  {convertTo12Hour(prayer.time)}
+                </span>
               </div>
               {isActive && (
-                <div className="flex flex-col border-l border-white/20 pl-4">
-                  <span className="text-[10px] font-bold text-accent uppercase">الإقامة</span>
-                  <span className="text-lg font-bold text-accent">{prayer.iqamah}</span>
+                <div className="flex flex-col border-l border-white/20 pl-4 animate-in fade-in slide-in-from-left-2">
+                  <div className="flex items-center gap-1">
+                    <Clock className="w-2.5 h-2.5 text-accent" />
+                    <span className="text-[9px] font-black text-accent uppercase tracking-widest">الإقامة</span>
+                  </div>
+                  <span className="text-base font-black text-accent">{prayer.iqamah}</span>
                 </div>
               )}
             </div>
