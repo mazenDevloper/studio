@@ -1,9 +1,9 @@
 
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Card } from "@/components/ui/card";
-import { Compass, Navigation, MapPin, Search, Clock, Zap, Bookmark, Star, Trash2, Map as MapIcon, AlertTriangle, ExternalLink, Target } from "lucide-react";
+import { Compass, Navigation, MapPin, Search, Clock, Zap, Bookmark, Star, Trash2, Map as MapIcon, AlertTriangle, ExternalLink, Target, Loader2 } from "lucide-react";
 import { GOOGLE_MAPS_API_KEY } from "@/lib/constants";
 import { useMediaStore, SavedPlace } from "@/lib/store";
 import { Input } from "@/components/ui/input";
@@ -21,23 +21,14 @@ const DARK_MAP_STYLE = [
   { "featureType": "administrative.land_parcel", "stylers": [{ "visibility": "off" }] },
   { "featureType": "administrative.locality", "elementType": "labels.text.fill", "stylers": [{ "color": "#bdbdbd" }] },
   { "featureType": "poi", "elementType": "labels.text.fill", "stylers": [{ "color": "#757575" }] },
-  { "featureType": "poi.park", "elementType": "geometry", "stylers": [{ "color": "#181818" }] },
-  { "featureType": "poi.park", "elementType": "labels.text.fill", "stylers": [{ "color": "#616161" }] },
-  { "featureType": "poi.park", "elementType": "labels.text.stroke", "stylers": [{ "color": "#1b1b1b" }] },
   { "featureType": "road", "elementType": "geometry.fill", "stylers": [{ "color": "#2c2c2c" }] },
   { "featureType": "road", "elementType": "labels.text.fill", "stylers": [{ "color": "#8a8a8a" }] },
-  { "featureType": "road.arterial", "elementType": "geometry", "stylers": [{ "color": "#373737" }] },
-  { "featureType": "road.highway", "elementType": "geometry", "stylers": [{ "color": "#3c3c3c" }] },
-  { "featureType": "road.highway.controlled_access", "elementType": "geometry", "stylers": [{ "color": "#4e4e4e" }] },
-  { "featureType": "road.local", "elementType": "labels.text.fill", "stylers": [{ "color": "#616161" }] },
-  { "featureType": "transit", "elementType": "labels.text.fill", "stylers": [{ "color": "#757575" }] },
-  { "featureType": "water", "elementType": "geometry", "stylers": [{ "color": "#000000" }] },
-  { "featureType": "water", "elementType": "labels.text.fill", "stylers": [{ "color": "#3d3d3d" }] }
+  { "featureType": "water", "elementType": "geometry", "stylers": [{ "color": "#000000" }] }
 ];
 
 declare global {
   interface Window {
-    initMap: () => void;
+    initGoogleMaps: () => void;
     gm_authFailure?: () => void;
   }
 }
@@ -45,10 +36,12 @@ declare global {
 export function MapWidget() {
   const mapRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const [map, setMap] = useState<google.maps.Map | null>(null);
-  const [apiError, setApiError] = useState<boolean>(false);
-  const [directionsRenderer, setDirectionsRenderer] = useState<google.maps.DirectionsRenderer | null>(null);
-  const [currentMarker, setCurrentMarker] = useState<google.maps.Marker | null>(null);
+  const mapInstanceRef = useRef<google.maps.Map | null>(null);
+  const directionsRendererRef = useRef<google.maps.DirectionsRenderer | null>(null);
+  const currentMarkerRef = useRef<google.maps.Marker | null>(null);
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [apiError, setApiError] = useState(false);
   const [navigationData, setNavigationData] = useState<{
     destination: string;
     distance: string;
@@ -61,13 +54,12 @@ export function MapWidget() {
 
   const mapPlaceholder = PlaceHolderImages.find(img => img.id === 'map-placeholder');
 
-  const startNavigation = useCallback((destination: google.maps.LatLng, name: string = "Target Location") => {
-    if (!map || !directionsRenderer) return;
+  const startNavigation = (destination: google.maps.LatLng, name: string = "Target Location") => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
 
-    // Remove existing marker if any
-    if (currentMarker) currentMarker.setMap(null);
+    if (currentMarkerRef.current) currentMarkerRef.current.setMap(null);
 
-    // Create new marker
     const marker = new google.maps.Marker({
       position: destination,
       map: map,
@@ -81,7 +73,7 @@ export function MapWidget() {
         strokeColor: "#ffffff",
       }
     });
-    setCurrentMarker(marker);
+    currentMarkerRef.current = marker;
 
     const directionsService = new google.maps.DirectionsService();
     directionsService.route(
@@ -91,12 +83,12 @@ export function MapWidget() {
         travelMode: google.maps.TravelMode.DRIVING,
       },
       (result, status) => {
-        if (status === google.maps.DirectionsStatus.OK && result) {
-          directionsRenderer.setDirections(result);
+        if (status === google.maps.DirectionsStatus.OK && result && directionsRendererRef.current) {
+          directionsRendererRef.current.setDirections(result);
           const leg = result.routes[0].legs[0];
           
           const arrivalTime = new Date();
-          arrivalTime.setSeconds(arrivalTime.getSeconds() + (leg.duration?.value || 0));
+          arrivalTime.setSeconds(arrivalTime.setSeconds(0) + (leg.duration?.value || 0));
 
           setNavigationData({
             destination: leg.end_address,
@@ -115,23 +107,22 @@ export function MapWidget() {
         }
       }
     );
-  }, [map, directionsRenderer, currentMarker]);
+  };
 
   const handleGetCurrentLocation = () => {
-    if (navigator.geolocation && map) {
+    if (navigator.geolocation && mapInstanceRef.current) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const pos = {
             lat: position.coords.latitude,
             lng: position.coords.longitude,
           };
-          map.setCenter(pos);
-          map.setZoom(17);
+          mapInstanceRef.current?.setCenter(pos);
+          mapInstanceRef.current?.setZoom(17);
           
           new google.maps.Marker({
             position: pos,
-            map: map,
-            title: "Your Location",
+            map: mapInstanceRef.current,
             icon: {
               path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
               scale: 6,
@@ -141,28 +132,32 @@ export function MapWidget() {
               strokeColor: "#ffffff",
             }
           });
-        },
-        () => {
-          console.error("Error: The Geolocation service failed.");
         }
       );
     }
   };
 
-  const initGoogleMap = useCallback(() => {
-    if (mapRef.current && !map) {
+  useEffect(() => {
+    window.gm_authFailure = () => {
+      setApiError(true);
+      setIsLoading(false);
+    };
+
+    const initMap = () => {
+      if (!mapRef.current || mapInstanceRef.current) return;
+
       try {
-        const newMap = new google.maps.Map(mapRef.current, {
-          center: { lat: 21.4225, lng: 39.8262 }, // Makkah
+        const map = new google.maps.Map(mapRef.current, {
+          center: { lat: 21.4225, lng: 39.8262 },
           zoom: 15,
           disableDefaultUI: true,
           styles: DARK_MAP_STYLE,
           gestureHandling: "greedy"
         });
-        setMap(newMap);
+        mapInstanceRef.current = map;
 
         const renderer = new google.maps.DirectionsRenderer({
-          map: newMap,
+          map: map,
           suppressMarkers: false,
           polylineOptions: {
             strokeColor: "#3b82f6",
@@ -170,15 +165,15 @@ export function MapWidget() {
             strokeOpacity: 0.8
           }
         });
-        setDirectionsRenderer(renderer);
+        directionsRendererRef.current = renderer;
 
-        newMap.addListener("click", (e: google.maps.MapMouseEvent) => {
+        map.addListener("click", (e: google.maps.MapMouseEvent) => {
           if (e.latLng) {
             const geocoder = new google.maps.Geocoder();
             geocoder.geocode({ location: e.latLng }, (results, status) => {
               let name = "Selected Point";
               if (status === "OK" && results && results[0]) {
-                const poi = results.find(r => r.types.includes("point_of_interest") || r.types.includes("establishment"));
+                const poi = results.find(r => r.types.includes("point_of_interest"));
                 name = poi ? poi.formatted_address.split(',')[0] : results[0].formatted_address.split(',')[0];
               }
               startNavigation(e.latLng!, name);
@@ -188,56 +183,51 @@ export function MapWidget() {
 
         if (searchInputRef.current) {
           const autocomplete = new google.maps.places.Autocomplete(searchInputRef.current);
-          autocomplete.bindTo("bounds", newMap);
+          autocomplete.bindTo("bounds", map);
           autocomplete.addListener("place_changed", () => {
             const place = autocomplete.getPlace();
             if (!place.geometry || !place.geometry.location) return;
-
-            newMap.setCenter(place.geometry.location);
-            newMap.setZoom(17);
+            map.setCenter(place.geometry.location);
+            map.setZoom(17);
             startNavigation(place.geometry.location, place.name || "Search Result");
           });
         }
-      } catch (e) {
-        console.error("Map initialization failed", e);
-        setApiError(true);
-      }
-    }
-  }, [map, startNavigation]);
 
-  useEffect(() => {
-    window.gm_authFailure = () => {
-      setApiError(true);
+        setIsLoading(false);
+      } catch (e) {
+        console.error("Map Init Error", e);
+        setApiError(true);
+        setIsLoading(false);
+      }
     };
 
     if (window.google && window.google.maps) {
-      initGoogleMap();
-      return;
+      initMap();
+    } else {
+      window.initGoogleMaps = initMap;
+      if (!document.getElementById('google-maps-script')) {
+        const script = document.createElement('script');
+        script.id = 'google-maps-script';
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places&callback=initGoogleMaps`;
+        script.async = true;
+        script.defer = true;
+        document.head.appendChild(script);
+      }
     }
-
-    const script = document.createElement('script');
-    script.id = 'google-maps-script';
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places&callback=initMap`;
-    script.async = true;
-    script.onerror = () => setApiError(true);
-    
-    window.initMap = initGoogleMap;
-    document.head.appendChild(script);
 
     return () => {
-      delete (window as any).initMap;
-      delete (window as any).gm_authFailure;
+      // Cleanup if needed
     };
-  }, [initGoogleMap]);
-
-  const handleSavePlace = () => {
-    if (currentPlace) {
-      savePlace(currentPlace);
-    }
-  };
+  }, []);
 
   return (
     <Card className="h-full w-full overflow-hidden border-none bg-black relative group rounded-[2.5rem] ios-shadow">
+      {isLoading && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <Loader2 className="w-10 h-10 animate-spin text-blue-500" />
+        </div>
+      )}
+
       {apiError ? (
         <div className="absolute inset-0 z-0 flex flex-col items-center justify-center p-8 text-center bg-zinc-900/50 backdrop-blur-3xl">
           {mapPlaceholder && (
@@ -258,10 +248,7 @@ export function MapWidget() {
                 Google Maps API requires billing to be enabled. Please visit the Cloud Console to activate your account.
               </p>
             </div>
-            <Button 
-              asChild
-              className="bg-white text-black font-bold rounded-2xl h-12 px-8 hover:bg-zinc-200"
-            >
+            <Button asChild className="bg-white text-black font-bold rounded-2xl h-12 px-8 hover:bg-zinc-200">
               <a href="https://console.cloud.google.com/project/_/billing/enable" target="_blank" rel="noreferrer">
                 <ExternalLink className="w-4 h-4 mr-2" /> Enable Billing
               </a>
@@ -281,7 +268,7 @@ export function MapWidget() {
           </div>
           <Input 
             ref={searchInputRef}
-            disabled={apiError}
+            disabled={apiError || isLoading}
             placeholder={apiError ? "Navigation unavailable" : "Tap map or search destination"}
             className="w-full h-16 pl-14 pr-6 bg-black/80 backdrop-blur-3xl border-white/5 rounded-2xl text-white font-headline font-bold text-lg ios-shadow focus:ring-2 focus:ring-blue-500 transition-all placeholder:text-muted-foreground/50 disabled:opacity-50"
           />
@@ -303,7 +290,7 @@ export function MapWidget() {
                 <Button 
                   size="icon" 
                   variant="ghost" 
-                  onClick={handleSavePlace}
+                  onClick={() => savePlace(currentPlace)}
                   className={`rounded-2xl h-12 w-12 transition-all ${savedPlaces.some(p => p.address === currentPlace.address) ? "text-yellow-500 bg-yellow-500/10" : "text-white/40 hover:bg-white/10"}`}
                 >
                   <Star className={`w-6 h-6 ${savedPlaces.some(p => p.address === currentPlace.address) ? "fill-current" : ""}`} />
@@ -333,9 +320,9 @@ export function MapWidget() {
               className="w-full h-14 rounded-2xl bg-white/5 border-white/10 text-white font-bold hover:bg-red-500/10 hover:text-red-500 transition-all border-none"
               onClick={() => {
                 setNavigationData(null);
-                directionsRenderer?.setDirections({ routes: [] });
-                if (map) map.setZoom(15);
-                setCurrentMarker(null);
+                directionsRendererRef.current?.setDirections({ routes: [] });
+                mapInstanceRef.current?.setZoom(15);
+                currentMarkerRef.current?.setMap(null);
                 setCurrentPlace(null);
               }}
             >
@@ -362,10 +349,8 @@ export function MapWidget() {
           <Button 
             className="w-16 h-16 rounded-full bg-zinc-900/90 backdrop-blur-3xl flex items-center justify-center border border-white/10 shadow-2xl hover:bg-white/10 transition-all"
             onClick={() => {
-              if (map) {
-                map.setCenter({ lat: 21.4225, lng: 39.8262 });
-                map.setZoom(15);
-              }
+              mapInstanceRef.current?.setCenter({ lat: 21.4225, lng: 39.8262 });
+              mapInstanceRef.current?.setZoom(15);
             }}
           >
             <Compass className="w-7 h-7 text-white animate-[spin_15s_linear_infinite]" />
@@ -394,10 +379,10 @@ export function MapWidget() {
                   key={place.id}
                   className="p-4 rounded-[1.5rem] bg-white/5 border border-white/5 hover:bg-white/10 transition-all group cursor-pointer"
                   onClick={() => {
-                    if (map) {
+                    if (mapInstanceRef.current) {
                       const pos = new google.maps.LatLng(place.lat, place.lng);
-                      map.setCenter(pos);
-                      map.setZoom(17);
+                      mapInstanceRef.current.setCenter(pos);
+                      mapInstanceRef.current.setZoom(17);
                       startNavigation(pos, place.name);
                     }
                   }}
