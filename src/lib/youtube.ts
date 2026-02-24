@@ -25,6 +25,7 @@ const CACHE_TTL = 1000 * 60 * 10; // 10 دقائق
 
 /**
  * دالة جلب البيانات مع نظام التدوير التلقائي للمفاتيح لضمان الاستقرار.
+ * تعتمد استراتيجية "التدوير الذكي" لتجاوز أي مفتاح مستنفذ للحصة.
  */
 async function fetchWithRotation(endpoint: string, params: Record<string, string>) {
   const queryParams = new URLSearchParams(params);
@@ -47,12 +48,14 @@ async function fetchWithRotation(endpoint: string, params: Record<string, string
         return data;
       }
       
+      // Quota Errors: 403 (Forbidden) or 429 (Too Many Requests)
       if (response.status === 403 || response.status === 429) {
         console.warn(`YouTube API Key ${i} exhausted. Quota Error. Rotation in progress...`);
         continue;
       }
       
       console.error(`YouTube API Error: ${data?.error?.message}`);
+      // If it's another error (like 400), don't bother rotating, just return null
       return null;
     } catch (error) {
       console.error(`Network error with key index ${i}:`, error);
@@ -107,6 +110,7 @@ export async function searchYouTubeVideos(query: string): Promise<YouTubeVideo[]
 
 /**
  * جلب فيديوهات القناة باستخدام playlistItems لتقليل استهلاك الحصة (1 وحدة بدلاً من 100).
+ * هذه الطريقة "صديقة للحصة" (Quota Friendly) وتضمن أداء مستدام.
  */
 export async function fetchChannelVideos(channelId: string): Promise<YouTubeVideo[]> {
   // معرف قائمة الفيديوهات المرفوعة يكون عادةً باستبدال UC بـ UU في معرف القناة

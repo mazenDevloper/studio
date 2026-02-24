@@ -77,7 +77,7 @@ export function MediaView() {
       toast({ variant: "destructive", title: "خطأ", description: "البحث الصوتي غير مدعوم." });
       return;
     }
-    const recognition = new SearchRecognition();
+    const recognition = new SpeechRecognition();
     recognition.lang = 'ar-SA';
     recognition.onstart = () => setIsListening(true);
     recognition.onresult = (event: any) => {
