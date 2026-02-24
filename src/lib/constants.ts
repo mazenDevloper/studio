@@ -5,52 +5,12 @@ export const GOOGLE_MAPS_API_KEY = 'AIzaSyBRqAHJ2elbE_Z7NXXYC50XZpqi6HbG6Rk';
 export const FOOTBALL_API_KEY = '5faa81bde7c1843d6be4a4e3706a93da'; 
 export const FOOTBALL_API_BASE_URL = 'https://v3.football.api-sports.io';
 
-export const JSONBIN = {
-  API_KEY: '$2a$10$SYrYv.ct8hiMU9YeUxEQ.ecRkOrTqs.TDchJRV3wW.aKJnDXy2oVy',
-  BINS: {
-    REMINDERS: '68e3800cae596e708f07cf32',
-    FAV_M: '68e4ac20d0ea881f4098138c',
-    FAV_D: '68e4ac2e43b1c97be95d24af',
-    CHANNELS: '68ef1b3dd0ea881f40a38bd1',
-    RECITER: '6909c1cd43b1c97be997b522',
-  },
-  ACCESS_KEYS: {
-    REMINDERS: '$2a$10$J8o3WrPtnqmKAd///uDw6.BOWnGIBekHFOImbeEZZwsJ/h/XPbVUy',
-    CHANNELS: '$2a$10$J8o3WrPtnqmKAd///uDw6.BOWnGIBekHFOImbeEZZwsJ/h/XPbVUy',
-    RECITER: '$2a$10$J8o3WrPtnqmKAd///uDw6.BOWnGIBekHFOImbeEZZwsJ/h/XPbVUy',
-  }
-};
-
 export const YT_KEYS_POOL = [
     "AIzaSyAjdVZ2Rodp6ZVEF1pZT195kAtGELolxSI",
     "AIzaSyDULoFJLWNIO9hn0u8siLz-BzTi7eM-CX4",
     "AIzaSyBYThRM6tVnzgFgdHOUAN6DN8jQd54OKeg",
-    "AIzaSyB7QdfI0br5BfP71hOr36hz2dRWG_l0G8k",
-    "AIzaSyBdhcRo-EsvIduedQd-jFHfrEj9NeiP7pU",
-    "AIzaSyBLrMA6plsSZtqg2iY9Z1N1fJAHNmgGxos",
-    "AIzaSyCaqMPtn-egmEQk7XmTel--xsXV1Xbdp7o",
-    "AIzaSyDj4w1H3Is_rmTLhl40zER7AgYhT_tKASo",
-    "AIzaSyBYThRM6tVnzgFgdHOUAN6DN8jQd54OKeg",
-    "AIzaSyBeTHs25EsKeDFtIS5kq8iDATz-2c8hBrI",
-    "AIzaSyAjdVZ2Rodp6ZVEF1pZT195kAtGELolxSI"
+    "AIzaSyB7QdfI0br5BfP71hOr36hz2dRWG_l0G8k"
 ];
-
-export const SURAH_LIST = [
-  "الفاتحة", "البقرة", "آل عمران", "النساء", "المائدة", "الأنعام", "الأعراف", "الأنفال", "التوبة", "يونس",
-  "هود", "يوسف", "الرعد", "إبراهيم", "الحجر", "النحل", "الإسراء", "الكهف", "مريم", "طه",
-  "الأنبياء", "الحج", "المؤمنون", "النور", "الفرقان", "الشعراء", "النمل", "القصص", "العنكبوت", "الروم",
-  "لقمان", "السجدة", "الأحزاب", "سبأ", "فاطر", "يس", "الصافات", "ص", "الزمر", "غافر",
-  "فصلت", "الشورى", "الزخرف", "الدخان", "الجاثية", "الأحقاف", "محمد", "الفتح", "الحجرات", "ق",
-  "الذاريات", "الطور", "النجم", "القمر", "الرحمن", "الواقعة", "الحديد", "المجادلة", "الحشر", "الممتحنة",
-  "الصف", "الجمعة", "المنافقون", "التغابن", "الطلاق", "التحريم", "الملك", "القلم", "الحاقة", "المعارج",
-  "نوح", "الجن", "المزمل", "المدثر", "القيامة", "الإنسان", "المرسلات", "النبأ", "النازعات", "عبس",
-  "التكوير", "الانفطار", "المتطففين", "الانشقاق", "البروج", "الطارق", "الأعلى", "الغاشية", "الفجر", "البلد",
-  "الشمس", "الليل", "الضحى", "الشرح", "التين", "العلق", "القدر", "البينة", "الزلزلة", "العاديات",
-  "القارعة", "التكاثر", "العصر", "الهمزة", "الفيل", "قريش", "الماعون", "الكوثر", "الكافرون", "النصر",
-  "المسد", "الإخلاص", "الفلق", "الناس"
-];
-
-export const JUZ_LIST = Array.from({ length: 30 }, (_, i) => `الجزء ${i + 1}`);
 
 export const prayerTimesData = [
     {"date":"2026-02-01","day":"الأحد","fajr":"05:41","sunrise":"06:55","dhuhr":"12:42","asr":"15:59","maghrib":"18:24","isha":"19:34"},

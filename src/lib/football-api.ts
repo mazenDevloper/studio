@@ -1,11 +1,9 @@
+
 'use client';
 
 import { FOOTBALL_API_KEY, FOOTBALL_API_BASE_URL } from "./constants";
 import { Match } from "./football-data";
 
-/**
- * دالة جلب البيانات الرياضية مع تحسين معالجة الأخطاء لمنع توقف التطبيق
- */
 export async function fetchFootballData(type: 'today' | 'live'): Promise<Match[]> {
   const date = new Date().toISOString().split('T')[0];
   const url = type === 'live' 
@@ -13,11 +11,6 @@ export async function fetchFootballData(type: 'today' | 'live'): Promise<Match[]
     : `${FOOTBALL_API_BASE_URL}/fixtures?date=${date}&timezone=Asia/Riyadh`;
 
   try {
-    if (!FOOTBALL_API_KEY || FOOTBALL_API_KEY.includes('Dummy')) {
-      console.warn("Football API Key is missing or invalid.");
-      return [];
-    }
-
     const response = await fetch(url, {
       method: 'GET',
       headers: {
@@ -25,15 +18,12 @@ export async function fetchFootballData(type: 'today' | 'live'): Promise<Match[]
         'x-apisports-host': 'v3.football.api-sports.io'
       },
       cache: 'no-store'
-    }).catch(() => null);
+    });
 
-    if (!response || !response.ok) {
-      console.error("Football API response not OK");
-      return [];
-    }
+    if (!response.ok) return [];
 
     const data = await response.json();
-    if (!data.response || !Array.isArray(data.response)) return [];
+    if (!data.response) return [];
 
     return data.response.map((item: any) => {
       const statusShort = item.fixture.status.short;

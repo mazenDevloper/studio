@@ -6,7 +6,7 @@ import { Match, MAJOR_LEAGUES } from "@/lib/football-data";
 import { getFootballIntelligence } from "@/ai/flows/football-intelligence-flow";
 import { fetchStandings, fetchTopScorers } from "@/lib/football-api";
 import { useMediaStore } from "@/lib/store";
-import { Trophy, Tv, Mic2, Star, Calendar, RefreshCw, Loader2, Check, Sparkles, AlertCircle, WifiOff, LayoutGrid, Users, ListOrdered } from "lucide-react";
+import { Trophy, Tv, Mic2, Star, Calendar, RefreshCw, Loader2, Check, Sparkles, AlertCircle, ListOrdered, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Image from "next/image";
@@ -76,7 +76,6 @@ export function FootballView() {
 
   const liveMatches = matches.filter(m => m.status === 'live');
   const upcomingMatches = matches.filter(m => m.status === 'upcoming');
-  const finishedMatches = matches.filter(m => m.status === 'finished');
 
   return (
     <div className="p-8 space-y-8 max-w-7xl mx-auto pb-32">
@@ -87,7 +86,7 @@ export function FootballView() {
             <Sparkles className="w-6 h-6 text-accent animate-pulse" />
           </h1>
           <div className="text-muted-foreground text-sm font-medium uppercase tracking-widest opacity-60 flex items-center gap-2">
-             <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
+             <span className="inline-block w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
              تغطية حية وشاملة مدعومة بالذكاء الاصطناعي
           </div>
         </div>

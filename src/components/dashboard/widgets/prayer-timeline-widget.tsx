@@ -1,9 +1,10 @@
+
 "use client";
 
 import { useMemo, useEffect, useState } from "react";
 import { prayerTimesData, convertTo12Hour } from "@/lib/constants";
 import { cn } from "@/lib/utils";
-import { Clock, Star, Sparkles, Timer } from "lucide-react";
+import { Timer, Sparkles } from "lucide-react";
 
 export function PrayerTimelineWidget() {
   const [now, setNow] = useState<Date | null>(null);
