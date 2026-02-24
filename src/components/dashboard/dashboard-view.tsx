@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { WEATHER_API_KEY } from "@/lib/constants";
 import { RotateCcw, Upload } from "lucide-react";
 import Image from "next/image";
@@ -9,7 +9,7 @@ import { PrayerTimelineWidget } from "./widgets/prayer-timeline-widget";
 import { DateAndClockWidget } from "./widgets/date-and-clock-widget";
 import { MoonWidget } from "./widgets/moon-widget";
 import { PlayingNowWidget } from "./widgets/playing-now-widget";
-import { YouTubeSuggestionsWidget } from "./widgets/youtube-suggestions-widget";
+import { LatestVideosWidget } from "./widgets/latest-videos-widget";
 import { YouTubeSavedWidget } from "./widgets/youtube-saved-widget";
 import { PrayerCountdownCard } from "./widgets/prayer-countdown-card";
 import { useMediaStore } from "@/lib/store";
@@ -51,6 +51,8 @@ export function DashboardView() {
 
     return () => clearInterval(interval);
   }, [api]);
+
+  const starredChannels = favoriteChannels.filter(c => starredChannelIds.includes(c.id));
 
   return (
     <div className="h-full w-full p-6 flex flex-col gap-6 relative overflow-y-auto pb-32 no-scrollbar">
@@ -162,7 +164,7 @@ export function DashboardView() {
       </div>
 
       <div className="w-full space-y-6">
-        <YouTubeSuggestionsWidget />
+        <LatestVideosWidget channels={starredChannels} />
         <YouTubeSavedWidget />
       </div>
     </div>
