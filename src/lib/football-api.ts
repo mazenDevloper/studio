@@ -5,7 +5,7 @@ import { FOOTBALL_API_KEY, FOOTBALL_API_BASE_URL } from "./constants";
 import { Match } from "./football-data";
 
 /**
- * دالة جلب البيانات الرياضية مع تحسينات لدعم القنوات والمعلقين
+ * دالة جلب البيانات الرياضية مع تحسين معالجة الأخطاء لمنع توقف التطبيق
  */
 export async function fetchFootballData(type: 'today' | 'live'): Promise<Match[]> {
   const date = new Date().toISOString().split('T')[0];
@@ -14,16 +14,25 @@ export async function fetchFootballData(type: 'today' | 'live'): Promise<Match[]
     : `${FOOTBALL_API_BASE_URL}/fixtures?date=${date}&timezone=Asia/Riyadh`;
 
   try {
+    if (!FOOTBALL_API_KEY || FOOTBALL_API_KEY.includes('Dummy')) {
+      console.warn("Football API Key is missing or invalid.");
+      return [];
+    }
+
     const response = await fetch(url, {
       method: 'GET',
       headers: {
-        'x-apisports-key': FOOTBALL_API_KEY || '',
+        'x-apisports-key': FOOTBALL_API_KEY,
         'x-apisports-host': 'v3.football.api-sports.io'
       },
-      next: { revalidate: 300 }
+      cache: 'no-store'
     });
 
-    if (!response.ok) return [];
+    if (!response.ok) {
+      console.error(`Football API responded with status: ${response.status}`);
+      return [];
+    }
+
     const data = await response.json();
     if (!data.response || !Array.isArray(data.response)) return [];
 
@@ -64,7 +73,8 @@ export async function fetchFootballData(type: 'today' | 'live'): Promise<Match[]
       } as Match;
     });
   } catch (error) {
-    console.error("Network Fetch Error:", error);
+    // معالجة خطأ Failed to fetch بصمت لمنع ظهور شاشة الخطأ الحمراء للمستخدم
+    console.warn("Football API Network Error - Check connection or API Key status.");
     return [];
   }
 }

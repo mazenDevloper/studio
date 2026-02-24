@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { prayerTimesData, convertTo12Hour } from "@/lib/constants";
-import { Timer, Clock, BellRing } from "lucide-react";
+import { Timer, Clock, BellRing, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function PrayerCountdownCard() {
@@ -34,7 +34,7 @@ export function PrayerCountdownCard() {
       { name: "الفجر", time: pTimes.fajr, iqamah: 25 },
       { name: "الظهر", time: pTimes.dhuhr, iqamah: 20 },
       { name: "العصر", time: pTimes.asr, iqamah: 20 },
-      { name: "المغرب", time: pTimes.maghrib, iqamah: 5 },
+      { name: "المغرب", time: pTimes.maghrib, iqamah: 10 },
       { name: "العشاء", time: pTimes.isha, iqamah: 20 },
     ];
 
@@ -85,39 +85,47 @@ export function PrayerCountdownCard() {
   return (
     <div className={cn(
       "h-full w-full glass-panel rounded-[2.5rem] p-6 flex flex-col justify-center items-center text-center transition-all duration-700 relative overflow-hidden",
-      isIqamah ? "bg-accent/15 border-accent/40 shadow-[0_0_40px_rgba(16,185,129,0.2)]" : "bg-white/5"
+      isIqamah ? "bg-accent/20 border-accent/60 shadow-[0_0_50px_rgba(65,184,131,0.4)] ring-4 ring-accent/20" : "bg-white/5"
     )}>
       {isIqamah && (
-        <div className="absolute inset-0 bg-gradient-to-t from-accent/5 to-transparent animate-pulse" />
+        <>
+          <div className="absolute inset-0 bg-gradient-to-t from-accent/10 to-transparent animate-pulse" />
+          <div className="absolute top-4 right-4 animate-spin-slow">
+            <Sparkles className="w-6 h-6 text-accent opacity-60" />
+          </div>
+        </>
       )}
 
       <div className="flex items-center gap-2 mb-4 relative z-10">
         <div className={cn(
-          "px-4 py-1.5 rounded-full text-[11px] font-black uppercase tracking-widest border flex items-center gap-2",
+          "px-5 py-2 rounded-full text-[11px] font-black uppercase tracking-widest border flex items-center gap-3",
           isIqamah 
-            ? "bg-accent/20 text-accent border-accent/30 animate-bounce" 
+            ? "bg-accent text-black border-white/20 animate-bounce" 
             : "bg-primary/20 text-primary border-primary/20"
         )}>
-          {isIqamah && <BellRing className="w-3 h-3" />}
-          {isIqamah ? `انتظار الإقامة: صلاة ${prayerStatus.name}` : `الصلاة القادمة: ${prayerStatus.name}`}
+          {isIqamah ? <BellRing className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
+          {isIqamah ? `حان وقت صلاة ${prayerStatus.name}` : `الصلاة القادمة: ${prayerStatus.name}`}
         </div>
       </div>
 
       <div className={cn(
-        "text-6xl font-black tracking-tighter drop-shadow-2xl font-mono relative z-10",
-        isIqamah ? "text-accent" : "text-white"
+        "text-7xl font-black tracking-tighter drop-shadow-[0_10px_30px_rgba(0,0,0,0.5)] font-mono relative z-10",
+        isIqamah ? "text-white" : "text-white"
       )}>
         {prayerStatus.remaining}
       </div>
 
-      <div className="mt-4 flex flex-col items-center gap-1 relative z-10">
-        <div className="flex items-center gap-2 text-white/40 font-bold text-xs uppercase tracking-[0.2em]">
-          <Timer className={cn("w-4 h-4", isIqamah ? "text-accent animate-spin-slow" : "text-primary")} />
-          {isIqamah ? "تقام الصلاة الآن" : `موعد الأذان: ${prayerStatus.time}`}
+      <div className="mt-5 flex flex-col items-center gap-2 relative z-10">
+        <div className={cn(
+          "flex items-center gap-2 font-bold text-sm uppercase tracking-[0.2em]",
+          isIqamah ? "text-black bg-white/90 px-4 py-1 rounded-full" : "text-white/40"
+        )}>
+          <Timer className={cn("w-5 h-5", isIqamah ? "text-accent animate-pulse" : "text-primary")} />
+          {isIqamah ? "يتم الآن انتظار الإقامة" : `موعد الأذان: ${prayerStatus.time}`}
         </div>
         {isIqamah && (
-          <span className="text-[10px] text-accent font-black uppercase tracking-widest mt-1">
-            يرجى الاستعداد للصلاة
+          <span className="text-[11px] text-white font-black uppercase tracking-[0.3em] mt-2 animate-pulse">
+            استعد للصلاة يرحمك الله
           </span>
         )}
       </div>

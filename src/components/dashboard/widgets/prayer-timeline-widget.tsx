@@ -4,7 +4,7 @@
 import { useMemo, useEffect, useState } from "react";
 import { prayerTimesData, convertTo12Hour } from "@/lib/constants";
 import { cn } from "@/lib/utils";
-import { Clock, Star } from "lucide-react";
+import { Clock, Star, Sparkles } from "lucide-react";
 
 export function PrayerTimelineWidget() {
   const [now, setNow] = useState<Date | null>(null);
@@ -26,7 +26,7 @@ export function PrayerTimelineWidget() {
       { name: "الفجر", time: data.fajr, iqamah: 25 },
       { name: "الظهر", time: data.dhuhr, iqamah: 20 },
       { name: "العصر", time: data.asr, iqamah: 20 },
-      { name: "المغرب", time: data.maghrib, iqamah: 5 },
+      { name: "المغرب", time: data.maghrib, iqamah: 10 },
       { name: "العشاء", time: data.isha, iqamah: 20 },
     ];
 
@@ -36,20 +36,9 @@ export function PrayerTimelineWidget() {
       return h * 60 + m;
     };
 
-    // Find the index of the next or current prayer
+    // Find the next prayer index
     let nextIdx = list.findIndex(p => timeToMinutes(p.time) > currentMinutes);
     if (nextIdx === -1) nextIdx = 0;
-
-    // Check if we are currently in an "active" window (after azan but before iqamah)
-    const prevIdx = nextIdx === 0 ? list.length - 1 : nextIdx - 1;
-    const prevPrayer = list[prevIdx];
-    const prevAzanMins = timeToMinutes(prevPrayer.time);
-    const prevIqamahMins = prevAzanMins + prevPrayer.iqamah;
-    
-    let finalActiveIdx = nextIdx;
-    if (currentMinutes >= prevAzanMins && currentMinutes < prevIqamahMins) {
-      finalActiveIdx = prevIdx;
-    }
 
     const processed = list.map((p, idx) => {
       const azanMins = timeToMinutes(p.time);
@@ -61,7 +50,7 @@ export function PrayerTimelineWidget() {
       };
     });
 
-    return { prayers: processed, activeIndex: finalActiveIdx };
+    return { prayers: processed, activeIndex: nextIdx };
   }, [now]);
 
   if (!now || prayers.length === 0) return null;
@@ -70,41 +59,44 @@ export function PrayerTimelineWidget() {
     <div className="w-full flex items-center justify-between px-6 py-2 overflow-x-auto no-scrollbar">
       <div className="flex items-center gap-10 flex-1 justify-around">
         {prayers.map((prayer, idx) => {
-          const isActive = idx === activeIndex;
+          const isNext = idx === activeIndex;
           
           return (
             <div key={prayer.name} className={cn(
               "flex items-center gap-5 transition-all duration-1000 relative",
-              isActive ? "scale-110 opacity-100" : "opacity-30 grayscale"
+              isNext ? "scale-110 opacity-100" : "opacity-30 grayscale"
             )}>
-              {isActive && (
-                <div className="absolute -top-4 left-1/2 -translate-x-1/2 animate-pulse">
-                  <Star className="w-3 h-3 text-accent fill-current shadow-glow" />
+              {isNext && (
+                <div className="absolute -top-5 left-1/2 -translate-x-1/2 animate-bounce">
+                  <Sparkles className="w-4 h-4 text-accent fill-current drop-shadow-[0_0_8px_hsl(var(--accent))]" />
                 </div>
               )}
               
-              <div className="flex flex-col items-center">
+              <div className={cn(
+                "flex flex-col items-center p-2 rounded-2xl transition-all",
+                isNext && "bg-accent/10 ring-2 ring-accent/30 shadow-[0_0_20px_rgba(65,184,131,0.2)]"
+              )}>
                 <span className={cn(
                   "text-[10px] font-black uppercase tracking-[0.2em] mb-1",
-                  isActive ? "text-accent" : "text-white/40"
+                  isNext ? "text-accent" : "text-white/40"
                 )}>
                   {prayer.name}
                 </span>
                 <span className={cn(
                   "text-xl font-black tracking-tighter",
-                  isActive ? "text-primary drop-shadow-[0_0_15px_rgba(59,130,246,0.8)]" : "text-white"
+                  isNext ? "text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]" : "text-white/60"
                 )}>
                   {convertTo12Hour(prayer.time)}
                 </span>
               </div>
 
-              {isActive && (
-                <div className="flex flex-col border-l-2 border-accent/30 pl-5 py-1 animate-in fade-in slide-in-from-left-4 duration-700">
+              {isNext && (
+                <div className="flex flex-col border-l-2 border-accent/40 pl-5 py-1 animate-in fade-in slide-in-from-left-4 duration-700">
                   <div className="flex items-center gap-1.5">
-                    <div className="w-1.5 h-1.5 rounded-full bg-accent animate-ping" />
-                    <span className="text-[10px] font-black text-accent uppercase tracking-widest">وقت الإقامة</span>
+                    <div className="w-2 h-2 rounded-full bg-accent animate-ping" />
+                    <span className="text-[9px] font-black text-accent/80 uppercase tracking-[0.2em]">وقت الإقامة</span>
                   </div>
-                  <span className="text-lg font-black text-accent drop-shadow-[0_0_10px_rgba(16,185,129,0.5)]">
+                  <span className="text-lg font-black text-accent drop-shadow-[0_0_15px_rgba(16,185,129,0.4)]">
                     {convertTo12Hour(prayer.iqamahTime)}
                   </span>
                 </div>
