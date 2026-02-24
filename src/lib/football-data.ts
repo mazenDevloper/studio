@@ -1,4 +1,3 @@
-
 export interface Match {
   id: string;
   homeTeam: string;
@@ -12,6 +11,7 @@ export interface Match {
   league: string;
   channel: string;
   commentator: string;
+  broadcasts?: { country: string; channel: string }[];
 }
 
 export const MOCK_MATCHES: Match[] = [
@@ -22,10 +22,11 @@ export const MOCK_MATCHES: Match[] = [
     homeLogo: 'https://picsum.photos/seed/hilal/100/100',
     awayLogo: 'https://picsum.photos/seed/nassr/100/100',
     startTime: '20:00',
-    status: 'upcoming', // Changed to upcoming so it doesn't show island unless triggered/favorites match
+    status: 'upcoming',
     league: 'دوري روشن السعودي',
     channel: 'SSC 1 HD',
-    commentator: 'فهد العتيبي'
+    commentator: 'فهد العتيبي',
+    broadcasts: [{ country: 'Saudi Arabia', channel: 'SSC 1 HD' }]
   },
   {
     id: '2',
@@ -37,7 +38,8 @@ export const MOCK_MATCHES: Match[] = [
     status: 'upcoming',
     league: 'الدوري الإسباني',
     channel: 'beIN Sports HD 1',
-    commentator: 'حفيظ دراجي'
+    commentator: 'حفيظ دراجي',
+    broadcasts: [{ country: 'Global', channel: 'beIN Sports HD 1' }]
   },
   {
     id: '3',
@@ -50,10 +52,11 @@ export const MOCK_MATCHES: Match[] = [
     score: { home: 3, away: 2 },
     league: 'الدوري الإنجليزي',
     channel: 'beIN Sports HD 2',
-    commentator: 'خليل البلوشي'
+    commentator: 'خليل البلوشي',
+    broadcasts: [{ country: 'Global', channel: 'beIN Sports HD 2' }]
   }
 ];
 
 export const AVAILABLE_TEAMS = [
-  'الهلال', 'النصر', 'الاتحاد', 'الأهلي', 'ريال مدريد', 'برشلونة', 'مانشستر سيتي', 'ليفربول', 'بايرن ميونخ'
+  'الهلال', 'النصر', 'الاتحاد', 'الأهلي', 'ريال مدريد', 'برشلونة', 'مانشستر سيتي', 'ليفربول', 'بايرن ميونخ', 'أرسنال', 'باريس سان جيرمان'
 ];

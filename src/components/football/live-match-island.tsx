@@ -1,13 +1,11 @@
-
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
 import { Match, MOCK_MATCHES } from "@/lib/football-data";
 import { useMediaStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { Timer, Loader2, Trophy } from "lucide-react";
+import { Timer, Trophy, Tv } from "lucide-react";
 import Image from "next/image";
-import { FOOTBALL_API_KEY } from "@/lib/constants";
 
 export function LiveMatchIsland() {
   const { favoriteTeams } = useMediaStore();
@@ -16,32 +14,12 @@ export function LiveMatchIsland() {
 
   const fetchLiveStatus = useCallback(async () => {
     try {
-      // جلب البيانات من API حقيقي للمزامنة
-      const response = await fetch(`https://api.football-data-api.com/todays-matches?key=${FOOTBALL_API_KEY}`);
-      const data = await response.json();
+      // Logic for dynamic island:
+      // Only show if a match status is 'live' AND one of the teams is in favoriteTeams
       
-      let currentMatches: Match[] = [];
-      
-      if (data && data.matches) {
-        currentMatches = data.matches.map((m: any) => ({
-          id: m.id,
-          homeTeam: m.homeTeam.name,
-          awayTeam: m.awayTeam.name,
-          homeLogo: m.homeTeam.logo || `https://picsum.photos/seed/${m.homeTeam.name}/100/100`,
-          awayLogo: m.awayTeam.logo || `https://picsum.photos/seed/${m.awayTeam.name}/100/100`,
-          status: m.status === 'LIVE' ? 'live' : 'upcoming',
-          score: m.score ? { home: m.score.home, away: m.score.away } : { home: 0, away: 0 },
-          minute: m.minute || 0,
-          league: m.league.name,
-          channel: 'Live Feed',
-          commentator: 'بث حي'
-        }));
-      } else {
-        // Fallback to internal mocks for testing IF and ONLY IF they match favorites
-        currentMatches = MOCK_MATCHES;
-      }
+      // Simulation of current real-time data
+      const currentMatches: Match[] = MOCK_MATCHES;
 
-      // البحث عن مباراة مباشرة تخص أحد الفرق المفضلة حصراً
       const activeFavMatch = currentMatches.find(m => 
         m.status === 'live' && 
         (favoriteTeams.includes(m.homeTeam) || favoriteTeams.includes(m.awayTeam))
@@ -55,7 +33,7 @@ export function LiveMatchIsland() {
 
   useEffect(() => {
     fetchLiveStatus();
-    const interval = setInterval(fetchLiveStatus, 60000); // تحديث كل دقيقة
+    const interval = setInterval(fetchLiveStatus, 60000); // Check every minute
     return () => clearInterval(interval);
   }, [fetchLiveStatus]);
 
@@ -67,7 +45,7 @@ export function LiveMatchIsland() {
         onClick={() => setIsExpanded(!isExpanded)}
         className={cn(
           "bg-black/90 backdrop-blur-3xl border border-white/20 rounded-full shadow-[0_20px_60px_rgba(0,0,0,1)] transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] cursor-pointer overflow-hidden ring-1 ring-white/10",
-          isExpanded ? "w-[520px] h-32 px-10" : "w-72 h-14 px-6"
+          isExpanded ? "w-[520px] h-36 px-10" : "w-72 h-14 px-6"
         )}
       >
         <div className="h-full flex items-center justify-between">
@@ -108,9 +86,12 @@ export function LiveMatchIsland() {
                   </div>
                   <span className="text-6xl font-black text-white drop-shadow-[0_10px_30px_rgba(255,255,255,0.2)]">{liveMatch.score?.away}</span>
                 </div>
-                <div className="text-[10px] font-bold text-accent uppercase tracking-[0.4em] flex items-center gap-2">
-                   <div className="w-1 h-1 rounded-full bg-accent" />
-                   {liveMatch.channel}
+                <div className="flex flex-col items-center gap-1">
+                  <div className="text-[10px] font-bold text-accent uppercase tracking-[0.4em] flex items-center gap-2">
+                     <Tv className="w-3 h-3" />
+                     {liveMatch.broadcasts && liveMatch.broadcasts.length > 0 ? liveMatch.broadcasts[0].channel : liveMatch.channel}
+                  </div>
+                  <span className="text-[9px] text-white/30 font-bold uppercase">{liveMatch.commentator}</span>
                 </div>
               </div>
 
