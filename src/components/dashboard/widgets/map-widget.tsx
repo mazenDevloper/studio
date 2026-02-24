@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { Card } from "@/components/ui/card";
-import { Compass, Plus, Minus, ChevronUp, ChevronDown, Target, Loader2, AlertTriangle } from "lucide-react";
+import { Compass, Plus, Minus, ChevronUp, ChevronDown, Target, Loader2, AlertTriangle, ZoomIn, ZoomOut } from "lucide-react";
 import { GOOGLE_MAPS_API_KEY } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { useMediaStore } from "@/lib/store";
@@ -43,13 +43,11 @@ export function MapWidget() {
   useEffect(() => { 
     mapSettingsRef.current = mapSettings; 
     if (mapInstanceRef.current) {
-      // تحديث الخريطة بشكل لحظي بناءً على الإعدادات الجديدة
       mapInstanceRef.current.moveCamera({
         zoom: mapSettings.zoom,
         tilt: mapSettings.tilt,
         center: carStateRef.current.location
       });
-      // طلب إعادة رسم الطبقة الثلاثية الأبعاد لتعديل حجم السيارة
       if (carOverlayRef.current) {
         carOverlayRef.current.requestRedraw();
       }
@@ -143,7 +141,6 @@ export function MapWidget() {
       
       camera.projectionMatrix = new THREE.Matrix4().fromArray(matrix);
 
-      // تطبيق حجم السيارة المحدث لحظياً من الإعدادات
       const finalScale = mapSettingsRef.current.carScale * Math.pow(2, 20 - zoom); 
       carModelRef.current.scale.set(finalScale, finalScale, finalScale);
       carModelRef.current.rotation.y = -(carStateRef.current.heading * Math.PI) / 180 + Math.PI;
@@ -253,8 +250,20 @@ export function MapWidget() {
       )}
       
       {!apiError && !isLoading && (
-        <div className="absolute top-6 right-6 z-20 flex flex-col gap-2">
-          <div className="flex flex-col gap-1 bg-black/60 backdrop-blur-xl p-2 rounded-2xl border border-white/10">
+        <div className="absolute top-6 right-6 z-20 flex flex-col gap-3">
+          {/* Map Zoom Controls */}
+          <div className="flex flex-col gap-1 bg-black/60 backdrop-blur-xl p-2 rounded-2xl border border-white/10 shadow-2xl">
+            <Button size="icon" variant="ghost" onClick={() => updateMapSettings({ zoom: Math.min(21, mapSettings.zoom + 0.5) })} className="h-10 w-10 text-primary">
+              <ZoomIn className="w-5 h-5" />
+            </Button>
+            <span className="text-[10px] text-white/40 font-black text-center uppercase tracking-tighter">Zoom</span>
+            <Button size="icon" variant="ghost" onClick={() => updateMapSettings({ zoom: Math.max(15, mapSettings.zoom - 0.5) })} className="h-10 w-10 text-primary">
+              <ZoomOut className="w-5 h-5" />
+            </Button>
+          </div>
+
+          {/* Car Scale Controls */}
+          <div className="flex flex-col gap-1 bg-black/60 backdrop-blur-xl p-2 rounded-2xl border border-white/10 shadow-2xl">
             <Button size="icon" variant="ghost" onClick={() => updateMapSettings({ carScale: mapSettings.carScale + 0.05 })} className="h-10 w-10 text-white">
               <Plus className="w-4 h-4" />
             </Button>
@@ -263,8 +272,10 @@ export function MapWidget() {
               <Minus className="w-4 h-4" />
             </Button>
           </div>
-          <div className="flex flex-col gap-1 bg-black/60 backdrop-blur-xl p-2 rounded-2xl border border-white/10">
-            <Button size="icon" variant="ghost" onClick={() => updateMapSettings({ tilt: Math.min(75, mapSettings.tilt + 5) })} className="h-10 w-10 text-white">
+
+          {/* Tilt Controls */}
+          <div className="flex flex-col gap-1 bg-black/60 backdrop-blur-xl p-2 rounded-2xl border border-white/10 shadow-2xl">
+            <Button size="icon" variant="ghost" onClick={() => updateMapSettings({ tilt: Math.min(85, mapSettings.tilt + 5) })} className="h-10 w-10 text-white">
               <ChevronUp className="w-4 h-4" />
             </Button>
             <span className="text-[10px] text-white/40 font-bold text-center">TILT</span>

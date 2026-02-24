@@ -81,25 +81,25 @@ export function DateAndClockWidget() {
       </div>
 
       <div className="relative z-10 flex flex-col items-center">
-        <div className="flex items-center gap-3 mb-4 bg-white/10 px-5 py-2 rounded-full border border-white/10 backdrop-blur-md">
-          <Calendar className="w-4 h-4 text-accent" />
-          <span className="text-[12px] text-white/90 font-bold uppercase tracking-[0.2em]">{dayName} {dayNum} {monthName}</span>
+        <div className="flex items-center gap-3 mb-4 bg-white/10 px-4 py-1.5 rounded-full border border-white/10 backdrop-blur-md">
+          <Calendar className="w-3.5 h-3.5 text-accent" />
+          <span className="text-[10px] text-white/90 font-bold uppercase tracking-[0.2em]">{dayName} {dayNum} {monthName}</span>
         </div>
         
-        <div className="text-8xl font-black text-white tracking-tighter mb-4 drop-shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
+        <div className="text-6xl font-black text-white tracking-tighter mb-4 drop-shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
           {timeString}
         </div>
         
         {nextPrayer && (
-          <div className="mt-4 flex flex-col items-center gap-2">
-            <div className="bg-primary/20 text-primary px-6 py-2 rounded-full border border-primary/30 backdrop-blur-md">
-              <span className="text-xs font-black uppercase tracking-widest">الصلاة القادمة: {nextPrayer.name}</span>
+          <div className="mt-2 flex flex-col items-center gap-2">
+            <div className="bg-primary/20 text-primary px-4 py-1 rounded-full border border-primary/30 backdrop-blur-md">
+              <span className="text-[10px] font-black uppercase tracking-widest">الصلاة القادمة: {nextPrayer.name}</span>
             </div>
-            <span className="text-5xl font-black text-accent drop-shadow-2xl mt-2">
+            <span className="text-4xl font-black text-accent drop-shadow-2xl mt-1">
               {convertTo12Hour(nextPrayer.time)}
             </span>
-            <div className="text-xs font-bold text-white/40 uppercase mt-1 tracking-[0.3em] flex items-center gap-2">
-              <Timer className="w-4 h-4" /> متبقي {nextPrayer.countdown}
+            <div className="text-[9px] font-bold text-white/40 uppercase mt-1 tracking-[0.3em] flex items-center gap-2">
+              <Timer className="w-3.5 h-3.5" /> متبقي {nextPrayer.countdown}
             </div>
           </div>
         )}
