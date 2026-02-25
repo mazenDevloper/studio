@@ -15,37 +15,56 @@ export function LiveMatchIsland() {
 
   const fetchStatus = useCallback(async () => {
     try {
-      const todayMatches = await fetchFootballData('today');
+      const now = new Date();
+      const currentHour = now.getHours();
       
-      if (!todayMatches || todayMatches.length === 0) {
+      // منطق اليوم الرياضي: قبل 6 صباحاً نعتبرنا في سهرة الأمس
+      let matches: Match[] = [];
+      if (currentHour < 6) {
+        const [yesterday, today] = await Promise.all([
+          fetchFootballData('yesterday'),
+          fetchFootballData('today')
+        ]);
+        matches = [...yesterday, ...today];
+      } else {
+        matches = await fetchFootballData('today');
+      }
+      
+      if (!matches || matches.length === 0) {
         setDisplayMatch(null);
         return;
       }
 
-      // شرط المفضلة كشرط أساسي (Favorite as a condition)
+      // شرط المفضلة الصارم: الجزيرة لا تظهر إلا للمفضل
       const isFavoriteMatch = (m: Match) => 
         (m.homeTeamId && favoriteTeamIds.includes(m.homeTeamId)) || 
         (m.awayTeamId && favoriteTeamIds.includes(m.awayTeamId)) ||
         (m.leagueId && favoriteLeagueIds.includes(m.leagueId));
 
-      const favoriteMatches = todayMatches.filter(isFavoriteMatch);
+      const favoriteMatches = matches.filter(isFavoriteMatch);
 
       if (favoriteMatches.length === 0) {
         setDisplayMatch(null);
         return;
       }
 
+      // فصل المباشر عن القادم للمفضلة فقط
       const liveMatches = favoriteMatches.filter(m => m.status === 'live');
       const upcomingMatches = favoriteMatches.filter(m => m.status === 'upcoming');
 
       let priorityMatch: Match | null = null;
 
       if (liveMatches.length > 0) {
-        // الأولوية للمباشر الأقرب للنهاية
+        // ترتيب المباشر: الأقرب للنهاية أولاً (الأعلى في الدقائق)
         priorityMatch = [...liveMatches].sort((a, b) => (b.minute || 0) - (a.minute || 0))[0];
       } else if (upcomingMatches.length > 0) {
-        // إذا لم يوجد مباشر، الأقرب للبدء
-        priorityMatch = [...upcomingMatches].sort((a, b) => a.startTime.localeCompare(b.startTime))[0];
+        // ترتيب القادم: الأقرب زمنياً للبدء
+        // نستخدم التاريخ الكامل للمقارنة الصحيحة عبر منتصف الليل
+        priorityMatch = [...upcomingMatches].sort((a, b) => {
+          const dateA = new Date(a.date || "").getTime();
+          const dateB = new Date(b.date || "").getTime();
+          return dateA - dateB;
+        })[0];
       }
 
       setDisplayMatch(priorityMatch);

@@ -5,10 +5,21 @@ import { FOOTBALL_API_KEY, FOOTBALL_API_BASE_URL } from "./constants";
 import { Match } from "./football-data";
 
 /**
- * محرك جلب البيانات الرياضية الموحد باستخدام الترويسات التي تعمل بنجاح.
+ * محرك جلب البيانات الرياضية الموحد. يدعم الآن 'yesterday' للتعامل مع مباريات منتصف الليل.
  */
-export async function fetchFootballData(type: 'today' | 'live'): Promise<Match[]> {
-  const date = new Date().toISOString().split('T')[0];
+export async function fetchFootballData(type: 'today' | 'live' | 'yesterday' | 'tomorrow'): Promise<Match[]> {
+  const now = new Date();
+  let date = now.toISOString().split('T')[0];
+  
+  if (type === 'yesterday') {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    date = d.toISOString().split('T')[0];
+  } else if (type === 'tomorrow') {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    date = d.toISOString().split('T')[0];
+  }
   
   const headers = {
     'x-apisports-key': FOOTBALL_API_KEY || '2f79edc60ed7f63aa4af1feea0f1ff2c',
@@ -68,7 +79,8 @@ export async function fetchFootballData(type: 'today' | 'live'): Promise<Match[]
         leagueLogo: item.league.logo,
         channel: "SSC / beIN",
         commentator: "يحدد لاحقاً",
-        broadcasts: []
+        broadcasts: [],
+        date: item.fixture.date // الاحتفاظ بالتاريخ الأصلي للمقارنة الدقيقة
       } as Match;
     });
   } catch (error) {
