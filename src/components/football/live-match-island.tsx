@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Match } from "@/lib/football-data";
 import { fetchFootballData } from "@/lib/football-api";
 import { useMediaStore } from "@/lib/store";
@@ -15,7 +15,6 @@ export function LiveMatchIsland() {
 
   const fetchStatus = useCallback(async () => {
     try {
-      // جلب كافة مباريات اليوم لضمان الحصول على المباشر والقادم
       const todayMatches = await fetchFootballData('today');
       
       if (!todayMatches || todayMatches.length === 0) {
@@ -28,22 +27,19 @@ export function LiveMatchIsland() {
 
       let priorityMatch: Match | null = null;
 
-      if (liveMatches.length > 0) {
-        // 1. ابحث عن مباراة مباشرة لفريق مفضل
-        const favLive = liveMatches.find(m => 
-          (m.homeTeamId && favoriteTeamIds.includes(m.homeTeamId)) || 
-          (m.awayTeamId && favoriteTeamIds.includes(m.awayTeamId))
-        );
+      // 1. الأولوية: مباراة مباشرة لفريق مفضل
+      const favLive = liveMatches.find(m => 
+        (m.homeTeamId && favoriteTeamIds.includes(m.homeTeamId)) || 
+        (m.awayTeamId && favoriteTeamIds.includes(m.awayTeamId))
+      );
 
-        if (favLive) {
-          priorityMatch = favLive;
-        } else {
-          // 2. إذا لم يوجد مفضل مباشر، اختر المباراة الأقرب للانتهاء (أعلى الدقائق)
-          priorityMatch = [...liveMatches].sort((a, b) => (b.minute || 0) - (a.minute || 0))[0];
-        }
+      if (favLive) {
+        priorityMatch = favLive;
+      } else if (liveMatches.length > 0) {
+        // 2. إذا لم يوجد مفضل مباشر، اختر أول مباراة مباشرة متاحة (الأقرب للصافرة)
+        priorityMatch = [...liveMatches].sort((a, b) => (b.minute || 0) - (a.minute || 0))[0];
       } else if (upcomingMatches.length > 0) {
-        // 3. إذا لم يوجد أي مباراة مباشرة، اختر أقرب مباراة ستبدأ
-        // الترتيب حسب وقت البدء
+        // 3. إذا لم يوجد أي مباراة مباشرة، اختر أقرب مباراة ستبدأ اليوم
         priorityMatch = [...upcomingMatches].sort((a, b) => a.startTime.localeCompare(b.startTime))[0];
       }
 
@@ -55,7 +51,6 @@ export function LiveMatchIsland() {
 
   useEffect(() => {
     fetchStatus();
-    // تحديث كل 30 ثانية لمتابعة التغيرات اللحظية
     const interval = setInterval(fetchStatus, 30000);
     return () => clearInterval(interval);
   }, [fetchStatus]);
@@ -63,7 +58,6 @@ export function LiveMatchIsland() {
   if (!displayMatch) return null;
 
   const isLive = displayMatch.status === 'live';
-  const isUpcoming = displayMatch.status === 'upcoming';
 
   return (
     <div 
@@ -147,7 +141,7 @@ export function LiveMatchIsland() {
                     </>
                   ) : (
                     <div className="flex flex-col items-center">
-                      <span className="text-6xl font-black text-white drop-shadow-[0_0_40px_rgba(255,255,255,0.2)] tabular-nums tracking-tighter">
+                      <span className="text-7xl font-black text-white drop-shadow-[0_0_40px_rgba(255,255,255,0.2)] tabular-nums tracking-tighter">
                         {displayMatch.startTime}
                       </span>
                     </div>

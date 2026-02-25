@@ -68,6 +68,9 @@ export function GlobalVideoPlayer() {
   const isSaved = savedVideos.some(v => v.id === activeVideo.id);
   const startSeconds = videoProgress[activeVideo.id] || 0;
 
+  // Added &vq=large to set default quality to 480p for better performance on car displays
+  const youtubeUrl = `https://www.youtube.com/embed/${activeVideo.id}?autoplay=1&controls=1&modestbranding=1&rel=0&start=${startSeconds}&enablejsapi=1&vq=large`;
+
   return (
     <div 
       className={cn(
@@ -91,7 +94,7 @@ export function GlobalVideoPlayer() {
             ref={iframeRef}
             key={activeVideo.id} 
             className="w-full h-full" 
-            src={`https://www.youtube.com/embed/${activeVideo.id}?autoplay=1&controls=1&modestbranding=1&rel=0&start=${startSeconds}&enablejsapi=1`} 
+            src={youtubeUrl} 
             frameBorder="0" 
             allow="autoplay; encrypted-media" 
             allowFullScreen
