@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
@@ -50,7 +51,6 @@ export function FootballView() {
   const isFavTeam = (id: number) => favoriteTeamIds.includes(id);
   const isFavLeague = (id: number) => favoriteLeagueIds.includes(id);
 
-  // دالة لتحديد القناة والمعلق التقريبي بناءً على الدوري (للوطن العربي)
   const getBroadcastInfo = (leagueName: string) => {
     const name = leagueName.toLowerCase();
     if (name.includes("premier league") || name.includes("la liga") || name.includes("bundesliga") || name.includes("serie a") || name.includes("ligue 1") || name.includes("champions league")) {
@@ -275,15 +275,18 @@ export function FootballView() {
                 </span>
               </div>
 
-              <div className="flex flex-col items-center justify-center min-w-[80px] gap-1">
+              {/* النتيجة ووقت المباراة بالحجم الكبير */}
+              <div className="flex flex-col items-center justify-center min-w-[120px] gap-1">
                 {match.status === "NS" ? (
-                  <div className="text-[10px] font-black text-muted-foreground tracking-widest bg-white/5 px-3 py-1.5 rounded-xl border border-white/5 uppercase">VS</div>
+                  <div className="text-4xl font-black text-white tabular-nums tracking-tighter drop-shadow-lg">
+                    {match.time}
+                  </div>
                 ) : (
                   <div className={cn(
-                    "text-3xl font-black tabular-nums tracking-tighter",
+                    "text-5xl font-black tabular-nums tracking-tighter drop-shadow-xl",
                     statusInfo.isLive ? "text-white" : "text-white/60"
                   )}>
-                    {match.score.home ?? 0} - {match.score.away ?? 0}
+                    {match.score.home ?? 0}-{match.score.away ?? 0}
                   </div>
                 )}
               </div>
