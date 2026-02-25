@@ -5,6 +5,8 @@ export interface Broadcast {
 
 export interface Match {
   id: string;
+  homeTeamId?: number;
+  awayTeamId?: number;
   homeTeam: string;
   awayTeam: string;
   homeLogo: string;

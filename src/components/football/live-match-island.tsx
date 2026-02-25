@@ -1,13 +1,13 @@
-
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
 import { Match } from "@/lib/football-data";
 import { fetchFootballData } from "@/lib/football-api";
+import { useMediaStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { Timer, Trophy, Activity, Loader2, Sparkles } from "lucide-react";
 
-// مباراة افتراضية للتجربة في حال عدم وجود بث مباشر حقيقي
+// مباراة افتراضية للتجربة في حال عدم وجود بث مباشر حقيقي أو فشل الـ API
 const MOCK_LIVE_MATCH: Match = {
   id: "mock-1",
   homeTeam: "الهلال",
@@ -25,7 +25,8 @@ const MOCK_LIVE_MATCH: Match = {
 };
 
 export function LiveMatchIsland() {
-  const [liveMatch, setLiveMatch] = useState<Match | null>(MOCK_LIVE_MATCH); // نبدأ بالمباراة التجريبية لضمان الظهور
+  const { favoriteTeamIds, favoriteTeams } = useMediaStore();
+  const [liveMatch, setLiveMatch] = useState<Match | null>(MOCK_LIVE_MATCH);
   const [isExpanded, setIsExpanded] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -33,23 +34,38 @@ export function LiveMatchIsland() {
     try {
       setLoading(true);
       const currentMatches = await fetchFootballData('live');
+      
       if (currentMatches && currentMatches.length > 0) {
-        // نأخذ أول مباراة مباشرة حقيقية
-        setLiveMatch(currentMatches[0]);
+        // الخطوة 1: البحث عن مباراة لفريق مفضل أولاً (حسب المعرف أو الاسم)
+        const favMatch = currentMatches.find(m => 
+          (m.homeTeamId && favoriteTeamIds.includes(m.homeTeamId)) ||
+          (m.awayTeamId && favoriteTeamIds.includes(m.awayTeamId)) ||
+          favoriteTeams.includes(m.homeTeam) ||
+          favoriteTeams.includes(m.awayTeam)
+        );
+
+        if (favMatch) {
+          setLiveMatch(favMatch);
+        } else {
+          // الخطوة 2: إذا لم يوجد فريق مفضل، خذ أول مباراة مباشرة متاحة في القائمة
+          setLiveMatch(currentMatches[0]);
+        }
       } else {
-        // إذا لم توجد مباريات حقيقية، نبقي على المباراة التجريبية للتأكد من عمل الواجهة
+        // إذا لم توجد أي مباريات مباشرة حالياً، نبقي على المباراة التجريبية لضمان عمل الواجهة
         setLiveMatch(MOCK_LIVE_MATCH);
       }
     } catch (error) {
       console.error("Island Sync Error:", error);
+      // في حالة حدوث خطأ في الشبكة، نعرض المباراة التجريبية كخيار أمان
       setLiveMatch(MOCK_LIVE_MATCH);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [favoriteTeams, favoriteTeamIds]);
 
   useEffect(() => {
     fetchLiveStatus();
+    // تحديث البيانات كل 60 ثانية
     const interval = setInterval(fetchLiveStatus, 60000);
     return () => clearInterval(interval);
   }, [fetchLiveStatus]);
@@ -118,12 +134,12 @@ export function LiveMatchIsland() {
                 </div>
                 
                 <div className="flex flex-col items-center gap-1">
-                   <div className="text-[9px] font-bold text-white/40 uppercase tracking-[0.4em] flex items-center gap-2">
+                   <div className="text-[9px] font-bold text-white/40 uppercase tracking-[0.4em] flex items-center gap-2 text-center">
                     <Trophy className="w-4 h-4 text-accent" />
-                    {liveMatch.league}
+                    <span className="truncate max-w-[200px]">{liveMatch.league}</span>
                   </div>
                   {liveMatch.id === "mock-1" && (
-                    <span className="text-[8px] text-primary/60 font-black uppercase tracking-widest">عرض تجريبي للنظام</span>
+                    <span className="text-[8px] text-primary/60 font-black uppercase tracking-widest animate-pulse">محاكاة النظام التجريبية</span>
                   )}
                 </div>
               </div>
