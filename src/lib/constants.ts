@@ -12,6 +12,12 @@ export const YT_KEYS_POOL = [
     "AIzaSyBYThRM6tVnzgFgdHOUAN6DN8jQd54OKeg"
 ];
 
+// JSONBin.io Configuration
+export const JSONBIN_MASTER_KEY = '$2a$10$SYrYv.ct8hiMU9YeUxEQ.ecRkOrTqs.TDchJRV3wW.aKJnDXy2oVy';
+export const JSONBIN_CHANNELS_BIN_ID = '68ef1b3dd0ea881f40a38bd1';
+export const JSONBIN_CLUBS_BIN_ID = '699d8c2aae596e708f452936';
+export const JSONBIN_ACCESS_KEY_CHANNELS = '$2a$10$J8o3WrPtnqmKAd///uDw6.BOWnGIBekHFOImbeEZZwsJ/h/XPbVUy';
+
 export const prayerTimesData = [
     {"date":"2026-02-01","day":"الأحد","fajr":"05:41","sunrise":"06:55","dhuhr":"12:42","asr":"15:59","maghrib":"18:24","isha":"19:34"},
     {"date":"2026-02-02","day":"الاثنين","fajr":"05:41","sunrise":"06:55","dhuhr":"12:42","asr":"15:59","maghrib":"18:25","isha":"19:34"},

@@ -130,7 +130,7 @@ export function MediaView() {
           </div>
           <div className="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-full border border-white/10 mb-2">
             <Cloud className="w-4 h-4 text-accent animate-pulse" />
-            <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">Real-time Cloud Sync</span>
+            <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">JSONBin Real-time Sync</span>
           </div>
         </div>
 
@@ -407,7 +407,10 @@ export function MediaView() {
                   >
                     <Trash2 className="w-5 h-5" />
                   </button>
-                  <span className="font-black text-sm text-center text-white/70 group-hover:text-white truncate w-full px-4 uppercase tracking-tighter">{channel.title}</span>
+                  <div className="flex flex-col items-center">
+                    <span className="font-black text-sm text-center text-white/70 group-hover:text-white truncate w-full px-4 uppercase tracking-tighter">{channel.title}</span>
+                    <span className="text-[10px] text-accent/60 font-bold uppercase tracking-widest mt-0.5">{channel.clickschannel || 0} نقرة</span>
+                  </div>
                 </div>
               );
             })}

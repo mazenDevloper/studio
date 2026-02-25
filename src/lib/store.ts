@@ -4,9 +4,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { YouTubeChannel, YouTubeVideo } from "./youtube";
-import { doc, setDoc, onSnapshot } from "firebase/firestore";
-import { initializeFirebase } from "@/firebase";
-import { onAuthStateChanged } from "firebase/auth";
+import { JSONBIN_MASTER_KEY, JSONBIN_CHANNELS_BIN_ID, JSONBIN_CLUBS_BIN_ID, JSONBIN_ACCESS_KEY_CHANNELS } from "./constants";
 
 export interface Reminder {
   id: string;
@@ -50,6 +48,7 @@ interface MediaState {
   // Actions
   addChannel: (channel: YouTubeChannel) => void;
   removeChannel: (id: string) => void;
+  incrementChannelClick: (id: string) => void;
   toggleSaveVideo: (video: YouTubeVideo) => void;
   removeVideo: (id: string) => void;
   toggleStarChannel: (id: string) => void;
@@ -68,18 +67,22 @@ interface MediaState {
   setIsFullScreen: (fullScreen: boolean) => void;
 }
 
-const { db, auth } = initializeFirebase();
-
 /**
- * Syncs a specific JSON slice to Firestore acting as an "Atomic Bin".
+ * Atomic Sync with JSONBin.io
  */
-const syncSlice = async (slice: 'youtube' | 'football' | 'settings', data: any) => {
-  const user = auth.currentUser;
-  if (!user) return;
-  
-  const docRef = doc(db, "users", user.uid, "data", slice);
-  // Using setDoc without merge to ensure the bin is fully updated as a clean JSON record
-  setDoc(docRef, data).catch(e => console.error(`Atomic Sync Error [${slice}]:`, e));
+const updateBin = async (binId: string, data: any) => {
+  try {
+    await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Master-Key': JSONBIN_MASTER_KEY
+      },
+      body: JSON.stringify(data)
+    });
+  } catch (e) {
+    console.error(`JSONBin Sync Error [${binId}]:`, e);
+  }
 };
 
 export const useMediaStore = create<MediaState>()(
@@ -102,8 +105,9 @@ export const useMediaStore = create<MediaState>()(
 
       addChannel: (channel) => {
         set((state) => {
-          const newList = [...state.favoriteChannels.filter(c => c.id !== channel.id), channel];
-          syncSlice('youtube', { ...get(), favoriteChannels: newList });
+          const newChannel = { ...channel, clickschannel: 0 };
+          const newList = [...state.favoriteChannels.filter(c => c.id !== channel.id), newChannel];
+          updateBin(JSONBIN_CHANNELS_BIN_ID, newList);
           return { favoriteChannels: newList };
         });
       },
@@ -111,7 +115,17 @@ export const useMediaStore = create<MediaState>()(
       removeChannel: (id) => {
         set((state) => {
           const newList = state.favoriteChannels.filter(c => c.id !== id);
-          syncSlice('youtube', { ...get(), favoriteChannels: newList });
+          updateBin(JSONBIN_CHANNELS_BIN_ID, newList);
+          return { favoriteChannels: newList };
+        });
+      },
+
+      incrementChannelClick: (id) => {
+        set((state) => {
+          const newList = state.favoriteChannels.map(c => 
+            c.id === id ? { ...c, clickschannel: (c.clickschannel || 0) + 1 } : c
+          );
+          updateBin(JSONBIN_CHANNELS_BIN_ID, newList);
           return { favoriteChannels: newList };
         });
       },
@@ -120,24 +134,18 @@ export const useMediaStore = create<MediaState>()(
         set((state) => {
           const exists = state.savedVideos.some(v => v.id === video.id);
           const newList = exists ? state.savedVideos.filter(v => v.id !== video.id) : [video, ...state.savedVideos];
-          syncSlice('youtube', { ...get(), savedVideos: newList });
           return { savedVideos: newList };
         });
       },
 
       removeVideo: (id) => {
-        set((state) => {
-          const newList = state.savedVideos.filter(v => v.id !== id);
-          syncSlice('youtube', { ...get(), savedVideos: newList });
-          return { savedVideos: newList };
-        });
+        set((state) => ({ savedVideos: state.savedVideos.filter(v => v.id !== id) }));
       },
 
       toggleStarChannel: (id) => {
         set((state) => {
           const exists = state.starredChannelIds.includes(id);
           const newList = exists ? state.starredChannelIds.filter(i => i !== id) : [...state.starredChannelIds, id];
-          syncSlice('youtube', { ...get(), starredChannelIds: newList });
           return { starredChannelIds: newList };
         });
       },
@@ -147,7 +155,7 @@ export const useMediaStore = create<MediaState>()(
           const newList = state.favoriteTeamIds.includes(teamId) 
             ? state.favoriteTeamIds.filter(id => id !== teamId) 
             : [...state.favoriteTeamIds, teamId];
-          syncSlice('football', { ...get(), favoriteTeamIds: newList });
+          updateBin(JSONBIN_CLUBS_BIN_ID, newList);
           return { favoriteTeamIds: newList };
         });
       },
@@ -157,55 +165,47 @@ export const useMediaStore = create<MediaState>()(
           const newList = state.favoriteLeagueIds.includes(leagueId) 
             ? state.favoriteLeagueIds.filter(id => id !== leagueId) 
             : [...state.favoriteLeagueIds, leagueId];
-          syncSlice('football', { ...get(), favoriteLeagueIds: newList });
           return { favoriteLeagueIds: newList };
         });
       },
 
       updateMapSettings: (settings) => {
-        set((state) => {
-          const newSettings = { ...state.mapSettings, ...settings };
-          syncSlice('settings', { ...get(), mapSettings: newSettings });
-          return { mapSettings: newSettings };
-        });
+        set((state) => ({ mapSettings: { ...state.mapSettings, ...settings } }));
       },
 
       addReminder: (reminder) => {
-        set((state) => {
-          const newList = [...state.reminders, reminder];
-          syncSlice('settings', { ...get(), reminders: newList });
-          return { reminders: newList };
-        });
+        set((state) => ({ reminders: [...state.reminders, reminder] }));
       },
 
       removeReminder: (id) => {
-        set((state) => {
-          const newList = state.reminders.filter(r => r.id !== id);
-          syncSlice('settings', { ...get(), reminders: newList });
-          return { reminders: newList };
-        });
+        set((state) => ({ reminders: state.reminders.filter(r => r.id !== id) }));
       },
 
       toggleReminder: (id) => {
-        set((state) => {
-          const newList = state.reminders.map(r => r.id === id ? { ...r, completed: !r.completed } : r);
-          syncSlice('settings', { ...get(), reminders: newList });
-          return { reminders: newList };
-        });
+        set((state) => ({
+          reminders: state.reminders.map(r => r.id === id ? { ...r, completed: !r.completed } : r)
+        }));
       },
 
-      setAiSuggestions: (suggestions) => {
-        set({ aiSuggestions: suggestions });
-        syncSlice('settings', { ...get(), aiSuggestions: suggestions });
-      },
+      setAiSuggestions: (suggestions) => set({ aiSuggestions: suggestions }),
 
-      setActiveVideo: (video) => set({ activeVideo: video, isPlaying: !!video, isMinimized: false, isFullScreen: false }),
+      setActiveVideo: (video) => {
+        if (video) {
+          // Increment channel clicks if the video belongs to a favorite channel
+          const currentChannels = get().favoriteChannels;
+          const channel = currentChannels.find(c => c.title === video.channelTitle);
+          if (channel) {
+            get().incrementChannelClick(channel.id);
+          }
+        }
+        set({ activeVideo: video, isPlaying: !!video, isMinimized: false, isFullScreen: false });
+      },
       setIsPlaying: (playing) => set({ isPlaying: playing }),
       setIsMinimized: (minimized) => set({ isMinimized: minimized, isFullScreen: false }),
       setIsFullScreen: (fullScreen) => set({ isFullScreen: fullScreen, isMinimized: false }),
     }),
     {
-      name: "drivecast-atomic-v2",
+      name: "drivecast-atomic-jsonbin",
       partialize: (state) => ({ 
         favoriteChannels: state.favoriteChannels,
         savedVideos: state.savedVideos,
@@ -219,17 +219,35 @@ export const useMediaStore = create<MediaState>()(
   )
 );
 
-// Real-time Cloud Synchronization
+// Initialization & Sync
 if (typeof window !== "undefined") {
-  onAuthStateChanged(auth, (user) => {
-    if (user) {
-      ['youtube', 'football', 'settings'].forEach(slice => {
-        onSnapshot(doc(db, "users", user.uid, "data", slice), (snap) => {
-          if (snap.exists()) {
-            useMediaStore.setState((state) => ({ ...state, ...snap.data() }));
-          }
-        });
+  const syncWithBins = async () => {
+    try {
+      // Channels Bin
+      const chRes = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_CHANNELS_BIN_ID}/latest`, {
+        headers: { 'X-Access-Key': JSONBIN_ACCESS_KEY_CHANNELS }
       });
+      if (chRes.ok) {
+        const data = await chRes.json();
+        if (Array.isArray(data.record)) {
+          useMediaStore.setState({ favoriteChannels: data.record });
+        }
+      }
+
+      // Clubs Bin
+      const clRes = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_CLUBS_BIN_ID}/latest`, {
+        headers: { 'X-Master-Key': JSONBIN_MASTER_KEY }
+      });
+      if (clRes.ok) {
+        const data = await clRes.json();
+        if (Array.isArray(data.record)) {
+          useMediaStore.setState({ favoriteTeamIds: data.record });
+        }
+      }
+    } catch (e) {
+      console.error("Initial Bin Sync Error:", e);
     }
-  });
+  };
+
+  syncWithBins();
 }
