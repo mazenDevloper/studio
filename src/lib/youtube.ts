@@ -3,10 +3,11 @@
 import { YT_KEYS_POOL } from "./constants";
 
 export interface YouTubeChannel {
-  id: string;
-  title: string;
-  description: string;
-  thumbnail: string;
+  channelid: string;
+  name: string;
+  image: string;
+  channeltitle: string;
+  clickschannel: number;
   subscriberCount?: string;
 }
 
@@ -68,7 +69,6 @@ async function fetchWithRotation(endpoint: string, params: Record<string, string
 export async function searchYouTubeChannels(query: string): Promise<YouTubeChannel[]> {
   if (!query) return [];
   
-  // الخطوة 1: البحث عن القنوات
   const searchData = await fetchWithRotation('search', {
     part: 'snippet',
     type: 'channel',
@@ -78,7 +78,6 @@ export async function searchYouTubeChannels(query: string): Promise<YouTubeChann
   
   if (!searchData || !searchData.items) return [];
 
-  // الخطوة 2: جلب إحصائيات القنوات (عدد المشتركين)
   const channelIds = searchData.items.map((item: any) => item.snippet.channelId).join(',');
   const statsData = await fetchWithRotation('channels', {
     part: 'statistics',
@@ -93,10 +92,11 @@ export async function searchYouTubeChannels(query: string): Promise<YouTubeChann
   }
 
   return searchData.items.map((item: any) => ({
-    id: item.snippet.channelId,
-    title: item.snippet.title,
-    description: item.snippet.description,
-    thumbnail: item.snippet.thumbnails.high?.url || item.snippet.thumbnails.default?.url,
+    channelid: item.snippet.channelId,
+    name: item.snippet.title,
+    channeltitle: item.snippet.title,
+    image: item.snippet.thumbnails.high?.url || item.snippet.thumbnails.default?.url,
+    clickschannel: 0,
     subscriberCount: statsMap[item.snippet.channelId] || "---"
   }));
 }

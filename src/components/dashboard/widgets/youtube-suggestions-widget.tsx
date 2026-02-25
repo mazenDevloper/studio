@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -19,7 +18,7 @@ export function YouTubeSuggestionsWidget() {
     setLoading(true);
     try {
       const result = await suggestPersonalizedYouTubeContent({
-        favoriteChannels: favoriteChannels.map(c => c.title)
+        favoriteChannels: favoriteChannels.map(c => c.name)
       });
       if (result.suggestions) {
         setAiSuggestions(result.suggestions);
@@ -48,15 +47,7 @@ export function YouTubeSuggestionsWidget() {
           </div>
           AI Recommended Channels
         </CardTitle>
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          onClick={getAISuggestions} 
-          disabled={loading}
-          className="rounded-full hover:bg-white/10 w-12 h-12 focusable"
-          data-nav-id="refresh-suggestions-btn"
-          tabIndex={0}
-        >
+        <Button variant="ghost" size="icon" onClick={getAISuggestions} disabled={loading} className="rounded-full hover:bg-white/10 w-12 h-12 focusable">
           <RefreshCw className={cn("h-6 w-6 text-white/60", loading && "animate-spin")} />
         </Button>
       </CardHeader>
@@ -68,10 +59,7 @@ export function YouTubeSuggestionsWidget() {
                 <div key={i} className="w-[300px] h-[100px] rounded-[1.5rem] bg-white/5 animate-pulse" />
               ))
             ) : aiSuggestions.map((item, idx) => (
-              <div 
-                key={idx}
-                className="w-[320px] p-5 rounded-[1.5rem] bg-white/5 border border-white/5 hover:bg-white/10 transition-all flex items-center gap-4 group cursor-default"
-              >
+              <div key={idx} className="w-[320px] p-5 rounded-[1.5rem] bg-white/5 border border-white/5 hover:bg-white/10 transition-all flex items-center gap-4 group cursor-default">
                 <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 border border-primary/10">
                   <Youtube className="w-7 h-7 text-primary" />
                 </div>

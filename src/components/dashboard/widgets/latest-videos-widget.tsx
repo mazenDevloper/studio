@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
@@ -27,7 +26,7 @@ export function LatestVideosWidget({ channels }: Props) {
     }
     setLoading(true);
     try {
-      const videoPromises = channels.map(c => fetchChannelVideos(c.id));
+      const videoPromises = channels.map(c => fetchChannelVideos(c.channelid));
       const results = await Promise.all(videoPromises);
       const allVideos = results.flatMap(channelVideos => channelVideos.slice(0, 2));
       const sorted = allVideos.sort((a, b) => 
@@ -43,7 +42,6 @@ export function LatestVideosWidget({ channels }: Props) {
 
   useEffect(() => {
     fetchLatest();
-    // التحديث التلقائي كل 6 ساعات فقط لتقليل استهلاك الكوتا
     const SIX_HOURS = 6 * 60 * 60 * 1000;
     const interval = setInterval(fetchLatest, SIX_HOURS);
     return () => clearInterval(interval);
@@ -59,15 +57,7 @@ export function LatestVideosWidget({ channels }: Props) {
           Starred Transmissions
           <span className="text-xs text-muted-foreground uppercase tracking-widest ml-2 font-bold opacity-50">Latest Updates</span>
         </CardTitle>
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          onClick={fetchLatest} 
-          disabled={loading || channels.length === 0} 
-          className="rounded-full hover:bg-white/10 w-12 h-12 focusable"
-          data-nav-id="refresh-starred-btn"
-          tabIndex={0}
-        >
+        <Button variant="ghost" size="icon" onClick={fetchLatest} disabled={loading || channels.length === 0} className="rounded-full hover:bg-white/10 w-12 h-12 focusable">
           <RefreshCw className={`h-6 w-6 ${loading ? "animate-spin" : ""}`} />
         </Button>
       </CardHeader>
@@ -88,18 +78,11 @@ export function LatestVideosWidget({ channels }: Props) {
                   key={video.id} 
                   className="w-80 group relative overflow-hidden bg-zinc-900/80 border-none rounded-[2rem] transition-all hover:scale-[1.02] cursor-pointer shadow-xl focusable"
                   onClick={() => setActiveVideo(video)}
-                  data-nav-id={`starred-video-${idx}`}
                   tabIndex={0}
                 >
                   <div className="aspect-video relative overflow-hidden">
-                    <Image
-                      src={video.thumbnail}
-                      alt={video.title}
-                      fill
-                      className="object-cover opacity-80 group-hover:opacity-100 transition-opacity"
-                    />
+                    <Image src={video.thumbnail} alt={video.title} fill className="object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-                    
                     <div className="absolute inset-0 flex items-center justify-center">
                       <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-3xl flex items-center justify-center border border-white/20 opacity-0 group-hover:opacity-100 transition-all scale-75 group-hover:scale-100 shadow-2xl">
                         <Play className="w-8 h-8 text-white fill-white ml-1" />

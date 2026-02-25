@@ -1,4 +1,3 @@
-
 "use client";
 
 import { create } from "zustand";
@@ -24,31 +23,22 @@ export interface MapSettings {
 }
 
 interface MediaState {
-  // YouTube Slice
   favoriteChannels: YouTubeChannel[];
   savedVideos: YouTubeVideo[];
   starredChannelIds: string[];
   videoProgress: Record<string, number>;
-  
-  // Football Slice
   favoriteTeamIds: number[];
   favoriteLeagueIds: number[];
-  
-  // Settings Slice
   reminders: Reminder[];
   mapSettings: MapSettings;
   aiSuggestions: any[];
-  
-  // UI States (Non-persistent)
   activeVideo: YouTubeVideo | null;
   isPlaying: boolean;
   isMinimized: boolean;
   isFullScreen: boolean;
-  
-  // Actions
   addChannel: (channel: YouTubeChannel) => void;
-  removeChannel: (id: string) => void;
-  incrementChannelClick: (id: string) => void;
+  removeChannel: (channelid: string) => void;
+  incrementChannelClick: (channelid: string) => void;
   toggleSaveVideo: (video: YouTubeVideo) => void;
   removeVideo: (id: string) => void;
   toggleStarChannel: (id: string) => void;
@@ -59,17 +49,12 @@ interface MediaState {
   toggleFavoriteLeagueId: (leagueId: number) => void;
   updateMapSettings: (settings: Partial<MapSettings>) => void;
   setAiSuggestions: (suggestions: any[]) => void;
-  
-  // UI Actions
   setActiveVideo: (video: YouTubeVideo | null) => void;
   setIsPlaying: (playing: boolean) => void;
   setIsMinimized: (minimized: boolean) => void;
   setIsFullScreen: (fullScreen: boolean) => void;
 }
 
-/**
- * Atomic Sync with JSONBin.io
- */
 const updateBin = async (binId: string, data: any) => {
   try {
     await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
@@ -97,7 +82,6 @@ export const useMediaStore = create<MediaState>()(
       reminders: [],
       mapSettings: { zoom: 19.5, tilt: 65, carScale: 1.02, backgroundIndex: 0 },
       aiSuggestions: [],
-      
       activeVideo: null,
       isPlaying: false,
       isMinimized: false,
@@ -106,24 +90,24 @@ export const useMediaStore = create<MediaState>()(
       addChannel: (channel) => {
         set((state) => {
           const newChannel = { ...channel, clickschannel: 0 };
-          const newList = [...state.favoriteChannels.filter(c => c.id !== channel.id), newChannel];
+          const newList = [...state.favoriteChannels.filter(c => c.channelid !== channel.channelid), newChannel];
           updateBin(JSONBIN_CHANNELS_BIN_ID, newList);
           return { favoriteChannels: newList };
         });
       },
 
-      removeChannel: (id) => {
+      removeChannel: (channelid) => {
         set((state) => {
-          const newList = state.favoriteChannels.filter(c => c.id !== id);
+          const newList = state.favoriteChannels.filter(c => c.channelid !== channelid);
           updateBin(JSONBIN_CHANNELS_BIN_ID, newList);
           return { favoriteChannels: newList };
         });
       },
 
-      incrementChannelClick: (id) => {
+      incrementChannelClick: (channelid) => {
         set((state) => {
           const newList = state.favoriteChannels.map(c => 
-            c.id === id ? { ...c, clickschannel: (c.clickschannel || 0) + 1 } : c
+            c.channelid === channelid ? { ...c, clickschannel: (c.clickschannel || 0) + 1 } : c
           );
           updateBin(JSONBIN_CHANNELS_BIN_ID, newList);
           return { favoriteChannels: newList };
@@ -191,11 +175,10 @@ export const useMediaStore = create<MediaState>()(
 
       setActiveVideo: (video) => {
         if (video) {
-          // Increment channel clicks if the video belongs to a favorite channel
           const currentChannels = get().favoriteChannels;
-          const channel = currentChannels.find(c => c.title === video.channelTitle);
+          const channel = currentChannels.find(c => c.channeltitle === video.channelTitle);
           if (channel) {
-            get().incrementChannelClick(channel.id);
+            get().incrementChannelClick(channel.channelid);
           }
         }
         set({ activeVideo: video, isPlaying: !!video, isMinimized: false, isFullScreen: false });
@@ -219,11 +202,9 @@ export const useMediaStore = create<MediaState>()(
   )
 );
 
-// Initialization & Sync
 if (typeof window !== "undefined") {
   const syncWithBins = async () => {
     try {
-      // Channels Bin
       const chRes = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_CHANNELS_BIN_ID}/latest`, {
         headers: { 'X-Access-Key': JSONBIN_ACCESS_KEY_CHANNELS }
       });
@@ -234,7 +215,6 @@ if (typeof window !== "undefined") {
         }
       }
 
-      // Clubs Bin
       const clRes = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_CLUBS_BIN_ID}/latest`, {
         headers: { 'X-Master-Key': JSONBIN_MASTER_KEY }
       });
@@ -248,6 +228,5 @@ if (typeof window !== "undefined") {
       console.error("Initial Bin Sync Error:", e);
     }
   };
-
   syncWithBins();
 }
