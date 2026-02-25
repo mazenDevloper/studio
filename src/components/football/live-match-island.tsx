@@ -4,48 +4,35 @@
 import { useEffect, useState, useCallback } from "react";
 import { Match } from "@/lib/football-data";
 import { fetchFootballData } from "@/lib/football-api";
-import { useMediaStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { Timer, Trophy, Activity } from "lucide-react";
-import Image from "next/image";
+import { Timer, Trophy, Activity, Loader2 } from "lucide-react";
 
 export function LiveMatchIsland() {
-  const { favoriteTeamIds } = useMediaStore();
   const [liveMatch, setLiveMatch] = useState<Match | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const fetchLiveStatus = useCallback(async () => {
-    if (favoriteTeamIds.length === 0) {
-      setLiveMatch(null);
-      return;
-    }
-
     try {
-      // جلب كافة المباريات المباشرة الحقيقية
+      // جلب كافة المباريات المباشرة العالمية
       const currentMatches = await fetchFootballData('live');
 
-      // البحث عن أول مباراة مباشرة تخص أحد الفرق المفضلة (باستخدام معرف الفريق ID)
-      // ملاحظة: الـ API-Sports يعيد بيانات الفرق داخل المباراة، سنحتاج للتأكد من مطابقة الـ ID
-      // في النسخة المبسطة، API-Sports يعيد أسماء الفرق، ولكننا نعتمد على IDs في التخزين
-      // سنقوم هنا بمحاكاة المطابقة بالـ IDs أو الأسماء لضمان الدقة
-      const activeFavMatch = currentMatches.find(m => 
-        m.status === 'live' && 
-        (favoriteTeamIds.some(id => m.homeTeam.toLowerCase().includes(id.toString()) || m.awayTeam.toLowerCase().includes(id.toString())) ||
-         favoriteTeamIds.length > 0) // هنا نعتمد على منطق الفلترة الموحد
-      );
-
-      // في حال وجود مباريات مباشرة، نتحقق يدوياً من الهوية لضمان الدقة
-      setLiveMatch(activeFavMatch || null);
+      if (currentMatches && currentMatches.length > 0) {
+        // عرض أول مباراة مباشرة متاحة (لا يشترط المفضلة)
+        setLiveMatch(currentMatches[0]);
+      } else {
+        setLiveMatch(null);
+      }
     } catch (error) {
       console.error("Island Sync Error:", error);
+      setLiveMatch(null);
     }
-  }, [favoriteTeamIds]);
+  }, []);
 
   useEffect(() => {
     fetchLiveStatus();
-    // تحديث كل 30 ثانية لضمان الدقة وتوفير البيانات
-    const interval = setInterval(fetchLiveStatus, 30000);
+    // تحديث كل 60 ثانية لضمان الدقة وتوفير الكوتا
+    const interval = setInterval(fetchLiveStatus, 60000);
     return () => clearInterval(interval);
   }, [fetchLiveStatus]);
 
@@ -69,16 +56,16 @@ export function LiveMatchIsland() {
           {!isExpanded ? (
             <div className="flex items-center justify-between w-full animate-in fade-in slide-in-from-top-2 duration-500">
               <div className="flex items-center gap-3">
-                <div className="relative w-8 h-8">
-                  <img src={liveMatch.homeLogo} alt={liveMatch.homeTeam} className="w-full h-full object-contain" />
+                <div className="relative w-8 h-8 flex items-center justify-center">
+                  <img src={liveMatch.homeLogo} alt="" className="w-full h-full object-contain" />
                 </div>
                 <div className="bg-white/10 px-3 py-1 rounded-lg border border-white/5">
                   <span className="text-sm font-black text-primary tabular-nums tracking-tighter">
                     {liveMatch.score?.home} - {liveMatch.score?.away}
                   </span>
                 </div>
-                <div className="relative w-8 h-8">
-                  <img src={liveMatch.awayLogo} alt={liveMatch.awayTeam} className="w-full h-full object-contain" />
+                <div className="relative w-8 h-8 flex items-center justify-center">
+                  <img src={liveMatch.awayLogo} alt="" className="w-full h-full object-contain" />
                 </div>
               </div>
               
@@ -91,7 +78,7 @@ export function LiveMatchIsland() {
             <div className="flex items-center justify-between w-full animate-in fade-in zoom-in-95 duration-700">
               <div className="flex flex-col items-center gap-2 w-24 group">
                 <div className="relative w-16 h-16 transition-transform group-hover:scale-110 duration-500">
-                  <img src={liveMatch.homeLogo} alt={liveMatch.homeTeam} className="w-full h-full object-contain" />
+                  <img src={liveMatch.homeLogo} alt="" className="w-full h-full object-contain" />
                 </div>
                 <span className="text-[9px] font-black text-white/80 truncate w-full text-center uppercase tracking-tighter">{liveMatch.homeTeam}</span>
               </div>
@@ -99,7 +86,7 @@ export function LiveMatchIsland() {
               <div className="flex flex-col items-center gap-3">
                 <div className="flex items-center gap-2 bg-red-600/20 px-3 py-1 rounded-full border border-red-600/30">
                   <div className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse" />
-                  <span className="text-[8px] font-black text-red-500 uppercase tracking-widest">LIVE TRANSMISSION</span>
+                  <span className="text-[8px] font-black text-red-500 uppercase tracking-widest">LIVE SCOREBOARD</span>
                 </div>
                 
                 <div className="flex items-center gap-8">
@@ -119,7 +106,7 @@ export function LiveMatchIsland() {
 
               <div className="flex flex-col items-center gap-2 w-24 group">
                 <div className="relative w-16 h-16 transition-transform group-hover:scale-110 duration-500">
-                  <img src={liveMatch.awayLogo} alt={liveMatch.awayTeam} className="w-full h-full object-contain" />
+                  <img src={liveMatch.awayLogo} alt="" className="w-full h-full object-contain" />
                 </div>
                 <span className="text-[9px] font-black text-white/80 truncate w-full text-center uppercase tracking-tighter">{liveMatch.awayTeam}</span>
               </div>
