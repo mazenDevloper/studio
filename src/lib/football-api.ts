@@ -4,17 +4,21 @@
 import { FOOTBALL_API_KEY, FOOTBALL_API_BASE_URL } from "./constants";
 import { Match } from "./football-data";
 
+/**
+ * جلب بيانات مباريات كرة القدم باستخدام المفتاح المباشر.
+ */
 export async function fetchFootballData(type: 'today' | 'live'): Promise<Match[]> {
   const date = new Date().toISOString().split('T')[0];
+  // استخدام التوقيت المحلي لضمان دقة مواعيد المباريات
   const url = type === 'live' 
-    ? `${FOOTBALL_API_BASE_URL}/fixtures?live=all&timezone=Asia/Riyadh`
+    ? `${FOOTBALL_API_BASE_URL}/fixtures?live=all`
     : `${FOOTBALL_API_BASE_URL}/fixtures?date=${date}&timezone=Asia/Riyadh`;
 
   try {
     const response = await fetch(url, {
       method: 'GET',
       headers: {
-        'x-apisports-key': FOOTBALL_API_KEY || '',
+        'x-apisports-key': FOOTBALL_API_KEY,
         'x-apisports-host': 'v3.football.api-sports.io'
       },
       cache: 'no-store'
@@ -61,47 +65,11 @@ export async function fetchFootballData(type: 'today' | 'live'): Promise<Match[]
         leagueLogo: item.league.logo,
         channel: "SSC / beIN",
         commentator: "يحدد لاحقاً",
-        broadcasts: item.fixture.broadcasts || []
+        broadcasts: []
       } as Match;
     });
   } catch (error) {
     console.error("Fetch football data error:", error);
-    return [];
-  }
-}
-
-export async function fetchStandings(leagueId: number) {
-  try {
-    const response = await fetch(`${FOOTBALL_API_BASE_URL}/standings?league=${leagueId}&season=2024`, {
-      method: 'GET',
-      headers: { 
-        'x-apisports-key': FOOTBALL_API_KEY || '', 
-        'x-apisports-host': 'v3.football.api-sports.io' 
-      }
-    });
-    if (!response.ok) return [];
-    const data = await response.json();
-    return data.response?.[0]?.league?.standings?.[0] || [];
-  } catch (error) {
-    console.error("Fetch standings error:", error);
-    return [];
-  }
-}
-
-export async function fetchTopScorers(leagueId: number) {
-  try {
-    const response = await fetch(`${FOOTBALL_API_BASE_URL}/players/topscorers?league=${leagueId}&season=2024`, {
-      method: 'GET',
-      headers: { 
-        'x-apisports-key': FOOTBALL_API_KEY || '', 
-        'x-apisports-host': 'v3.football.api-sports.io' 
-      }
-    });
-    if (!response.ok) return [];
-    const data = await response.json();
-    return data.response || [];
-  } catch (error) {
-    console.error("Fetch top scorers error:", error);
     return [];
   }
 }
