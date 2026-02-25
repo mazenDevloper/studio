@@ -54,7 +54,6 @@ export function GlobalVideoPlayer() {
   const isSaved = savedVideos.some(v => v.id === activeVideo.id);
   const startSeconds = videoProgress[activeVideo.id] || 0;
 
-  // vq=large forces 480p quality for smoother playback on weak devices
   const youtubeUrl = `https://www.youtube.com/embed/${activeVideo.id}?autoplay=1&controls=1&modestbranding=1&rel=0&start=${startSeconds}&enablejsapi=1&vq=large`;
 
   return (

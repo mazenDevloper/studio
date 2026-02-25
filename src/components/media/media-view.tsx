@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Search, Plus, Play, Trash2, Youtube, Radio, Loader2, Check, ArrowLeft, Clock, Bookmark, X, Star, Mic, Users } from "lucide-react";
+import { Search, Plus, Play, Trash2, Youtube, Radio, Loader2, Check, ArrowLeft, Clock, Bookmark, X, Star, Mic, Users, Cloud } from "lucide-react";
 import { useMediaStore } from "@/lib/store";
 import { searchYouTubeChannels, searchYouTubeVideos, fetchChannelVideos, YouTubeChannel, YouTubeVideo } from "@/lib/youtube";
 import Image from "next/image";
@@ -123,9 +123,15 @@ export function MediaView() {
   return (
     <div className="p-6 space-y-8 max-w-7xl mx-auto pb-32 min-h-screen relative">
       <header className="flex flex-col gap-6">
-        <div>
-          <h1 className="text-5xl font-headline font-bold tracking-tighter text-white">DriveCast Media</h1>
-          <p className="text-muted-foreground text-sm font-medium uppercase tracking-widest opacity-60">Global Frequency Hub</p>
+        <div className="flex justify-between items-end">
+          <div>
+            <h1 className="text-5xl font-headline font-bold tracking-tighter text-white">DriveCast Media</h1>
+            <p className="text-muted-foreground text-sm font-medium uppercase tracking-widest opacity-60">Global Frequency Hub</p>
+          </div>
+          <div className="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-full border border-white/10 mb-2">
+            <Cloud className="w-4 h-4 text-accent animate-pulse" />
+            <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">Real-time Cloud Sync</span>
+          </div>
         </div>
 
         <div className="flex gap-4 max-w-3xl">

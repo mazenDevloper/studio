@@ -4,9 +4,9 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { YouTubeChannel, YouTubeVideo } from "./youtube";
-import { doc, setDoc, getDoc, onSnapshot, Firestore } from "firebase/firestore";
+import { doc, setDoc, onSnapshot } from "firebase/firestore";
 import { initializeFirebase } from "@/firebase";
-import { onAuthStateChanged, Auth } from "firebase/auth";
+import { onAuthStateChanged } from "firebase/auth";
 
 export interface Reminder {
   id: string;
@@ -71,12 +71,15 @@ interface MediaState {
 const { db, auth } = initializeFirebase();
 
 /**
- * Syncs a specific JSON slice to Firestore acting as a "JSON Bin".
+ * Syncs a specific JSON slice to Firestore acting as an "Atomic Bin".
  */
-const syncSlice = async (userId: string, slice: 'youtube' | 'football' | 'settings', data: any) => {
-  if (!userId) return;
-  const docRef = doc(db, "users", userId, "data", slice);
-  setDoc(docRef, data, { merge: true }).catch(e => console.error(`Sync error [${slice}]:`, e));
+const syncSlice = async (slice: 'youtube' | 'football' | 'settings', data: any) => {
+  const user = auth.currentUser;
+  if (!user) return;
+  
+  const docRef = doc(db, "users", user.uid, "data", slice);
+  // Using setDoc without merge to ensure the bin is fully updated as a clean JSON record
+  setDoc(docRef, data).catch(e => console.error(`Atomic Sync Error [${slice}]:`, e));
 };
 
 export const useMediaStore = create<MediaState>()(
@@ -100,7 +103,7 @@ export const useMediaStore = create<MediaState>()(
       addChannel: (channel) => {
         set((state) => {
           const newList = [...state.favoriteChannels.filter(c => c.id !== channel.id), channel];
-          syncSlice(auth.currentUser?.uid!, 'youtube', { favoriteChannels: newList });
+          syncSlice('youtube', { ...get(), favoriteChannels: newList });
           return { favoriteChannels: newList };
         });
       },
@@ -108,7 +111,7 @@ export const useMediaStore = create<MediaState>()(
       removeChannel: (id) => {
         set((state) => {
           const newList = state.favoriteChannels.filter(c => c.id !== id);
-          syncSlice(auth.currentUser?.uid!, 'youtube', { favoriteChannels: newList });
+          syncSlice('youtube', { ...get(), favoriteChannels: newList });
           return { favoriteChannels: newList };
         });
       },
@@ -117,7 +120,7 @@ export const useMediaStore = create<MediaState>()(
         set((state) => {
           const exists = state.savedVideos.some(v => v.id === video.id);
           const newList = exists ? state.savedVideos.filter(v => v.id !== video.id) : [video, ...state.savedVideos];
-          syncSlice(auth.currentUser?.uid!, 'youtube', { savedVideos: newList });
+          syncSlice('youtube', { ...get(), savedVideos: newList });
           return { savedVideos: newList };
         });
       },
@@ -125,7 +128,7 @@ export const useMediaStore = create<MediaState>()(
       removeVideo: (id) => {
         set((state) => {
           const newList = state.savedVideos.filter(v => v.id !== id);
-          syncSlice(auth.currentUser?.uid!, 'youtube', { savedVideos: newList });
+          syncSlice('youtube', { ...get(), savedVideos: newList });
           return { savedVideos: newList };
         });
       },
@@ -134,7 +137,7 @@ export const useMediaStore = create<MediaState>()(
         set((state) => {
           const exists = state.starredChannelIds.includes(id);
           const newList = exists ? state.starredChannelIds.filter(i => i !== id) : [...state.starredChannelIds, id];
-          syncSlice(auth.currentUser?.uid!, 'youtube', { starredChannelIds: newList });
+          syncSlice('youtube', { ...get(), starredChannelIds: newList });
           return { starredChannelIds: newList };
         });
       },
@@ -144,7 +147,7 @@ export const useMediaStore = create<MediaState>()(
           const newList = state.favoriteTeamIds.includes(teamId) 
             ? state.favoriteTeamIds.filter(id => id !== teamId) 
             : [...state.favoriteTeamIds, teamId];
-          syncSlice(auth.currentUser?.uid!, 'football', { favoriteTeamIds: newList });
+          syncSlice('football', { ...get(), favoriteTeamIds: newList });
           return { favoriteTeamIds: newList };
         });
       },
@@ -154,7 +157,7 @@ export const useMediaStore = create<MediaState>()(
           const newList = state.favoriteLeagueIds.includes(leagueId) 
             ? state.favoriteLeagueIds.filter(id => id !== leagueId) 
             : [...state.favoriteLeagueIds, leagueId];
-          syncSlice(auth.currentUser?.uid!, 'football', { favoriteLeagueIds: newList });
+          syncSlice('football', { ...get(), favoriteLeagueIds: newList });
           return { favoriteLeagueIds: newList };
         });
       },
@@ -162,7 +165,7 @@ export const useMediaStore = create<MediaState>()(
       updateMapSettings: (settings) => {
         set((state) => {
           const newSettings = { ...state.mapSettings, ...settings };
-          syncSlice(auth.currentUser?.uid!, 'settings', { mapSettings: newSettings });
+          syncSlice('settings', { ...get(), mapSettings: newSettings });
           return { mapSettings: newSettings };
         });
       },
@@ -170,7 +173,7 @@ export const useMediaStore = create<MediaState>()(
       addReminder: (reminder) => {
         set((state) => {
           const newList = [...state.reminders, reminder];
-          syncSlice(auth.currentUser?.uid!, 'settings', { reminders: newList });
+          syncSlice('settings', { ...get(), reminders: newList });
           return { reminders: newList };
         });
       },
@@ -178,7 +181,7 @@ export const useMediaStore = create<MediaState>()(
       removeReminder: (id) => {
         set((state) => {
           const newList = state.reminders.filter(r => r.id !== id);
-          syncSlice(auth.currentUser?.uid!, 'settings', { reminders: newList });
+          syncSlice('settings', { ...get(), reminders: newList });
           return { reminders: newList };
         });
       },
@@ -186,14 +189,14 @@ export const useMediaStore = create<MediaState>()(
       toggleReminder: (id) => {
         set((state) => {
           const newList = state.reminders.map(r => r.id === id ? { ...r, completed: !r.completed } : r);
-          syncSlice(auth.currentUser?.uid!, 'settings', { reminders: newList });
+          syncSlice('settings', { ...get(), reminders: newList });
           return { reminders: newList };
         });
       },
 
       setAiSuggestions: (suggestions) => {
         set({ aiSuggestions: suggestions });
-        syncSlice(auth.currentUser?.uid!, 'settings', { aiSuggestions: suggestions });
+        syncSlice('settings', { ...get(), aiSuggestions: suggestions });
       },
 
       setActiveVideo: (video) => set({ activeVideo: video, isPlaying: !!video, isMinimized: false, isFullScreen: false }),
@@ -216,7 +219,7 @@ export const useMediaStore = create<MediaState>()(
   )
 );
 
-// Real-time Sync Hub: Listens to each JSON slice independently
+// Real-time Cloud Synchronization
 if (typeof window !== "undefined") {
   onAuthStateChanged(auth, (user) => {
     if (user) {
