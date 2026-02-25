@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
@@ -44,7 +45,7 @@ export function FootballView() {
   const [activeTab, setActiveTab] = useState("today");
   const { favoriteTeams } = useMediaStore();
 
-  const isFavorite = (teamName: string) => favoriteTeams.includes(teamName);
+  const isFavorite = (teamName: string) => favoriteTeams.some(fav => teamName.includes(fav));
 
   const fetchMatches = async (view: string) => {
     setLoading(true);
