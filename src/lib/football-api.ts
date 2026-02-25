@@ -4,13 +4,13 @@ import { FOOTBALL_API_KEY, FOOTBALL_API_BASE_URL } from "./constants";
 import { Match } from "./football-data";
 
 /**
- * جلب بيانات مباريات كرة القدم باستخدام المفتاح المباشر.
- * يدعم جلب المباريات المباشرة أو مباريات اليوم.
+ * محرك جلب البيانات الرياضية الموحد.
+ * يستخدم مفتاح الـ API الأساسي لجلب البيانات الحية أو المجدولة.
  */
 export async function fetchFootballData(type: 'today' | 'live'): Promise<Match[]> {
   const date = new Date().toISOString().split('T')[0];
   
-  // لضمان جلب كافة المباريات المباشرة عالمياً نستخدم live=all
+  // live=all تجلب كافة المباريات الجارية حالياً في كافة الدوريات
   const url = type === 'live' 
     ? `${FOOTBALL_API_BASE_URL}/fixtures?live=all&timezone=Asia/Riyadh`
     : `${FOOTBALL_API_BASE_URL}/fixtures?date=${date}&timezone=Asia/Riyadh`;
@@ -22,11 +22,11 @@ export async function fetchFootballData(type: 'today' | 'live'): Promise<Match[]
         'x-apisports-key': FOOTBALL_API_KEY,
         'x-apisports-host': 'v3.football.api-sports.io'
       },
-      next: { revalidate: 60 } // تحديث كل دقيقة
+      // تفعيل الكاش لتقليل استهلاك الكوتا مع تحديث سريع للمباشر
+      next: { revalidate: type === 'live' ? 30 : 300 } 
     });
 
     if (!response.ok) {
-      console.warn("Football API Response Error:", response.status);
       return [];
     }
 
@@ -46,12 +46,6 @@ export async function fetchFootballData(type: 'today' | 'live'): Promise<Match[]
         status = 'finished';
       }
 
-      const startTime = new Date(item.fixture.date).toLocaleTimeString('ar-SA', {
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false
-      });
-
       return {
         id: item.fixture.id.toString(),
         homeTeamId: item.teams.home.id,
@@ -60,7 +54,11 @@ export async function fetchFootballData(type: 'today' | 'live'): Promise<Match[]
         awayTeam: item.teams.away.name,
         homeLogo: item.teams.home.logo,
         awayLogo: item.teams.away.logo,
-        startTime: startTime,
+        startTime: new Date(item.fixture.date).toLocaleTimeString('ar-SA', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false
+        }),
         status: status,
         score: {
           home: item.goals.home ?? 0,
@@ -75,7 +73,7 @@ export async function fetchFootballData(type: 'today' | 'live'): Promise<Match[]
       } as Match;
     });
   } catch (error) {
-    console.error("Fetch football data error:", error);
+    console.error("API Fetch Error:", error);
     return [];
   }
 }
