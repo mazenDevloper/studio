@@ -45,7 +45,9 @@ export function FootballView() {
   const [activeTab, setActiveTab] = useState("today");
   const { favoriteTeams, favoriteTeamIds, toggleFavoriteTeamId } = useMediaStore();
 
-  const isFavorite = (team: Team) => favoriteTeamIds.includes(team.id) || favoriteTeams.some(fav => team.name.includes(fav));
+  const isFavorite = (team: Team) => 
+    favoriteTeamIds.includes(team.id) || 
+    favoriteTeams.some(fav => team.name.toLowerCase().includes(fav.toLowerCase()));
 
   const fetchMatches = async (view: string) => {
     setLoading(true);
