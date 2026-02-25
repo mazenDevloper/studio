@@ -43,9 +43,9 @@ export function FootballView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("today");
-  const { favoriteTeams } = useMediaStore();
+  const { favoriteTeams, favoriteTeamIds, toggleFavoriteTeamId } = useMediaStore();
 
-  const isFavorite = (teamName: string) => favoriteTeams.some(fav => teamName.includes(fav));
+  const isFavorite = (team: Team) => favoriteTeamIds.includes(team.id) || favoriteTeams.some(fav => team.name.includes(fav));
 
   const fetchMatches = async (view: string) => {
     setLoading(true);
@@ -125,12 +125,12 @@ export function FootballView() {
     if (activeTab === "live") {
       result = result.filter(m => liveStatuses.includes(m.status));
     } else if (activeTab === "favorites") {
-      result = result.filter(m => isFavorite(m.home.name) || isFavorite(m.away.name));
+      result = result.filter(m => isFavorite(m.home) || isFavorite(m.away));
     }
 
     return result.sort((a, b) => {
-      const aIsFav = isFavorite(a.home.name) || isFavorite(a.away.name);
-      const bIsFav = isFavorite(b.home.name) || isFavorite(b.away.name);
+      const aIsFav = isFavorite(a.home) || isFavorite(a.away);
+      const bIsFav = isFavorite(b.home) || isFavorite(b.away);
 
       if (aIsFav && !bIsFav) return -1;
       if (!aIsFav && bIsFav) return 1;
@@ -143,7 +143,7 @@ export function FootballView() {
 
       return new Date(a.date).getTime() - new Date(b.date).getTime();
     });
-  }, [matches, activeTab, favoriteTeams]);
+  }, [matches, activeTab, favoriteTeams, favoriteTeamIds]);
 
   const getStatusDisplay = (match: Match) => {
     switch (match.status) {
@@ -161,7 +161,7 @@ export function FootballView() {
   };
 
   const renderMatchCard = (match: Match, idx: number) => {
-    const isFav = isFavorite(match.home.name) || isFavorite(match.away.name);
+    const isFav = isFavorite(match.home) || isFavorite(match.away);
     const statusInfo = getStatusDisplay(match);
 
     return (
@@ -215,10 +215,21 @@ export function FootballView() {
             </div>
 
             <div className="flex items-center justify-between gap-2">
-              <div className="flex flex-col items-center flex-1 gap-2">
+              <div className="flex flex-col items-center flex-1 gap-2 relative group/team">
+                <button 
+                  onClick={(e) => { e.stopPropagation(); toggleFavoriteTeamId(match.home.id); }}
+                  className={cn(
+                    "absolute -top-2 -left-2 z-30 p-1.5 rounded-full transition-all focusable",
+                    favoriteTeamIds.includes(match.home.id) ? "bg-accent text-black shadow-glow scale-110" : "bg-black/60 text-white/40 hover:text-white"
+                  )}
+                  data-nav-id={`star-home-${match.id}`}
+                  tabIndex={0}
+                >
+                  <Star className={cn("w-3.5 h-3.5", favoriteTeamIds.includes(match.home.id) && "fill-current")} />
+                </button>
                 <div className={cn(
                   "h-14 w-14 rounded-2xl p-2.5 flex items-center justify-center border transition-all duration-300",
-                  isFavorite(match.home.name) ? "bg-primary/20 border-primary shadow-glow" : "bg-white/5 border-white/5"
+                  favoriteTeamIds.includes(match.home.id) ? "bg-primary/20 border-primary shadow-glow" : "bg-white/5 border-white/5"
                 )}>
                   <img 
                     src={match.home.logo} 
@@ -228,7 +239,7 @@ export function FootballView() {
                 </div>
                 <span className={cn(
                   "text-xs font-black text-center line-clamp-2 min-h-[32px]",
-                  isFavorite(match.home.name) ? "text-primary" : "text-white"
+                  favoriteTeamIds.includes(match.home.id) ? "text-primary" : "text-white"
                 )}>
                   {match.home.name}
                 </span>
@@ -247,10 +258,21 @@ export function FootballView() {
                 )}
               </div>
 
-              <div className="flex flex-col items-center flex-1 gap-2">
+              <div className="flex flex-col items-center flex-1 gap-2 relative group/team">
+                <button 
+                  onClick={(e) => { e.stopPropagation(); toggleFavoriteTeamId(match.away.id); }}
+                  className={cn(
+                    "absolute -top-2 -right-2 z-30 p-1.5 rounded-full transition-all focusable",
+                    favoriteTeamIds.includes(match.away.id) ? "bg-accent text-black shadow-glow scale-110" : "bg-black/60 text-white/40 hover:text-white"
+                  )}
+                  data-nav-id={`star-away-${match.id}`}
+                  tabIndex={0}
+                >
+                  <Star className={cn("w-3.5 h-3.5", favoriteTeamIds.includes(match.away.id) && "fill-current")} />
+                </button>
                 <div className={cn(
                   "h-14 w-14 rounded-2xl p-2.5 flex items-center justify-center border transition-all duration-300",
-                  isFavorite(match.away.name) ? "bg-primary/20 border-primary shadow-glow" : "bg-white/5 border-white/5"
+                  favoriteTeamIds.includes(match.away.id) ? "bg-primary/20 border-primary shadow-glow" : "bg-white/5 border-white/5"
                 )}>
                   <img 
                     src={match.away.logo} 
@@ -260,7 +282,7 @@ export function FootballView() {
                 </div>
                 <span className={cn(
                   "text-xs font-black text-center line-clamp-2 min-h-[32px]",
-                  isFavorite(match.away.name) ? "text-primary" : "text-white"
+                  favoriteTeamIds.includes(match.away.id) ? "text-primary" : "text-white"
                 )}>
                   {match.away.name}
                 </span>

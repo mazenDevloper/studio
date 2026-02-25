@@ -42,6 +42,7 @@ interface MediaState {
   reminders: Reminder[];
   videoProgress: Record<string, number>;
   favoriteTeams: string[];
+  favoriteTeamIds: number[];
   mapSettings: MapSettings;
   aiSuggestions: any[];
   
@@ -66,6 +67,7 @@ interface MediaState {
   toggleReminder: (id: string) => void;
   updateVideoProgress: (videoId: string, seconds: number) => void;
   toggleFavoriteTeam: (teamName: string) => void;
+  toggleFavoriteTeamId: (teamId: number) => void;
   updateMapSettings: (settings: Partial<MapSettings>) => void;
   setAiSuggestions: (suggestions: any[]) => void;
   
@@ -115,6 +117,7 @@ const syncToCloud = async (state: MediaState) => {
     reminders: state.reminders,
     videoProgress: state.videoProgress,
     favoriteTeams: state.favoriteTeams,
+    favoriteTeamIds: state.favoriteTeamIds,
     mapSettings: state.mapSettings,
     aiSuggestions: state.aiSuggestions,
   };
@@ -133,6 +136,7 @@ export const useMediaStore = create<MediaState>()(
       reminders: INITIAL_REMINDERS,
       videoProgress: {},
       favoriteTeams: ['الهلال', 'ريال مدريد'],
+      favoriteTeamIds: [],
       aiSuggestions: [],
       mapSettings: {
         zoom: 19.5,
@@ -169,6 +173,15 @@ export const useMediaStore = create<MediaState>()(
           favoriteTeams: state.favoriteTeams.includes(teamName)
             ? state.favoriteTeams.filter(t => t !== teamName)
             : [...state.favoriteTeams, teamName]
+        }));
+        syncToCloud(get());
+      },
+
+      toggleFavoriteTeamId: (teamId) => {
+        set((state) => ({
+          favoriteTeamIds: state.favoriteTeamIds.includes(teamId)
+            ? state.favoriteTeamIds.filter(id => id !== teamId)
+            : [...state.favoriteTeamIds, teamId]
         }));
         syncToCloud(get());
       },

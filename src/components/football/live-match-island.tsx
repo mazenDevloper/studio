@@ -10,7 +10,7 @@ import { Timer, Tv, Trophy } from "lucide-react";
 import Image from "next/image";
 
 export function LiveMatchIsland() {
-  const { favoriteTeams } = useMediaStore();
+  const { favoriteTeams, favoriteTeamIds } = useMediaStore();
   const [liveMatch, setLiveMatch] = useState<Match | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -19,17 +19,20 @@ export function LiveMatchIsland() {
       // جلب المباريات المباشرة الحقيقية
       const currentMatches = await fetchFootballData('live');
 
-      // تصفية للمباريات المباشرة التي تخص فرقك المفضلة فقط
+      // تصفية للمباريات المباشرة التي تخص فرقك المفضلة فقط بالاسم أو الـ ID
       const activeFavMatch = currentMatches.find(m => 
         m.status === 'live' && 
-        (favoriteTeams.some(fav => m.homeTeam.includes(fav) || m.awayTeam.includes(fav)))
+        (
+          favoriteTeamIds.includes(Number(m.id)) || // ملاحظة: قد تحتاج لمطابقة ID الفريق بدلاً من ID المباراة إذا كان متاحاً في API
+          favoriteTeams.some(fav => m.homeTeam.includes(fav) || m.awayTeam.includes(fav))
+        )
       );
 
       setLiveMatch(activeFavMatch || null);
     } catch (error) {
       console.error("Island Sync Error:", error);
     }
-  }, [favoriteTeams]);
+  }, [favoriteTeams, favoriteTeamIds]);
 
   useEffect(() => {
     fetchLiveStatus();
