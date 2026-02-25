@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useMediaStore, Reminder } from "@/lib/store";
 import { 
   Settings, 
@@ -12,15 +13,12 @@ import {
   Trash2, 
   Plus, 
   Save, 
-  Key, 
-  RefreshCw,
-  Clock,
-  Palette,
-  Maximize,
-  Image as ImageIcon,
-  Search,
-  Check,
-  Star
+  Maximize, 
+  ImageIcon, 
+  Search, 
+  Check, 
+  Star,
+  Palette
 } from "lucide-react";
 import { YT_KEYS_POOL } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
@@ -38,6 +36,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const BACKGROUNDS = [
   "https://images.unsplash.com/photo-1534067783941-51c9c23ecefd",
@@ -64,11 +63,18 @@ export function SettingsView() {
   const [clubSearch, setClubSearch] = useState("");
   const [leagueFilter, setLeagueFilter] = useState("all");
 
-  const filteredTeams = TEAM_LIST.filter(team => {
-    const matchesSearch = team.name.toLowerCase().includes(clubSearch.toLowerCase());
-    const matchesLeague = leagueFilter === "all" || team.leagueId.toString() === leagueFilter;
-    return matchesSearch && matchesLeague;
-  });
+  const filteredTeams = useMemo(() => {
+    return TEAM_LIST.filter(team => {
+      const matchesSearch = team.name.toLowerCase().includes(clubSearch.toLowerCase());
+      const matchesLeague = leagueFilter === "all" || team.leagueId.toString() === leagueFilter;
+      return matchesSearch && matchesLeague;
+    });
+  }, [clubSearch, leagueFilter]);
+
+  const currentFavoriteTeams = useMemo(() => {
+    // Show teams from TEAM_LIST that are in favoriteTeamIds
+    return TEAM_LIST.filter(t => favoriteTeamIds.includes(t.id));
+  }, [favoriteTeamIds]);
 
   const handleAddReminder = () => {
     if (!newReminder.label.trim()) return;
@@ -94,7 +100,7 @@ export function SettingsView() {
   };
 
   return (
-    <div className="p-12 space-y-12 max-w-6xl mx-auto pb-40 animate-in fade-in duration-700">
+    <div className="p-12 space-y-12 max-w-7xl mx-auto pb-40 animate-in fade-in duration-700">
       <header className="flex flex-col gap-4">
         <h1 className="text-6xl font-black font-headline text-white tracking-tighter flex items-center gap-6">
           مركز التحكم <Settings className="w-12 h-12 text-primary animate-spin-slow" />
@@ -189,9 +195,8 @@ export function SettingsView() {
           </div>
         </TabsContent>
 
-        <TabsContent value="football" className="space-y-8 outline-none">
+        <TabsContent value="football" className="space-y-12 outline-none">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            {/* القائمة اليسرى: تصفية وبحث */}
             <div className="lg:col-span-4 space-y-6">
               <Card className="bg-zinc-900/50 border-white/10 rounded-[2.5rem] p-8">
                 <CardHeader className="p-0 mb-6">
@@ -257,24 +262,45 @@ export function SettingsView() {
               </Card>
             </div>
 
-            {/* القائمة اليمنى: نتائج الأندية */}
-            <div className="lg:col-span-8">
-              <Card className="bg-zinc-900/50 border-white/10 rounded-[2.5rem] p-8 h-full">
+            <div className="lg:col-span-8 flex flex-col gap-8">
+              {currentFavoriteTeams.length > 0 && (
+                <Card className="bg-primary/5 border-primary/20 rounded-[2.5rem] p-8">
+                  <CardHeader className="p-0 mb-6">
+                    <CardTitle className="text-xl font-black text-primary flex items-center gap-3">
+                      <Star className="w-5 h-5 fill-current" /> أنديتك المفضلة حالياً
+                    </CardTitle>
+                  </CardHeader>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {currentFavoriteTeams.map((team) => (
+                      <Button
+                        key={team.id}
+                        onClick={() => toggleFavoriteTeamId(team.id, team.name)}
+                        className="h-14 rounded-2xl bg-primary text-white font-black text-xs shadow-glow focusable"
+                        data-nav-id={`fav-managed-${team.id}`}
+                      >
+                        {team.name}
+                        <Trash2 className="w-3 h-3 ml-2 opacity-50" />
+                      </Button>
+                    ))}
+                  </div>
+                </Card>
+              )}
+
+              <Card className="bg-zinc-900/50 border-white/10 rounded-[2.5rem] p-8 flex-1">
                 <CardHeader className="p-0 mb-6 flex flex-row items-center justify-between">
-                  <CardTitle className="text-xl font-black text-white">الأندية المتوفرة</CardTitle>
-                  <span className="text-[10px] text-white/40 font-bold uppercase">{filteredTeams.length} نادٍ</span>
+                  <CardTitle className="text-xl font-black text-white">إضافة أندية جديدة</CardTitle>
                 </CardHeader>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {filteredTeams.map((team, idx) => {
+                  {filteredTeams.map((team) => {
                     const isFav = favoriteTeamIds.includes(team.id);
                     return (
                       <Button
                         key={team.id}
                         data-nav-id={`club-item-${team.id}`}
-                        onClick={() => toggleFavoriteTeamId(team.id)}
+                        onClick={() => toggleFavoriteTeamId(team.id, team.name)}
                         variant={isFav ? "default" : "outline"}
                         className={cn(
-                          "h-16 rounded-2xl font-black text-xs transition-all focusable relative overflow-hidden group",
+                          "h-16 rounded-2xl font-black text-xs transition-all focusable relative overflow-hidden",
                           isFav ? "bg-primary shadow-glow border-primary" : "border-white/5 bg-white/5 text-white/60"
                         )}
                       >
@@ -282,17 +308,10 @@ export function SettingsView() {
                           {isFav && <Star className="w-3 h-3 fill-current" />}
                           {team.name}
                         </div>
-                        {isFav && <div className="absolute inset-0 bg-white/10 animate-pulse" />}
                       </Button>
                     );
                   })}
                 </div>
-                {filteredTeams.length === 0 && (
-                  <div className="flex flex-col items-center justify-center py-20 opacity-20">
-                    <Search className="w-16 h-16 mb-4" />
-                    <p className="font-black text-sm uppercase tracking-widest">لا توجد نتائج للبحث</p>
-                  </div>
-                )}
               </Card>
             </div>
           </div>

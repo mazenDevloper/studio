@@ -1,3 +1,4 @@
+
 "use client";
 
 import { create } from "zustand";
@@ -6,6 +7,7 @@ import { YouTubeChannel, YouTubeVideo } from "./youtube";
 import { doc, setDoc, getDoc, onSnapshot } from "firebase/firestore";
 import { initializeFirebase } from "@/firebase";
 import { onAuthStateChanged } from "firebase/auth";
+import { TEAM_LIST } from "./football-data";
 
 export interface SavedPlace {
   id: string;
@@ -66,8 +68,7 @@ interface MediaState {
   removeReminder: (id: string) => void;
   toggleReminder: (id: string) => void;
   updateVideoProgress: (videoId: string, seconds: number) => void;
-  toggleFavoriteTeam: (teamName: string) => void;
-  toggleFavoriteTeamId: (teamId: number) => void;
+  toggleFavoriteTeamId: (teamId: number, teamName?: string) => void;
   toggleFavoriteLeagueId: (leagueId: number) => void;
   updateMapSettings: (settings: Partial<MapSettings>) => void;
   setAiSuggestions: (suggestions: any[]) => void;
@@ -174,21 +175,29 @@ export const useMediaStore = create<MediaState>()(
         syncToCloud(get());
       },
 
-      toggleFavoriteTeam: (teamName) => {
-        set((state) => ({
-          favoriteTeams: state.favoriteTeams.includes(teamName)
-            ? state.favoriteTeams.filter(t => t !== teamName)
-            : [...state.favoriteTeams, teamName]
-        }));
-        syncToCloud(get());
-      },
-
-      toggleFavoriteTeamId: (teamId) => {
-        set((state) => ({
-          favoriteTeamIds: state.favoriteTeamIds.includes(teamId)
+      toggleFavoriteTeamId: (teamId, teamName) => {
+        set((state) => {
+          const isRemoving = state.favoriteTeamIds.includes(teamId);
+          let newIds = isRemoving 
             ? state.favoriteTeamIds.filter(id => id !== teamId)
-            : [...state.favoriteTeamIds, teamId]
-        }));
+            : [...state.favoriteTeamIds, teamId];
+          
+          // Sync with favoriteTeams (names) for AI suggestions
+          let newNames = [...state.favoriteTeams];
+          if (isRemoving) {
+            // Find name if not provided
+            const nameToRem = teamName || TEAM_LIST.find(t => t.id === teamId)?.name;
+            if (nameToRem) newNames = newNames.filter(n => n !== nameToRem);
+          } else {
+            const nameToAdd = teamName || TEAM_LIST.find(t => t.id === teamId)?.name;
+            if (nameToAdd && !newNames.includes(nameToAdd)) newNames.push(nameToAdd);
+          }
+
+          return {
+            favoriteTeamIds: newIds,
+            favoriteTeams: newNames
+          };
+        });
         syncToCloud(get());
       },
 

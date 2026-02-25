@@ -43,11 +43,15 @@ export function FootballView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("today");
-  const { favoriteTeams, favoriteTeamIds, toggleFavoriteTeamId } = useMediaStore();
+  const { favoriteTeamIds, toggleFavoriteTeamId, favoriteLeagueIds } = useMediaStore();
 
   const isFavorite = (team: Team) => 
-    favoriteTeamIds.includes(team.id) || 
-    favoriteTeams.some(fav => team.name.toLowerCase().includes(fav.toLowerCase()));
+    favoriteTeamIds.includes(team.id);
+
+  const isFavoriteLeague = (leagueName: string) => 
+    // Simplified league fav check by name for now as API returns league names
+    // In a more robust system, we would match league ID
+    false; 
 
   const fetchMatches = async (view: string) => {
     setLoading(true);
@@ -145,7 +149,7 @@ export function FootballView() {
 
       return new Date(a.date).getTime() - new Date(b.date).getTime();
     });
-  }, [matches, activeTab, favoriteTeams, favoriteTeamIds]);
+  }, [matches, activeTab, favoriteTeamIds]);
 
   const getStatusDisplay = (match: Match) => {
     switch (match.status) {
@@ -163,7 +167,9 @@ export function FootballView() {
   };
 
   const renderMatchCard = (match: Match, idx: number) => {
-    const isFav = isFavorite(match.home) || isFavorite(match.away);
+    const isHomeFav = isFavorite(match.home);
+    const isAwayFav = isFavorite(match.away);
+    const isAnyFav = isHomeFav || isAwayFav;
     const statusInfo = getStatusDisplay(match);
 
     return (
@@ -173,12 +179,12 @@ export function FootballView() {
         tabIndex={0}
         className={cn(
           "relative overflow-hidden transition-all duration-500 border-white/5 group focusable",
-          isFav 
+          isAnyFav 
             ? "ring-2 ring-primary bg-primary/10 shadow-[0_0_30px_rgba(var(--primary),0.2)]" 
             : "hover:bg-card/60 bg-card/40"
         )}
       >
-        {isFav && (
+        {isAnyFav && (
           <div className="absolute top-0 right-0 p-2 z-20">
             <Badge className="bg-accent text-black border-none font-black text-[10px] py-1 px-3 flex items-center gap-1 shadow-lg">
               <Star className="h-3 w-3 fill-current" />
@@ -217,21 +223,21 @@ export function FootballView() {
             </div>
 
             <div className="flex items-center justify-between gap-2">
-              <div className="flex flex-col items-center flex-1 gap-2 relative group/team">
+              <div className="flex flex-col items-center flex-1 gap-2 relative">
                 <button 
-                  onClick={(e) => { e.stopPropagation(); toggleFavoriteTeamId(match.home.id); }}
+                  onClick={(e) => { e.stopPropagation(); toggleFavoriteTeamId(match.home.id, match.home.name); }}
                   className={cn(
                     "absolute -top-2 -left-2 z-30 p-1.5 rounded-full transition-all focusable",
-                    favoriteTeamIds.includes(match.home.id) ? "bg-accent text-black shadow-glow scale-110" : "bg-black/60 text-white/40 hover:text-white"
+                    isHomeFav ? "bg-accent text-black shadow-glow scale-110" : "bg-black/60 text-white/40 hover:text-white"
                   )}
                   data-nav-id={`star-home-${match.id}`}
                   tabIndex={0}
                 >
-                  <Star className={cn("w-3.5 h-3.5", favoriteTeamIds.includes(match.home.id) && "fill-current")} />
+                  <Star className={cn("w-3.5 h-3.5", isHomeFav && "fill-current")} />
                 </button>
                 <div className={cn(
                   "h-14 w-14 rounded-2xl p-2.5 flex items-center justify-center border transition-all duration-300",
-                  favoriteTeamIds.includes(match.home.id) ? "bg-primary/20 border-primary shadow-glow" : "bg-white/5 border-white/5"
+                  isHomeFav ? "bg-primary/20 border-primary shadow-glow" : "bg-white/5 border-white/5"
                 )}>
                   <img 
                     src={match.home.logo} 
@@ -241,7 +247,7 @@ export function FootballView() {
                 </div>
                 <span className={cn(
                   "text-xs font-black text-center line-clamp-2 min-h-[32px]",
-                  favoriteTeamIds.includes(match.home.id) ? "text-primary" : "text-white"
+                  isHomeFav ? "text-primary" : "text-white"
                 )}>
                   {match.home.name}
                 </span>
@@ -260,21 +266,21 @@ export function FootballView() {
                 )}
               </div>
 
-              <div className="flex flex-col items-center flex-1 gap-2 relative group/team">
+              <div className="flex flex-col items-center flex-1 gap-2 relative">
                 <button 
-                  onClick={(e) => { e.stopPropagation(); toggleFavoriteTeamId(match.away.id); }}
+                  onClick={(e) => { e.stopPropagation(); toggleFavoriteTeamId(match.away.id, match.away.name); }}
                   className={cn(
                     "absolute -top-2 -right-2 z-30 p-1.5 rounded-full transition-all focusable",
-                    favoriteTeamIds.includes(match.away.id) ? "bg-accent text-black shadow-glow scale-110" : "bg-black/60 text-white/40 hover:text-white"
+                    isAwayFav ? "bg-accent text-black shadow-glow scale-110" : "bg-black/60 text-white/40 hover:text-white"
                   )}
                   data-nav-id={`star-away-${match.id}`}
                   tabIndex={0}
                 >
-                  <Star className={cn("w-3.5 h-3.5", favoriteTeamIds.includes(match.away.id) && "fill-current")} />
+                  <Star className={cn("w-3.5 h-3.5", isAwayFav && "fill-current")} />
                 </button>
                 <div className={cn(
                   "h-14 w-14 rounded-2xl p-2.5 flex items-center justify-center border transition-all duration-300",
-                  favoriteTeamIds.includes(match.away.id) ? "bg-primary/20 border-primary shadow-glow" : "bg-white/5 border-white/5"
+                  isAwayFav ? "bg-primary/20 border-primary shadow-glow" : "bg-white/5 border-white/5"
                 )}>
                   <img 
                     src={match.away.logo} 
@@ -284,7 +290,7 @@ export function FootballView() {
                 </div>
                 <span className={cn(
                   "text-xs font-black text-center line-clamp-2 min-h-[32px]",
-                  favoriteTeamIds.includes(match.away.id) ? "text-primary" : "text-white"
+                  isAwayFav ? "text-primary" : "text-white"
                 )}>
                   {match.away.name}
                 </span>
