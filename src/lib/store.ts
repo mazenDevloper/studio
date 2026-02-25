@@ -43,6 +43,7 @@ interface MediaState {
   videoProgress: Record<string, number>;
   favoriteTeams: string[];
   favoriteTeamIds: number[];
+  favoriteLeagueIds: number[];
   mapSettings: MapSettings;
   aiSuggestions: any[];
   
@@ -68,6 +69,7 @@ interface MediaState {
   updateVideoProgress: (videoId: string, seconds: number) => void;
   toggleFavoriteTeam: (teamName: string) => void;
   toggleFavoriteTeamId: (teamId: number) => void;
+  toggleFavoriteLeagueId: (leagueId: number) => void;
   updateMapSettings: (settings: Partial<MapSettings>) => void;
   setAiSuggestions: (suggestions: any[]) => void;
   
@@ -92,7 +94,7 @@ const INITIAL_CHANNELS: YouTubeChannel[] = [
     id: "UCAS_9UJtSteMwQFsbEWbFeQ",
     title: "سعود الشريم",
     description: "تلاوات نادرة ومميزة للشيخ سعود الشريم",
-    thumbnail: "https://tvquran.com/uploads/authors/images/%D8%B3%D8%B9%D9%88%D8%AF%20%D8%A7%D9%84%D8%B4%D8%B1%D9%8A%D9%85.jpg",
+    thumbnail: "https://tvquran.com/uploads/authors/images/%D8%B3%D8%B9%D9%8ود%20%D8%A7%D9%84%D8%B4%D8%B1%D9%8A%D9%85.jpg",
   }
 ];
 
@@ -118,6 +120,7 @@ const syncToCloud = async (state: MediaState) => {
     videoProgress: state.videoProgress,
     favoriteTeams: state.favoriteTeams,
     favoriteTeamIds: state.favoriteTeamIds,
+    favoriteLeagueIds: state.favoriteLeagueIds,
     mapSettings: state.mapSettings,
     aiSuggestions: state.aiSuggestions,
   };
@@ -135,8 +138,13 @@ export const useMediaStore = create<MediaState>()(
       reciterKeywords: ["ياسر الدوسري", "بندر بليلة", "سعود الشريم"],
       reminders: INITIAL_REMINDERS,
       videoProgress: {},
-      favoriteTeams: ['الهلال', 'ريال مدريد'],
+      favoriteTeams: [
+        'الهلال', 'النصر', 'الأهلي', 
+        'ريال مدريد', 'برشلونة', 
+        'إنتر ميلان', 'ميلان', 'يوفنتوس'
+      ],
       favoriteTeamIds: [],
+      favoriteLeagueIds: [39, 2], // EPL and UCL
       aiSuggestions: [],
       mapSettings: {
         zoom: 19.5,
@@ -182,6 +190,15 @@ export const useMediaStore = create<MediaState>()(
           favoriteTeamIds: state.favoriteTeamIds.includes(teamId)
             ? state.favoriteTeamIds.filter(id => id !== teamId)
             : [...state.favoriteTeamIds, teamId]
+        }));
+        syncToCloud(get());
+      },
+
+      toggleFavoriteLeagueId: (leagueId) => {
+        set((state) => ({
+          favoriteLeagueIds: state.favoriteLeagueIds.includes(leagueId)
+            ? state.favoriteLeagueIds.filter(id => id !== leagueId)
+            : [...state.favoriteLeagueIds, leagueId]
         }));
         syncToCloud(get());
       },
