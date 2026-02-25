@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
@@ -31,34 +32,36 @@ export function LiveMatchIsland() {
 
   const fetchLiveStatus = useCallback(async () => {
     try {
-      // محاولة جلب البيانات الحقيقية من الـ API
+      // جلب البيانات الحقيقية للمباريات المباشرة
       const currentMatches = await fetchFootballData('live');
       
       if (currentMatches && currentMatches.length > 0) {
-        // الأولوية 1: أي مباراة مباشرة لفريق مفضل
-        const favMatch = currentMatches.find(m => 
-          (m.homeTeamId && favoriteTeamIds.includes(m.homeTeamId)) ||
-          (m.awayTeamId && favoriteTeamIds.includes(m.awayTeamId))
-        );
-
-        if (favMatch) {
-          setLiveMatch(favMatch);
+        // فلترة المباريات المباشرة فقط
+        const activeLiveMatches = currentMatches.filter(m => m.status === 'live');
+        
+        if (activeLiveMatches.length > 0) {
+          // ترتيب المباريات تنازلياً حسب الدقائق (الأقرب للانتهاء تظهر أولاً)
+          const sortedByMinutes = activeLiveMatches.sort((a, b) => (b.minute || 0) - (a.minute || 0));
+          
+          // اختيار المباراة الأولى في الترتيب (الأقرب للصافرة)
+          setLiveMatch(sortedByMinutes[0]);
         } else {
-          // الأولوية 2: أول مباراة مباشرة متاحة عالمياً (كما طلب المستخدم)
-          setLiveMatch(currentMatches[0]);
+          // لا توجد مباريات مباشرة حالياً، العودة للنمط التجريبي أو الإخفاء
+          setLiveMatch(MOCK_LIVE_MATCH);
         }
       } else {
-        // إذا كان الـ API فارغاً تماماً (لا توجد مباريات مباشرة في العالم)، نعرض المباراة التجريبية
+        // تعذر الوصول للبيانات أو لا توجد مباريات جارية
         setLiveMatch(MOCK_LIVE_MATCH);
       }
     } catch (error) {
+      console.error("Island Sync Error:", error);
       setLiveMatch(MOCK_LIVE_MATCH);
     }
-  }, [favoriteTeamIds]);
+  }, []);
 
   useEffect(() => {
     fetchLiveStatus();
-    // تحديث كل 30 ثانية لضمان دقة النتائج الحية
+    // تحديث سريع كل 30 ثانية لمتابعة الدقائق بدقة والتبديل فور الانتهاء
     const interval = setInterval(fetchLiveStatus, 30000);
     return () => clearInterval(interval);
   }, [fetchLiveStatus]);
