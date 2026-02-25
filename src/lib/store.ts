@@ -4,7 +4,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { YouTubeChannel, YouTubeVideo } from "./youtube";
-import { doc, setDoc, getDoc, onSnapshot, collection } from "firebase/firestore";
+import { doc, setDoc, getDoc, onSnapshot } from "firebase/firestore";
 import { initializeFirebase } from "@/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 
@@ -34,31 +34,31 @@ export interface MapSettings {
 }
 
 interface MediaState {
-  // YouTube Slice
+  // YouTube Data
   favoriteChannels: YouTubeChannel[];
   savedVideos: YouTubeVideo[];
   starredChannelIds: string[];
   videoProgress: Record<string, number>;
   
-  // Football Slice
+  // Football Data
   favoriteTeams: string[];
   favoriteTeamIds: number[];
   favoriteLeagueIds: number[];
   
-  // Settings/Reminders Slice
+  // App Settings
   savedPlaces: SavedPlace[];
   reciterKeywords: string[];
   reminders: Reminder[];
   mapSettings: MapSettings;
   aiSuggestions: any[];
   
-  // Player State (Non-persistent)
+  // Active UI States (Non-persistent)
   activeVideo: YouTubeVideo | null;
   isPlaying: boolean;
   isMinimized: boolean;
   isFullScreen: boolean;
   
-  // Actions
+  // Persistent Actions
   addChannel: (channel: YouTubeChannel) => void;
   removeChannel: (id: string) => void;
   toggleSaveVideo: (video: YouTubeVideo) => void;
@@ -73,10 +73,10 @@ interface MediaState {
   updateMapSettings: (settings: Partial<MapSettings>) => void;
   setAiSuggestions: (suggestions: any[]) => void;
   
-  // Sync Actions
-  loadAllData: (userId: string) => Promise<void>;
+  // Data Loaders
+  loadSliceData: (userId: string, slice: 'youtube' | 'football' | 'settings') => Promise<void>;
   
-  // Player Actions
+  // UI Actions
   setActiveVideo: (video: YouTubeVideo | null) => void;
   setIsPlaying: (playing: boolean) => void;
   setIsMinimized: (minimized: boolean) => void;
@@ -87,25 +87,20 @@ const INITIAL_CHANNELS: YouTubeChannel[] = [
   {
     id: "UCjw2pKqSOnb6qwtoXmXKvHg",
     title: "ياسر الدوسري",
-    description: "القناة الرسمية للشيخ ياسر الدوسري - تلاوات من الحرم المكي",
+    description: "تلاوات من الحرم المكي",
     thumbnail: "https://yt3.ggpht.com/X2s_ve9ufzgT25XGfd1SBtKHg5VcBNvAej1ylyhDGu3w7LV87iHxFr1kplWvKbW5pSGt0JBPCg=s800-c-k-c0xffffffff-no-rj-mo",
   }
-];
-
-const INITIAL_REMINDERS: Reminder[] = [
-  { id: '1', label: 'أذكار الصباح', iconType: 'play', completed: false, color: 'text-teal-400', startHour: 4, endHour: 11 },
-  { id: '3', label: 'أذكار المساء', iconType: 'bell', completed: false, color: 'text-orange-400', startHour: 15, endHour: 19 },
 ];
 
 const { db, auth } = initializeFirebase();
 
 /**
- * Sync function to save data in "Separate JSON Document" style.
+ * Sync logic: Saves specific data groups to Firestore as separate JSON documents.
  */
-const syncSlice = async (userId: string, sliceName: string, data: any) => {
+const syncToCloud = async (userId: string, slice: 'youtube' | 'football' | 'settings', data: any) => {
   if (!userId) return;
-  const docRef = doc(db, "users", userId, "data", sliceName);
-  setDoc(docRef, data, { merge: true }).catch(e => console.error(`Sync error [${sliceName}]:`, e));
+  const docRef = doc(db, "users", userId, "data", slice);
+  await setDoc(docRef, data, { merge: true }).catch(e => console.error(`Sync error [${slice}]:`, e));
 };
 
 export const useMediaStore = create<MediaState>()(
@@ -115,12 +110,12 @@ export const useMediaStore = create<MediaState>()(
       savedVideos: [],
       starredChannelIds: [],
       videoProgress: {},
-      favoriteTeams: ['Real Madrid', 'Al Nassr', 'Al Hilal'],
+      favoriteTeams: [],
       favoriteTeamIds: [541, 2939, 2931],
       favoriteLeagueIds: [307, 39, 2],
       savedPlaces: [],
-      reciterKeywords: ["ياسر الدوسري", "سعود الشريم"],
-      reminders: INITIAL_REMINDERS,
+      reciterKeywords: [],
+      reminders: [],
       mapSettings: { zoom: 19.5, tilt: 65, carScale: 1.02, backgroundIndex: 0 },
       aiSuggestions: [],
       
@@ -129,97 +124,131 @@ export const useMediaStore = create<MediaState>()(
       isMinimized: false,
       isFullScreen: false,
 
-      loadAllData: async (userId) => {
-        const slices = ["youtube", "football", "settings"];
-        for (const slice of slices) {
-          const snap = await getDoc(doc(db, "users", userId, "data", slice));
-          if (snap.exists()) set(state => ({ ...state, ...snap.data() }));
+      loadSliceData: async (userId, slice) => {
+        const snap = await getDoc(doc(db, "users", userId, "data", slice));
+        if (snap.exists()) {
+          set((state) => ({ ...state, ...snap.data() }));
         }
       },
 
       addChannel: (channel) => {
-        set((state) => ({ favoriteChannels: [...state.favoriteChannels.filter(c => c.id !== channel.id), channel] }));
-        const { userId } = { userId: auth.currentUser?.uid };
-        if (userId) syncSlice(userId, "youtube", { favoriteChannels: get().favoriteChannels });
+        set((state) => {
+          const newList = [...state.favoriteChannels.filter(c => c.id !== channel.id), channel];
+          const userId = auth.currentUser?.uid;
+          if (userId) syncToCloud(userId, 'youtube', { favoriteChannels: newList });
+          return { favoriteChannels: newList };
+        });
       },
 
       removeChannel: (id) => {
-        set((state) => ({ favoriteChannels: state.favoriteChannels.filter((c) => c.id !== id) }));
-        const userId = auth.currentUser?.uid;
-        if (userId) syncSlice(userId, "youtube", { favoriteChannels: get().favoriteChannels });
+        set((state) => {
+          const newList = state.favoriteChannels.filter(c => c.id !== id);
+          const userId = auth.currentUser?.uid;
+          if (userId) syncToCloud(userId, 'youtube', { favoriteChannels: newList });
+          return { favoriteChannels: newList };
+        });
       },
 
       toggleSaveVideo: (video) => {
         set((state) => {
-          const isSaved = state.savedVideos.some(v => v.id === video.id);
-          return { savedVideos: isSaved ? state.savedVideos.filter(v => v.id !== video.id) : [video, ...state.savedVideos] };
+          const exists = state.savedVideos.some(v => v.id === video.id);
+          const newList = exists ? state.savedVideos.filter(v => v.id !== video.id) : [video, ...state.savedVideos];
+          const userId = auth.currentUser?.uid;
+          if (userId) syncToCloud(userId, 'youtube', { savedVideos: newList });
+          return { savedVideos: newList };
         });
-        const userId = auth.currentUser?.uid;
-        if (userId) syncSlice(userId, "youtube", { savedVideos: get().savedVideos });
       },
 
       removeVideo: (id) => {
-        set((state) => ({ savedVideos: state.savedVideos.filter(v => v.id !== id) }));
-        const userId = auth.currentUser?.uid;
-        if (userId) syncSlice(userId, "youtube", { savedVideos: get().savedVideos });
+        set((state) => {
+          const newList = state.savedVideos.filter(v => v.id !== id);
+          const userId = auth.currentUser?.uid;
+          if (userId) syncToCloud(userId, 'youtube', { savedVideos: newList });
+          return { savedVideos: newList };
+        });
       },
 
       toggleStarChannel: (id) => {
-        set((state) => ({ starredChannelIds: state.starredChannelIds.includes(id) ? state.starredChannelIds.filter(i => i !== id) : [...state.starredChannelIds, id] }));
-        const userId = auth.currentUser?.uid;
-        if (userId) syncSlice(userId, "youtube", { starredChannelIds: get().starredChannelIds });
+        set((state) => {
+          const exists = state.starredChannelIds.includes(id);
+          const newList = exists ? state.starredChannelIds.filter(i => i !== id) : [...state.starredChannelIds, id];
+          const userId = auth.currentUser?.uid;
+          if (userId) syncToCloud(userId, 'youtube', { starredChannelIds: newList });
+          return { starredChannelIds: newList };
+        });
       },
 
       updateVideoProgress: (videoId, seconds) => {
-        set((state) => ({ videoProgress: { ...state.videoProgress, [videoId]: seconds } }));
-        const userId = auth.currentUser?.uid;
-        if (userId) syncSlice(userId, "youtube", { videoProgress: get().videoProgress });
+        set((state) => {
+          const newProgress = { ...state.videoProgress, [videoId]: seconds };
+          const userId = auth.currentUser?.uid;
+          if (userId) syncToCloud(userId, 'youtube', { videoProgress: newProgress });
+          return { videoProgress: newProgress };
+        });
       },
 
-      toggleFavoriteTeamId: (teamId, teamName) => {
+      toggleFavoriteTeamId: (teamId) => {
         set((state) => {
-          const isRemoving = state.favoriteTeamIds.includes(teamId);
-          const newIds = isRemoving ? state.favoriteTeamIds.filter(id => id !== teamId) : [...state.favoriteTeamIds, teamId];
-          return { favoriteTeamIds: newIds };
+          const newList = state.favoriteTeamIds.includes(teamId) 
+            ? state.favoriteTeamIds.filter(id => id !== teamId) 
+            : [...state.favoriteTeamIds, teamId];
+          const userId = auth.currentUser?.uid;
+          if (userId) syncToCloud(userId, 'football', { favoriteTeamIds: newList });
+          return { favoriteTeamIds: newList };
         });
-        const userId = auth.currentUser?.uid;
-        if (userId) syncSlice(userId, "football", { favoriteTeamIds: get().favoriteTeamIds });
       },
 
       toggleFavoriteLeagueId: (leagueId) => {
-        set((state) => ({ favoriteLeagueIds: state.favoriteLeagueIds.includes(leagueId) ? state.favoriteLeagueIds.filter(id => id !== leagueId) : [...state.favoriteLeagueIds, leagueId] }));
-        const userId = auth.currentUser?.uid;
-        if (userId) syncSlice(userId, "football", { favoriteLeagueIds: get().favoriteLeagueIds });
+        set((state) => {
+          const newList = state.favoriteLeagueIds.includes(leagueId) 
+            ? state.favoriteLeagueIds.filter(id => id !== leagueId) 
+            : [...state.favoriteLeagueIds, leagueId];
+          const userId = auth.currentUser?.uid;
+          if (userId) syncToCloud(userId, 'football', { favoriteLeagueIds: newList });
+          return { favoriteLeagueIds: newList };
+        });
       },
 
       updateMapSettings: (settings) => {
-        set((state) => ({ mapSettings: { ...state.mapSettings, ...settings } }));
-        const userId = auth.currentUser?.uid;
-        if (userId) syncSlice(userId, "settings", { mapSettings: get().mapSettings });
+        set((state) => {
+          const newSettings = { ...state.mapSettings, ...settings };
+          const userId = auth.currentUser?.uid;
+          if (userId) syncToCloud(userId, 'settings', { mapSettings: newSettings });
+          return { mapSettings: newSettings };
+        });
       },
 
       addReminder: (reminder) => {
-        set((state) => ({ reminders: [...state.reminders, reminder] }));
-        const userId = auth.currentUser?.uid;
-        if (userId) syncSlice(userId, "settings", { reminders: get().reminders });
+        set((state) => {
+          const newList = [...state.reminders, reminder];
+          const userId = auth.currentUser?.uid;
+          if (userId) syncToCloud(userId, 'settings', { reminders: newList });
+          return { reminders: newList };
+        });
       },
 
       removeReminder: (id) => {
-        set((state) => ({ reminders: state.reminders.filter(r => r.id !== id) }));
-        const userId = auth.currentUser?.uid;
-        if (userId) syncSlice(userId, "settings", { reminders: get().reminders });
+        set((state) => {
+          const newList = state.reminders.filter(r => r.id !== id);
+          const userId = auth.currentUser?.uid;
+          if (userId) syncToCloud(userId, 'settings', { reminders: newList });
+          return { reminders: newList };
+        });
       },
 
       toggleReminder: (id) => {
-        set((state) => ({ reminders: state.reminders.map(r => r.id === id ? { ...r, completed: !r.completed } : r) }));
-        const userId = auth.currentUser?.uid;
-        if (userId) syncSlice(userId, "settings", { reminders: get().reminders });
+        set((state) => {
+          const newList = state.reminders.map(r => r.id === id ? { ...r, completed: !r.completed } : r);
+          const userId = auth.currentUser?.uid;
+          if (userId) syncToCloud(userId, 'settings', { reminders: newList });
+          return { reminders: newList };
+        });
       },
 
       setAiSuggestions: (suggestions) => {
         set({ aiSuggestions: suggestions });
         const userId = auth.currentUser?.uid;
-        if (userId) syncSlice(userId, "settings", { aiSuggestions: get().aiSuggestions });
+        if (userId) syncToCloud(userId, 'settings', { aiSuggestions: suggestions });
       },
 
       setActiveVideo: (video) => set({ activeVideo: video, isPlaying: !!video, isMinimized: false, isFullScreen: false }),
@@ -228,20 +257,31 @@ export const useMediaStore = create<MediaState>()(
       setIsFullScreen: (fullScreen) => set({ isFullScreen: fullScreen, isMinimized: false }),
     }),
     {
-      name: "drivecast-json-v5",
+      name: "drivecast-atomic-v1",
+      partialize: (state) => ({ 
+        favoriteChannels: state.favoriteChannels,
+        savedVideos: state.savedVideos,
+        starredChannelIds: state.starredChannelIds,
+        favoriteTeamIds: state.favoriteTeamIds,
+        favoriteLeagueIds: state.favoriteLeagueIds,
+        mapSettings: state.mapSettings,
+        reminders: state.reminders
+      }),
     }
   )
 );
 
-// Cloud Listener for Atomic Sync
+// Automatic Sync Manager
 if (typeof window !== "undefined") {
   onAuthStateChanged(auth, (user) => {
     if (user) {
-      useMediaStore.getState().loadAllData(user.uid);
-      // Listen to separate data documents for real-time reactivity
-      ["youtube", "football", "settings"].forEach(slice => {
+      const store = useMediaStore.getState();
+      ['youtube', 'football', 'settings'].forEach(slice => {
+        store.loadSliceData(user.uid, slice as any);
         onSnapshot(doc(db, "users", user.uid, "data", slice), (snap) => {
-          if (snap.exists()) useMediaStore.setState(state => ({ ...state, ...snap.data() }));
+          if (snap.exists()) {
+            useMediaStore.setState((state) => ({ ...state, ...snap.data() }));
+          }
         });
       });
     }

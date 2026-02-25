@@ -252,45 +252,42 @@ export function MediaView() {
             })}
           </div>
         </div>
-      ) : videoResults.length > 0 ? (
-        <section className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
-          <div className="flex items-center justify-between border-b border-white/10 pb-6">
-            <h2 className="text-3xl font-black font-headline text-primary flex items-center gap-4 tracking-tight uppercase">
-               <Search className="w-8 h-8" />
-               نتائج البحث
-            </h2>
-            <Button 
-              variant="ghost" 
-              onClick={() => setVideoResults([])}
-              className="text-white/40 hover:text-white rounded-full h-12 px-6 focusable"
-              data-nav-id="search-close-btn"
-              tabIndex={0}
-            >
-              إغلاق
-            </Button>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {videoResults.map((video, idx) => (
-              <Card 
-                key={video.id} 
-                onClick={() => setActiveVideo(video)} 
-                className="group relative overflow-hidden bg-white/5 border-none rounded-[2rem] transition-all hover:scale-[1.05] cursor-pointer shadow-xl border border-white/5 focusable"
-                data-nav-id={`search-result-${idx}`}
-                tabIndex={0}
-              >
-                <div className="aspect-video relative overflow-hidden">
-                  <Image src={video.thumbnail} alt={video.title} fill className="object-cover group-hover:scale-110 transition-transform duration-1000" />
-                  <div className="absolute inset-0 bg-black/30 group-hover:bg-transparent transition-colors" />
-                </div>
-                <div className="p-5">
-                  <h3 className="font-bold text-sm line-clamp-2 text-white font-headline h-10">{video.title}</h3>
-                </div>
-              </Card>
-            ))}
-          </div>
-        </section>
       ) : (
         <section className="space-y-10 animate-in fade-in duration-1000">
+          {videoResults.length > 0 && (
+            <div className="space-y-8 mb-12 animate-in slide-in-from-bottom-4">
+              <div className="flex items-center justify-between border-b border-white/10 pb-6">
+                <h2 className="text-3xl font-black font-headline text-primary flex items-center gap-4 tracking-tight uppercase">
+                  <Search className="w-8 h-8" /> نتائج البحث
+                </h2>
+                <Button 
+                  variant="ghost" 
+                  onClick={() => setVideoResults([])}
+                  className="text-white/40 hover:text-white rounded-full h-12 px-6 focusable"
+                >إغلاق البحث</Button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                {videoResults.map((video, idx) => (
+                  <Card 
+                    key={video.id} 
+                    onClick={() => setActiveVideo(video)} 
+                    className="group relative overflow-hidden bg-white/5 border-none rounded-[2rem] transition-all hover:scale-[1.05] cursor-pointer shadow-xl border border-white/5 focusable"
+                    data-nav-id={`search-result-${idx}`}
+                    tabIndex={0}
+                  >
+                    <div className="aspect-video relative overflow-hidden">
+                      <Image src={video.thumbnail} alt={video.title} fill className="object-cover group-hover:scale-110 transition-transform duration-1000" />
+                      <div className="absolute inset-0 bg-black/30 group-hover:bg-transparent transition-colors" />
+                    </div>
+                    <div className="p-5">
+                      <h3 className="font-bold text-sm line-clamp-2 text-white font-headline h-10">{video.title}</h3>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="flex items-center justify-between">
             <h2 className="text-3xl font-black font-headline text-white flex items-center gap-4 tracking-tight">
               <Radio className="text-primary w-8 h-8 animate-pulse" /> القنوات المشتركة

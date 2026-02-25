@@ -18,7 +18,7 @@ export function LiveMatchIsland() {
       const now = new Date();
       const currentHour = now.getHours();
       
-      // منطق اليوم الرياضي: قبل 6 صباحاً نعتبرنا في سهرة الأمس
+      // Sports Day Logic: Dawn hours (00:00 - 06:00) belong to the previous night
       let matches: Match[] = [];
       if (currentHour < 6) {
         const [yesterday, today] = await Promise.all([
@@ -35,7 +35,7 @@ export function LiveMatchIsland() {
         return;
       }
 
-      // شرط المفضلة الصارم: الجزيرة لا تظهر إلا للمفضل
+      // STRICT FAVORITE CONDITION: Only show if it's a favorite
       const isFavoriteMatch = (m: Match) => 
         (m.homeTeamId && favoriteTeamIds.includes(m.homeTeamId)) || 
         (m.awayTeamId && favoriteTeamIds.includes(m.awayTeamId)) ||
@@ -48,18 +48,17 @@ export function LiveMatchIsland() {
         return;
       }
 
-      // فصل المباشر عن القادم للمفضلة فقط
+      // Priority: 1. Live Favorites, 2. Upcoming Favorites
       const liveMatches = favoriteMatches.filter(m => m.status === 'live');
       const upcomingMatches = favoriteMatches.filter(m => m.status === 'upcoming');
 
       let priorityMatch: Match | null = null;
 
       if (liveMatches.length > 0) {
-        // ترتيب المباشر: الأقرب للنهاية أولاً (الأعلى في الدقائق)
+        // Sort by minute descending (closest to end)
         priorityMatch = [...liveMatches].sort((a, b) => (b.minute || 0) - (a.minute || 0))[0];
       } else if (upcomingMatches.length > 0) {
-        // ترتيب القادم: الأقرب زمنياً للبدء
-        // نستخدم التاريخ الكامل للمقارنة الصحيحة عبر منتصف الليل
+        // Sort by start time ascending (closest to start)
         priorityMatch = [...upcomingMatches].sort((a, b) => {
           const dateA = new Date(a.date || "").getTime();
           const dateB = new Date(b.date || "").getTime();
@@ -75,7 +74,7 @@ export function LiveMatchIsland() {
 
   useEffect(() => {
     fetchStatus();
-    const interval = setInterval(fetchStatus, 30000); 
+    const interval = setInterval(fetchStatus, 45000); 
     return () => clearInterval(interval);
   }, [fetchStatus]);
 
@@ -92,7 +91,7 @@ export function LiveMatchIsland() {
         onClick={() => setIsExpanded(!isExpanded)}
         tabIndex={0}
         className={cn(
-          "bg-black/95 backdrop-blur-3xl border border-white/20 rounded-full shadow-[0_40px_100px_rgba(0,0,0,1)] transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] cursor-pointer overflow-hidden ring-4 ring-white/5 focusable outline-none",
+          "bg-black/95 backdrop-blur-3xl border border-white/20 rounded-full shadow-[0_40px_100px_rgba(0,0,0,1)] transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] cursor-pointer overflow-hidden ring-4 ring-white/5 focusable outline-none",
           isExpanded ? "w-[580px] h-48 px-10" : "w-80 h-16 px-6"
         )}
       >

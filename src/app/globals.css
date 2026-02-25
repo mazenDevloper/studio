@@ -37,20 +37,21 @@
   body {
     @apply bg-background text-foreground font-body select-none w-full overflow-hidden;
     background: radial-gradient(circle at 50% 50%, #1a1a2e 0%, #000000 100%);
-    /* iOS Smoothness Physics */
+    /* iOS Fluid Physics */
     -webkit-overflow-scrolling: touch;
     overscroll-behavior-y: none;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
+    touch-action: pan-y;
     zoom: 0.88;
   }
 }
 
-/* iPhone-like Fluid Transitions */
+/* iOS-like Smoothness */
 .focusable {
   @apply transition-all;
   transition-duration: 400ms;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
   will-change: transform, opacity;
   transform: translateZ(0); /* Hardware Acceleration */
 }
@@ -62,7 +63,7 @@
 
 .glass-panel {
   @apply bg-white/5 backdrop-blur-3xl border border-white/10 shadow-2xl;
-  transition: all 500ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition: all 500ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .no-scrollbar::-webkit-scrollbar {
@@ -74,7 +75,7 @@
   scrollbar-width: none;
 }
 
-/* Optimized Scrolling Container */
+/* Momentum Scrolling */
 .scroll-container {
   overflow-y: auto;
   scroll-behavior: smooth;
@@ -93,7 +94,7 @@
 
 .capsule-player {
   @apply bg-black/90 backdrop-blur-3xl border border-white/15 rounded-full shadow-[0_30px_60px_rgba(0,0,0,1)];
-  transition: all 600ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition: all 600ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 ::-webkit-scrollbar {
