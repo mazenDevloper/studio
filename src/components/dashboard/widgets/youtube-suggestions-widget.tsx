@@ -3,18 +3,16 @@
 
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Sparkles, RefreshCw, Play, Star, Youtube } from "lucide-react";
+import { Sparkles, RefreshCw, Youtube } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useMediaStore } from "@/lib/store";
-import { suggestPersonalizedYouTubeContent, SuggestedContentSchema } from "@/ai/flows/suggest-personalized-youtube-content-flow";
+import { suggestPersonalizedYouTubeContent } from "@/ai/flows/suggest-personalized-youtube-content-flow";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
 
 export function YouTubeSuggestionsWidget() {
-  const { favoriteChannels, setActiveVideo } = useMediaStore();
-  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const { favoriteChannels, aiSuggestions, setAiSuggestions } = useMediaStore();
   const [loading, setLoading] = useState(false);
-  const [playingId, setPlayingId] = useState<string | null>(null);
 
   const getAISuggestions = async () => {
     if (favoriteChannels.length === 0) return;
@@ -24,7 +22,7 @@ export function YouTubeSuggestionsWidget() {
         favoriteChannels: favoriteChannels.map(c => c.title)
       });
       if (result.suggestions) {
-        setSuggestions(result.suggestions);
+        setAiSuggestions(result.suggestions);
       }
     } catch (error) {
       console.error("AI Suggestions Error:", error);
@@ -34,7 +32,7 @@ export function YouTubeSuggestionsWidget() {
   };
 
   useEffect(() => {
-    if (suggestions.length === 0 && favoriteChannels.length > 0) {
+    if (aiSuggestions.length === 0 && favoriteChannels.length > 0) {
       getAISuggestions();
     }
   }, [favoriteChannels]);
@@ -42,7 +40,7 @@ export function YouTubeSuggestionsWidget() {
   if (favoriteChannels.length === 0) return null;
 
   return (
-    <Card className="border-none bg-zinc-900/50 rounded-[2.5rem] ios-shadow overflow-hidden">
+    <Card className="border-none bg-zinc-900/50 rounded-[2.5rem] shadow-2xl overflow-hidden">
       <CardHeader className="p-8 flex flex-row items-center justify-between space-y-0 pb-4">
         <CardTitle className="text-xl font-bold font-headline text-white flex items-center gap-3">
           <div className="w-10 h-10 rounded-2xl bg-primary/20 flex items-center justify-center border border-primary/20">
@@ -55,9 +53,11 @@ export function YouTubeSuggestionsWidget() {
           size="icon" 
           onClick={getAISuggestions} 
           disabled={loading}
-          className="rounded-full hover:bg-white/10 w-10 h-10"
+          className="rounded-full hover:bg-white/10 w-12 h-12 focusable"
+          data-nav-id="refresh-suggestions-btn"
+          tabIndex={0}
         >
-          <RefreshCw className={cn("w-4 h-4 text-white/60", loading && "animate-spin")} />
+          <RefreshCw className={cn("h-6 w-6 text-white/60", loading && "animate-spin")} />
         </Button>
       </CardHeader>
       <CardContent className="p-8 pt-0">
@@ -67,7 +67,7 @@ export function YouTubeSuggestionsWidget() {
               [1, 2, 3].map(i => (
                 <div key={i} className="w-[300px] h-[100px] rounded-[1.5rem] bg-white/5 animate-pulse" />
               ))
-            ) : suggestions.map((item, idx) => (
+            ) : aiSuggestions.map((item, idx) => (
               <div 
                 key={idx}
                 className="w-[320px] p-5 rounded-[1.5rem] bg-white/5 border border-white/5 hover:bg-white/10 transition-all flex items-center gap-4 group cursor-default"
@@ -88,5 +88,3 @@ export function YouTubeSuggestionsWidget() {
     </Card>
   );
 }
-
-import { cn } from "@/lib/utils";

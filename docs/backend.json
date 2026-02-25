@@ -12,7 +12,9 @@
         "reminders": { "type": "array" },
         "reciterKeywords": { "type": "array" },
         "videoProgress": { "type": "object" },
-        "favoriteTeams": { "type": "array" }
+        "favoriteTeams": { "type": "array" },
+        "aiSuggestions": { "type": "array" },
+        "mapSettings": { "type": "object" }
       }
     }
   },

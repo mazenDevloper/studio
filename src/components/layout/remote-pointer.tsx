@@ -30,12 +30,14 @@ export function RemotePointer() {
     const dx = p2.x - p1.x;
     const dy = p2.y - p1.y;
 
+    // Strict directional checks
     if (direction === "ArrowRight" && dx <= 5) return Infinity;
     if (direction === "ArrowLeft" && dx >= -5) return Infinity;
     if (direction === "ArrowDown" && dy <= 5) return Infinity;
     if (direction === "ArrowUp" && dy >= -5) return Infinity;
 
-    const orthogonalWeight = 12.0; 
+    // Favor the movement axis
+    const orthogonalWeight = 15.0; 
     if (direction === "ArrowRight" || direction === "ArrowLeft") {
       return Math.sqrt(Math.pow(dx, 2) + Math.pow(dy * orthogonalWeight, 2));
     } else {
@@ -45,7 +47,7 @@ export function RemotePointer() {
 
   const navigate = useCallback((direction: string) => {
     setIsVisible(true);
-    // Find all focusable elements including those in portals
+    // Find all focusable elements
     const focusables = Array.from(document.querySelectorAll(".focusable")) as HTMLElement[];
     if (focusables.length === 0) return;
 
@@ -65,6 +67,10 @@ export function RemotePointer() {
         
         const rect = el.getBoundingClientRect();
         if (rect.width === 0 || rect.height === 0) continue;
+
+        // Check if inside a visible dialog/portal if one is open
+        const portal = document.querySelector('[role="dialog"]');
+        if (portal && !portal.contains(el)) continue;
 
         const dist = getDistance(currentRect, rect, direction);
         if (dist < minDistance) {
@@ -98,7 +104,6 @@ export function RemotePointer() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [navigate]);
 
-  // Listen for manual focus changes to update pointer
   useEffect(() => {
     const handleFocus = (e: FocusEvent) => {
       const target = e.target as HTMLElement;
@@ -116,7 +121,7 @@ export function RemotePointer() {
 
   return (
     <div 
-      className="fixed pointer-events-none z-[2000] transition-all duration-300 ease-out"
+      className="fixed pointer-events-none z-[3000] transition-all duration-300 ease-out"
       style={{
         top: rect.top - 4,
         left: rect.left - 4,
@@ -129,7 +134,6 @@ export function RemotePointer() {
         className="w-full h-full border-4 border-primary shadow-[0_0_40px_hsl(var(--primary)/0.6)] animate-pulse" 
         style={{ borderRadius: 'inherit' }}
       />
-      <div className="absolute -top-3 -left-3 w-6 h-6 bg-primary rounded-full blur-sm opacity-50" />
     </div>
   );
 }
