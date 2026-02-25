@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import { Activity, Trophy, Clock } from "lucide-react";
 
 export function LiveMatchIsland() {
-  const { favoriteTeamIds } = useMediaStore();
+  const { favoriteTeamIds, favoriteLeagueIds } = useMediaStore();
   const [displayMatch, setDisplayMatch] = useState<Match | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -22,44 +22,41 @@ export function LiveMatchIsland() {
         return;
       }
 
-      const liveMatches = todayMatches.filter(m => m.status === 'live');
-      const upcomingMatches = todayMatches.filter(m => m.status === 'upcoming');
+      // شرط المفضلة كشرط أساسي (Favorite as a condition)
+      const isFavoriteMatch = (m: Match) => 
+        (m.homeTeamId && favoriteTeamIds.includes(m.homeTeamId)) || 
+        (m.awayTeamId && favoriteTeamIds.includes(m.awayTeamId)) ||
+        (m.leagueId && favoriteLeagueIds.includes(m.leagueId));
+
+      const favoriteMatches = todayMatches.filter(isFavoriteMatch);
+
+      if (favoriteMatches.length === 0) {
+        setDisplayMatch(null);
+        return;
+      }
+
+      const liveMatches = favoriteMatches.filter(m => m.status === 'live');
+      const upcomingMatches = favoriteMatches.filter(m => m.status === 'upcoming');
 
       let priorityMatch: Match | null = null;
 
-      // 1. الأولوية القصوى: مباريات مباشرة للفرق المفضلة (الأقرب للانتهاء)
-      const favLive = liveMatches
-        .filter(m => (m.homeTeamId && favoriteTeamIds.includes(m.homeTeamId)) || (m.awayTeamId && favoriteTeamIds.includes(m.awayTeamId)))
-        .sort((a, b) => (b.minute || 0) - (a.minute || 0));
-
-      if (favLive.length > 0) {
-        priorityMatch = favLive[0];
-      } else if (liveMatches.length > 0) {
-        // 2. إذا لم يوجد مفضل مباشر، أي مباراة مباشرة (الأقرب للانتهاء)
+      if (liveMatches.length > 0) {
+        // الأولوية للمباشر الأقرب للنهاية
         priorityMatch = [...liveMatches].sort((a, b) => (b.minute || 0) - (a.minute || 0))[0];
-      } else {
-        // 3. إذا لم يوجد مباريات مباشرة، نبحث عن أقرب مباراة قادمة (يفضل المفضل)
-        const favUpcoming = upcomingMatches
-          .filter(m => (m.homeTeamId && favoriteTeamIds.includes(m.homeTeamId)) || (m.awayTeamId && favoriteTeamIds.includes(m.awayTeamId)))
-          .sort((a, b) => a.startTime.localeCompare(b.startTime));
-
-        if (favUpcoming.length > 0) {
-          priorityMatch = favUpcoming[0];
-        } else if (upcomingMatches.length > 0) {
-          // 4. أي مباراة قادمة عامة
-          priorityMatch = [...upcomingMatches].sort((a, b) => a.startTime.localeCompare(b.startTime))[0];
-        }
+      } else if (upcomingMatches.length > 0) {
+        // إذا لم يوجد مباشر، الأقرب للبدء
+        priorityMatch = [...upcomingMatches].sort((a, b) => a.startTime.localeCompare(b.startTime))[0];
       }
 
       setDisplayMatch(priorityMatch);
     } catch (error) {
       console.error("Island Sync Error:", error);
     }
-  }, [favoriteTeamIds]);
+  }, [favoriteTeamIds, favoriteLeagueIds]);
 
   useEffect(() => {
     fetchStatus();
-    const interval = setInterval(fetchStatus, 30000); // تحديث كل 30 ثانية
+    const interval = setInterval(fetchStatus, 30000); 
     return () => clearInterval(interval);
   }, [fetchStatus]);
 
@@ -86,12 +83,12 @@ export function LiveMatchIsland() {
               <div className="flex items-center gap-4">
                 <img src={displayMatch.homeLogo} alt="" className="w-9 h-9 object-contain drop-shadow-md" />
                 <div className={cn(
-                  "px-4 py-1.5 rounded-2xl border shadow-inner transition-colors min-w-[100px] flex justify-center items-center",
-                  isLive ? "bg-white/10 border-white/10" : "bg-primary/10 border-primary/20"
+                  "px-4 py-1.5 rounded-2xl border shadow-inner transition-all min-w-[100px] flex justify-center items-center",
+                  isLive ? "bg-white/10 border-white/10" : "bg-primary/20 border-primary/40"
                 )}>
                   <span className={cn(
-                    "text-xl font-black tabular-nums tracking-tighter",
-                    isLive ? "text-primary" : "text-white"
+                    "font-black tabular-nums tracking-tighter",
+                    isLive ? "text-xl text-primary" : "text-3xl text-white"
                   )}>
                     {isLive ? `${displayMatch.score?.home} - ${displayMatch.score?.away}` : displayMatch.startTime}
                   </span>
@@ -149,7 +146,7 @@ export function LiveMatchIsland() {
                     </>
                   ) : (
                     <div className="flex flex-col items-center">
-                      <span className="text-7xl font-black text-white drop-shadow-[0_0_40px_rgba(255,255,255,0.2)] tabular-nums tracking-tighter">
+                      <span className="text-8xl font-black text-white drop-shadow-[0_0_60px_rgba(255,255,255,0.2)] tabular-nums tracking-tighter">
                         {displayMatch.startTime}
                       </span>
                     </div>

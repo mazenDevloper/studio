@@ -1,3 +1,4 @@
+
 export interface Broadcast {
   country: string;
   channel: string;
@@ -16,6 +17,7 @@ export interface Match {
   score?: { home: number; away: number };
   minute?: number;
   league: string;
+  leagueId?: number;
   leagueLogo?: string;
   channel: string;
   commentator: string;

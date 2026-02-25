@@ -26,7 +26,6 @@ export function GlobalVideoPlayer() {
   const [mounted, setMounted] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
-  // Focus transition logic
   useEffect(() => {
     if (activeVideo && !isMinimized) {
       setTimeout(() => {

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { FOOTBALL_API_KEY, FOOTBALL_API_BASE_URL } from "./constants";
@@ -9,13 +10,11 @@ import { Match } from "./football-data";
 export async function fetchFootballData(type: 'today' | 'live'): Promise<Match[]> {
   const date = new Date().toISOString().split('T')[0];
   
-  // استخدام الترويسات الدقيقة كما في الكود الناجح لدى المستخدم
   const headers = {
     'x-apisports-key': FOOTBALL_API_KEY || '2f79edc60ed7f63aa4af1feea0f1ff2c',
     'x-rapidapi-host': 'v3.football.api-sports.io'
   };
 
-  // جلب كافة مباريات اليوم لفلترتها أو جلب المباشر فقط
   const url = type === 'live' 
     ? `${FOOTBALL_API_BASE_URL}/fixtures?live=all&timezone=Asia/Riyadh`
     : `${FOOTBALL_API_BASE_URL}/fixtures?date=${date}&timezone=Asia/Riyadh`;
@@ -24,7 +23,7 @@ export async function fetchFootballData(type: 'today' | 'live'): Promise<Match[]
     const response = await fetch(url, {
       method: 'GET',
       headers: headers,
-      cache: 'no-store' // ضمان الحصول على أحدث البيانات دائماً
+      cache: 'no-store'
     });
 
     if (!response.ok) return [];
@@ -65,6 +64,7 @@ export async function fetchFootballData(type: 'today' | 'live'): Promise<Match[]
         },
         minute: item.fixture.status.elapsed ?? 0,
         league: item.league.name,
+        leagueId: item.league.id,
         leagueLogo: item.league.logo,
         channel: "SSC / beIN",
         commentator: "يحدد لاحقاً",
