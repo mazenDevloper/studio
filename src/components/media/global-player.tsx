@@ -26,7 +26,7 @@ export function GlobalVideoPlayer() {
   const [mounted, setMounted] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
-  // Focus transition logic: when video becomes active, move pointer to player controls
+  // Focus transition logic
   useEffect(() => {
     if (activeVideo && !isMinimized) {
       setTimeout(() => {
@@ -68,7 +68,7 @@ export function GlobalVideoPlayer() {
   const isSaved = savedVideos.some(v => v.id === activeVideo.id);
   const startSeconds = videoProgress[activeVideo.id] || 0;
 
-  // Added &vq=large to set default quality to 480p for better performance on car displays
+  // vq=large sets default quality to 480p to prevent buffering
   const youtubeUrl = `https://www.youtube.com/embed/${activeVideo.id}?autoplay=1&controls=1&modestbranding=1&rel=0&start=${startSeconds}&enablejsapi=1&vq=large`;
 
   return (
@@ -83,7 +83,6 @@ export function GlobalVideoPlayer() {
       )}
       onClick={() => isMinimized && setIsMinimized(false)}
     >
-      {/* PERSISTENT VIDEO CONTAINER */}
       <div className={cn(
         "absolute transition-all duration-700 overflow-hidden",
         isMinimized ? "opacity-0 pointer-events-none scale-0" : "inset-0 opacity-100",
@@ -102,7 +101,6 @@ export function GlobalVideoPlayer() {
         </div>
       </div>
 
-      {/* CAPSULE UI: Minimized State at Center Bottom */}
       {isMinimized && (
         <div className="absolute inset-0 flex items-center justify-between px-8 h-full w-full gap-6 animate-in fade-in zoom-in-95 duration-500">
            <div className="flex items-center gap-5 flex-1 min-w-0">
@@ -152,7 +150,6 @@ export function GlobalVideoPlayer() {
         </div>
       )}
 
-      {/* FLOATING CONTROLS: Center Bottom during Playback */}
       {!isMinimized && (
         <div className={cn(
           "fixed bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-6 z-[2200] transition-all duration-700",

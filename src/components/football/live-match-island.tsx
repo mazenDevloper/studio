@@ -27,20 +27,28 @@ export function LiveMatchIsland() {
 
       let priorityMatch: Match | null = null;
 
-      // 1. الأولوية: مباراة مباشرة لفريق مفضل
-      const favLive = liveMatches.find(m => 
-        (m.homeTeamId && favoriteTeamIds.includes(m.homeTeamId)) || 
-        (m.awayTeamId && favoriteTeamIds.includes(m.awayTeamId))
-      );
+      // 1. الأولوية القصوى: مباريات مباشرة للفرق المفضلة (الأقرب للانتهاء)
+      const favLive = liveMatches
+        .filter(m => (m.homeTeamId && favoriteTeamIds.includes(m.homeTeamId)) || (m.awayTeamId && favoriteTeamIds.includes(m.awayTeamId)))
+        .sort((a, b) => (b.minute || 0) - (a.minute || 0));
 
-      if (favLive) {
-        priorityMatch = favLive;
+      if (favLive.length > 0) {
+        priorityMatch = favLive[0];
       } else if (liveMatches.length > 0) {
-        // 2. إذا لم يوجد مفضل مباشر، اختر أول مباراة مباشرة متاحة (الأقرب للصافرة)
+        // 2. إذا لم يوجد مفضل مباشر، أي مباراة مباشرة (الأقرب للانتهاء)
         priorityMatch = [...liveMatches].sort((a, b) => (b.minute || 0) - (a.minute || 0))[0];
-      } else if (upcomingMatches.length > 0) {
-        // 3. إذا لم يوجد أي مباراة مباشرة، اختر أقرب مباراة ستبدأ اليوم
-        priorityMatch = [...upcomingMatches].sort((a, b) => a.startTime.localeCompare(b.startTime))[0];
+      } else {
+        // 3. إذا لم يوجد مباريات مباشرة، نبحث عن أقرب مباراة قادمة (يفضل المفضل)
+        const favUpcoming = upcomingMatches
+          .filter(m => (m.homeTeamId && favoriteTeamIds.includes(m.homeTeamId)) || (m.awayTeamId && favoriteTeamIds.includes(m.awayTeamId)))
+          .sort((a, b) => a.startTime.localeCompare(b.startTime));
+
+        if (favUpcoming.length > 0) {
+          priorityMatch = favUpcoming[0];
+        } else if (upcomingMatches.length > 0) {
+          // 4. أي مباراة قادمة عامة
+          priorityMatch = [...upcomingMatches].sort((a, b) => a.startTime.localeCompare(b.startTime))[0];
+        }
       }
 
       setDisplayMatch(priorityMatch);
@@ -51,7 +59,7 @@ export function LiveMatchIsland() {
 
   useEffect(() => {
     fetchStatus();
-    const interval = setInterval(fetchStatus, 30000);
+    const interval = setInterval(fetchStatus, 30000); // تحديث كل 30 ثانية
     return () => clearInterval(interval);
   }, [fetchStatus]);
 
@@ -78,7 +86,7 @@ export function LiveMatchIsland() {
               <div className="flex items-center gap-4">
                 <img src={displayMatch.homeLogo} alt="" className="w-9 h-9 object-contain drop-shadow-md" />
                 <div className={cn(
-                  "px-4 py-1.5 rounded-2xl border shadow-inner transition-colors",
+                  "px-4 py-1.5 rounded-2xl border shadow-inner transition-colors min-w-[100px] flex justify-center items-center",
                   isLive ? "bg-white/10 border-white/10" : "bg-primary/10 border-primary/20"
                 )}>
                   <span className={cn(
