@@ -4,13 +4,18 @@ import { FOOTBALL_API_KEY, FOOTBALL_API_BASE_URL } from "./constants";
 import { Match } from "./football-data";
 
 /**
- * محرك جلب البيانات الرياضية الموحد.
- * يستخدم مفتاح الـ API الأساسي لجلب البيانات الحية أو المجدولة.
+ * محرك جلب البيانات الرياضية الموحد باستخدام الترويسات التي تعمل بنجاح.
  */
 export async function fetchFootballData(type: 'today' | 'live'): Promise<Match[]> {
   const date = new Date().toISOString().split('T')[0];
   
-  // live=all تجلب كافة المباريات الجارية حالياً في كافة الدوريات
+  // استخدام الترويسات الدقيقة كما في الكود الناجح لدى المستخدم
+  const headers = {
+    'x-apisports-key': FOOTBALL_API_KEY || '2f79edc60ed7f63aa4af1feea0f1ff2c',
+    'x-rapidapi-host': 'v3.football.api-sports.io'
+  };
+
+  // جلب كافة مباريات اليوم لفلترتها أو جلب المباشر فقط
   const url = type === 'live' 
     ? `${FOOTBALL_API_BASE_URL}/fixtures?live=all&timezone=Asia/Riyadh`
     : `${FOOTBALL_API_BASE_URL}/fixtures?date=${date}&timezone=Asia/Riyadh`;
@@ -18,17 +23,11 @@ export async function fetchFootballData(type: 'today' | 'live'): Promise<Match[]
   try {
     const response = await fetch(url, {
       method: 'GET',
-      headers: {
-        'x-apisports-key': FOOTBALL_API_KEY,
-        'x-apisports-host': 'v3.football.api-sports.io'
-      },
-      // تفعيل الكاش لتقليل استهلاك الكوتا مع تحديث سريع للمباشر
-      next: { revalidate: type === 'live' ? 30 : 300 } 
+      headers: headers,
+      cache: 'no-store' // ضمان الحصول على أحدث البيانات دائماً
     });
 
-    if (!response.ok) {
-      return [];
-    }
+    if (!response.ok) return [];
 
     const data = await response.json();
     if (!data.response || !Array.isArray(data.response)) return [];
@@ -73,7 +72,7 @@ export async function fetchFootballData(type: 'today' | 'live'): Promise<Match[]
       } as Match;
     });
   } catch (error) {
-    console.error("API Fetch Error:", error);
+    console.error("Football API Error:", error);
     return [];
   }
 }
