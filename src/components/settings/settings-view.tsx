@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -17,10 +16,11 @@ import {
   RefreshCw,
   Clock,
   Palette,
-  Monitor,
   Maximize,
-  Compass,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Search,
+  Check,
+  Star
 } from "lucide-react";
 import { YT_KEYS_POOL } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
@@ -28,9 +28,16 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Slider } from "@/components/ui/slider";
-import { AVAILABLE_TEAMS } from "@/lib/football-data";
+import { TEAM_LIST, MAJOR_LEAGUES } from "@/lib/football-data";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const BACKGROUNDS = [
   "https://images.unsplash.com/photo-1534067783941-51c9c23ecefd",
@@ -44,14 +51,24 @@ export function SettingsView() {
     reminders, 
     addReminder, 
     removeReminder, 
-    favoriteTeams, 
-    toggleFavoriteTeam, 
+    favoriteTeamIds, 
+    toggleFavoriteTeamId,
+    favoriteLeagueIds,
+    toggleFavoriteLeagueId,
     mapSettings, 
     updateMapSettings 
   } = useMediaStore();
   const { toast } = useToast();
   
   const [newReminder, setNewReminder] = useState({ label: "", startHour: 6, endHour: 22 });
+  const [clubSearch, setClubSearch] = useState("");
+  const [leagueFilter, setLeagueFilter] = useState("all");
+
+  const filteredTeams = TEAM_LIST.filter(team => {
+    const matchesSearch = team.name.toLowerCase().includes(clubSearch.toLowerCase());
+    const matchesLeague = leagueFilter === "all" || team.leagueId.toString() === leagueFilter;
+    return matchesSearch && matchesLeague;
+  });
 
   const handleAddReminder = () => {
     if (!newReminder.label.trim()) return;
@@ -87,24 +104,24 @@ export function SettingsView() {
 
       <Tabs defaultValue="appearance" className="w-full">
         <TabsList className="bg-white/5 p-1 rounded-full border border-white/10 h-16 mb-12 flex justify-start w-fit overflow-x-auto no-scrollbar">
-          <TabsTrigger value="appearance" className="rounded-full px-10 h-full data-[state=active]:bg-primary data-[state=active]:text-white font-bold text-lg whitespace-nowrap">
+          <TabsTrigger value="appearance" data-nav-id="tab-appearance" className="rounded-full px-10 h-full data-[state=active]:bg-primary data-[state=active]:text-white font-bold text-lg whitespace-nowrap focusable">
             <Palette className="w-5 h-5 mr-3" /> المظهر والزوم
           </TabsTrigger>
-          <TabsTrigger value="youtube" className="rounded-full px-10 h-full data-[state=active]:bg-primary data-[state=active]:text-white font-bold text-lg whitespace-nowrap">
+          <TabsTrigger value="youtube" data-nav-id="tab-youtube" className="rounded-full px-10 h-full data-[state=active]:bg-primary data-[state=active]:text-white font-bold text-lg whitespace-nowrap focusable">
             <Youtube className="w-5 h-5 mr-3" /> YouTube
           </TabsTrigger>
-          <TabsTrigger value="reminders" className="rounded-full px-10 h-full data-[state=active]:bg-primary data-[state=active]:text-white font-bold text-lg whitespace-nowrap">
+          <TabsTrigger value="reminders" data-nav-id="tab-reminders" className="rounded-full px-10 h-full data-[state=active]:bg-primary data-[state=active]:text-white font-bold text-lg whitespace-nowrap focusable">
             <Bell className="w-5 h-5 mr-3" /> التذكيرات
           </TabsTrigger>
-          <TabsTrigger value="football" className="rounded-full px-10 h-full data-[state=active]:bg-primary data-[state=active]:text-white font-bold text-lg whitespace-nowrap">
+          <TabsTrigger value="football" data-nav-id="tab-football" className="rounded-full px-10 h-full data-[state=active]:bg-primary data-[state=active]:text-white font-bold text-lg whitespace-nowrap focusable">
             <Trophy className="w-5 h-5 mr-3" /> الرياضة
           </TabsTrigger>
-          <TabsTrigger value="system" className="rounded-full px-10 h-full data-[state=active]:bg-primary data-[state=active]:text-white font-bold text-lg whitespace-nowrap">
+          <TabsTrigger value="system" data-nav-id="tab-system" className="rounded-full px-10 h-full data-[state=active]:bg-primary data-[state=active]:text-white font-bold text-lg whitespace-nowrap focusable">
             <Info className="w-5 h-5 mr-3" /> النظام
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="appearance" className="space-y-8">
+        <TabsContent value="appearance" className="space-y-8 outline-none">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <Card className="bg-zinc-900/50 border-white/10 rounded-[3rem] p-10 space-y-8">
               <CardHeader className="p-0 mb-4">
@@ -117,247 +134,221 @@ export function SettingsView() {
               <div className="space-y-8">
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
-                    <label className="text-xs font-black text-white/40 uppercase tracking-[0.2em]">مستوى زوم المتصفح (Real Zoom)</label>
+                    <label className="text-xs font-black text-white/40 uppercase tracking-[0.2em]">مستوى زوم المتصفح</label>
                     <span className="text-primary font-black text-lg bg-primary/10 px-4 py-1 rounded-lg border border-primary/20">{mapSettings.zoom.toFixed(1)}</span>
                   </div>
                   <Slider 
                     value={[mapSettings.zoom]} 
                     min={15} max={21} step={0.1} 
                     onValueChange={([val]) => updateMapSettings({ zoom: val })} 
-                    className="cursor-pointer"
+                    className="cursor-pointer focusable"
+                    data-nav-id="zoom-slider"
                   />
                 </div>
 
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
-                    <label className="text-xs font-black text-white/40 uppercase tracking-[0.2em]">إمالة الكاميرا (Real Tilt)</label>
+                    <label className="text-xs font-black text-white/40 uppercase tracking-[0.2em]">إمالة الكاميرا</label>
                     <span className="text-primary font-black text-lg bg-primary/10 px-4 py-1 rounded-lg border border-primary/20">{mapSettings.tilt}°</span>
                   </div>
                   <Slider 
                     value={[mapSettings.tilt]} 
                     min={0} max={85} step={5} 
                     onValueChange={([val]) => updateMapSettings({ tilt: val })} 
-                    className="cursor-pointer"
-                  />
-                </div>
-
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <label className="text-xs font-black text-white/40 uppercase tracking-[0.2em]">حجم السيارة (3D Scale)</label>
-                    <span className="text-primary font-black text-lg bg-primary/10 px-4 py-1 rounded-lg border border-primary/20">{mapSettings.carScale.toFixed(2)}</span>
-                  </div>
-                  <Slider 
-                    value={[mapSettings.carScale]} 
-                    min={0.5} max={2.5} step={0.05} 
-                    onValueChange={([val]) => updateMapSettings({ carScale: val })} 
-                    className="cursor-pointer"
+                    className="cursor-pointer focusable"
+                    data-nav-id="tilt-slider"
                   />
                 </div>
               </div>
 
-              <Button onClick={saveToCache} className="w-full h-16 rounded-2xl bg-primary text-white text-lg font-black shadow-2xl mt-4 hover:scale-[1.02] transition-all">
-                <Save className="w-6 h-6 mr-3" /> تثبيت وحفظ في الكاش
+              <Button onClick={saveToCache} data-nav-id="save-appearance-btn" className="w-full h-16 rounded-2xl bg-primary text-white text-lg font-black shadow-2xl mt-4 hover:scale-[1.02] transition-all focusable">
+                <Save className="w-6 h-6 mr-3" /> تثبيت وحفظ
               </Button>
             </Card>
 
             <Card className="bg-zinc-900/50 border-white/10 rounded-[3rem] p-10 space-y-8">
               <CardTitle className="text-2xl font-black text-white flex items-center gap-4">
-                <ImageIcon className="w-6 h-6 text-accent" /> خلفية النظام السينمائية
+                <ImageIcon className="w-6 h-6 text-accent" /> خلفية النظام
               </CardTitle>
-              
               <div className="grid grid-cols-2 gap-4 h-64">
                 {BACKGROUNDS.map((bg, idx) => (
                   <button 
                     key={idx}
+                    data-nav-id={`bg-choice-${idx}`}
                     onClick={() => updateMapSettings({ backgroundIndex: idx })}
                     className={cn(
-                      "relative rounded-2xl overflow-hidden border-4 transition-all group",
+                      "relative rounded-2xl overflow-hidden border-4 transition-all group focusable",
                       mapSettings.backgroundIndex === idx ? "border-primary scale-105 shadow-glow" : "border-transparent opacity-40 hover:opacity-100"
                     )}
                   >
                     <img src={`${bg}?auto=format&fit=crop&q=40&w=300`} className="w-full h-full object-cover transition-transform group-hover:scale-110" alt={`Background ${idx}`} />
-                    {mapSettings.backgroundIndex === idx && (
-                      <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
-                        <Save className="w-8 h-8 text-white animate-pulse" />
-                      </div>
-                    )}
                   </button>
                 ))}
               </div>
-              <p className="text-xs text-white/40 text-center uppercase tracking-widest font-black opacity-60">سيتم تطبيق الخلفية فوراً في كافة الواجهات</p>
             </Card>
           </div>
         </TabsContent>
 
-        <TabsContent value="youtube" className="space-y-8">
-          <Card className="bg-zinc-900/50 border-white/10 rounded-[3rem] overflow-hidden">
-            <CardHeader className="p-10 border-b border-white/5">
-              <CardTitle className="text-3xl font-black text-white flex items-center gap-4">
-                <div className="p-3 bg-red-600/20 rounded-2xl">
-                  <Key className="w-8 h-8 text-red-500" />
-                </div>
-                إدارة كوتا YouTube
-              </CardTitle>
-              <CardDescription className="text-white/40 text-lg">نظام التدوير التلقائي لضمان استمرار الخدمة.</CardDescription>
-            </CardHeader>
-            <CardContent className="p-10 space-y-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {YT_KEYS_POOL.map((key, i) => (
-                  <div key={i} className="flex items-center justify-between p-5 bg-white/5 rounded-2xl border border-white/5 group">
-                    <div className="flex flex-col">
-                      <span className="text-[10px] font-black text-white/20 uppercase tracking-widest">Key {i + 1}</span>
-                      <code className="text-xs text-white/60 font-mono truncate max-w-[200px]">{key}</code>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className={cn("w-2 h-2 rounded-full", i === 0 ? "bg-accent shadow-glow" : "bg-white/20")} />
-                      <span className="text-[10px] font-black uppercase tracking-tighter opacity-40">{i === 0 ? "Active" : "Backup"}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="pt-6 border-t border-white/5">
-                <Button className="rounded-full bg-white/5 border border-white/10 text-white h-14 px-8 hover:bg-white/10">
-                  <RefreshCw className="w-5 h-5 mr-3" /> اختبار كافة المفاتيح
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="reminders" className="space-y-8">
+        <TabsContent value="football" className="space-y-8 outline-none">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            <div className="lg:col-span-5">
-              <Card className="bg-zinc-900/50 border-white/10 rounded-[3rem]">
-                <CardHeader className="p-10">
-                  <CardTitle className="text-2xl font-black text-white">إضافة تذكير جديد</CardTitle>
+            {/* القائمة اليسرى: تصفية وبحث */}
+            <div className="lg:col-span-4 space-y-6">
+              <Card className="bg-zinc-900/50 border-white/10 rounded-[2.5rem] p-8">
+                <CardHeader className="p-0 mb-6">
+                  <CardTitle className="text-xl font-black text-white">تصفية وبحث</CardTitle>
                 </CardHeader>
-                <CardContent className="p-10 pt-0 space-y-6">
+                <div className="space-y-6">
                   <div className="space-y-3">
-                    <label className="text-xs font-black text-white/40 uppercase tracking-[0.2em]">العنوان</label>
-                    <Input 
-                      placeholder="مثلاً: أذكار الصباح" 
-                      className="bg-white/5 border-white/10 h-14 rounded-2xl px-6 text-lg font-headline"
-                      value={newReminder.label}
-                      onChange={(e) => setNewReminder({ ...newReminder, label: e.target.value })}
-                    />
+                    <label className="text-[10px] font-black text-white/40 uppercase tracking-widest">اختر الدوري</label>
+                    <Select value={leagueFilter} onValueChange={setLeagueFilter}>
+                      <SelectTrigger data-nav-id="league-select" className="bg-white/5 border-white/10 h-14 rounded-2xl focusable">
+                        <SelectValue placeholder="كافة الدوريات" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-zinc-900 border-white/10 text-white rounded-2xl">
+                        <SelectItem value="all">كافة الدوريات</SelectItem>
+                        {MAJOR_LEAGUES.map(league => (
+                          <SelectItem key={league.id} value={league.id.toString()}>{league.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-3">
-                      <label className="text-xs font-black text-white/40 uppercase tracking-[0.2em]">من ساعة</label>
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black text-white/40 uppercase tracking-widest">ابحث عن نادٍ</label>
+                    <div className="relative">
+                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
                       <Input 
-                        type="number" 
-                        className="bg-white/5 border-white/10 h-14 rounded-2xl px-6"
-                        value={newReminder.startHour}
-                        onChange={(e) => setNewReminder({ ...newReminder, startHour: parseInt(e.target.value) })}
-                      />
-                    </div>
-                    <div className="space-y-3">
-                      <label className="text-xs font-black text-white/40 uppercase tracking-[0.2em]">إلى ساعة</label>
-                      <Input 
-                        type="number" 
-                        className="bg-white/5 border-white/10 h-14 rounded-2xl px-6"
-                        value={newReminder.endHour}
-                        onChange={(e) => setNewReminder({ ...newReminder, endHour: parseInt(e.target.value) })}
+                        placeholder="اسم النادي..." 
+                        className="bg-white/5 border-white/10 h-14 pl-12 rounded-2xl focusable"
+                        value={clubSearch}
+                        onChange={(e) => setClubSearch(e.target.value)}
+                        data-nav-id="club-search-input"
                       />
                     </div>
                   </div>
-                  <Button onClick={handleAddReminder} className="w-full h-16 rounded-2xl bg-primary text-white text-lg font-black shadow-2xl mt-4">
-                    <Plus className="w-6 h-6 mr-3" /> حفظ التذكير
-                  </Button>
-                </CardContent>
+                </div>
+              </Card>
+
+              <Card className="bg-zinc-900/50 border-white/10 rounded-[2.5rem] p-8">
+                <CardHeader className="p-0 mb-4">
+                  <CardTitle className="text-xl font-black text-white flex items-center gap-3">
+                    <Star className="w-5 h-5 text-accent fill-current" /> الدوريات المفضلة
+                  </CardTitle>
+                </CardHeader>
+                <div className="grid grid-cols-1 gap-2">
+                  {MAJOR_LEAGUES.map(league => {
+                    const isFav = favoriteLeagueIds.includes(league.id);
+                    return (
+                      <Button
+                        key={league.id}
+                        data-nav-id={`league-fav-${league.id}`}
+                        onClick={() => toggleFavoriteLeagueId(league.id)}
+                        variant="ghost"
+                        className={cn(
+                          "justify-between h-12 rounded-xl px-4 focusable",
+                          isFav ? "bg-primary/20 text-primary" : "text-white/40"
+                        )}
+                      >
+                        <span className="font-bold text-xs">{league.name}</span>
+                        {isFav && <Check className="w-4 h-4" />}
+                      </Button>
+                    );
+                  })}
+                </div>
               </Card>
             </div>
 
-            <div className="lg:col-span-7">
-              <div className="space-y-4">
-                {reminders.map((rem) => (
-                  <div key={rem.id} className="glass-panel p-6 rounded-[2rem] flex items-center justify-between border-white/10">
-                    <div className="flex items-center gap-6">
-                      <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center">
-                        <Bell className="w-6 h-6 text-blue-400" />
-                      </div>
-                      <div className="flex flex-col">
-                        <h4 className="text-xl font-bold text-white">{rem.label}</h4>
-                        <div className="flex items-center gap-3 mt-1 text-white/40 text-xs font-bold uppercase tracking-widest">
-                          <Clock className="w-3.5 h-3.5" />
-                          {rem.startHour}:00 - {rem.endHour}:00
+            {/* القائمة اليمنى: نتائج الأندية */}
+            <div className="lg:col-span-8">
+              <Card className="bg-zinc-900/50 border-white/10 rounded-[2.5rem] p-8 h-full">
+                <CardHeader className="p-0 mb-6 flex flex-row items-center justify-between">
+                  <CardTitle className="text-xl font-black text-white">الأندية المتوفرة</CardTitle>
+                  <span className="text-[10px] text-white/40 font-bold uppercase">{filteredTeams.length} نادٍ</span>
+                </CardHeader>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {filteredTeams.map((team, idx) => {
+                    const isFav = favoriteTeamIds.includes(team.id);
+                    return (
+                      <Button
+                        key={team.id}
+                        data-nav-id={`club-item-${team.id}`}
+                        onClick={() => toggleFavoriteTeamId(team.id)}
+                        variant={isFav ? "default" : "outline"}
+                        className={cn(
+                          "h-16 rounded-2xl font-black text-xs transition-all focusable relative overflow-hidden group",
+                          isFav ? "bg-primary shadow-glow border-primary" : "border-white/5 bg-white/5 text-white/60"
+                        )}
+                      >
+                        <div className="flex items-center gap-3 relative z-10">
+                          {isFav && <Star className="w-3 h-3 fill-current" />}
+                          {team.name}
                         </div>
-                      </div>
-                    </div>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={() => removeReminder(rem.id)}
-                      className="w-12 h-12 rounded-full text-red-500 hover:bg-red-500/10"
-                    >
-                      <Trash2 className="w-5 h-5" />
-                    </Button>
+                        {isFav && <div className="absolute inset-0 bg-white/10 animate-pulse" />}
+                      </Button>
+                    );
+                  })}
+                </div>
+                {filteredTeams.length === 0 && (
+                  <div className="flex flex-col items-center justify-center py-20 opacity-20">
+                    <Search className="w-16 h-16 mb-4" />
+                    <p className="font-black text-sm uppercase tracking-widest">لا توجد نتائج للبحث</p>
                   </div>
-                ))}
-              </div>
+                )}
+              </Card>
             </div>
           </div>
         </TabsContent>
 
-        <TabsContent value="football" className="space-y-8">
-           <Card className="bg-zinc-900/50 border-white/10 rounded-[3rem]">
-            <CardHeader className="p-10">
-              <CardTitle className="text-3xl font-black text-white">الفرق المفضلة</CardTitle>
-              <CardDescription className="text-white/40">سيتم تتبع هذه الفرق في لوحة القيادة والجزيرة العلوية.</CardDescription>
-            </CardHeader>
-            <CardContent className="p-10 pt-0">
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                {AVAILABLE_TEAMS.map(team => {
-                  const isFav = favoriteTeams.includes(team);
-                  return (
-                    <Button
-                      key={team}
-                      onClick={() => toggleFavoriteTeam(team)}
-                      variant={isFav ? "default" : "outline"}
-                      className={cn(
-                        "rounded-2xl h-14 font-black text-xs transition-all",
-                        isFav ? "bg-primary shadow-glow" : "border-white/10 text-white/60 hover:bg-white/5"
-                      )}
-                    >
-                      {team}
-                    </Button>
-                  );
-                })}
-              </div>
-            </CardContent>
+        <TabsContent value="youtube" className="space-y-8 outline-none">
+          <Card className="bg-zinc-900/50 border-white/10 rounded-[3rem] p-10">
+            <CardTitle className="text-2xl font-black text-white mb-6">مفاتيح النظام</CardTitle>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {YT_KEYS_POOL.map((key, i) => (
+                <div key={i} className="p-4 bg-white/5 rounded-2xl border border-white/5 flex items-center justify-between">
+                   <code className="text-[10px] text-white/40 truncate max-w-[200px]">{key}</code>
+                   <div className={cn("w-2 h-2 rounded-full", i === 0 ? "bg-accent" : "bg-white/10")} />
+                </div>
+              ))}
+            </div>
           </Card>
         </TabsContent>
 
-        <TabsContent value="system" className="space-y-8">
+        <TabsContent value="reminders" className="space-y-8 outline-none">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <Card className="bg-zinc-900/50 border-white/10 rounded-[3rem] p-10">
+              <h3 className="text-xl font-black text-white mb-6">تذكير جديد</h3>
+              <div className="space-y-4">
+                <Input 
+                  placeholder="مثلاً: أذكار الصباح" 
+                  className="bg-white/5 border-white/10 h-14 rounded-2xl px-6 focusable"
+                  value={newReminder.label}
+                  onChange={(e) => setNewReminder({ ...newReminder, label: e.target.value })}
+                  data-nav-id="rem-label-input"
+                />
+                <Button onClick={handleAddReminder} data-nav-id="rem-add-btn" className="w-full h-14 bg-primary rounded-2xl font-black focusable">حفظ</Button>
+              </div>
+            </Card>
+            <div className="space-y-4">
+              {reminders.map((rem, idx) => (
+                <div key={rem.id} className="p-6 bg-white/5 border border-white/5 rounded-[2rem] flex justify-between items-center group">
+                   <div className="flex items-center gap-4">
+                      <Bell className="text-primary w-6 h-6" />
+                      <span className="font-bold text-white">{rem.label}</span>
+                   </div>
+                   <Button variant="ghost" data-nav-id={`rem-del-${idx}`} onClick={() => removeReminder(rem.id)} className="text-red-500 hover:bg-red-500/10 focusable">
+                     <Trash2 className="w-5 h-5" />
+                   </Button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="system" className="space-y-8 outline-none">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <Card className="bg-zinc-900/50 border-white/10 rounded-[3rem] p-10 flex flex-col items-center text-center gap-6">
-               <div className="w-20 h-20 rounded-3xl bg-accent/20 flex items-center justify-center">
-                  <ShieldCheck className="w-10 h-10 text-accent" />
-               </div>
-               <div className="space-y-2">
-                 <h3 className="text-xl font-black text-white">حالة الترخيص</h3>
-                 <p className="text-sm text-white/40">نسخة DriveCast v2.5.0</p>
-               </div>
-            </Card>
-
-            <Card className="bg-zinc-900/50 border-white/10 rounded-[3rem] p-10 flex flex-col items-center text-center gap-6">
-               <div className="w-20 h-20 rounded-3xl bg-blue-500/20 flex items-center justify-center">
-                  <Palette className="w-10 h-10 text-blue-500" />
-               </div>
-               <div className="space-y-2">
-                 <h3 className="text-xl font-black text-white">المظهر</h3>
-                 <p className="text-sm text-white/40">الوضع السينمائي المفعل</p>
-               </div>
-            </Card>
-
-            <Card className="bg-zinc-900/50 border-white/10 rounded-[3rem] p-10 flex flex-col items-center text-center gap-6">
-               <div className="w-20 h-20 rounded-3xl bg-orange-500/20 flex items-center justify-center">
-                  <RefreshCw className="w-10 h-10 text-orange-500" />
-               </div>
-               <div className="space-y-2">
-                 <h3 className="text-xl font-black text-white">تحديث النظام</h3>
-                 <p className="text-sm text-white/40">لا توجد تحديثات حالياً</p>
-               </div>
+            <Card className="bg-zinc-900/50 border-white/10 rounded-[3rem] p-10 flex flex-col items-center gap-6">
+               <ShieldCheck className="w-12 h-12 text-accent" />
+               <h3 className="text-xl font-black text-white">النظام مفعل</h3>
+               <span className="text-xs text-white/40">v2.5.0 build 2026</span>
             </Card>
           </div>
         </TabsContent>

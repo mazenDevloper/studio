@@ -1,4 +1,3 @@
-
 "use client";
 
 import { create } from "zustand";
@@ -142,9 +141,8 @@ export const useMediaStore = create<MediaState>()(
         'Real Madrid', 'Barcelona', 'Inter Milan', 'AC Milan', 'Juventus', 
         'Al Nassr', 'Al-Ahli SFC', 'Al Hilal'
       ],
-      // IDs for: Real Madrid (541), Barcelona (529), Inter (505), Milan (489), Juventus (496), Al-Nassr (2939), Al-Ahli (2932), Al-Hilal (2931)
       favoriteTeamIds: [541, 529, 505, 489, 496, 2939, 2932, 2931],
-      favoriteLeagueIds: [39, 2, 140, 135, 307], // EPL, UCL, La Liga, Serie A, Saudi Pro League
+      favoriteLeagueIds: [39, 2, 140, 135, 307],
       aiSuggestions: [],
       mapSettings: {
         zoom: 19.5,
@@ -322,16 +320,13 @@ export const useMediaStore = create<MediaState>()(
   )
 );
 
-// Cloud Sync Listener
 if (typeof window !== "undefined") {
   onAuthStateChanged(auth, (user) => {
     if (user) {
       useMediaStore.getState().loadFromFirestore(user.uid);
-      // Listen for remote updates
       onSnapshot(doc(db, "users", user.uid), (snap) => {
         if (snap.exists()) {
           const cloudData = snap.data();
-          // Update store from cloud, but avoid re-triggering sync
           useMediaStore.setState((state) => ({
             ...state,
             ...cloudData
