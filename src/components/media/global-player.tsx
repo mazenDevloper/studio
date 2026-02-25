@@ -47,18 +47,6 @@ export function GlobalVideoPlayer() {
   }, [isPlaying, activeVideo]);
 
   useEffect(() => {
-    if ('mediaSession' in navigator && activeVideo) {
-      navigator.mediaSession.metadata = new MediaMetadata({
-        title: activeVideo.title,
-        artist: activeVideo.channelTitle || 'DriveCast Media',
-        artwork: [{ src: activeVideo.thumbnail, sizes: '512x512', type: 'image/jpeg' }]
-      });
-      navigator.mediaSession.setActionHandler('play', () => setIsPlaying(true));
-      navigator.mediaSession.setActionHandler('pause', () => setIsPlaying(false));
-    }
-  }, [activeVideo, setIsPlaying]);
-
-  useEffect(() => {
     setMounted(true);
   }, []);
 
@@ -67,6 +55,7 @@ export function GlobalVideoPlayer() {
   const isSaved = savedVideos.some(v => v.id === activeVideo.id);
   const startSeconds = videoProgress[activeVideo.id] || 0;
 
+  // vq=large sets quality to 480p to prevent stuttering on weak devices
   const youtubeUrl = `https://www.youtube.com/embed/${activeVideo.id}?autoplay=1&controls=1&modestbranding=1&rel=0&start=${startSeconds}&enablejsapi=1&vq=large`;
 
   return (
@@ -83,7 +72,7 @@ export function GlobalVideoPlayer() {
     >
       <div className={cn(
         "absolute transition-all duration-700 overflow-hidden",
-        isMinimized ? "opacity-0 pointer-events-none scale-0" : "inset-0 opacity-100",
+        isMinimized ? "opacity-0 scale-0 pointer-events-none" : "inset-0 opacity-100",
         !isFullScreen && !isMinimized && "relative w-[65vw] h-[68vh] glass-panel rounded-[3.5rem] bg-black/98 ring-4 ring-white/10"
       )}>
         <div className="w-full h-full bg-black relative">
@@ -98,55 +87,6 @@ export function GlobalVideoPlayer() {
           ></iframe>
         </div>
       </div>
-
-      {isMinimized && (
-        <div className="absolute inset-0 flex items-center justify-between px-8 h-full w-full gap-6 animate-in fade-in zoom-in-95 duration-500">
-           <div className="flex items-center gap-5 flex-1 min-w-0">
-              <div className="relative w-16 h-16 rounded-2xl overflow-hidden shadow-2xl border border-white/15 shrink-0">
-                 <Image src={activeVideo.thumbnail} alt={activeVideo.title} fill className="object-cover opacity-70 scale-125" />
-                 <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                   <Music className={cn("w-7 h-7 text-white", isPlaying && "animate-pulse")} />
-                 </div>
-              </div>
-              <div className="flex-1 min-w-0">
-                <h4 className="text-sm font-black text-white truncate uppercase tracking-tight leading-none font-headline">{activeVideo.title}</h4>
-                <div className="flex items-center gap-2 mt-2">
-                  <span className="w-2 h-2 rounded-full bg-accent animate-pulse shadow-[0_0_10px_hsl(var(--accent))]" />
-                  <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">Live Background Signal</span>
-                </div>
-              </div>
-           </div>
-           
-           <div className="flex items-center gap-3 bg-white/5 p-2 rounded-full border border-white/10 backdrop-blur-3xl">
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                onClick={(e) => { 
-                  e.stopPropagation(); 
-                  setIsPlaying(!isPlaying); 
-                }} 
-                className="h-14 w-14 rounded-full text-white hover:bg-white/10 active:scale-90 transition-all shadow-xl focusable"
-                data-nav-id="mini-play-btn"
-                tabIndex={0}
-              >
-                {isPlaying ? <Pause className="w-8 h-8 fill-current" /> : <Play className="w-8 h-8 fill-current ml-1" />}
-              </Button>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                onClick={(e) => { 
-                  e.stopPropagation(); 
-                  setActiveVideo(null); 
-                }} 
-                className="h-14 w-14 rounded-full text-red-500 hover:bg-red-500/10 active:scale-90 transition-all shadow-xl focusable"
-                data-nav-id="mini-close-btn"
-                tabIndex={0}
-              >
-                <X className="w-6 h-6" />
-              </Button>
-           </div>
-        </div>
-      )}
 
       {!isMinimized && (
         <div className={cn(
@@ -163,8 +103,8 @@ export function GlobalVideoPlayer() {
                 data-nav-id="player-minimize-btn"
                 tabIndex={0}
                >
-                 {isMinimized ? <Maximize2 className="w-7 h-7" /> : <ChevronDown className="w-7 h-7" />}
-                 <span className="text-[8px] font-black uppercase">{isMinimized ? 'Expand' : 'Pin'}</span>
+                 <ChevronDown className="w-7 h-7" />
+                 <span className="text-[8px] font-black uppercase">Pin</span>
                </Button>
                
                <Button 

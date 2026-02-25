@@ -1,20 +1,35 @@
 
 {
   "entities": {
-    "UserMedia": {
-      "title": "User Media & Preferences",
-      "description": "Stores user's favorite channels, saved videos, and app preferences.",
+    "UserYouTubeData": {
+      "title": "YouTube User Data",
+      "description": "JSON-style storage for channels and videos.",
       "type": "object",
       "properties": {
         "favoriteChannels": { "type": "array" },
         "starredChannelIds": { "type": "array" },
         "savedVideos": { "type": "array" },
-        "reminders": { "type": "array" },
-        "reciterKeywords": { "type": "array" },
-        "videoProgress": { "type": "object" },
+        "videoProgress": { "type": "object" }
+      }
+    },
+    "UserFootballData": {
+      "title": "Football Preferences",
+      "description": "JSON-style storage for teams and leagues.",
+      "type": "object",
+      "properties": {
         "favoriteTeams": { "type": "array" },
-        "aiSuggestions": { "type": "array" },
-        "mapSettings": { "type": "object" }
+        "favoriteTeamIds": { "type": "array" },
+        "favoriteLeagueIds": { "type": "array" }
+      }
+    },
+    "UserSettingsData": {
+      "title": "System Settings",
+      "description": "JSON-style storage for map and app preferences.",
+      "type": "object",
+      "properties": {
+        "mapSettings": { "type": "object" },
+        "reminders": { "type": "array" },
+        "reciterKeywords": { "type": "array" }
       }
     }
   },
@@ -22,9 +37,17 @@
     "providers": ["anonymous"]
   },
   "firestore": {
-    "/users/{userId}": {
-      "schema": "UserMedia",
-      "description": "User specific data for channels, videos and settings."
+    "/users/{userId}/data/youtube": {
+      "schema": "UserYouTubeData",
+      "description": "Standalone YouTube data file."
+    },
+    "/users/{userId}/data/football": {
+      "schema": "UserFootballData",
+      "description": "Standalone Football data file."
+    },
+    "/users/{userId}/data/settings": {
+      "schema": "UserSettingsData",
+      "description": "Standalone Settings data file."
     }
   }
 }
