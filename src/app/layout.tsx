@@ -26,15 +26,22 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased bg-black text-foreground overflow-hidden h-screen w-full flex relative" suppressHydrationWarning>
         <FirebaseClientProvider>
-          <RemotePointer />
+          {/* الجزيرة العائمة تظهر فوق كافة العناصر في كل الشاشات */}
           <LiveMatchIsland />
+          
+          {/* المؤشر الذكي للتحكم بالريموت */}
+          <RemotePointer />
+          
           <div className="flex w-full h-full overflow-hidden">
             <div className="w-24 shrink-0 h-full" /> 
             <div className="flex-1 overflow-auto relative h-full">
               {children}
             </div>
           </div>
+          
+          {/* المشغل العالمي للفيديو */}
           <GlobalVideoPlayer />
+          
           <Toaster />
         </FirebaseClientProvider>
       </body>
