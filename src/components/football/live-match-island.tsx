@@ -1,72 +1,69 @@
 
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { Match } from "@/lib/football-data";
 import { fetchFootballData } from "@/lib/football-api";
 import { useMediaStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { Activity, Trophy } from "lucide-react";
-
-// مباراة تجريبية تظهر فقط في حال عدم وجود أي مباراة مباشرة حقيقية في العالم
-const MOCK_LIVE_MATCH: Match = {
-  id: "mock-demo",
-  homeTeam: "الهلال",
-  awayTeam: "النصر",
-  homeLogo: "https://media.api-sports.io/football/teams/2931.png",
-  awayLogo: "https://media.api-sports.io/football/teams/2939.png",
-  startTime: "20:00",
-  status: "live",
-  score: { home: 2, away: 1 },
-  minute: 74,
-  league: "عرض تجريبي - لا توجد مباريات حية حالياً",
-  channel: "SSC 1 HD",
-  commentator: "فهد العتيبي",
-  broadcasts: []
-};
+import { Activity, Trophy, Clock } from "lucide-react";
 
 export function LiveMatchIsland() {
   const { favoriteTeamIds } = useMediaStore();
-  const [liveMatch, setLiveMatch] = useState<Match | null>(null);
+  const [displayMatch, setDisplayMatch] = useState<Match | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const fetchLiveStatus = useCallback(async () => {
+  const fetchStatus = useCallback(async () => {
     try {
-      // جلب البيانات الحقيقية للمباريات المباشرة
-      const currentMatches = await fetchFootballData('live');
+      // جلب كافة مباريات اليوم لضمان الحصول على المباشر والقادم
+      const todayMatches = await fetchFootballData('today');
       
-      if (currentMatches && currentMatches.length > 0) {
-        // فلترة المباريات المباشرة فقط
-        const activeLiveMatches = currentMatches.filter(m => m.status === 'live');
-        
-        if (activeLiveMatches.length > 0) {
-          // ترتيب المباريات تنازلياً حسب الدقائق (الأقرب للانتهاء تظهر أولاً)
-          const sortedByMinutes = activeLiveMatches.sort((a, b) => (b.minute || 0) - (a.minute || 0));
-          
-          // اختيار المباراة الأولى في الترتيب (الأقرب للصافرة)
-          setLiveMatch(sortedByMinutes[0]);
-        } else {
-          // لا توجد مباريات مباشرة حالياً، العودة للنمط التجريبي أو الإخفاء
-          setLiveMatch(MOCK_LIVE_MATCH);
-        }
-      } else {
-        // تعذر الوصول للبيانات أو لا توجد مباريات جارية
-        setLiveMatch(MOCK_LIVE_MATCH);
+      if (!todayMatches || todayMatches.length === 0) {
+        setDisplayMatch(null);
+        return;
       }
+
+      const liveMatches = todayMatches.filter(m => m.status === 'live');
+      const upcomingMatches = todayMatches.filter(m => m.status === 'upcoming');
+
+      let priorityMatch: Match | null = null;
+
+      if (liveMatches.length > 0) {
+        // 1. ابحث عن مباراة مباشرة لفريق مفضل
+        const favLive = liveMatches.find(m => 
+          (m.homeTeamId && favoriteTeamIds.includes(m.homeTeamId)) || 
+          (m.awayTeamId && favoriteTeamIds.includes(m.awayTeamId))
+        );
+
+        if (favLive) {
+          priorityMatch = favLive;
+        } else {
+          // 2. إذا لم يوجد مفضل مباشر، اختر المباراة الأقرب للانتهاء (أعلى الدقائق)
+          priorityMatch = [...liveMatches].sort((a, b) => (b.minute || 0) - (a.minute || 0))[0];
+        }
+      } else if (upcomingMatches.length > 0) {
+        // 3. إذا لم يوجد أي مباراة مباشرة، اختر أقرب مباراة ستبدأ
+        // الترتيب حسب وقت البدء
+        priorityMatch = [...upcomingMatches].sort((a, b) => a.startTime.localeCompare(b.startTime))[0];
+      }
+
+      setDisplayMatch(priorityMatch);
     } catch (error) {
       console.error("Island Sync Error:", error);
-      setLiveMatch(MOCK_LIVE_MATCH);
     }
-  }, []);
+  }, [favoriteTeamIds]);
 
   useEffect(() => {
-    fetchLiveStatus();
-    // تحديث سريع كل 30 ثانية لمتابعة الدقائق بدقة والتبديل فور الانتهاء
-    const interval = setInterval(fetchLiveStatus, 30000);
+    fetchStatus();
+    // تحديث كل 30 ثانية لمتابعة التغيرات اللحظية
+    const interval = setInterval(fetchStatus, 30000);
     return () => clearInterval(interval);
-  }, [fetchLiveStatus]);
+  }, [fetchStatus]);
 
-  if (!liveMatch) return null;
+  if (!displayMatch) return null;
+
+  const isLive = displayMatch.status === 'live';
+  const isUpcoming = displayMatch.status === 'upcoming';
 
   return (
     <div 
@@ -85,52 +82,89 @@ export function LiveMatchIsland() {
           {!isExpanded ? (
             <div className="flex items-center justify-between w-full animate-in fade-in slide-in-from-top-4 duration-500">
               <div className="flex items-center gap-4">
-                <img src={liveMatch.homeLogo} alt="" className="w-9 h-9 object-contain drop-shadow-md" />
-                <div className="bg-white/10 px-4 py-1.5 rounded-2xl border border-white/10 shadow-inner">
-                  <span className="text-xl font-black text-primary tabular-nums">
-                    {liveMatch.score?.home} - {liveMatch.score?.away}
+                <img src={displayMatch.homeLogo} alt="" className="w-9 h-9 object-contain drop-shadow-md" />
+                <div className={cn(
+                  "px-4 py-1.5 rounded-2xl border shadow-inner transition-colors",
+                  isLive ? "bg-white/10 border-white/10" : "bg-primary/10 border-primary/20"
+                )}>
+                  <span className={cn(
+                    "text-xl font-black tabular-nums tracking-tighter",
+                    isLive ? "text-primary" : "text-white"
+                  )}>
+                    {isLive ? `${displayMatch.score?.home} - ${displayMatch.score?.away}` : displayMatch.startTime}
                   </span>
                 </div>
-                <img src={liveMatch.awayLogo} alt="" className="w-9 h-9 object-contain drop-shadow-md" />
+                <img src={displayMatch.awayLogo} alt="" className="w-9 h-9 object-contain drop-shadow-md" />
               </div>
               
               <div className="flex items-center gap-3 pr-2">
-                <div className="w-2 h-2 rounded-full bg-red-600 animate-pulse shadow-[0_0_12px_red]" />
-                <span className="text-sm font-black text-accent tabular-nums">{liveMatch.minute}'</span>
+                {isLive ? (
+                  <>
+                    <div className="w-2 h-2 rounded-full bg-red-600 animate-pulse shadow-[0_0_12px_red]" />
+                    <span className="text-sm font-black text-accent tabular-nums">{displayMatch.minute}'</span>
+                  </>
+                ) : (
+                  <>
+                    <Clock className="w-4 h-4 text-primary" />
+                    <span className="text-[10px] font-black text-white/40 uppercase tracking-tighter">قريباً</span>
+                  </>
+                )}
               </div>
             </div>
           ) : (
             <div className="flex items-center justify-between w-full animate-in fade-in zoom-in-95 duration-700">
               <div className="flex flex-col items-center gap-3 w-32 group">
-                <img src={liveMatch.homeLogo} alt="" className="w-20 h-20 object-contain transition-transform group-hover:scale-110" />
-                <span className="text-[10px] font-black text-white/90 truncate w-full text-center uppercase tracking-tighter">{liveMatch.homeTeam}</span>
+                <img src={displayMatch.homeLogo} alt="" className="w-20 h-20 object-contain transition-transform group-hover:scale-110" />
+                <span className="text-[10px] font-black text-white/90 truncate w-full text-center uppercase tracking-tighter">{displayMatch.homeTeam}</span>
               </div>
 
               <div className="flex flex-col items-center gap-4">
-                <div className="flex items-center gap-2 bg-red-600/20 px-4 py-1.5 rounded-full border border-red-600/30">
-                  <Activity className="w-3 h-3 text-red-600 animate-pulse" />
-                  <span className="text-[9px] font-black text-red-500 uppercase tracking-[0.2em]">LIVE FEED</span>
+                <div className={cn(
+                  "flex items-center gap-2 px-4 py-1.5 rounded-full border transition-all",
+                  isLive ? "bg-red-600/20 border-red-600/30" : "bg-primary/20 border-primary/30"
+                )}>
+                  {isLive ? (
+                    <>
+                      <Activity className="w-3 h-3 text-red-600 animate-pulse" />
+                      <span className="text-[9px] font-black text-red-500 uppercase tracking-[0.2em]">LIVE FEED</span>
+                    </>
+                  ) : (
+                    <>
+                      <Clock className="w-3 h-3 text-primary" />
+                      <span className="text-[9px] font-black text-primary uppercase tracking-[0.2em]">UPCOMING</span>
+                    </>
+                  )}
                 </div>
                 
                 <div className="flex items-center gap-8">
-                  <span className="text-7xl font-black text-white drop-shadow-[0_0_40px_rgba(255,255,255,0.1)] tabular-nums">{liveMatch.score?.home}</span>
-                  <div className="flex flex-col items-center gap-2">
-                    <span className="text-3xl font-black text-primary tracking-tighter animate-pulse">{liveMatch.minute}'</span>
-                  </div>
-                  <span className="text-7xl font-black text-white drop-shadow-[0_0_40px_rgba(255,255,255,0.1)] tabular-nums">{liveMatch.score?.away}</span>
+                  {isLive ? (
+                    <>
+                      <span className="text-7xl font-black text-white drop-shadow-[0_0_40px_rgba(255,255,255,0.1)] tabular-nums">{displayMatch.score?.home}</span>
+                      <div className="flex flex-col items-center gap-2">
+                        <span className="text-3xl font-black text-primary tracking-tighter animate-pulse">{displayMatch.minute}'</span>
+                      </div>
+                      <span className="text-7xl font-black text-white drop-shadow-[0_0_40px_rgba(255,255,255,0.1)] tabular-nums">{displayMatch.score?.away}</span>
+                    </>
+                  ) : (
+                    <div className="flex flex-col items-center">
+                      <span className="text-6xl font-black text-white drop-shadow-[0_0_40px_rgba(255,255,255,0.2)] tabular-nums tracking-tighter">
+                        {displayMatch.startTime}
+                      </span>
+                    </div>
+                  )}
                 </div>
                 
                 <div className="flex flex-col items-center gap-1">
                    <div className="text-[9px] font-bold text-white/40 uppercase tracking-[0.3em] flex items-center gap-2 text-center">
                     <Trophy className="w-4 h-4 text-accent" />
-                    <span className="truncate max-w-[220px]">{liveMatch.league}</span>
+                    <span className="truncate max-w-[220px]">{displayMatch.league}</span>
                   </div>
                 </div>
               </div>
 
               <div className="flex flex-col items-center gap-3 w-32 group">
-                <img src={liveMatch.awayLogo} alt="" className="w-20 h-20 object-contain transition-transform group-hover:scale-110" />
-                <span className="text-[10px] font-black text-white/90 truncate w-full text-center uppercase tracking-tighter">{liveMatch.awayTeam}</span>
+                <img src={displayMatch.awayLogo} alt="" className="w-20 h-20 object-contain transition-transform group-hover:scale-110" />
+                <span className="text-[10px] font-black text-white/90 truncate w-full text-center uppercase tracking-tighter">{displayMatch.awayTeam}</span>
               </div>
             </div>
           )}
