@@ -18,7 +18,7 @@ export function LiveMatchIsland() {
       const now = new Date();
       const currentHour = now.getHours();
       
-      // Sports Day Logic: Dawn hours (00:00 - 06:00) belong to the previous night
+      // Sports Day Logic: Hours before 06:00 AM belong to the previous athletic night
       let matches: Match[] = [];
       if (currentHour < 6) {
         const [yesterday, today] = await Promise.all([
@@ -35,7 +35,7 @@ export function LiveMatchIsland() {
         return;
       }
 
-      // STRICT FAVORITE CONDITION: Only show if it's a favorite
+      // STRICT FAVORITE CONDITION: Only show if it matches user's favorites
       const isFavoriteMatch = (m: Match) => 
         (m.homeTeamId && favoriteTeamIds.includes(m.homeTeamId)) || 
         (m.awayTeamId && favoriteTeamIds.includes(m.awayTeamId)) ||
@@ -44,22 +44,26 @@ export function LiveMatchIsland() {
       const favoriteMatches = matches.filter(isFavoriteMatch);
 
       if (favoriteMatches.length === 0) {
+        // Fallback to first live match if no favorites are live, OR hide
+        const liveGeneral = matches.filter(m => m.status === 'live');
+        if (liveGeneral.length > 0) {
+          setDisplayMatch(liveGeneral.sort((a, b) => (b.minute || 0) - (a.minute || 0))[0]);
+          return;
+        }
         setDisplayMatch(null);
         return;
       }
 
-      // Priority: 1. Live Favorites, 2. Upcoming Favorites
-      const liveMatches = favoriteMatches.filter(m => m.status === 'live');
-      const upcomingMatches = favoriteMatches.filter(m => m.status === 'upcoming');
+      // Priority within favorites: 1. Live, 2. Upcoming
+      const liveFavs = favoriteMatches.filter(m => m.status === 'live');
+      const upcomingFavs = favoriteMatches.filter(m => m.status === 'upcoming');
 
       let priorityMatch: Match | null = null;
 
-      if (liveMatches.length > 0) {
-        // Sort by minute descending (closest to end)
-        priorityMatch = [...liveMatches].sort((a, b) => (b.minute || 0) - (a.minute || 0))[0];
-      } else if (upcomingMatches.length > 0) {
-        // Sort by start time ascending (closest to start)
-        priorityMatch = [...upcomingMatches].sort((a, b) => {
+      if (liveFavs.length > 0) {
+        priorityMatch = [...liveFavs].sort((a, b) => (b.minute || 0) - (a.minute || 0))[0];
+      } else if (upcomingFavs.length > 0) {
+        priorityMatch = [...upcomingFavs].sort((a, b) => {
           const dateA = new Date(a.date || "").getTime();
           const dateB = new Date(b.date || "").getTime();
           return dateA - dateB;

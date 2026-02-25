@@ -2,10 +2,9 @@
 "use client";
 
 import { useMediaStore } from "@/lib/store";
-import { X, Maximize2, Play, Pause, Music, Youtube as YoutubeIcon, Minimize2, Bookmark, Monitor, ChevronDown } from "lucide-react";
+import { X, Play, Pause, Youtube as YoutubeIcon, Minimize2, Bookmark, Monitor, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import Image from "next/image";
 import { useState, useEffect, useRef } from "react";
 
 export function GlobalVideoPlayer() {
@@ -55,7 +54,7 @@ export function GlobalVideoPlayer() {
   const isSaved = savedVideos.some(v => v.id === activeVideo.id);
   const startSeconds = videoProgress[activeVideo.id] || 0;
 
-  // vq=large sets quality to 480p to prevent stuttering on weak devices
+  // vq=large forces 480p quality for smoother playback on weak devices
   const youtubeUrl = `https://www.youtube.com/embed/${activeVideo.id}?autoplay=1&controls=1&modestbranding=1&rel=0&start=${startSeconds}&enablejsapi=1&vq=large`;
 
   return (
