@@ -28,7 +28,6 @@ export function MediaView() {
     savedVideos, 
     toggleSaveVideo, 
     setActiveVideo,
-    starredChannelIds,
     toggleStarChannel
   } = useMediaStore();
 
@@ -182,9 +181,9 @@ export function MediaView() {
                     variant="ghost"
                     size="icon"
                     onClick={() => toggleStarChannel(selectedChannel!.channelid)}
-                    className={cn("w-16 h-16 rounded-full border border-white/10 backdrop-blur-md transition-all focusable", starredChannelIds.includes(selectedChannel!.channelid) ? "bg-accent/20 text-accent shadow-glow" : "text-white/40 hover:text-white")}
+                    className={cn("w-16 h-16 rounded-full border border-white/10 backdrop-blur-md transition-all focusable", selectedChannel.starred ? "bg-accent/20 text-accent shadow-glow" : "text-white/40 hover:text-white")}
                   >
-                    <Star className={cn("w-8 h-8", starredChannelIds.includes(selectedChannel!.channelid) && "fill-current")} />
+                    <Star className={cn("w-8 h-8", selectedChannel.starred && "fill-current")} />
                   </Button>
                 </div>
              </div>
@@ -305,7 +304,7 @@ export function MediaView() {
             </Dialog>
 
             {favoriteChannels.map((channel, idx) => {
-              const isStarred = starredChannelIds.includes(channel.channelid);
+              const isStarred = channel.starred;
               return (
                 <div key={channel.channelid} className="flex flex-col items-center gap-4 group relative animate-in zoom-in-95 duration-700">
                   <div className="w-32 h-32 sm:w-40 sm:h-40 rounded-full overflow-hidden border-4 border-white/10 group-hover:border-primary transition-all duration-700 cursor-pointer shadow-2xl relative focusable" onClick={() => handleSelectChannel(channel)}>

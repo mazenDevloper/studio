@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -24,7 +23,7 @@ import {
 
 export function DashboardView() {
   const [weather, setWeather] = useState<any>(null);
-  const { favoriteChannels, starredChannelIds } = useMediaStore();
+  const { favoriteChannels } = useMediaStore();
   const [api, setApi] = useState<CarouselApi>();
   const [current, setCurrent] = useState(0);
   const [count, setCount] = useState(0);
@@ -53,7 +52,8 @@ export function DashboardView() {
     return () => clearInterval(interval);
   }, [api]);
 
-  const starredChannels = favoriteChannels.filter(c => starredChannelIds.includes(c.id));
+  // تصفية القنوات المميزة بنجمة بناءً على حقل starred السحابي
+  const starredChannels = favoriteChannels.filter(c => c.starred);
 
   return (
     <div className="h-full w-full p-6 flex flex-col gap-6 relative overflow-y-auto pb-32 no-scrollbar">
@@ -182,6 +182,7 @@ export function DashboardView() {
       </div>
 
       <div className="w-full space-y-6">
+        {/* سيتم عرض الفيديوهات بناءً على القنوات المميزة بـ starred: true */}
         <LatestVideosWidget channels={starredChannels} />
         <YouTubeSavedWidget />
       </div>

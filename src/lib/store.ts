@@ -25,7 +25,7 @@ export interface MapSettings {
 interface MediaState {
   favoriteChannels: YouTubeChannel[];
   savedVideos: YouTubeVideo[];
-  starredChannelIds: string[];
+  starredChannelIds: string[]; // سنحتفظ بهذا للمزامنة المحلية السريعة ولكن المصدر هو starred داخل الكائن
   videoProgress: Record<string, number>;
   favoriteTeamIds: number[];
   favoriteLeagueIds: number[];
@@ -41,7 +41,7 @@ interface MediaState {
   incrementChannelClick: (channelid: string) => void;
   toggleSaveVideo: (video: YouTubeVideo) => void;
   removeVideo: (id: string) => void;
-  toggleStarChannel: (id: string) => void;
+  toggleStarChannel: (channelid: string) => void;
   addReminder: (reminder: Reminder) => void;
   removeReminder: (id: string) => void;
   toggleReminder: (id: string) => void;
@@ -89,7 +89,7 @@ export const useMediaStore = create<MediaState>()(
 
       addChannel: (channel) => {
         set((state) => {
-          const newChannel = { ...channel, clickschannel: 0 };
+          const newChannel = { ...channel, clickschannel: 0, starred: false };
           const newList = [...state.favoriteChannels.filter(c => c.channelid !== channel.channelid), newChannel];
           updateBin(JSONBIN_CHANNELS_BIN_ID, newList);
           return { favoriteChannels: newList };
@@ -126,11 +126,21 @@ export const useMediaStore = create<MediaState>()(
         set((state) => ({ savedVideos: state.savedVideos.filter(v => v.id !== id) }));
       },
 
-      toggleStarChannel: (id) => {
+      toggleStarChannel: (channelid) => {
         set((state) => {
-          const exists = state.starredChannelIds.includes(id);
-          const newList = exists ? state.starredChannelIds.filter(i => i !== id) : [...state.starredChannelIds, id];
-          return { starredChannelIds: newList };
+          // تحديث حالة النجمة داخل كائن القناة نفسه للمزامنة السحابية
+          const newList = state.favoriteChannels.map(c => 
+            c.channelid === channelid ? { ...c, starred: !c.starred } : c
+          );
+          
+          // تحديث starredChannelIds للمزامنة المحلية السريعة (Legacy support)
+          const newStarredIds = newList.filter(c => c.starred).map(c => c.channelid);
+          
+          updateBin(JSONBIN_CHANNELS_BIN_ID, newList);
+          return { 
+            favoriteChannels: newList,
+            starredChannelIds: newStarredIds
+          };
         });
       },
 
@@ -211,7 +221,13 @@ if (typeof window !== "undefined") {
       if (chRes.ok) {
         const data = await chRes.json();
         if (Array.isArray(data.record)) {
-          useMediaStore.setState({ favoriteChannels: data.record });
+          // جلب الحالات المميزة من السحاب وتحديث القائمة المحلية
+          const cloudChannels = data.record;
+          const cloudStarredIds = cloudChannels.filter((c: any) => c.starred).map((c: any) => c.channelid);
+          useMediaStore.setState({ 
+            favoriteChannels: cloudChannels,
+            starredChannelIds: cloudStarredIds
+          });
         }
       }
 

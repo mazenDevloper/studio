@@ -8,6 +8,7 @@ export interface YouTubeChannel {
   image: string;
   channeltitle: string;
   clickschannel: number;
+  starred: boolean; // الحقل الجديد للمزامنة السحابية
   subscriberCount?: string;
 }
 
@@ -97,6 +98,7 @@ export async function searchYouTubeChannels(query: string): Promise<YouTubeChann
     channeltitle: item.snippet.title,
     image: item.snippet.thumbnails.high?.url || item.snippet.thumbnails.default?.url,
     clickschannel: 0,
+    starred: false, // قيمة افتراضية عند البحث
     subscriberCount: statsMap[item.snippet.channelId] || "---"
   }));
 }
