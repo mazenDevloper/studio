@@ -5,7 +5,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Match } from "@/lib/football-data";
 import { useMediaStore } from "@/lib/store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Trophy, Tv, Mic2, Star, RefreshCw, Loader2, AlertCircle } from "lucide-react";
+import { Trophy, Tv, Mic2, Star, RefreshCw, Loader2, AlertCircle, Bell, BellRing } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import Image from "next/image";
@@ -13,12 +13,13 @@ import { cn } from "@/lib/utils";
 import { fetchFootballData } from "@/lib/football-api";
 
 export function MatchScheduleWidget() {
-  const { favoriteTeams, toggleFavoriteTeam } = useMediaStore();
+  const { favoriteTeams, toggleFavoriteTeam, belledMatchIds, toggleBelledMatch } = useMediaStore();
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
   const isFavTeam = (id: number) => favoriteTeams.some(t => t.id === id);
+  const isBelled = (id: string) => belledMatchIds.includes(id);
 
   const loadMatches = useCallback(async () => {
     setLoading(true);
@@ -26,6 +27,11 @@ export function MatchScheduleWidget() {
     try {
       const data = await fetchFootballData('today');
       const sorted = [...data].sort((a, b) => {
+        const aBelled = isBelled(a.id);
+        const bBelled = isBelled(b.id);
+        if (aBelled && !bBelled) return -1;
+        if (!aBelled && bBelled) return 1;
+
         const aFav = isFavTeam(a.homeTeamId!) || isFavTeam(a.awayTeamId!);
         const bFav = isFavTeam(b.homeTeamId!) || isFavTeam(b.awayTeamId!);
         if (aFav && !bFav) return -1;
@@ -40,7 +46,7 @@ export function MatchScheduleWidget() {
     } finally {
       setLoading(false);
     }
-  }, [favoriteTeams]);
+  }, [favoriteTeams, belledMatchIds]);
 
   useEffect(() => {
     loadMatches();
@@ -91,16 +97,29 @@ export function MatchScheduleWidget() {
               ) : (
                 matches.map((match) => {
                   const hasFav = isFavTeam(match.homeTeamId!) || isFavTeam(match.awayTeamId!);
+                  const isBelledMatch = isBelled(match.id);
                   
                   return (
                     <div 
                       key={match.id} 
                       className={cn(
                         "w-80 p-6 rounded-[2.2rem] flex flex-col gap-4 relative transition-all duration-500 hover:scale-[1.02] border backdrop-blur-md focusable",
-                        hasFav ? "bg-primary/15 border-primary/30 shadow-glow" : "bg-white/5 border-white/10"
+                        isBelledMatch ? "bg-accent/10 border-accent/40 shadow-[0_0_20px_rgba(var(--accent),0.2)]" : hasFav ? "bg-primary/15 border-primary/30 shadow-glow" : "bg-white/5 border-white/10"
                       )}
                     >
-                      {hasFav && (
+                      <div className="absolute top-4 left-4 z-20">
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); toggleBelledMatch(match.id); }}
+                          className={cn(
+                            "w-8 h-8 rounded-full border border-white/10 backdrop-blur-3xl flex items-center justify-center transition-all active:scale-90",
+                            isBelledMatch ? "bg-accent text-black" : "bg-black/40 text-white/20 hover:text-white"
+                          )}
+                        >
+                          {isBelledMatch ? <BellRing className="w-4 h-4 animate-pulse" /> : <Bell className="w-4 h-4" />}
+                        </button>
+                      </div>
+
+                      {hasFav && !isBelledMatch && (
                         <div className="absolute top-4 right-4 bg-yellow-500/20 p-1.5 rounded-full shadow-lg border border-yellow-500/30">
                           <Star className="w-3.5 h-3.5 text-yellow-500 fill-current" />
                         </div>

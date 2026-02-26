@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Timer, Clock, Calendar, Star, Trophy, Activity, Tv, Mic2, RefreshCw } from "lucide-react";
+import { Loader2, Timer, Clock, Calendar, Star, Trophy, Activity, Tv, Mic2, RefreshCw, Bell, BellRing } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AiMatchSummary } from "./ai-match-summary";
 import { useMediaStore } from "@/lib/store";
@@ -17,9 +17,10 @@ export function FootballView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("today");
-  const { favoriteTeams, toggleFavoriteTeam, favoriteLeagueIds } = useMediaStore();
+  const { favoriteTeams, toggleFavoriteTeam, favoriteLeagueIds, belledMatchIds, toggleBelledMatch } = useMediaStore();
 
   const isFavTeam = (id: number) => favoriteTeams.some(t => t.id === id);
+  const isBelled = (id: string) => belledMatchIds.includes(id);
 
   const loadMatches = async (view: string) => {
     setLoading(true);
@@ -56,16 +57,23 @@ export function FootballView() {
     }
 
     return result.sort((a, b) => {
+      const aIsBelled = isBelled(a.id);
+      const bIsBelled = isBelled(b.id);
+      if (aIsBelled && !bIsBelled) return -1;
+      if (!aIsBelled && bIsBelled) return 1;
+
       const aIsFav = isFavTeam(a.homeTeamId) || isFavTeam(a.awayTeamId);
       const bIsFav = isFavTeam(b.homeTeamId) || isFavTeam(b.awayTeamId);
       if (aIsFav && !bIsFav) return -1;
       if (!aIsFav && bIsFav) return 1;
+      
       return 0;
     });
-  }, [matches, activeTab, favoriteTeams, favoriteLeagueIds]);
+  }, [matches, activeTab, favoriteTeams, favoriteLeagueIds, belledMatchIds]);
 
   const renderMatchCard = (match: any, idx: number) => {
     const isFavMatch = isFavTeam(match.homeTeamId) || isFavTeam(match.awayTeamId);
+    const isBelledMatch = isBelled(match.id);
     const isLive = match.status === 'live';
 
     return (
@@ -73,11 +81,25 @@ export function FootballView() {
         key={match.id} 
         className={cn(
           "relative overflow-hidden transition-all duration-500 border-white/5 group focusable",
-          isFavMatch 
-            ? "ring-2 ring-primary bg-primary/10 shadow-[0_0_30px_rgba(var(--primary),0.2)]" 
-            : "hover:bg-card/60 bg-card/40"
+          isBelledMatch 
+            ? "ring-2 ring-accent bg-accent/5 shadow-[0_0_30px_rgba(var(--accent),0.1)]" 
+            : isFavMatch 
+              ? "ring-2 ring-primary bg-primary/10 shadow-[0_0_30px_rgba(var(--primary),0.2)]" 
+              : "hover:bg-card/60 bg-card/40"
         )}
       >
+        <div className="absolute top-0 left-0 p-2 z-20 flex gap-2">
+          <button 
+            onClick={(e) => { e.stopPropagation(); toggleBelledMatch(match.id); }}
+            className={cn(
+              "w-10 h-10 rounded-full border border-white/10 backdrop-blur-3xl flex items-center justify-center transition-all active:scale-90",
+              isBelledMatch ? "bg-accent text-black shadow-[0_0_20px_rgba(var(--accent),0.5)]" : "bg-black/60 text-white/20 hover:text-white"
+            )}
+          >
+            {isBelledMatch ? <BellRing className="w-5 h-5 animate-pulse" /> : <Bell className="w-5 h-5" />}
+          </button>
+        </div>
+
         {isFavMatch && (
           <div className="absolute top-0 right-0 p-2 z-20">
             <Badge className="bg-yellow-500 text-black border-none font-black text-[10px] py-1 px-3 flex items-center gap-1 shadow-lg">
@@ -87,7 +109,7 @@ export function FootballView() {
           </div>
         )}
         
-        <CardContent className="p-5">
+        <CardContent className="p-5 mt-4">
           <div className="flex flex-col gap-5">
             <div className="flex justify-between items-center border-b border-white/5 pb-3">
               <span className="text-[10px] font-black uppercase tracking-tight text-white/70 truncate max-w-[70%] text-right dir-rtl">

@@ -44,6 +44,7 @@ interface MediaState {
   videoProgress: Record<string, number>;
   favoriteTeams: FavoriteTeam[];
   favoriteLeagueIds: number[];
+  belledMatchIds: string[];
   prayerTimes: any[];
   reminders: Reminder[];
   mapSettings: MapSettings;
@@ -63,6 +64,7 @@ interface MediaState {
   toggleReminder: (id: string) => void;
   toggleFavoriteTeam: (team: FavoriteTeam) => void;
   toggleFavoriteLeagueId: (leagueId: number) => void;
+  toggleBelledMatch: (matchId: string) => void;
   updateMapSettings: (settings: Partial<MapSettings>) => void;
   setAiSuggestions: (suggestions: any[]) => void;
   setActiveVideo: (video: YouTubeVideo | null) => void;
@@ -96,6 +98,7 @@ export const useMediaStore = create<MediaState>()(
       videoProgress: {},
       favoriteTeams: [],
       favoriteLeagueIds: [307, 39, 2],
+      belledMatchIds: [],
       prayerTimes: prayerTimesData,
       reminders: [],
       mapSettings: { zoom: 19.5, tilt: 65, carScale: 1.02, backgroundIndex: 0 },
@@ -216,6 +219,14 @@ export const useMediaStore = create<MediaState>()(
         }));
       },
 
+      toggleBelledMatch: (matchId) => {
+        set((state) => ({
+          belledMatchIds: state.belledMatchIds.includes(matchId)
+            ? state.belledMatchIds.filter(id => id !== matchId)
+            : [...state.belledMatchIds, matchId]
+        }));
+      },
+
       updateMapSettings: (settings) => {
         set((state) => ({ mapSettings: { ...state.mapSettings, ...settings } }));
       },
@@ -244,7 +255,6 @@ export const useMediaStore = create<MediaState>()(
             get().incrementChannelClick(channel.channelid);
           }
         }
-        // تم تغيير الوضع الافتراضي ليكون Cinema (isFullScreen: true)
         set({ 
           activeVideo: video, 
           isPlaying: !!video, 
@@ -263,6 +273,7 @@ export const useMediaStore = create<MediaState>()(
         savedVideos: state.savedVideos,
         favoriteTeams: state.favoriteTeams,
         favoriteLeagueIds: state.favoriteLeagueIds,
+        belledMatchIds: state.belledMatchIds,
         mapSettings: state.mapSettings,
         reminders: state.reminders,
         prayerTimes: state.prayerTimes,

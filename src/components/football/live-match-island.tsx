@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Match } from "@/lib/football-data";
 import { fetchFootballData } from "@/lib/football-api";
 import { useMediaStore } from "@/lib/store";
@@ -9,13 +9,17 @@ import { cn } from "@/lib/utils";
 import { Activity, Trophy, Clock, Timer, BellRing, Sparkles } from "lucide-react";
 
 export function LiveMatchIsland() {
-  const { favoriteTeams, favoriteLeagueIds, prayerTimes } = useMediaStore();
+  const { favoriteTeams, favoriteLeagueIds, prayerTimes, belledMatchIds } = useMediaStore();
   const [topMatches, setTopMatches] = useState<Match[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [isDetailed, setIsDetailed] = useState(false);
   
   // نظام التنبيهات
   const [notification, setNotification] = useState<{ type: 'azan' | 'iqamah', name: string } | null>(null);
+  
+  // رادار الأهداف
+  const lastScoresRef = useRef<Record<string, { home: number, away: number }>>({});
+  const goalTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -38,29 +42,53 @@ export function LiveMatchIsland() {
         return;
       }
 
+      const isBelledMatch = (m: Match) => belledMatchIds.includes(m.id);
       const isFavoriteMatch = (m: Match) => 
         (m.homeTeamId && favoriteTeams.some(t => t.id === m.homeTeamId)) || 
         (m.awayTeamId && favoriteTeams.some(t => t.id === m.awayTeamId)) ||
         (m.leagueId && favoriteLeagueIds.includes(m.leagueId));
 
-      const favLive = matches.filter(m => m.status === 'live' && isFavoriteMatch(m))
-        .sort((a,b) => (b.minute || 0) - (a.minute || 0));
+      // الأولوية 1: الجرس (Belled)
+      const belledLive = matches.filter(m => m.status === 'live' && isBelledMatch(m));
+      const belledUpcoming = matches.filter(m => m.status === 'upcoming' && isBelledMatch(m));
       
-      const favUpcoming = matches.filter(m => m.status === 'upcoming' && isFavoriteMatch(m))
-        .sort((a,b) => new Date(a.date || "").getTime() - new Date(b.date || "").getTime());
+      // الأولوية 2: المفضلات
+      const favLive = matches.filter(m => m.status === 'live' && isFavoriteMatch(m) && !isBelledMatch(m));
+      const favUpcoming = matches.filter(m => m.status === 'upcoming' && isFavoriteMatch(m) && !isBelledMatch(m));
       
-      const genLive = matches.filter(m => m.status === 'live' && !isFavoriteMatch(m))
-        .sort((a,b) => (b.minute || 0) - (a.minute || 0));
-      
-      const genUpcoming = matches.filter(m => m.status === 'upcoming' && !isFavoriteMatch(m))
-        .sort((a,b) => new Date(a.date || "").getTime() - new Date(b.date || "").getTime());
+      // الأولوية 3: البقية
+      const genLive = matches.filter(m => m.status === 'live' && !isFavoriteMatch(m) && !isBelledMatch(m));
+      const genUpcoming = matches.filter(m => m.status === 'upcoming' && !isFavoriteMatch(m) && !isBelledMatch(m));
 
-      const prioritized = [...favLive, ...favUpcoming, ...genLive, ...genUpcoming].slice(0, 3);
+      const prioritized = [...belledLive, ...belledUpcoming, ...favLive, ...favUpcoming, ...genLive, ...genUpcoming].slice(0, 3);
+      
+      // منطق رادار الأهداف
+      prioritized.forEach((m, idx) => {
+        if (m.status === 'live' && m.score) {
+          const lastScore = lastScoresRef.current[m.id];
+          if (lastScore) {
+            const isGoal = m.score.home > lastScore.home || m.score.away > lastScore.away;
+            if (isGoal) {
+              // توسيع الجزيرة فوراً عند الهدف
+              setActiveIndex(idx);
+              setIsDetailed(true);
+              
+              // إعادة الإغلاق بعد 15 ثانية
+              if (goalTimerRef.current) clearTimeout(goalTimerRef.current);
+              goalTimerRef.current = setTimeout(() => {
+                setIsDetailed(false);
+              }, 15000);
+            }
+          }
+          lastScoresRef.current[m.id] = { home: m.score.home, away: m.score.away };
+        }
+      });
+
       setTopMatches(prioritized);
     } catch (error) {
       console.error("Island Sync Error:", error);
     }
-  }, [favoriteTeams, favoriteLeagueIds]);
+  }, [favoriteTeams, favoriteLeagueIds, belledMatchIds]);
 
   // مراقبة مواقيت الصلاة للتنبيه
   useEffect(() => {
@@ -92,7 +120,7 @@ export function LiveMatchIsland() {
 
         if (currentMinutes === azanMins && now.getSeconds() < 10) {
           setNotification({ type: 'azan', name: p.name });
-          setTimeout(() => setNotification(null), 15000); // 15 ثانية تنبيه
+          setTimeout(() => setNotification(null), 15000);
         } else if (currentMinutes === iqamahMins && now.getSeconds() < 10) {
           setNotification({ type: 'iqamah', name: p.name });
           setTimeout(() => setNotification(null), 15000);
@@ -106,8 +134,11 @@ export function LiveMatchIsland() {
 
   useEffect(() => {
     fetchStatus();
-    const interval = setInterval(fetchStatus, 45000); 
-    return () => clearInterval(interval);
+    const interval = setInterval(fetchStatus, 30000); // تحديث كل 30 ثانية لرصد الأهداف بدقة
+    return () => {
+      clearInterval(interval);
+      if (goalTimerRef.current) clearTimeout(goalTimerRef.current);
+    };
   }, [fetchStatus]);
 
   if (topMatches.length === 0 && !notification) return null;
@@ -166,11 +197,16 @@ export function LiveMatchIsland() {
                 onClick={() => handleIslandClick(idx)}
                 tabIndex={0}
                 className={cn(
-                  "bg-black/95 backdrop-blur-3xl border border-white/20 rounded-full shadow-[0_40px_100px_rgba(0,0,0,1)] transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] cursor-pointer overflow-hidden ring-4 ring-white/5 focusable outline-none",
+                  "bg-black/95 backdrop-blur-3xl border border-white/20 rounded-full shadow-[0_40px_100px_rgba(0,0,0,1)] transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] cursor-pointer overflow-hidden ring-4 ring-white/5 focusable outline-none relative",
                   isDetailed ? "w-[580px] h-48 px-10" : "w-80 h-16 px-6"
                 )}
                 data-nav-id={`island-active-${match.id}`}
               >
+                {/* إشعاع تسجيل الأهداف */}
+                {isDetailed && isLive && (
+                  <div className="absolute inset-0 bg-accent/5 animate-pulse pointer-events-none" />
+                )}
+
                 <div className="h-full flex items-center justify-between">
                   {!isDetailed ? (
                     <div className="flex items-center justify-between w-full animate-in fade-in slide-in-from-top-4 duration-500">
@@ -270,7 +306,7 @@ export function LiveMatchIsland() {
             <div 
               key={match.id} 
               onClick={() => handleIslandClick(idx)}
-              className="pointer-events-auto w-16 h-16 rounded-full bg-black/95 backdrop-blur-3xl border border-white/20 flex flex-col items-center justify-center p-2 shadow-2xl ring-4 ring-white/5 animate-in fade-in slide-in-from-right-4 duration-1000 cursor-pointer hover:scale-110 active:scale-90 transition-all focusable outline-none"
+              className="pointer-events-auto w-16 h-16 rounded-full bg-black/95 backdrop-blur-3xl border border-white/20 flex flex-col items-center justify-center p-2 shadow-2xl ring-4 ring-white/5 animate-in fade-in slide-in-from-right-4 duration-1000 cursor-pointer hover:scale-110 active:scale-90 transition-all focusable outline-none relative"
               tabIndex={0}
               data-nav-id={`island-mini-${match.id}`}
             >
