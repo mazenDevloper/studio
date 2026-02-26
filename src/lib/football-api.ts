@@ -5,7 +5,52 @@ import { FOOTBALL_API_KEY, FOOTBALL_API_BASE_URL } from "./constants";
 import { Match, TEAM_LIST } from "./football-data";
 
 /**
- * محرك جلب البيانات الرياضية الموحد. يدعم الآن 'yesterday' للتعامل مع مباريات منتصف الليل.
+ * قاموس ذكي لتحويل أسماء الأندية من العربية إلى الإنجليزية لضمان دقة البحث العالمي.
+ */
+const ARABIC_TO_ENGLISH_MAP: Record<string, string> = {
+  "ريال مدريد": "Real Madrid",
+  "برشلونة": "Barcelona",
+  "ليفربول": "Liverpool",
+  "مانشستر سيتي": "Manchester City",
+  "مانشستر يونايتد": "Manchester United",
+  "أرسنال": "Arsenal",
+  "تشيلسي": "Chelsea",
+  "توتنهام": "Tottenham",
+  "بايرن ميونخ": "Bayern Munich",
+  "يوفنتوس": "Juventus",
+  "إنتر ميلان": "Inter",
+  "ميلان": "AC Milan",
+  "باريس سان جيرمان": "Paris Saint Germain",
+  "روما": "Roma",
+  "نابولي": "Napoli",
+  "أتلتيكو مدريد": "Atletico Madrid",
+  "بوروسيا دورتموند": "Borussia Dortmund",
+  "باير ليفركوزن": "Bayer Leverkusen",
+  "أياكس": "Ajax",
+  "بنفيكا": "Benfica",
+  "بورتو": "Porto",
+  "سبورتينغ لشبونة": "Sporting CP",
+  "إشبيلية": "Sevilla",
+  "فالنسيا": "Valencia",
+  "نيوكاسل": "Newcastle",
+  "أستون فيلا": "Aston Villa",
+  "الهلال": "Al Hilal",
+  "النصر": "Al Nassr",
+  "الاتحاد": "Al Ittihad",
+  "الأهلي": "Al Ahli",
+  "الزمالك": "Zamalek",
+  "العين": "Al Ain",
+  "السد": "Al Sadd",
+  "الدحيل": "Al Duhail",
+  "الريان": "Al Rayyan",
+  "الوصل": "Al Wasl",
+  "بيراميدز": "Pyramids",
+  "المصري": "Al Masry",
+  "الإسماعيلي": "Ismaily"
+};
+
+/**
+ * محرك جلب البيانات الرياضية الموحد.
  */
 export async function fetchFootballData(type: 'today' | 'live' | 'yesterday' | 'tomorrow'): Promise<Match[]> {
   const now = new Date();
@@ -90,7 +135,7 @@ export async function fetchFootballData(type: 'today' | 'live' | 'yesterday' | '
 }
 
 /**
- * بحث عالمي عن الأندية في قاعدة بيانات API-Sports مع دعم البحث المحلي باللغة العربية أولاً.
+ * بحث عالمي ذكي عن الأندية يدعم التحويل من العربية للإنجليزية للبحث العالمي.
  */
 export async function searchFootballTeams(query: string, leagueId?: string): Promise<any[]> {
   if (!query && (!leagueId || leagueId === 'all')) return [];
@@ -108,18 +153,25 @@ export async function searchFootballTeams(query: string, leagueId?: string): Pro
       }
     }));
 
-    // إذا وجدنا نتائج محلية بالعربية، نعطيها الأولوية
     if (localResults.length > 0) return localResults;
   }
 
-  // 2. إذا لم يتم العثور على نتائج محلية، نستخدم البحث العالمي (API Search)
+  // 2. التحويل الذكي للبحث العالمي
+  let englishQuery = query;
+  for (const [ar, en] of Object.entries(ARABIC_TO_ENGLISH_MAP)) {
+    if (query.includes(ar)) {
+      englishQuery = en;
+      break;
+    }
+  }
+
   const headers = {
     'x-apisports-key': FOOTBALL_API_KEY || '2f79edc60ed7f63aa4af1feea0f1ff2c',
     'x-rapidapi-host': 'v3.football.api-sports.io'
   };
 
   let params = new URLSearchParams();
-  if (query) params.append('search', query);
+  params.append('search', englishQuery);
   if (leagueId && leagueId !== 'all') {
     params.append('league', leagueId);
     params.append('season', '2024'); 
@@ -131,6 +183,15 @@ export async function searchFootballTeams(query: string, leagueId?: string): Pro
     const response = await fetch(url, { method: 'GET', headers: headers });
     if (!response.ok) return [];
     const data = await response.json();
+    
+    // إذا لم تكن هناك نتائج بالاسم الإنجليزي المحول، جرب الاسم العربي الأصلي (بعض الأندية مسجلة بالعربية في API)
+    if ((!data.response || data.response.length === 0) && englishQuery !== query) {
+      const fallbackUrl = `${FOOTBALL_API_BASE_URL}/teams?search=${encodeURIComponent(query)}`;
+      const fallbackRes = await fetch(fallbackUrl, { method: 'GET', headers: headers });
+      const fallbackData = await fallbackRes.json();
+      return fallbackData.response || [];
+    }
+
     return data.response || [];
   } catch (error) {
     console.error("Search Teams Error:", error);
