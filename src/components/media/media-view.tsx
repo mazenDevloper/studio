@@ -275,7 +275,7 @@ export function MediaView() {
               <div className="bg-white/5 border-2 border-primary/40 rounded-[2.5rem] p-4 backdrop-blur-3xl relative animate-in zoom-in-95 duration-500 shadow-[0_0_50px_rgba(var(--primary),0.1)]">
                 <div className="flex items-center justify-between mb-4 px-2">
                   <span className="text-xs font-black text-primary uppercase tracking-[0.2em]">اختر القارئ</span>
-                  <Button variant="ghost" size="icon" onClick={() => setShowReciterGrid(false)} className="rounded-full w-8 h-8 text-white/40 hover:text-white hover:bg-white/10">
+                  <Button variant="ghost" size="icon" onClick={() => setShowReciterGrid(false)} className="rounded-full w-8 h-8 text-white/40 hover:text-white hover:bg-white/10 focusable">
                     <X className="w-4 h-4" />
                   </Button>
                 </div>
@@ -441,6 +441,7 @@ export function MediaView() {
                 <Card 
                   key={video.id} 
                   className="group relative overflow-hidden bg-white/5 border-none rounded-[3rem] transition-all hover:scale-[1.03] cursor-pointer shadow-2xl border border-white/5 focusable"
+                  tabIndex={0}
                   onClick={() => setActiveVideo(video)}
                 >
                   <div className="aspect-video relative overflow-hidden">
@@ -471,14 +472,14 @@ export function MediaView() {
           {videoResults.length > 0 && (
             <div className="space-y-8 mb-12 animate-in slide-in-from-bottom-4">
               <div className="flex items-center justify-between border-b border-white/10 pb-6">
-                <Button variant="ghost" onClick={() => setVideoResults([])} className="text-white/40 hover:text-white rounded-full h-12 px-6">إغلاق البحث</Button>
+                <Button variant="ghost" onClick={() => setVideoResults([])} className="text-white/40 hover:text-white rounded-full h-12 px-6 focusable">إغلاق البحث</Button>
                 <h2 className="text-3xl font-black font-headline text-primary flex items-center gap-4 tracking-tight uppercase">
                   نتائج البحث <Search className="w-8 h-8" />
                 </h2>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                 {videoResults.map((video) => (
-                  <Card key={video.id} onClick={() => setActiveVideo(video)} className="group relative overflow-hidden bg-white/5 border-none rounded-[2rem] transition-all hover:scale-[1.05] cursor-pointer shadow-xl border border-white/5 focusable">
+                  <Card key={video.id} onClick={() => setActiveVideo(video)} className="group relative overflow-hidden bg-white/5 border-none rounded-[2rem] transition-all hover:scale-[1.05] cursor-pointer shadow-xl border border-white/5 focusable" tabIndex={0}>
                     <div className="aspect-video relative overflow-hidden">
                       <Image src={video.thumbnail} alt={video.title} fill className="object-cover group-hover:scale-110 transition-transform duration-1000" />
                       <div className="absolute inset-0 bg-black/30 group-hover:bg-transparent transition-colors" />

@@ -23,7 +23,7 @@ export function RemotePointer() {
     if (direction === "ArrowUp" && dy >= -5) return Infinity;
 
     // Favor the movement axis
-    const orthogonalWeight = 15.0; 
+    const orthogonalWeight = 8.0; 
     if (direction === "ArrowRight" || direction === "ArrowLeft") {
       return Math.sqrt(Math.pow(dx, 2) + Math.pow(dy * orthogonalWeight, 2));
     } else {
