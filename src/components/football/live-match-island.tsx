@@ -27,6 +27,7 @@ export function LiveMatchIsland() {
       const currentHour = now.getHours();
       
       let matches: Match[] = [];
+      // جلب مباريات اليوم، مع دعم مباريات الفجر (yesterday)
       if (currentHour < 6) {
         const [yesterday, today] = await Promise.all([
           fetchFootballData('yesterday'),
@@ -48,32 +49,36 @@ export function LiveMatchIsland() {
         (m.awayTeamId && favoriteTeams.some(t => t.id === m.awayTeamId)) ||
         (m.leagueId && favoriteLeagueIds.includes(m.leagueId));
 
-      // الأولوية 1: الجرس (Belled)
+      // الأولوية القصوى: المفضلات والجرس
+      // الترتيب: (جرس مباشر) -> (جرس قادم) -> (مفضل مباشر) -> (مفضل قادم) -> (عام مباشر)
       const belledLive = matches.filter(m => m.status === 'live' && isBelledMatch(m));
       const belledUpcoming = matches.filter(m => m.status === 'upcoming' && isBelledMatch(m));
       
-      // الأولوية 2: المفضلات
       const favLive = matches.filter(m => m.status === 'live' && isFavoriteMatch(m) && !isBelledMatch(m));
       const favUpcoming = matches.filter(m => m.status === 'upcoming' && isFavoriteMatch(m) && !isBelledMatch(m));
       
-      // الأولوية 3: البقية
       const genLive = matches.filter(m => m.status === 'live' && !isFavoriteMatch(m) && !isBelledMatch(m));
       const genUpcoming = matches.filter(m => m.status === 'upcoming' && !isFavoriteMatch(m) && !isBelledMatch(m));
 
-      const prioritized = [...belledLive, ...belledUpcoming, ...favLive, ...favUpcoming, ...genLive, ...genUpcoming].slice(0, 3);
+      const prioritized = [
+        ...belledLive, 
+        ...favLive, 
+        ...belledUpcoming, 
+        ...favUpcoming, 
+        ...genLive, 
+        ...genUpcoming
+      ].slice(0, 3);
       
-      // منطق رادار الأهداف
+      // منطق رادار الأهداف: التوسع التلقائي عند التغيير في النتيجة
       prioritized.forEach((m, idx) => {
         if (m.status === 'live' && m.score) {
           const lastScore = lastScoresRef.current[m.id];
           if (lastScore) {
             const isGoal = m.score.home > lastScore.home || m.score.away > lastScore.away;
             if (isGoal) {
-              // توسيع الجزيرة فوراً عند الهدف
               setActiveIndex(idx);
               setIsDetailed(true);
               
-              // إعادة الإغلاق بعد 15 ثانية
               if (goalTimerRef.current) clearTimeout(goalTimerRef.current);
               goalTimerRef.current = setTimeout(() => {
                 setIsDetailed(false);
@@ -90,7 +95,7 @@ export function LiveMatchIsland() {
     }
   }, [favoriteTeams, favoriteLeagueIds, belledMatchIds]);
 
-  // مراقبة مواقيت الصلاة للتنبيه
+  // مراقبة مواقيت الصلاة
   useEffect(() => {
     const checkPrayers = () => {
       if (!prayerTimes || prayerTimes.length === 0) return;
@@ -134,7 +139,7 @@ export function LiveMatchIsland() {
 
   useEffect(() => {
     fetchStatus();
-    const interval = setInterval(fetchStatus, 30000); // تحديث كل 30 ثانية لرصد الأهداف بدقة
+    const interval = setInterval(fetchStatus, 30000); 
     return () => {
       clearInterval(interval);
       if (goalTimerRef.current) clearTimeout(goalTimerRef.current);
@@ -152,7 +157,6 @@ export function LiveMatchIsland() {
     }
   };
 
-  // عرض التنبيه إذا كان مفعلاً
   if (notification) {
     return (
       <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[9999] pointer-events-auto">
@@ -202,7 +206,6 @@ export function LiveMatchIsland() {
                 )}
                 data-nav-id={`island-active-${match.id}`}
               >
-                {/* إشعاع تسجيل الأهداف */}
                 {isDetailed && isLive && (
                   <div className="absolute inset-0 bg-accent/5 animate-pulse pointer-events-none" />
                 )}
@@ -312,11 +315,20 @@ export function LiveMatchIsland() {
             >
                <div className="flex flex-col gap-1 items-center scale-90">
                   <img src={match.homeLogo} alt="" className="w-6 h-6 object-contain drop-shadow-sm" />
-                  <div className={cn("h-px w-4", isLive ? "bg-primary/50" : "bg-white/10")} />
+                  
+                  {isLive ? (
+                    <span className="text-[10px] font-black text-primary tabular-nums leading-none -my-0.5 drop-shadow-glow">
+                      {match.score?.home}-{match.score?.away}
+                    </span>
+                  ) : (
+                    <div className={cn("h-px w-4", "bg-white/10")} />
+                  )}
+                  
                   <img src={match.awayLogo} alt="" className="w-6 h-6 object-contain drop-shadow-sm" />
                </div>
+               
                {isLive && (
-                 <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-600 rounded-full border-2 border-black animate-pulse" />
+                 <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-600 rounded-full border-2 border-black animate-pulse shadow-[0_0_8px_red]" />
                )}
             </div>
           );
