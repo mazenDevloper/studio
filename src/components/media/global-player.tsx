@@ -156,15 +156,15 @@ export function GlobalVideoPlayer() {
       {/* YouTube Player Container */}
       <div className={cn(
         "absolute transition-all duration-700 overflow-hidden",
-        isMinimized ? "opacity-0 scale-0 pointer-events-none" : "inset-0 opacity-100",
-        !isFullScreen && !isMinimized && "relative w-[65vw] h-[68vh] glass-panel rounded-[3.5rem] bg-black/98 ring-4 ring-white/10"
+        isMinimized ? "opacity-0 scale-0 pointer-events-none" : "opacity-100",
+        isFullScreen ? "inset-0" : "relative w-[65vw] h-[68vh] glass-panel rounded-[3.5rem] bg-black/98 ring-4 ring-white/10"
       )}>
         <div className="w-full h-full bg-black relative" id="youtube-player-container">
           <div id="youtube-player-element" className="w-full h-full"></div>
         </div>
       </div>
 
-      {/* Minimized Capsule UI (Information Continuity) */}
+      {/* Minimized Capsule UI */}
       {isMinimized && (
         <div className="h-full w-full flex items-center justify-between px-6 animate-in fade-in duration-500">
           <div className="flex items-center gap-4 flex-1 min-w-0">
@@ -208,7 +208,7 @@ export function GlobalVideoPlayer() {
         </div>
       )}
 
-      {/* Full Player Controls */}
+      {/* Full Player Controls (Always visible in Cinema/Popup) */}
       {!isMinimized && (
         <div className={cn(
           "fixed bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-6 z-[2200] transition-all duration-700",

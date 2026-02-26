@@ -244,7 +244,13 @@ export const useMediaStore = create<MediaState>()(
             get().incrementChannelClick(channel.channelid);
           }
         }
-        set({ activeVideo: video, isPlaying: !!video, isMinimized: false, isFullScreen: false });
+        // تم تغيير الوضع الافتراضي ليكون Cinema (isFullScreen: true)
+        set({ 
+          activeVideo: video, 
+          isPlaying: !!video, 
+          isMinimized: false, 
+          isFullScreen: !!video 
+        });
       },
       setIsPlaying: (playing) => set({ isPlaying: playing }),
       setIsMinimized: (minimized) => set({ isMinimized: minimized, isFullScreen: false }),
@@ -262,7 +268,8 @@ export const useMediaStore = create<MediaState>()(
         prayerTimes: state.prayerTimes,
         videoProgress: state.videoProgress,
         activeVideo: state.activeVideo,
-        isMinimized: state.isMinimized
+        isMinimized: state.isMinimized,
+        isFullScreen: state.isFullScreen
       }),
     }
   )
