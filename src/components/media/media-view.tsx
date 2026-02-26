@@ -94,7 +94,6 @@ export function MediaView() {
     try {
       const results = await searchYouTubeVideos(finalQuery);
       setVideoResults(results);
-      // Scroll to results
       window.scrollTo({ top: 400, behavior: 'smooth' });
     } catch (error) {
       console.error("Video search failed", error);
@@ -142,7 +141,7 @@ export function MediaView() {
     const videoId = videoIdMatch ? videoIdMatch[1] : urlInput.trim();
 
     if (videoId.length !== 11) {
-      toast({ variant: "destructive", title: "رابط غير صالح", description: "يرجى إدخال رابط يوتيوب صحيح." });
+      toast({ variant: "destructive", title: "رابط غير صالح", description: "يرجى إدخل رابط يوتيوب صحيح." });
       return;
     }
 
@@ -192,6 +191,22 @@ export function MediaView() {
     toggleSaveVideo(video);
   };
 
+  // Helper for Juz logic
+  const getJuz = (idx: number) => {
+    if (idx <= 1) return 1;
+    if (idx >= 78) return 30;
+    return Math.min(29, Math.ceil((idx / 77) * 29));
+  };
+
+  const getJuzColor = (juz: number) => {
+    if (juz <= 5) return "border-blue-500/40 bg-blue-500/10 text-blue-400";
+    if (juz <= 10) return "border-emerald-500/40 bg-emerald-500/10 text-emerald-400";
+    if (juz <= 15) return "border-amber-500/40 bg-amber-500/10 text-amber-400";
+    if (juz <= 20) return "border-purple-500/40 bg-purple-500/10 text-purple-400";
+    if (juz <= 25) return "border-rose-500/40 bg-rose-500/10 text-rose-400";
+    return "border-cyan-500/40 bg-cyan-500/10 text-cyan-400";
+  };
+
   return (
     <div className="p-6 space-y-8 max-w-7xl mx-auto pb-32 min-h-screen relative dir-rtl">
       <header className="flex flex-col gap-6">
@@ -237,13 +252,13 @@ export function MediaView() {
           </div>
         </div>
 
-        <div className="flex flex-col md:flex-row gap-6 items-start">
-          {/* specialized Reciter Search */}
-          <div className="w-full md:w-[300px] space-y-2">
+        <div className="flex flex-col md:flex-row gap-6 items-end">
+          {/* specialized Reciter Search - Visually Right in RTL */}
+          <div className="w-full md:w-[280px] space-y-2 order-1 md:order-2">
             <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block px-2">اختر القارئ</label>
             <Select onValueChange={(val) => setSelectedReciter(reciters.find(r => r.name === val))}>
               <SelectTrigger className="h-16 bg-white/5 border-white/10 rounded-[1.5rem] focusable text-right text-lg font-bold">
-                <SelectValue placeholder={isLoadingReciters ? "جاري تحميل القراء..." : "اسم القارئ"} />
+                <SelectValue placeholder={isLoadingReciters ? "جاري التحميل..." : "اسم القارئ"} />
               </SelectTrigger>
               <SelectContent className="bg-zinc-900 border-white/10 text-white rounded-2xl">
                 {reciters.map((reciter, idx) => (
@@ -253,7 +268,7 @@ export function MediaView() {
             </Select>
           </div>
 
-          <div className="flex-1 flex gap-4 w-full">
+          <div className="flex-1 flex gap-4 w-full order-2 md:order-1">
             <div className="relative flex-1 group">
               <Search className="absolute right-6 top-1/2 -translate-y-1/2 h-6 w-6 text-muted-foreground group-focus-within:text-primary transition-colors" />
               <Input
@@ -275,27 +290,37 @@ export function MediaView() {
           </div>
         </div>
 
-        {/* Surahs Grid - Appears only when reciter is selected */}
+        {/* Surahs Grid - Colored by Juz */}
         {selectedReciter && (
           <div className="bg-white/5 p-8 rounded-[3rem] border border-white/10 animate-in fade-in slide-in-from-top-4 duration-700">
             <div className="flex items-center gap-4 mb-6 border-b border-white/5 pb-4">
               <div className="w-12 h-12 rounded-full bg-accent/20 flex items-center justify-center">
                 <BookOpen className="w-6 h-6 text-accent" />
               </div>
-              <h2 className="text-2xl font-black text-white">اختر سورة لـ {selectedReciter.name}</h2>
+              <h2 className="text-2xl font-black text-white">فهرس السور لـ {selectedReciter.name}</h2>
             </div>
-            <ScrollArea className="h-[200px] w-full">
-              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3 p-2">
-                {SURAHS_LIST.map((surah, idx) => (
-                  <Button
-                    key={idx}
-                    variant="ghost"
-                    onClick={() => handleSurahClick(surah)}
-                    className="h-12 rounded-xl bg-white/5 hover:bg-primary/20 hover:text-white border border-white/5 transition-all text-xs font-bold focusable"
-                  >
-                    {surah}
-                  </Button>
-                ))}
+            <ScrollArea className="h-[320px] w-full">
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4 p-2">
+                {SURAHS_LIST.map((surah, idx) => {
+                  const juz = getJuz(idx + 1);
+                  const colorClass = getJuzColor(juz);
+                  return (
+                    <Button
+                      key={idx}
+                      variant="ghost"
+                      onClick={() => handleSurahClick(surah)}
+                      className={cn(
+                        "h-24 rounded-[1.8rem] flex flex-col items-center justify-center border-2 transition-all hover:scale-105 active:scale-95 focusable px-4",
+                        colorClass
+                      )}
+                    >
+                      <span className="text-lg font-black tracking-tight mb-1">{surah}</span>
+                      <div className="bg-black/20 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider opacity-80">
+                        الجزء {juz}
+                      </div>
+                    </Button>
+                  );
+                })}
               </div>
             </ScrollArea>
           </div>
