@@ -8,7 +8,7 @@ export interface YouTubeChannel {
   image: string;
   channeltitle: string;
   clickschannel: number;
-  starred: boolean; // الحقل الجديد للمزامنة السحابية
+  starred: boolean;
   subscriberCount?: string;
 }
 
@@ -19,6 +19,9 @@ export interface YouTubeVideo {
   thumbnail: string;
   publishedAt: string;
   channelTitle?: string;
+  channelId?: string;
+  duration?: string;
+  progress?: number;
 }
 
 const youtubeCache: Record<string, { data: any, timestamp: number }> = {};
@@ -98,7 +101,7 @@ export async function searchYouTubeChannels(query: string): Promise<YouTubeChann
     channeltitle: item.snippet.title,
     image: item.snippet.thumbnails.high?.url || item.snippet.thumbnails.default?.url,
     clickschannel: 0,
-    starred: false, // قيمة افتراضية عند البحث
+    starred: false,
     subscriberCount: statsMap[item.snippet.channelId] || "---"
   }));
 }
@@ -118,7 +121,8 @@ export async function searchYouTubeVideos(query: string): Promise<YouTubeVideo[]
     description: item.snippet.description,
     thumbnail: item.snippet.thumbnails.high?.url || item.snippet.thumbnails.default?.url,
     publishedAt: item.snippet.publishedAt,
-    channelTitle: item.snippet.channelTitle
+    channelTitle: item.snippet.channelTitle,
+    channelId: item.snippet.channelId
   }));
 }
 
@@ -148,7 +152,8 @@ export async function fetchChannelVideos(channelId: string): Promise<YouTubeVide
       description: item.snippet.description,
       thumbnail: item.snippet.thumbnails.high?.url || item.snippet.thumbnails.default?.url,
       publishedAt: item.snippet.publishedAt,
-      channelTitle: item.snippet.channelTitle
+      channelTitle: item.snippet.channelTitle,
+      channelId: item.snippet.channelId
     }));
   }
 
@@ -158,6 +163,7 @@ export async function fetchChannelVideos(channelId: string): Promise<YouTubeVide
     description: item.snippet.description,
     thumbnail: item.snippet.thumbnails.high?.url || item.snippet.thumbnails.default?.url,
     publishedAt: item.snippet.publishedAt,
-    channelTitle: item.snippet.channelTitle
+    channelTitle: item.snippet.channelTitle,
+    channelId: item.snippet.channelId
   }));
 }

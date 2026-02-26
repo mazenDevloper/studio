@@ -1,10 +1,15 @@
-
 "use client";
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { YouTubeChannel, YouTubeVideo } from "./youtube";
-import { JSONBIN_MASTER_KEY, JSONBIN_CHANNELS_BIN_ID, JSONBIN_CLUBS_BIN_ID, JSONBIN_ACCESS_KEY_CHANNELS } from "./constants";
+import { 
+  JSONBIN_MASTER_KEY, 
+  JSONBIN_CHANNELS_BIN_ID, 
+  JSONBIN_CLUBS_BIN_ID, 
+  JSONBIN_SAVED_VIDEOS_BIN_ID,
+  JSONBIN_ACCESS_KEY_CHANNELS 
+} from "./constants";
 
 export interface Reminder {
   id: string;
@@ -57,6 +62,7 @@ interface MediaState {
   updateMapSettings: (settings: Partial<MapSettings>) => void;
   setAiSuggestions: (suggestions: any[]) => void;
   setActiveVideo: (video: YouTubeVideo | null) => void;
+  updateVideoProgress: (videoId: string, progress: number) => void;
   setIsPlaying: (playing: boolean) => void;
   setIsMinimized: (minimized: boolean) => void;
   setIsFullScreen: (fullScreen: boolean) => void;
@@ -124,13 +130,42 @@ export const useMediaStore = create<MediaState>()(
       toggleSaveVideo: (video) => {
         set((state) => {
           const exists = state.savedVideos.some(v => v.id === video.id);
-          const newList = exists ? state.savedVideos.filter(v => v.id !== video.id) : [video, ...state.savedVideos];
+          let newList: YouTubeVideo[];
+          if (exists) {
+            newList = state.savedVideos.filter(v => v.id !== video.id);
+          } else {
+            // Ensure fields match the user requirements
+            const videoToSave: YouTubeVideo = {
+              ...video,
+              progress: video.progress || 0,
+              duration: video.duration || "0:00",
+              channelId: video.channelId || ""
+            };
+            newList = [videoToSave, ...state.savedVideos];
+          }
+          updateBin(JSONBIN_SAVED_VIDEOS_BIN_ID, newList);
           return { savedVideos: newList };
         });
       },
 
       removeVideo: (id) => {
-        set((state) => ({ savedVideos: state.savedVideos.filter(v => v.id !== id) }));
+        set((state) => {
+          const newList = state.savedVideos.filter(v => v.id !== id);
+          updateBin(JSONBIN_SAVED_VIDEOS_BIN_ID, newList);
+          return { savedVideos: newList };
+        });
+      },
+
+      updateVideoProgress: (videoId, progress) => {
+        set((state) => {
+          const newList = state.savedVideos.map(v => 
+            v.id === videoId ? { ...v, progress } : v
+          );
+          // Only update cloud if progress changed significantly or on certain triggers
+          // For simplicity, we'll sync it here. 
+          updateBin(JSONBIN_SAVED_VIDEOS_BIN_ID, newList);
+          return { savedVideos: newList, videoProgress: { ...state.videoProgress, [videoId]: progress } };
+        });
       },
 
       toggleStarChannel: (channelid) => {
@@ -222,13 +257,26 @@ if (typeof window !== "undefined") {
         }
       }
 
+      const svRes = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_SAVED_VIDEOS_BIN_ID}/latest`, {
+        headers: { 'X-Master-Key': JSONBIN_MASTER_KEY }
+      });
+      if (svRes.ok) {
+        const data = await svRes.json();
+        if (Array.isArray(data.record)) {
+          useMediaStore.setState({ savedVideos: data.record });
+          // Pre-populate progress record
+          const progressMap: Record<string, number> = {};
+          data.record.forEach((v: any) => { if(v.progress) progressMap[v.id] = v.progress; });
+          useMediaStore.setState({ videoProgress: progressMap });
+        }
+      }
+
       const clRes = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_CLUBS_BIN_ID}/latest`, {
         headers: { 'X-Master-Key': JSONBIN_MASTER_KEY }
       });
       if (clRes.ok) {
         const data = await clRes.json();
         if (Array.isArray(data.record)) {
-          // التعامل مع البيانات سواء كانت مصفوفة أرقام (قديمة) أو كائنات (جديدة)
           const teams = data.record.map((item: any) => 
             typeof item === 'number' ? { id: item, name: 'فريق محفوظ', logo: '' } : item
           );

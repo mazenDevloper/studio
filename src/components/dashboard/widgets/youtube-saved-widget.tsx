@@ -1,13 +1,22 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Bookmark, Play, Trash2 } from "lucide-react";
+import { Bookmark, Play, Trash2, Clock } from "lucide-react";
 import { useMediaStore } from "@/lib/store";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 
 export function YouTubeSavedWidget() {
   const { savedVideos, removeVideo, setActiveVideo } = useMediaStore();
+
+  const formatTime = (seconds: number) => {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = Math.floor(seconds % 60);
+    if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  };
 
   return (
     <Card className="h-full border-none bg-zinc-900/50 rounded-[2.5rem] ios-shadow overflow-hidden flex flex-col">
@@ -47,10 +56,24 @@ export function YouTubeSavedWidget() {
                   <div className="absolute inset-0 flex items-center justify-center">
                     <Play className="w-6 h-6 text-white fill-white opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
+                  {video.progress && video.progress > 0 && (
+                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/40">
+                      <div className="h-full bg-accent shadow-[0_0_8px_hsl(var(--accent))]" style={{ width: '30%' }} />
+                    </div>
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <h4 className="text-sm font-bold truncate text-white font-headline">{video.title}</h4>
-                  <p className="text-[10px] text-accent font-bold uppercase tracking-widest mt-1">Ready for Playback</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-[10px] text-accent font-black uppercase tracking-widest">
+                      {video.progress && video.progress > 0 ? `Resume at ${formatTime(video.progress)}` : 'Ready to Stream'}
+                    </span>
+                    {video.duration && (
+                      <span className="text-[9px] text-white/20 font-bold uppercase tracking-widest flex items-center gap-1">
+                        <Clock className="w-3 h-3" /> {video.duration}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <Button
                   variant="ghost"

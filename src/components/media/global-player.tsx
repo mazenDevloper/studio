@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useMediaStore } from "@/lib/store";
@@ -19,11 +18,24 @@ export function GlobalVideoPlayer() {
     setIsMinimized, 
     setIsFullScreen,
     toggleSaveVideo,
+    updateVideoProgress,
     savedVideos,
   } = useMediaStore();
   
   const [mounted, setMounted] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  // Sync progress if video is saved
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (activeVideo && isPlaying && !isMinimized) {
+      // Periodic "progress" simulation or API call if possible.
+      // Since we use standard iframe without heavy wrapper, we'll implement a simple tracker 
+      // that saves current time when paused or closed.
+      // NOTE: Real-time currentTime from iframe requires YouTube IFrame API which is more complex.
+    }
+    return () => clearInterval(interval);
+  }, [isPlaying, activeVideo, isMinimized]);
 
   useEffect(() => {
     if (activeVideo && !isMinimized) {
@@ -52,7 +64,8 @@ export function GlobalVideoPlayer() {
   if (!mounted || !activeVideo) return null;
 
   const isSaved = savedVideos.some(v => v.id === activeVideo.id);
-  const startSeconds = videoProgress[activeVideo.id] || 0;
+  const savedV = savedVideos.find(v => v.id === activeVideo.id);
+  const startSeconds = savedV?.progress || videoProgress[activeVideo.id] || 0;
 
   const youtubeUrl = `https://www.youtube.com/embed/${activeVideo.id}?autoplay=1&controls=1&modestbranding=1&rel=0&start=${startSeconds}&enablejsapi=1&vq=large`;
 

@@ -16,6 +16,7 @@ export const YT_KEYS_POOL = [
 export const JSONBIN_MASTER_KEY = '$2a$10$SYrYv.ct8hiMU9YeUxEQ.ecRkOrTqs.TDchJRV3wW.aKJnDXy2oVy';
 export const JSONBIN_CHANNELS_BIN_ID = '68ef1b3dd0ea881f40a38bd1';
 export const JSONBIN_CLUBS_BIN_ID = '699d8c2aae596e708f452936';
+export const JSONBIN_SAVED_VIDEOS_BIN_ID = '68e4ac2e43b1c97be95d24af';
 export const JSONBIN_ACCESS_KEY_CHANNELS = '$2a$10$J8o3WrPtnqmKAd///uDw6.BOWnGIBekHFOImbeEZZwsJ/h/XPbVUy';
 
 export const prayerTimesData = [
