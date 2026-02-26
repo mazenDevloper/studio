@@ -1,13 +1,12 @@
-
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Search, Plus, Play, Trash2, Radio, Loader2, Check, Mic, Users, Cloud, Star, X, Bookmark } from "lucide-react";
+import { Search, Plus, Play, Trash2, Radio, Loader2, Check, Mic, Users, Cloud, Star, X, Bookmark, Link as LinkIcon } from "lucide-react";
 import { useMediaStore } from "@/lib/store";
-import { searchYouTubeChannels, searchYouTubeVideos, fetchChannelVideos, YouTubeChannel, YouTubeVideo } from "@/lib/youtube";
+import { searchYouTubeChannels, searchYouTubeVideos, fetchChannelVideos, fetchVideoDetails, YouTubeChannel, YouTubeVideo } from "@/lib/youtube";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
@@ -41,6 +40,11 @@ export function MediaView() {
   const [channelVideos, setChannelVideos] = useState<YouTubeVideo[]>([]);
   const [isLoadingVideos, setIsLoadingVideos] = useState(false);
   const [isListening, setIsListening] = useState(false);
+
+  // URL Adding State
+  const [urlInput, setUrlInput] = useState("");
+  const [isUrlDialogOpen, setIsUrlDialogOpen] = useState(false);
+  const [isAddingByUrl, setIsAddingByUrl] = useState(false);
 
   const [channelSearchQuery, setChannelSearchQuery] = useState("");
   const [channelResults, setChannelResults] = useState<YouTubeChannel[]>([]);
@@ -88,6 +92,50 @@ export function MediaView() {
     recognition.start();
   };
 
+  const handleAddVideoByUrl = async () => {
+    if (!urlInput.trim()) return;
+    
+    // Extract video ID using regex
+    const videoIdMatch = urlInput.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/|youtube\.com\/(?:shorts\/))([\w-]{11})/);
+    const videoId = videoIdMatch ? videoIdMatch[1] : urlInput.trim();
+
+    if (videoId.length !== 11) {
+      toast({ 
+        variant: "destructive", 
+        title: "رابط غير صالح", 
+        description: "يرجى إدخال رابط يوتيوب صحيح أو معرف فيديو مكون من 11 رمزاً." 
+      });
+      return;
+    }
+
+    if (savedVideos.some(v => v.id === videoId)) {
+      toast({ title: "موجود مسبقاً", description: "هذا الفيديو موجود بالفعل في قائمتك." });
+      setIsUrlDialogOpen(false);
+      setUrlInput("");
+      return;
+    }
+
+    setIsAddingByUrl(true);
+    try {
+      const video = await fetchVideoDetails(videoId);
+      if (!video) {
+        throw new Error("Video not found");
+      }
+      toggleSaveVideo(video);
+      toast({ title: "تمت الإضافة", description: `تمت إضافة "${video.title}" بنجاح.` });
+      setIsUrlDialogOpen(false);
+      setUrlInput("");
+    } catch (error) {
+      toast({ 
+        variant: "destructive", 
+        title: "خطأ", 
+        description: "فشل جلب بيانات الفيديو. تأكد من أن الفيديو عام وغير محظور." 
+      });
+    } finally {
+      setIsAddingByUrl(false);
+    }
+  };
+
   const handleChannelSearch = async () => {
     if (!channelSearchQuery.trim()) return;
     setIsSearchingChannels(true);
@@ -127,9 +175,52 @@ export function MediaView() {
             <h1 className="text-5xl font-headline font-bold tracking-tighter text-white">DriveCast Media</h1>
             <p className="text-muted-foreground text-sm font-medium uppercase tracking-widest opacity-60">Global Frequency Hub</p>
           </div>
-          <div className="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-full border border-white/10 mb-2">
-            <Cloud className="w-4 h-4 text-accent animate-pulse" />
-            <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">JSONBin Real-time Sync</span>
+          <div className="flex items-center gap-4">
+            {/* Add by URL Dialog */}
+            <Dialog open={isUrlDialogOpen} onOpenChange={setIsUrlDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="ghost" className="h-12 px-6 rounded-full bg-white/5 border border-white/10 text-white hover:bg-white/10 focusable flex items-center gap-2">
+                  <LinkIcon className="w-4 h-4 text-primary" />
+                  <span className="text-[10px] font-black uppercase tracking-widest">إضافة بالرابط</span>
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="bg-zinc-950 border-white/10 rounded-[2.5rem] p-8 max-w-md">
+                <DialogHeader>
+                  <DialogTitle className="text-2xl font-black text-white mb-4 text-right">إضافة فيديو بالرابط</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-6">
+                  <p className="text-xs text-white/40 text-right leading-relaxed">الصق رابط يوتيوب أو مُعرّف الفيديو (ID) أدناه ليتم جلب التفاصيل وحفظه.</p>
+                  <Input 
+                    placeholder="https://youtu.be/..." 
+                    value={urlInput} 
+                    onChange={(e) => setUrlInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAddVideoByUrl()}
+                    className="h-14 bg-white/5 border-white/10 rounded-2xl px-6 text-white focusable"
+                  />
+                  <div className="flex gap-4">
+                    <Button 
+                      onClick={handleAddVideoByUrl} 
+                      disabled={isAddingByUrl} 
+                      className="flex-1 h-14 bg-primary text-white font-black rounded-2xl shadow-xl focusable"
+                    >
+                      {isAddingByUrl ? <Loader2 className="w-6 h-6 animate-spin" /> : "إضافة الفيديو"}
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      onClick={() => setIsUrlDialogOpen(false)} 
+                      className="h-14 px-8 rounded-2xl text-white/40 hover:text-white focusable"
+                    >
+                      إلغاء
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            <div className="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-full border border-white/10">
+              <Cloud className="w-4 h-4 text-accent animate-pulse" />
+              <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">JSONBin Real-time Sync</span>
+            </div>
           </div>
         </div>
 

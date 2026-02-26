@@ -35,6 +35,18 @@ function formatSubscriberCount(count: string): string {
   return count;
 }
 
+function formatYouTubeDuration(duration: string): string {
+  const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+  if (!match) return "0:00";
+  const hours = parseInt(match[1] || "0");
+  const minutes = parseInt(match[2] || "0");
+  const seconds = parseInt(match[3] || "0");
+  if (hours > 0) {
+    return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  }
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+}
+
 async function fetchWithRotation(endpoint: string, params: Record<string, string>) {
   const queryParams = new URLSearchParams(params);
   const cacheKey = `${endpoint}?${queryParams.toString()}`;
@@ -124,6 +136,28 @@ export async function searchYouTubeVideos(query: string): Promise<YouTubeVideo[]
     channelTitle: item.snippet.channelTitle,
     channelId: item.snippet.channelId
   }));
+}
+
+export async function fetchVideoDetails(videoId: string): Promise<YouTubeVideo | null> {
+  const data = await fetchWithRotation('videos', {
+    part: 'snippet,contentDetails',
+    id: videoId
+  });
+
+  if (!data || !data.items || data.items.length === 0) return null;
+
+  const item = data.items[0];
+  return {
+    id: item.id,
+    title: item.snippet.title,
+    description: item.snippet.description,
+    thumbnail: item.snippet.thumbnails.high?.url || item.snippet.thumbnails.medium?.url || item.snippet.thumbnails.default?.url,
+    publishedAt: item.snippet.publishedAt,
+    channelTitle: item.snippet.channelTitle,
+    channelId: item.snippet.channelId,
+    duration: formatYouTubeDuration(item.contentDetails.duration),
+    progress: 0
+  };
 }
 
 export async function fetchChannelVideos(channelId: string): Promise<YouTubeVideo[]> {
