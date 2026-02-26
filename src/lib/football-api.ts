@@ -80,11 +80,42 @@ export async function fetchFootballData(type: 'today' | 'live' | 'yesterday' | '
         channel: "SSC / beIN",
         commentator: "يحدد لاحقاً",
         broadcasts: [],
-        date: item.fixture.date // الاحتفاظ بالتاريخ الأصلي للمقارنة الدقيقة
+        date: item.fixture.date 
       } as Match;
     });
   } catch (error) {
     console.error("Football API Error:", error);
+    return [];
+  }
+}
+
+/**
+ * بحث عالمي عن الأندية في قاعدة بيانات API-Sports.
+ */
+export async function searchFootballTeams(query: string, leagueId?: string): Promise<any[]> {
+  if (!query && (!leagueId || leagueId === 'all')) return [];
+
+  const headers = {
+    'x-apisports-key': FOOTBALL_API_KEY || '2f79edc60ed7f63aa4af1feea0f1ff2c',
+    'x-rapidapi-host': 'v3.football.api-sports.io'
+  };
+
+  let params = new URLSearchParams();
+  if (query) params.append('search', query);
+  if (leagueId && leagueId !== 'all') {
+    params.append('league', leagueId);
+    params.append('season', '2024'); // استخدام الموسم الحالي كافتراضي
+  }
+
+  const url = `${FOOTBALL_API_BASE_URL}/teams?${params.toString()}`;
+
+  try {
+    const response = await fetch(url, { method: 'GET', headers: headers });
+    if (!response.ok) return [];
+    const data = await response.json();
+    return data.response || [];
+  } catch (error) {
+    console.error("Search Teams Error:", error);
     return [];
   }
 }

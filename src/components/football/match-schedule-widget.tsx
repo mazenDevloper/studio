@@ -13,12 +13,12 @@ import { cn } from "@/lib/utils";
 import { fetchFootballData } from "@/lib/football-api";
 
 export function MatchScheduleWidget() {
-  const { favoriteTeamIds, toggleFavoriteTeamId } = useMediaStore();
+  const { favoriteTeams, toggleFavoriteTeam } = useMediaStore();
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
-  const isFavTeam = (id: number) => favoriteTeamIds.includes(id);
+  const isFavTeam = (id: number) => favoriteTeams.some(t => t.id === id);
 
   const loadMatches = useCallback(async () => {
     setLoading(true);
@@ -40,7 +40,7 @@ export function MatchScheduleWidget() {
     } finally {
       setLoading(false);
     }
-  }, [favoriteTeamIds]);
+  }, [favoriteTeams]);
 
   useEffect(() => {
     loadMatches();
@@ -117,12 +117,14 @@ export function MatchScheduleWidget() {
                       </div>
 
                       <div className="flex items-center justify-between gap-4 py-2 relative">
-                        {/* Home Team Star */}
                         <div className="flex flex-col items-center gap-2 flex-1 min-w-0 group/team relative">
                           <div className="relative w-14 h-14 drop-shadow-2xl">
                             <Image src={match.homeLogo} alt={match.homeTeam} fill className="object-contain" />
                             <button 
-                              onClick={(e) => { e.stopPropagation(); toggleFavoriteTeamId(match.homeTeamId!); }}
+                              onClick={(e) => { 
+                                e.stopPropagation(); 
+                                toggleFavoriteTeam({ id: match.homeTeamId!, name: match.homeTeam, logo: match.homeLogo }); 
+                              }}
                               className={cn(
                                 "absolute -top-1 -right-1 w-7 h-7 rounded-full border border-white/10 backdrop-blur-3xl flex items-center justify-center transition-all active:scale-90",
                                 isFavTeam(match.homeTeamId!) ? "bg-yellow-500 text-black shadow-glow" : "bg-black/60 text-white/20 hover:text-white"
@@ -143,12 +145,14 @@ export function MatchScheduleWidget() {
                           )}
                         </div>
 
-                        {/* Away Team Star */}
                         <div className="flex flex-col items-center gap-2 flex-1 min-w-0 group/team relative">
                           <div className="relative w-14 h-14 drop-shadow-2xl">
                             <Image src={match.awayLogo} alt={match.awayTeam} fill className="object-contain" />
                             <button 
-                              onClick={(e) => { e.stopPropagation(); toggleFavoriteTeamId(match.awayTeamId!); }}
+                              onClick={(e) => { 
+                                e.stopPropagation(); 
+                                toggleFavoriteTeam({ id: match.awayTeamId!, name: match.awayTeam, logo: match.awayLogo }); 
+                              }}
                               className={cn(
                                 "absolute -top-1 -left-1 w-7 h-7 rounded-full border border-white/10 backdrop-blur-3xl flex items-center justify-center transition-all active:scale-90",
                                 isFavTeam(match.awayTeamId!) ? "bg-yellow-500 text-black shadow-glow" : "bg-black/60 text-white/20 hover:text-white"

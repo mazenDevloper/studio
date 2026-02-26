@@ -23,12 +23,18 @@ export interface MapSettings {
   backgroundIndex: number;
 }
 
+export interface FavoriteTeam {
+  id: number;
+  name: string;
+  logo: string;
+}
+
 interface MediaState {
   favoriteChannels: YouTubeChannel[];
   savedVideos: YouTubeVideo[];
   starredChannelIds: string[];
   videoProgress: Record<string, number>;
-  favoriteTeamIds: number[];
+  favoriteTeams: FavoriteTeam[];
   favoriteLeagueIds: number[];
   reminders: Reminder[];
   mapSettings: MapSettings;
@@ -46,7 +52,7 @@ interface MediaState {
   addReminder: (reminder: Reminder) => void;
   removeReminder: (id: string) => void;
   toggleReminder: (id: string) => void;
-  toggleFavoriteTeamId: (teamId: number) => void;
+  toggleFavoriteTeam: (team: FavoriteTeam) => void;
   toggleFavoriteLeagueId: (leagueId: number) => void;
   updateMapSettings: (settings: Partial<MapSettings>) => void;
   setAiSuggestions: (suggestions: any[]) => void;
@@ -78,7 +84,7 @@ export const useMediaStore = create<MediaState>()(
       savedVideos: [],
       starredChannelIds: [],
       videoProgress: {},
-      favoriteTeamIds: [],
+      favoriteTeams: [],
       favoriteLeagueIds: [307, 39, 2],
       reminders: [],
       mapSettings: { zoom: 19.5, tilt: 65, carScale: 1.02, backgroundIndex: 0 },
@@ -137,13 +143,14 @@ export const useMediaStore = create<MediaState>()(
         });
       },
 
-      toggleFavoriteTeamId: (teamId) => {
+      toggleFavoriteTeam: (team) => {
         set((state) => {
-          const newList = state.favoriteTeamIds.includes(teamId) 
-            ? state.favoriteTeamIds.filter(id => id !== teamId) 
-            : [...state.favoriteTeamIds, teamId];
+          const exists = state.favoriteTeams.some(t => t.id === team.id);
+          const newList = exists 
+            ? state.favoriteTeams.filter(t => t.id !== team.id) 
+            : [...state.favoriteTeams, team];
           updateBin(JSONBIN_CLUBS_BIN_ID, newList);
-          return { favoriteTeamIds: newList };
+          return { favoriteTeams: newList };
         });
       },
 
@@ -193,7 +200,7 @@ export const useMediaStore = create<MediaState>()(
       partialize: (state) => ({ 
         favoriteChannels: state.favoriteChannels,
         savedVideos: state.savedVideos,
-        favoriteTeamIds: state.favoriteTeamIds,
+        favoriteTeams: state.favoriteTeams,
         favoriteLeagueIds: state.favoriteLeagueIds,
         mapSettings: state.mapSettings,
         reminders: state.reminders
@@ -221,7 +228,11 @@ if (typeof window !== "undefined") {
       if (clRes.ok) {
         const data = await clRes.json();
         if (Array.isArray(data.record)) {
-          useMediaStore.setState({ favoriteTeamIds: data.record });
+          // التعامل مع البيانات سواء كانت مصفوفة أرقام (قديمة) أو كائنات (جديدة)
+          const teams = data.record.map((item: any) => 
+            typeof item === 'number' ? { id: item, name: 'فريق محفوظ', logo: '' } : item
+          );
+          useMediaStore.setState({ favoriteTeams: teams });
         }
       }
     } catch (e) {

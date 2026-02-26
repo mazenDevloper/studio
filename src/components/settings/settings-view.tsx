@@ -1,8 +1,8 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
-import { useMediaStore, Reminder } from "@/lib/store";
+import { useState, useMemo, useCallback } from "react";
+import { useMediaStore, Reminder, FavoriteTeam } from "@/lib/store";
 import { 
   Settings, 
   Youtube, 
@@ -18,7 +18,9 @@ import {
   Search, 
   Check, 
   Star,
-  Palette
+  Palette,
+  Loader2,
+  Globe
 } from "lucide-react";
 import { YT_KEYS_POOL } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
@@ -29,6 +31,7 @@ import { Slider } from "@/components/ui/slider";
 import { TEAM_LIST, MAJOR_LEAGUES } from "@/lib/football-data";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { searchFootballTeams } from "@/lib/football-api";
 import {
   Select,
   SelectContent,
@@ -49,8 +52,8 @@ export function SettingsView() {
     reminders, 
     addReminder, 
     removeReminder, 
-    favoriteTeamIds, 
-    toggleFavoriteTeamId,
+    favoriteTeams, 
+    toggleFavoriteTeam,
     favoriteLeagueIds,
     toggleFavoriteLeagueId,
     mapSettings, 
@@ -61,18 +64,30 @@ export function SettingsView() {
   const [newReminder, setNewReminder] = useState({ label: "", startHour: 6, endHour: 22 });
   const [clubSearch, setClubSearch] = useState("");
   const [leagueFilter, setLeagueFilter] = useState("all");
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState<any[]>([]);
 
-  const filteredTeams = useMemo(() => {
-    return TEAM_LIST.filter(team => {
-      const matchesSearch = team.name.toLowerCase().includes(clubSearch.toLowerCase());
-      const matchesLeague = leagueFilter === "all" || team.leagueId.toString() === leagueFilter;
-      return matchesSearch && matchesLeague;
-    });
-  }, [clubSearch, leagueFilter]);
+  const isFavTeam = (id: number) => favoriteTeams.some(t => t.id === id);
 
-  const currentFavoriteTeams = useMemo(() => {
-    return TEAM_LIST.filter(t => favoriteTeamIds.includes(t.id));
-  }, [favoriteTeamIds]);
+  const handleGlobalSearch = useCallback(async () => {
+    if (!clubSearch.trim() && leagueFilter === 'all') {
+      toast({ variant: "destructive", title: "خطأ", description: "يرجى إدخال اسم النادي أو تحديد دوري للبحث." });
+      return;
+    }
+    
+    setIsSearching(true);
+    try {
+      const results = await searchFootballTeams(clubSearch, leagueFilter);
+      setSearchResults(results);
+      if (results.length === 0) {
+        toast({ title: "لا توجد نتائج", description: "لم يتم العثور على أندية تطابق بحثك." });
+      }
+    } catch (error) {
+      toast({ variant: "destructive", title: "خطأ في البحث", description: "فشل الاتصال بمحرك البحث العالمي." });
+    } finally {
+      setIsSearching(false);
+    }
+  }, [clubSearch, leagueFilter, toast]);
 
   const handleAddReminder = () => {
     if (!newReminder.label.trim()) return;
@@ -88,13 +103,6 @@ export function SettingsView() {
     addReminder(reminder);
     setNewReminder({ label: "", startHour: 6, endHour: 22 });
     toast({ title: "تمت الإضافة", description: "تمت إضافة التذكير بنجاح." });
-  };
-
-  const saveToCache = () => {
-    toast({
-      title: "تم حفظ الإعدادات",
-      description: "تم تحديث ذاكرة النظام المستديمة بكافة تفضيلات العرض والملاحة.",
-    });
   };
 
   return (
@@ -146,7 +154,6 @@ export function SettingsView() {
                     min={15} max={21} step={0.1} 
                     onValueChange={([val]) => updateMapSettings({ zoom: val })} 
                     className="cursor-pointer focusable"
-                    data-nav-id="zoom-slider"
                   />
                 </div>
 
@@ -160,12 +167,11 @@ export function SettingsView() {
                     min={0} max={85} step={5} 
                     onValueChange={([val]) => updateMapSettings({ tilt: val })} 
                     className="cursor-pointer focusable"
-                    data-nav-id="tilt-slider"
                   />
                 </div>
               </div>
 
-              <Button onClick={saveToCache} data-nav-id="save-appearance-btn" className="w-full h-16 rounded-2xl bg-primary text-white text-lg font-black shadow-2xl mt-4 hover:scale-[1.02] transition-all focusable">
+              <Button onClick={() => toast({ title: "تم الحفظ", description: "تم تحديث إعدادات العرض." })} className="w-full h-16 rounded-2xl bg-primary text-white text-lg font-black shadow-2xl mt-4 hover:scale-[1.02] transition-all focusable">
                 <Save className="w-6 h-6 mr-3" /> تثبيت وحفظ
               </Button>
             </Card>
@@ -178,14 +184,13 @@ export function SettingsView() {
                 {BACKGROUNDS.map((bg, idx) => (
                   <button 
                     key={idx}
-                    data-nav-id={`bg-choice-${idx}`}
                     onClick={() => updateMapSettings({ backgroundIndex: idx })}
                     className={cn(
                       "relative rounded-2xl overflow-hidden border-4 transition-all group focusable",
                       mapSettings.backgroundIndex === idx ? "border-primary scale-105 shadow-glow" : "border-transparent opacity-40 hover:opacity-100"
                     )}
                   >
-                    <img src={`${bg}?auto=format&fit=crop&q=40&w=300`} className="w-full h-full object-cover transition-transform group-hover:scale-110" alt={`Background ${idx}`} />
+                    <img src={`${bg}?auto=format&fit=crop&q=40&w=300`} className="w-full h-full object-cover" alt="" />
                   </button>
                 ))}
               </div>
@@ -198,7 +203,9 @@ export function SettingsView() {
             <div className="lg:col-span-4 space-y-6">
               <Card className="bg-zinc-900/50 border-white/10 rounded-[2.5rem] p-8 text-right">
                 <CardHeader className="p-0 mb-6">
-                  <CardTitle className="text-xl font-black text-white">تصفية وبحث</CardTitle>
+                  <CardTitle className="text-xl font-black text-white flex items-center justify-end gap-3">
+                    <Globe className="w-6 h-6 text-primary" /> محرك البحث العالمي
+                  </CardTitle>
                 </CardHeader>
                 <div className="space-y-6">
                   <div className="space-y-3">
@@ -216,18 +223,25 @@ export function SettingsView() {
                     </Select>
                   </div>
                   <div className="space-y-3">
-                    <label className="text-[10px] font-black text-white/40 uppercase tracking-widest">ابحث عن نادٍ</label>
+                    <label className="text-[10px] font-black text-white/40 uppercase tracking-widest">اسم النادي</label>
                     <div className="relative">
-                      <Search className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
                       <Input 
-                        placeholder="اسم النادي..." 
-                        className="bg-white/5 border-white/10 h-14 pr-12 rounded-2xl focusable text-right"
+                        placeholder="ابحث عن أي نادٍ في العالم..." 
+                        className="bg-white/5 border-white/10 h-14 px-6 rounded-2xl focusable text-right"
                         value={clubSearch}
                         onChange={(e) => setClubSearch(e.target.value)}
-                        data-nav-id="club-search-input"
+                        onKeyDown={(e) => e.key === 'Enter' && handleGlobalSearch()}
                       />
                     </div>
                   </div>
+                  <Button 
+                    onClick={handleGlobalSearch} 
+                    disabled={isSearching} 
+                    className="w-full h-14 rounded-2xl bg-primary text-white font-black shadow-lg focusable"
+                  >
+                    {isSearching ? <Loader2 className="w-6 h-6 animate-spin" /> : <Search className="w-6 h-6 ml-2" />}
+                    بحث عالمي
+                  </Button>
                 </div>
               </Card>
 
@@ -243,7 +257,6 @@ export function SettingsView() {
                     return (
                       <Button
                         key={league.id}
-                        data-nav-id={`league-fav-${league.id}`}
                         onClick={() => toggleFavoriteLeagueId(league.id)}
                         variant="ghost"
                         className={cn(
@@ -261,70 +274,52 @@ export function SettingsView() {
             </div>
 
             <div className="lg:col-span-8 flex flex-col gap-8 text-right">
-              {currentFavoriteTeams.length > 0 && (
-                <Card className="bg-primary/5 border-primary/20 rounded-[2.5rem] p-8">
-                  <CardHeader className="p-0 mb-6">
-                    <CardTitle className="text-xl font-black text-primary flex items-center justify-end gap-3">
-                      <Star className="w-5 h-5 fill-current" /> أنديتك المفضلة حالياً
-                    </CardTitle>
+              {searchResults.length > 0 && (
+                <Card className="bg-zinc-900/50 border-white/10 rounded-[2.5rem] p-8 animate-in fade-in slide-in-from-top-6 duration-700">
+                  <CardHeader className="p-0 mb-6 flex flex-row items-center justify-between">
+                    <CardTitle className="text-xl font-black text-white">نتائج البحث العالمي</CardTitle>
+                    <Button variant="ghost" onClick={() => setSearchResults([])} className="text-white/20 hover:text-white rounded-full focusable">إغلاق النتائج</Button>
                   </CardHeader>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {currentFavoriteTeams.map((team) => (
-                      <div 
-                        key={team.id}
-                        className="h-16 rounded-2xl bg-primary text-white font-black text-xs shadow-glow flex items-center justify-between px-4 group animate-in zoom-in-95"
-                      >
-                        <span>{team.name}</span>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => toggleFavoriteTeamId(team.id)}
-                          className="h-8 w-8 rounded-full hover:bg-white/20 text-white focusable"
-                        >
-                           <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    ))}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {searchResults.map((item) => {
+                      const team = { id: item.team.id, name: item.team.name, logo: item.team.logo };
+                      const isFav = isFavTeam(team.id);
+                      return (
+                        <div key={team.id} className={cn("p-4 rounded-[1.5rem] border flex flex-col items-center gap-3 transition-all focusable", isFav ? "bg-primary/15 border-primary shadow-glow" : "bg-white/5 border-white/10 hover:bg-white/10")}>
+                           <img src={team.logo} className="w-14 h-14 object-contain drop-shadow-lg" alt="" />
+                           <span className="text-[10px] font-black text-center truncate w-full uppercase">{team.name}</span>
+                           <Button 
+                            onClick={() => toggleFavoriteTeam(team)} 
+                            size="icon" 
+                            className={cn("w-10 h-10 rounded-full transition-all", isFav ? "bg-yellow-500 text-black shadow-glow" : "bg-black/40 text-white/20 hover:text-white")}
+                           >
+                             <Star className={cn("w-5 h-5", isFav && "fill-current")} />
+                           </Button>
+                        </div>
+                      );
+                    })}
                   </div>
                 </Card>
               )}
 
               <Card className="bg-zinc-900/50 border-white/10 rounded-[2.5rem] p-8 flex-1">
                 <CardHeader className="p-0 mb-6">
-                  <CardTitle className="text-xl font-black text-white">إضافة أندية جديدة عبر النجوم</CardTitle>
+                  <CardTitle className="text-xl font-black text-white flex items-center justify-end gap-3">
+                     المفضلات الحالية <Star className="w-6 h-6 text-yellow-500 fill-current" />
+                  </CardTitle>
                 </CardHeader>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {filteredTeams.map((team) => {
-                    const isFav = favoriteTeamIds.includes(team.id);
-                    return (
-                      <div
-                        key={team.id}
-                        className={cn(
-                          "h-20 rounded-[1.5rem] p-4 flex items-center justify-between transition-all duration-500 border focusable outline-none group",
-                          isFav ? "bg-primary/15 border-primary/40 shadow-glow" : "bg-white/5 border-white/5 hover:bg-white/10"
-                        )}
-                      >
-                        <div className="flex flex-col text-right">
-                          <span className={cn("text-xs font-black", isFav ? "text-primary" : "text-white/60")}>{team.name}</span>
-                          <span className="text-[8px] text-white/20 uppercase tracking-widest mt-1">
-                            {MAJOR_LEAGUES.find(l => l.id === team.leagueId)?.name}
-                          </span>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => toggleFavoriteTeamId(team.id)}
-                          className={cn(
-                            "w-12 h-12 rounded-full border-2 transition-all focusable",
-                            isFav ? "bg-primary text-white border-primary shadow-[0_0_20px_rgba(var(--primary),0.4)]" : "bg-black/20 text-white/20 border-white/5 group-hover:text-white group-hover:border-white/20"
-                          )}
-                          data-nav-id={`club-star-${team.id}`}
-                        >
-                          <Star className={cn("w-6 h-6", isFav && "fill-current")} />
-                        </Button>
-                      </div>
-                    );
-                  })}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {favoriteTeams.length === 0 ? (
+                    <div className="col-span-full py-12 text-center text-white/20 italic font-bold uppercase tracking-widest">لا توجد أندية مفضلة حالياً</div>
+                  ) : favoriteTeams.map((team) => (
+                    <div key={team.id} className="p-4 rounded-[1.5rem] bg-primary/10 border border-primary/30 flex flex-col items-center gap-3 group animate-in zoom-in-95">
+                       <img src={team.logo} className="w-14 h-14 object-contain drop-shadow-xl" alt="" />
+                       <span className="text-[10px] font-black text-center truncate w-full uppercase text-primary">{team.name}</span>
+                       <Button onClick={() => toggleFavoriteTeam(team)} size="icon" className="w-10 h-10 rounded-full bg-red-600/20 text-red-500 hover:bg-red-600 hover:text-white transition-all focusable">
+                          <Trash2 className="w-5 h-5" />
+                       </Button>
+                    </div>
+                  ))}
                 </div>
               </Card>
             </div>
@@ -355,35 +350,19 @@ export function SettingsView() {
                   className="bg-white/5 border-white/10 h-14 rounded-2xl px-6 focusable text-right"
                   value={newReminder.label}
                   onChange={(e) => setNewReminder({ ...newReminder, label: e.target.value })}
-                  data-nav-id="rem-label-input"
                 />
-                <Button onClick={handleAddReminder} data-nav-id="rem-add-btn" className="w-full h-14 bg-primary rounded-2xl font-black focusable">حفظ</Button>
+                <Button onClick={handleAddReminder} className="w-full h-14 bg-primary rounded-2xl font-black focusable">حفظ</Button>
               </div>
             </Card>
-            <div className="space-y-4">
-              {reminders.map((rem, idx) => (
-                <div key={rem.id} className="p-6 bg-white/5 border border-white/5 rounded-[2rem] flex justify-between items-center group">
-                   <Button variant="ghost" data-nav-id={`rem-del-${idx}`} onClick={() => removeReminder(rem.id)} className="text-red-500 hover:bg-red-500/10 focusable">
-                     <Trash2 className="w-5 h-5" />
-                   </Button>
-                   <div className="flex items-center gap-4">
-                      <span className="font-bold text-white">{rem.label}</span>
-                      <Bell className="text-primary w-6 h-6" />
-                   </div>
-                </div>
-              ))}
-            </div>
           </div>
         </TabsContent>
 
         <TabsContent value="system" className="space-y-8 outline-none">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <Card className="bg-zinc-900/50 border-white/10 rounded-[3rem] p-10 flex flex-col items-center gap-6">
-               <ShieldCheck className="w-12 h-12 text-accent" />
-               <h3 className="text-xl font-black text-white">النظام مفعل</h3>
-               <span className="text-xs text-white/40">v2.5.0 build 2026</span>
-            </Card>
-          </div>
+          <Card className="bg-zinc-900/50 border-white/10 rounded-[3rem] p-10 flex flex-col items-center gap-6">
+             <ShieldCheck className="w-12 h-12 text-accent" />
+             <h3 className="text-xl font-black text-white">النظام مفعل</h3>
+             <span className="text-xs text-white/40">v2.6.0 build 2026-JSONBIN-SYNC</span>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

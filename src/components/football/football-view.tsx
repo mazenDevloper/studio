@@ -17,9 +17,9 @@ export function FootballView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("today");
-  const { favoriteTeamIds, toggleFavoriteTeamId, favoriteLeagueIds } = useMediaStore();
+  const { favoriteTeams, toggleFavoriteTeam, favoriteLeagueIds } = useMediaStore();
 
-  const isFavTeam = (id: number) => favoriteTeamIds.includes(id);
+  const isFavTeam = (id: number) => favoriteTeams.some(t => t.id === id);
 
   const loadMatches = async (view: string) => {
     setLoading(true);
@@ -62,7 +62,7 @@ export function FootballView() {
       if (!aIsFav && bIsFav) return 1;
       return 0;
     });
-  }, [matches, activeTab, favoriteTeamIds, favoriteLeagueIds]);
+  }, [matches, activeTab, favoriteTeams, favoriteLeagueIds]);
 
   const renderMatchCard = (match: any, idx: number) => {
     const isFavMatch = isFavTeam(match.homeTeamId) || isFavTeam(match.awayTeamId);
@@ -114,7 +114,10 @@ export function FootballView() {
                 <div className={cn("h-16 w-16 rounded-2xl p-2.5 flex items-center justify-center border transition-all duration-500", isFavTeam(match.homeTeamId) ? "bg-primary/20 border-primary" : "bg-white/5 border-white/5")}>
                   <img src={match.homeLogo} alt="" className="h-full w-full object-contain" />
                   <button 
-                    onClick={(e) => { e.stopPropagation(); toggleFavoriteTeamId(match.homeTeamId); }}
+                    onClick={(e) => { 
+                      e.stopPropagation(); 
+                      toggleFavoriteTeam({ id: match.homeTeamId, name: match.homeTeam, logo: match.homeLogo }); 
+                    }}
                     className={cn(
                       "absolute -top-2 -right-2 w-8 h-8 rounded-full border border-white/10 backdrop-blur-3xl flex items-center justify-center transition-all active:scale-90 z-30",
                       isFavTeam(match.homeTeamId) ? "bg-yellow-500 text-black shadow-glow" : "bg-black/60 text-white/20 hover:text-white"
@@ -144,7 +147,10 @@ export function FootballView() {
                 <div className={cn("h-16 w-16 rounded-2xl p-2.5 flex items-center justify-center border transition-all duration-500", isFavTeam(match.awayTeamId) ? "bg-primary/20 border-primary" : "bg-white/5 border-white/5")}>
                   <img src={match.awayLogo} alt="" className="h-full w-full object-contain" />
                   <button 
-                    onClick={(e) => { e.stopPropagation(); toggleFavoriteTeamId(match.awayTeamId); }}
+                    onClick={(e) => { 
+                      e.stopPropagation(); 
+                      toggleFavoriteTeam({ id: match.awayTeamId, name: match.awayTeam, logo: match.awayLogo }); 
+                    }}
                     className={cn(
                       "absolute -top-2 -left-2 w-8 h-8 rounded-full border border-white/10 backdrop-blur-3xl flex items-center justify-center transition-all active:scale-90 z-30",
                       isFavTeam(match.awayTeamId) ? "bg-yellow-500 text-black shadow-glow" : "bg-black/60 text-white/20 hover:text-white"

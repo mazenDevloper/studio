@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import { Activity, Trophy, Clock } from "lucide-react";
 
 export function LiveMatchIsland() {
-  const { favoriteTeamIds, favoriteLeagueIds } = useMediaStore();
+  const { favoriteTeams, favoriteLeagueIds } = useMediaStore();
   const [displayMatch, setDisplayMatch] = useState<Match | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -18,7 +18,6 @@ export function LiveMatchIsland() {
       const now = new Date();
       const currentHour = now.getHours();
       
-      // Sports Day Logic: Hours before 06:00 AM belong to the previous athletic night
       let matches: Match[] = [];
       if (currentHour < 6) {
         const [yesterday, today] = await Promise.all([
@@ -35,16 +34,14 @@ export function LiveMatchIsland() {
         return;
       }
 
-      // STRICT FAVORITE CONDITION: Only show if it matches user's favorites
       const isFavoriteMatch = (m: Match) => 
-        (m.homeTeamId && favoriteTeamIds.includes(m.homeTeamId)) || 
-        (m.awayTeamId && favoriteTeamIds.includes(m.awayTeamId)) ||
+        (m.homeTeamId && favoriteTeams.some(t => t.id === m.homeTeamId)) || 
+        (m.awayTeamId && favoriteTeams.some(t => t.id === m.awayTeamId)) ||
         (m.leagueId && favoriteLeagueIds.includes(m.leagueId));
 
       const favoriteMatches = matches.filter(isFavoriteMatch);
 
       if (favoriteMatches.length === 0) {
-        // Fallback to first live match if no favorites are live, OR hide
         const liveGeneral = matches.filter(m => m.status === 'live');
         if (liveGeneral.length > 0) {
           setDisplayMatch(liveGeneral.sort((a, b) => (b.minute || 0) - (a.minute || 0))[0]);
@@ -54,7 +51,6 @@ export function LiveMatchIsland() {
         return;
       }
 
-      // Priority within favorites: 1. Live, 2. Upcoming
       const liveFavs = favoriteMatches.filter(m => m.status === 'live');
       const upcomingFavs = favoriteMatches.filter(m => m.status === 'upcoming');
 
@@ -74,7 +70,7 @@ export function LiveMatchIsland() {
     } catch (error) {
       console.error("Island Sync Error:", error);
     }
-  }, [favoriteTeamIds, favoriteLeagueIds]);
+  }, [favoriteTeams, favoriteLeagueIds]);
 
   useEffect(() => {
     fetchStatus();
