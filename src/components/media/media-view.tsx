@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Search, Plus, Play, Trash2, Radio, Loader2, Check, Mic, Users, Cloud, Star, X, Bookmark, Link as LinkIcon, Music, BookOpen } from "lucide-react";
+import { Search, Plus, Play, Trash2, Radio, Loader2, Check, Mic, Users, Cloud, Star, X, Bookmark, Link as LinkIcon, Music, BookOpen, ChevronDown, LayoutGrid } from "lucide-react";
 import { useMediaStore } from "@/lib/store";
 import { searchYouTubeChannels, searchYouTubeVideos, fetchChannelVideos, fetchVideoDetails, YouTubeChannel, YouTubeVideo } from "@/lib/youtube";
 import Image from "next/image";
@@ -47,6 +47,8 @@ export function MediaView() {
   const [reciters, setReciters] = useState<any[]>([]);
   const [selectedReciter, setSelectedReciter] = useState<any>(null);
   const [isLoadingReciters, setIsLoadingReciters] = useState(false);
+  const [showReciterGrid, setShowReciterGrid] = useState(false);
+  const [showSurahGrid, setShowSurahGrid] = useState(false);
 
   // URL Adding State
   const [urlInput, setUrlInput] = useState("");
@@ -87,6 +89,9 @@ export function MediaView() {
     try {
       const results = await searchYouTubeVideos(finalQuery);
       setVideoResults(results);
+      // إغلاق كافة القوائم عند البحث
+      setShowReciterGrid(false);
+      setShowSurahGrid(false);
       window.scrollTo({ top: 600, behavior: 'smooth' });
     } catch (error) {
       console.error("Video search failed", error);
@@ -108,6 +113,9 @@ export function MediaView() {
     const query = `${selectedReciter.name} سورة ${surahName}`;
     setSearchQuery(query);
     handleVideoSearch(query);
+    // إخفاء الخيارات فور الاختيار
+    setShowSurahGrid(false);
+    setShowReciterGrid(false);
   };
 
   const handleVoiceSearch = () => {
@@ -244,43 +252,66 @@ export function MediaView() {
           </div>
         </div>
 
-        <div className="flex flex-col md:flex-row gap-8 items-stretch h-[280px]">
-          {/* Reciter Grid - 50% Right */}
+        <div className="flex flex-col md:flex-row gap-8 items-stretch h-auto min-h-[200px]">
+          {/* Reciter Selection - 50% Right */}
           <div className="w-full md:w-1/2 flex flex-col gap-3 order-1">
             <div className="flex items-center gap-2 px-2">
               <Users className="w-4 h-4 text-primary" />
-              <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block">اختيار القارئ المفضل</label>
+              <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block">البحث القرآني</label>
             </div>
-            <div className="flex-1 bg-white/5 border border-white/10 rounded-[2.5rem] p-4 backdrop-blur-xl relative overflow-hidden group shadow-2xl">
-              {isLoadingReciters ? (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <Loader2 className="w-10 h-10 animate-spin text-primary" />
+            
+            {!showReciterGrid ? (
+              <Button
+                onClick={() => setShowReciterGrid(true)}
+                className="h-20 w-full rounded-[2rem] bg-white/5 border-2 border-white/10 text-white font-black text-xl hover:bg-white/10 transition-all shadow-xl focusable flex items-center justify-between px-8"
+              >
+                <div className="flex items-center gap-4">
+                   <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+                     <Users className="w-6 h-6 text-primary" />
+                   </div>
+                   <span>{selectedReciter ? selectedReciter.name : "اختر القارئ المفضل"}</span>
                 </div>
-              ) : (
-                <ScrollArea className="h-full pr-2">
-                  <div className="grid grid-cols-2 gap-3">
-                    {reciters.map((reciter, idx) => (
-                      <Button
-                        key={idx}
-                        variant="ghost"
-                        onClick={() => setSelectedReciter(reciter)}
-                        className={cn(
-                          "h-16 rounded-2xl border-2 transition-all font-black text-lg focusable relative overflow-hidden",
-                          selectedReciter?.name === reciter.name 
-                            ? "bg-primary text-white border-primary shadow-[0_0_30px_rgba(var(--primary),0.4)] scale-[1.02]" 
-                            : "bg-white/5 border-transparent text-white/70 hover:bg-white/10 hover:border-white/20"
-                        )}
-                      >
-                        {reciter.name}
-                        {selectedReciter?.name === reciter.name && (
-                          <div className="absolute inset-0 bg-gradient-to-t from-white/10 to-transparent pointer-events-none" />
-                        )}
-                      </Button>
-                    ))}
+                <ChevronDown className="w-6 h-6 opacity-40" />
+              </Button>
+            ) : (
+              <div className="bg-white/5 border-2 border-primary/40 rounded-[2.5rem] p-4 backdrop-blur-3xl relative animate-in zoom-in-95 duration-500 shadow-[0_0_50px_rgba(var(--primary),0.1)]">
+                <div className="flex items-center justify-between mb-4 px-2">
+                  <span className="text-xs font-black text-primary uppercase tracking-[0.2em]">اختر القارئ</span>
+                  <Button variant="ghost" size="icon" onClick={() => setShowReciterGrid(false)} className="rounded-full w-8 h-8 text-white/40 hover:text-white hover:bg-white/10">
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+                {isLoadingReciters ? (
+                  <div className="h-40 flex items-center justify-center">
+                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
                   </div>
-                </ScrollArea>
-              )}
-            </div>
+                ) : (
+                  <ScrollArea className="h-60 pr-2">
+                    <div className="grid grid-cols-2 gap-3 pb-4">
+                      {reciters.map((reciter, idx) => (
+                        <Button
+                          key={idx}
+                          variant="ghost"
+                          onClick={() => {
+                            setSelectedReciter(reciter);
+                            setShowSurahGrid(true);
+                            setShowReciterGrid(false);
+                          }}
+                          className={cn(
+                            "h-16 rounded-2xl border-2 transition-all font-black text-lg focusable",
+                            selectedReciter?.name === reciter.name 
+                              ? "bg-primary text-white border-primary shadow-glow" 
+                              : "bg-white/5 border-transparent text-white/70 hover:bg-white/10 hover:border-white/20"
+                          )}
+                        >
+                          {reciter.name}
+                        </Button>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Search Area - 50% Left */}
@@ -314,16 +345,24 @@ export function MediaView() {
         </div>
 
         {/* Surahs Grid */}
-        {selectedReciter && (
-          <div className="bg-white/5 p-8 rounded-[3rem] border border-white/10 animate-in fade-in slide-in-from-top-4 duration-700 shadow-2xl backdrop-blur-3xl">
+        {showSurahGrid && selectedReciter && (
+          <div className="bg-white/5 p-8 rounded-[3rem] border border-primary/20 animate-in fade-in slide-in-from-top-4 duration-700 shadow-2xl backdrop-blur-3xl relative overflow-hidden">
+            <div className="absolute top-8 left-8 flex items-center gap-4 z-20">
+              <Button variant="ghost" onClick={() => setShowSurahGrid(false)} className="rounded-full w-12 h-12 bg-white/5 border border-white/10 text-white hover:bg-white/20 focusable">
+                <X className="w-6 h-6" />
+              </Button>
+            </div>
+            
             <div className="flex items-center justify-between mb-8 border-b border-white/5 pb-6">
               <div className="flex items-center gap-4">
                 <div className="w-14 h-14 rounded-full bg-accent/20 flex items-center justify-center shadow-inner">
                   <BookOpen className="w-8 h-8 text-accent" />
                 </div>
-                <h2 className="text-3xl font-black text-white tracking-tight">فهرس السور: {selectedReciter.name}</h2>
+                <div className="flex flex-col text-right">
+                  <h2 className="text-3xl font-black text-white tracking-tight">فهرس السور الملون</h2>
+                  <span className="text-sm font-black text-accent uppercase tracking-widest">{selectedReciter.name}</span>
+                </div>
               </div>
-              <Button variant="ghost" onClick={() => setSelectedReciter(null)} className="rounded-full text-white/40 hover:text-white focusable">تغيير القارئ</Button>
             </div>
             <ScrollArea className="h-[380px] w-full">
               <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4 p-2">
@@ -351,7 +390,7 @@ export function MediaView() {
             </ScrollArea>
           </div>
         )}
-      </header>
+      </section>
 
       {selectedChannel ? (
         <div className="space-y-8 animate-in fade-in slide-in-from-left-6 duration-700 pb-24 text-right">
