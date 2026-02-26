@@ -88,7 +88,6 @@ export function MediaView() {
     try {
       const results = await searchYouTubeVideos(finalQuery);
       setVideoResults(results);
-      // إغلاق كافة القوائم عند البحث
       setShowReciterGrid(false);
       setShowSurahGrid(false);
       window.scrollTo({ top: 600, behavior: 'smooth' });
@@ -112,7 +111,6 @@ export function MediaView() {
     const query = `${selectedReciter.name} سورة ${surahName}`;
     setSearchQuery(query);
     handleVideoSearch(query);
-    // إخفاء الخيارات فور الاختيار
     setShowSurahGrid(false);
     setShowReciterGrid(false);
   };
@@ -252,8 +250,8 @@ export function MediaView() {
         </div>
 
         <div className="flex flex-col md:flex-row gap-8 items-stretch h-auto min-h-[200px]">
-          {/* Reciter Selection - 50% Right */}
-          <div className="w-full md:w-1/2 flex flex-col gap-3 order-1">
+          {/* Reciter Selection - 50% Right - Always Right */}
+          <div className="w-full md:w-1/2 flex flex-col gap-3 md:order-1">
             <div className="flex items-center gap-2 px-2">
               <Users className="w-4 h-4 text-primary" />
               <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block">البحث القرآني</label>
@@ -262,7 +260,7 @@ export function MediaView() {
             {!showReciterGrid ? (
               <Button
                 onClick={() => setShowReciterGrid(true)}
-                className="h-20 w-full rounded-[2rem] bg-white/5 border-2 border-white/10 text-white font-black text-xl hover:bg-white/10 transition-all shadow-xl focusable flex items-center justify-between px-8"
+                className="h-20 w-full rounded-[2rem] bg-white/5 border-2 border-white/10 text-white font-black text-xl hover:bg-white/10 transition-all shadow-xl focusable flex items-center justify-between px-8 text-right"
               >
                 <div className="flex items-center gap-4">
                    <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
@@ -297,7 +295,7 @@ export function MediaView() {
                             setShowReciterGrid(false);
                           }}
                           className={cn(
-                            "h-16 rounded-2xl border-2 transition-all font-black text-lg focusable",
+                            "h-16 rounded-2xl border-2 transition-all font-black text-lg focusable text-right px-4 justify-start",
                             selectedReciter?.name === reciter.name 
                               ? "bg-primary text-white border-primary shadow-glow" 
                               : "bg-white/5 border-transparent text-white/70 hover:bg-white/10 hover:border-white/20"
@@ -314,7 +312,7 @@ export function MediaView() {
           </div>
 
           {/* Search Area - 50% Left */}
-          <div className="w-full md:w-1/2 flex flex-col justify-end gap-6 order-2">
+          <div className="w-full md:w-1/2 flex flex-col justify-end gap-6 md:order-2">
             <div className="space-y-3">
               <div className="flex items-center gap-2 px-2">
                 <Search className="w-4 h-4 text-primary" />
