@@ -19,13 +19,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
@@ -94,7 +87,7 @@ export function MediaView() {
     try {
       const results = await searchYouTubeVideos(finalQuery);
       setVideoResults(results);
-      window.scrollTo({ top: 400, behavior: 'smooth' });
+      window.scrollTo({ top: 600, behavior: 'smooth' });
     } catch (error) {
       console.error("Video search failed", error);
     } finally {
@@ -191,7 +184,6 @@ export function MediaView() {
     toggleSaveVideo(video);
   };
 
-  // Helper for Juz logic
   const getJuz = (idx: number) => {
     if (idx <= 1) return 1;
     if (idx >= 78) return 30;
@@ -209,7 +201,7 @@ export function MediaView() {
 
   return (
     <div className="p-6 space-y-8 max-w-7xl mx-auto pb-32 min-h-screen relative dir-rtl">
-      <header className="flex flex-col gap-6">
+      <header className="flex flex-col gap-8">
         <div className="flex justify-between items-end">
           <div className="text-right">
             <h1 className="text-5xl font-headline font-bold tracking-tighter text-white">DriveCast Media</h1>
@@ -247,59 +239,93 @@ export function MediaView() {
 
             <div className="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-full border border-white/10">
               <Cloud className="w-4 h-4 text-accent animate-pulse" />
-              <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">JSONBin Real-time Sync</span>
+              <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">JSONBin Sync</span>
             </div>
           </div>
         </div>
 
-        <div className="flex flex-col md:flex-row gap-6 items-end">
-          {/* specialized Reciter Search - Visually Right in RTL */}
-          <div className="w-full md:w-[280px] space-y-2 order-1 md:order-2">
-            <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block px-2">اختر القارئ</label>
-            <Select onValueChange={(val) => setSelectedReciter(reciters.find(r => r.name === val))}>
-              <SelectTrigger className="h-16 bg-white/5 border-white/10 rounded-[1.5rem] focusable text-right text-lg font-bold">
-                <SelectValue placeholder={isLoadingReciters ? "جاري التحميل..." : "اسم القارئ"} />
-              </SelectTrigger>
-              <SelectContent className="bg-zinc-900 border-white/10 text-white rounded-2xl">
-                {reciters.map((reciter, idx) => (
-                  <SelectItem key={idx} value={reciter.name} className="text-right flex-row-reverse">{reciter.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        <div className="flex flex-col md:flex-row gap-8 items-stretch h-[280px]">
+          {/* Reciter Grid - 50% Right */}
+          <div className="w-full md:w-1/2 flex flex-col gap-3 order-1">
+            <div className="flex items-center gap-2 px-2">
+              <Users className="w-4 h-4 text-primary" />
+              <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block">اختيار القارئ المفضل</label>
+            </div>
+            <div className="flex-1 bg-white/5 border border-white/10 rounded-[2.5rem] p-4 backdrop-blur-xl relative overflow-hidden group shadow-2xl">
+              {isLoadingReciters ? (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Loader2 className="w-10 h-10 animate-spin text-primary" />
+                </div>
+              ) : (
+                <ScrollArea className="h-full pr-2">
+                  <div className="grid grid-cols-2 gap-3">
+                    {reciters.map((reciter, idx) => (
+                      <Button
+                        key={idx}
+                        variant="ghost"
+                        onClick={() => setSelectedReciter(reciter)}
+                        className={cn(
+                          "h-16 rounded-2xl border-2 transition-all font-black text-lg focusable relative overflow-hidden",
+                          selectedReciter?.name === reciter.name 
+                            ? "bg-primary text-white border-primary shadow-[0_0_30px_rgba(var(--primary),0.4)] scale-[1.02]" 
+                            : "bg-white/5 border-transparent text-white/70 hover:bg-white/10 hover:border-white/20"
+                        )}
+                      >
+                        {reciter.name}
+                        {selectedReciter?.name === reciter.name && (
+                          <div className="absolute inset-0 bg-gradient-to-t from-white/10 to-transparent pointer-events-none" />
+                        )}
+                      </Button>
+                    ))}
+                  </div>
+                </ScrollArea>
+              )}
+            </div>
           </div>
 
-          <div className="flex-1 flex gap-4 w-full order-2 md:order-1">
-            <div className="relative flex-1 group">
-              <Search className="absolute right-6 top-1/2 -translate-y-1/2 h-6 w-6 text-muted-foreground group-focus-within:text-primary transition-colors" />
-              <Input
-                placeholder="البحث عن فيديوهات..."
-                className="pr-16 pl-14 h-16 bg-white/5 border-white/10 rounded-[1.5rem] text-xl font-headline focus-visible:ring-primary backdrop-blur-xl focusable text-right"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleVideoSearch()}
-              />
-              <div className="absolute left-6 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                <button onClick={handleVoiceSearch} className={cn("p-2 rounded-full transition-all focusable", isListening ? "text-red-500 animate-pulse bg-red-500/10" : "text-muted-foreground hover:text-primary")}>
-                  <Mic className="h-6 w-6" />
-                </button>
+          {/* Search Area - 50% Left */}
+          <div className="w-full md:w-1/2 flex flex-col justify-end gap-6 order-2">
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 px-2">
+                <Search className="w-4 h-4 text-primary" />
+                <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block">البحث العام</label>
+              </div>
+              <div className="relative group">
+                <Search className="absolute right-6 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                <Input
+                  placeholder="البحث عن تلاوات أو أناشيد..."
+                  className="pr-16 pl-14 h-20 bg-white/5 border-white/10 rounded-[2rem] text-2xl font-headline focus-visible:ring-primary backdrop-blur-xl focusable text-right"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleVideoSearch()}
+                />
+                <div className="absolute left-6 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                  <button onClick={handleVoiceSearch} className={cn("p-3 rounded-full transition-all focusable", isListening ? "text-red-500 animate-pulse bg-red-500/10 shadow-[0_0_20px_red]" : "text-muted-foreground hover:text-primary")}>
+                    <Mic className="h-7 w-7" />
+                  </button>
+                </div>
               </div>
             </div>
-            <Button onClick={() => handleVideoSearch()} disabled={isSearching} className="h-16 px-10 rounded-[1.5rem] bg-primary text-white font-black text-lg hover:scale-[1.05] transition-all active:scale-95 disabled:opacity-50 shadow-2xl focusable">
-              {isSearching ? <Loader2 className="h-8 w-8 animate-spin" /> : "بحث"}
+            <Button onClick={() => handleVideoSearch()} disabled={isSearching} className="h-20 w-full rounded-[2rem] bg-primary text-white font-black text-xl hover:scale-[1.02] transition-all active:scale-95 disabled:opacity-50 shadow-2xl focusable flex items-center justify-center gap-4">
+              {isSearching ? <Loader2 className="h-8 w-8 animate-spin" /> : <Search className="h-8 w-8" />}
+              <span>تنفيذ البحث الذكي</span>
             </Button>
           </div>
         </div>
 
-        {/* Surahs Grid - Colored by Juz */}
+        {/* Surahs Grid */}
         {selectedReciter && (
-          <div className="bg-white/5 p-8 rounded-[3rem] border border-white/10 animate-in fade-in slide-in-from-top-4 duration-700">
-            <div className="flex items-center gap-4 mb-6 border-b border-white/5 pb-4">
-              <div className="w-12 h-12 rounded-full bg-accent/20 flex items-center justify-center">
-                <BookOpen className="w-6 h-6 text-accent" />
+          <div className="bg-white/5 p-8 rounded-[3rem] border border-white/10 animate-in fade-in slide-in-from-top-4 duration-700 shadow-2xl backdrop-blur-3xl">
+            <div className="flex items-center justify-between mb-8 border-b border-white/5 pb-6">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-full bg-accent/20 flex items-center justify-center shadow-inner">
+                  <BookOpen className="w-8 h-8 text-accent" />
+                </div>
+                <h2 className="text-3xl font-black text-white tracking-tight">فهرس السور: {selectedReciter.name}</h2>
               </div>
-              <h2 className="text-2xl font-black text-white">فهرس السور لـ {selectedReciter.name}</h2>
+              <Button variant="ghost" onClick={() => setSelectedReciter(null)} className="rounded-full text-white/40 hover:text-white focusable">تغيير القارئ</Button>
             </div>
-            <ScrollArea className="h-[320px] w-full">
+            <ScrollArea className="h-[380px] w-full">
               <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4 p-2">
                 {SURAHS_LIST.map((surah, idx) => {
                   const juz = getJuz(idx + 1);
@@ -310,12 +336,12 @@ export function MediaView() {
                       variant="ghost"
                       onClick={() => handleSurahClick(surah)}
                       className={cn(
-                        "h-24 rounded-[1.8rem] flex flex-col items-center justify-center border-2 transition-all hover:scale-105 active:scale-95 focusable px-4",
+                        "h-24 rounded-[2rem] flex flex-col items-center justify-center border-2 transition-all hover:scale-[1.08] active:scale-95 focusable px-4 group shadow-xl",
                         colorClass
                       )}
                     >
-                      <span className="text-lg font-black tracking-tight mb-1">{surah}</span>
-                      <div className="bg-black/20 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider opacity-80">
+                      <span className="text-xl font-black tracking-tight mb-1 group-hover:scale-110 transition-transform">{surah}</span>
+                      <div className="bg-black/30 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider opacity-90 border border-white/5">
                         الجزء {juz}
                       </div>
                     </Button>
