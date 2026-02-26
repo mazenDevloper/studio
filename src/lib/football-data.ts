@@ -30,6 +30,8 @@ export const TEAM_LIST = [
   { id: 2932, name: 'الأهلي', leagueId: 307 },
   { id: 2930, name: 'الاتحاد', leagueId: 307 },
   { id: 2934, name: 'الشباب', leagueId: 307 },
+  { id: 1029, name: 'الأهلي المصري', leagueId: 233 },
+  { id: 1038, name: 'الزمالك', leagueId: 233 },
   { id: 541, name: 'ريال مدريد', leagueId: 140 },
   { id: 529, name: 'برشلونة', leagueId: 140 },
   { id: 530, name: 'أتلتيكو مدريد', leagueId: 140 },
@@ -47,6 +49,12 @@ export const TEAM_LIST = [
 
 export const MAJOR_LEAGUES = [
   { id: 307, name: 'دوري روشن السعودي' },
+  { id: 233, name: 'الدوري المصري الممتاز' },
+  { id: 301, name: 'دوري أدنوك للمحترفين (الإماراتي)' },
+  { id: 305, name: 'دوري نجوم قطر' },
+  { id: 299, name: 'الدوري الكويتي الممتاز' },
+  { id: 312, name: 'دوري عمانتل للمحترفين' },
+  { id: 292, name: 'الدوري البحريني الممتاز' },
   { id: 39, name: 'الدوري الإنجليزي الممتاز' },
   { id: 140, name: 'الدوري الإسباني' },
   { id: 135, name: 'الدوري الإيطالي' },
