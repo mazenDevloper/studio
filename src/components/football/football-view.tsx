@@ -87,6 +87,7 @@ export function FootballView() {
               ? "ring-2 ring-primary bg-primary/10 shadow-[0_0_30px_rgba(var(--primary),0.2)]" 
               : "hover:bg-card/60 bg-card/40"
         )}
+        tabIndex={0}
       >
         <div className="absolute top-0 left-0 p-2 z-20 flex gap-2">
           <button 
@@ -228,13 +229,13 @@ export function FootballView() {
       <Tabs defaultValue="today" onValueChange={setActiveTab} className="w-full">
         <div className="flex justify-center mb-8">
           <TabsList className="bg-white/5 border border-white/10 p-1.5 rounded-[2rem] h-16 w-full max-w-xl shadow-2xl backdrop-blur-3xl">
-            <TabsTrigger value="yesterday" className="flex-1 rounded-[1.5rem] font-black text-xs transition-all data-[state=active]:bg-white/10">أمس</TabsTrigger>
-            <TabsTrigger value="today" className="flex-1 rounded-[1.5rem] font-black text-xs transition-all data-[state=active]:bg-white/10">اليوم</TabsTrigger>
-            <TabsTrigger value="tomorrow" className="flex-1 rounded-[1.5rem] font-black text-xs transition-all data-[state=active]:bg-white/10">غداً</TabsTrigger>
-            <TabsTrigger value="live" className="flex-1 rounded-[1.5rem] font-black text-xs data-[state=active]:bg-red-600 flex items-center justify-center gap-2 transition-all">
+            <TabsTrigger value="yesterday" className="flex-1 rounded-[1.5rem] font-black text-xs transition-all data-[state=active]:bg-white/10 focusable">أمس</TabsTrigger>
+            <TabsTrigger value="today" className="flex-1 rounded-[1.5rem] font-black text-xs transition-all data-[state=active]:bg-white/10 focusable">اليوم</TabsTrigger>
+            <TabsTrigger value="tomorrow" className="flex-1 rounded-[1.5rem] font-black text-xs transition-all data-[state=active]:bg-white/10 focusable">غداً</TabsTrigger>
+            <TabsTrigger value="live" className="flex-1 rounded-[1.5rem] font-black text-xs data-[state=active]:bg-red-600 flex items-center justify-center gap-2 transition-all focusable">
               <Activity className="h-4 w-4" /> المباشرة
             </TabsTrigger>
-            <TabsTrigger value="favorites" className="flex-1 rounded-[1.5rem] font-black text-xs data-[state=active]:bg-yellow-500 data-[state=active]:text-black flex items-center justify-center gap-2 transition-all">
+            <TabsTrigger value="favorites" className="flex-1 rounded-[1.5rem] font-black text-xs data-[state=active]:bg-yellow-500 data-[state=active]:text-black flex items-center justify-center gap-2 transition-all focusable">
               <Star className="h-4 w-4" /> المفضلة
             </TabsTrigger>
           </TabsList>

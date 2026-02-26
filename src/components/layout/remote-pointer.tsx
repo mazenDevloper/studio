@@ -1,25 +1,11 @@
 
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { cn } from "@/lib/utils";
+import { useEffect, useCallback } from "react";
 
 export function RemotePointer() {
-  const [focusedId, setFocusedId] = useState<string | null>(null);
-  const [pointerData, setPointerData] = useState<{
-    rect: DOMRect;
-    borderRadius: string;
-  } | null>(null);
-  const [isVisible, setIsVisible] = useState(false);
-
   const updatePointer = useCallback((el: HTMLElement) => {
-    const rect = el.getBoundingClientRect();
-    const style = window.getComputedStyle(el);
-    setPointerData({
-      rect,
-      borderRadius: style.borderRadius
-    });
-    setFocusedId(el.getAttribute("data-nav-id") || el.id || "unknown");
+    // We only care about scrolling now, the CSS glow handles the visual focus accurately
     el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }, []);
 
@@ -46,7 +32,6 @@ export function RemotePointer() {
   };
 
   const navigate = useCallback((direction: string) => {
-    setIsVisible(true);
     // Find all focusable elements
     const focusables = Array.from(document.querySelectorAll(".focusable")) as HTMLElement[];
     if (focusables.length === 0) return;
@@ -128,25 +113,6 @@ export function RemotePointer() {
     return () => window.removeEventListener("focus", handleFocus, true);
   }, [updatePointer]);
 
-  if (!isVisible || !pointerData) return null;
-
-  const { rect, borderRadius } = pointerData;
-
-  return (
-    <div 
-      className="fixed pointer-events-none z-[3000] transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)]"
-      style={{
-        top: rect.top - 2,
-        left: rect.left - 2,
-        width: rect.width + 4,
-        height: rect.height + 4,
-        borderRadius: borderRadius !== '0px' ? `calc(${borderRadius} + 2px)` : '14px'
-      }}
-    >
-      <div 
-        className="w-full h-full border-[3px] border-primary shadow-[0_0_30px_hsl(var(--primary)/0.5)] animate-pulse bg-transparent" 
-        style={{ borderRadius: 'inherit' }}
-      />
-    </div>
-  );
+  // Return null because we rely on native focus glow (CSS) instead of drawing a helper div
+  return null;
 }

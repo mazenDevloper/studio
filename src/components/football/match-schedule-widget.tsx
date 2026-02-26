@@ -106,6 +106,7 @@ export function MatchScheduleWidget() {
                         "w-80 p-6 rounded-[2.2rem] flex flex-col gap-4 relative transition-all duration-500 hover:scale-[1.02] border backdrop-blur-md focusable",
                         isBelledMatch ? "bg-accent/10 border-accent/40 shadow-[0_0_20px_rgba(var(--accent),0.2)]" : hasFav ? "bg-primary/15 border-primary/30 shadow-glow" : "bg-white/5 border-white/10"
                       )}
+                      tabIndex={0}
                     >
                       <div className="absolute top-4 left-4 z-20">
                         <button 
@@ -145,7 +146,7 @@ export function MatchScheduleWidget() {
                                 toggleFavoriteTeam({ id: match.homeTeamId!, name: match.homeTeam, logo: match.homeLogo }); 
                               }}
                               className={cn(
-                                "absolute -top-1 -right-1 w-7 h-7 rounded-full border border-white/10 backdrop-blur-3xl flex items-center justify-center transition-all active:scale-90",
+                                "absolute -top-1 -right-1 w-7 h-7 rounded-full border border-white/10 backdrop-blur-3xl flex items-center justify-center transition-all active:scale-90 z-30",
                                 isFavTeam(match.homeTeamId!) ? "bg-yellow-500 text-black shadow-glow" : "bg-black/60 text-white/20 hover:text-white"
                               )}
                             >
@@ -173,7 +174,7 @@ export function MatchScheduleWidget() {
                                 toggleFavoriteTeam({ id: match.awayTeamId!, name: match.awayTeam, logo: match.awayLogo }); 
                               }}
                               className={cn(
-                                "absolute -top-1 -left-1 w-7 h-7 rounded-full border border-white/10 backdrop-blur-3xl flex items-center justify-center transition-all active:scale-90",
+                                "absolute -top-1 -left-1 w-7 h-7 rounded-full border border-white/10 backdrop-blur-3xl flex items-center justify-center transition-all active:scale-90 z-30",
                                 isFavTeam(match.awayTeamId!) ? "bg-yellow-500 text-black shadow-glow" : "bg-black/60 text-white/20 hover:text-white"
                               )}
                             >

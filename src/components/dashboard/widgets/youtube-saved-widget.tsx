@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -78,9 +79,8 @@ export function YouTubeSavedWidget() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="rounded-full w-10 h-10 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 focusable"
+                  className="rounded-full w-10 h-10 text-muted-foreground hover:text-red-500 hover:bg-red-500/10"
                   data-nav-id={`remove-saved-${idx}`}
-                  tabIndex={0}
                   onClick={(e) => {
                     e.stopPropagation();
                     removeVideo(video.id);

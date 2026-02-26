@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -236,7 +237,7 @@ export function MediaView() {
                     <Button onClick={handleAddVideoByUrl} disabled={isAddingByUrl} className="flex-1 h-14 bg-primary text-white font-black rounded-2xl shadow-xl focusable">
                       {isAddingByUrl ? <Loader2 className="w-6 h-6 animate-spin" /> : "إضافة الفيديو"}
                     </Button>
-                    <Button variant="ghost" onClick={() => setIsUrlDialogOpen(false)} className="h-14 px-8 rounded-2xl text-white/40 hover:text-white focusable">إلغاء</Button>
+                    <Button variant="ghost" onClick={() => setIsUrlDialogOpen(false)} className="h-14 px-8 rounded-2xl text-white/40 hover:text-white">إلغاء</Button>
                   </div>
                 </div>
               </DialogContent>
@@ -295,7 +296,7 @@ export function MediaView() {
                             setShowReciterGrid(false);
                           }}
                           className={cn(
-                            "h-16 rounded-2xl border-2 transition-all font-black text-lg focusable text-right px-4 justify-start",
+                            "h-16 rounded-2xl border-2 transition-all font-black text-lg text-right px-4 justify-start",
                             selectedReciter?.name === reciter.name 
                               ? "bg-primary text-white border-primary shadow-glow" 
                               : "bg-white/5 border-transparent text-white/70 hover:bg-white/10 hover:border-white/20"
@@ -328,7 +329,7 @@ export function MediaView() {
                   onKeyDown={(e) => e.key === 'Enter' && handleVideoSearch()}
                 />
                 <div className="absolute left-6 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                  <button onClick={handleVoiceSearch} className={cn("p-3 rounded-full transition-all focusable", isListening ? "text-red-500 animate-pulse bg-red-500/10 shadow-[0_0_20px_red]" : "text-muted-foreground hover:text-primary")}>
+                  <button onClick={handleVoiceSearch} className={cn("p-3 rounded-full transition-all", isListening ? "text-red-500 animate-pulse bg-red-500/10 shadow-[0_0_20px_red]" : "text-muted-foreground hover:text-primary")}>
                     <Mic className="h-7 w-7" />
                   </button>
                 </div>
@@ -416,7 +417,7 @@ export function MediaView() {
                     variant="ghost"
                     size="icon"
                     onClick={() => toggleStarChannel(selectedChannel!.channelid)}
-                    className={cn("w-16 h-16 rounded-full border border-white/10 backdrop-blur-md transition-all focusable", selectedChannel.starred ? "bg-accent/20 text-accent shadow-glow" : "text-white/40 hover:text-white")}
+                    className={cn("w-16 h-16 rounded-full border border-white/10 backdrop-blur-md transition-all", selectedChannel.starred ? "bg-accent/20 text-accent shadow-glow" : "text-white/40 hover:text-white")}
                   >
                     <Star className={cn("w-8 h-8", selectedChannel.starred && "fill-current")} />
                   </Button>
@@ -463,7 +464,7 @@ export function MediaView() {
           {videoResults.length > 0 && (
             <div className="space-y-8 mb-12 animate-in slide-in-from-bottom-4">
               <div className="flex items-center justify-between border-b border-white/10 pb-6">
-                <Button variant="ghost" onClick={() => setVideoResults([])} className="text-white/40 hover:text-white rounded-full h-12 px-6 focusable">إغلاق البحث</Button>
+                <Button variant="ghost" onClick={() => setVideoResults([])} className="text-white/40 hover:text-white rounded-full h-12 px-6">إغلاق البحث</Button>
                 <h2 className="text-3xl font-black font-headline text-primary flex items-center gap-4 tracking-tight uppercase">
                   نتائج البحث <Search className="w-8 h-8" />
                 </h2>
@@ -493,7 +494,7 @@ export function MediaView() {
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-10">
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
-                <div className="flex flex-col items-center gap-4 group cursor-pointer focusable" tabIndex={0}>
+                <div className="flex flex-col items-center gap-4 group cursor-pointer" tabIndex={0}>
                   <div className="w-32 h-32 sm:w-40 sm:h-40 rounded-full border-4 border-dashed border-white/15 flex items-center justify-center bg-white/5 group-hover:bg-white/10 group-hover:border-primary transition-all duration-500 shadow-2xl relative">
                     <Plus className="w-14 h-14 text-white/20 group-hover:text-primary transition-all group-hover:scale-110" />
                   </div>
@@ -542,14 +543,14 @@ export function MediaView() {
               const isStarred = channel.starred;
               return (
                 <div key={channel.channelid} className="flex flex-col items-center gap-4 group relative animate-in zoom-in-95 duration-700">
-                  <div className="w-32 h-32 sm:w-40 sm:h-40 rounded-full overflow-hidden border-4 border-white/10 group-hover:border-primary transition-all duration-700 cursor-pointer shadow-2xl relative focusable" onClick={() => handleSelectChannel(channel)}>
+                  <div className="w-32 h-32 sm:w-40 sm:h-40 rounded-full overflow-hidden border-4 border-white/10 group-hover:border-primary transition-all duration-700 cursor-pointer shadow-2xl relative" onClick={() => handleSelectChannel(channel)}>
                     <Image src={channel.image} alt={channel.name} fill className="object-cover group-hover:scale-115 transition-transform duration-1000" />
                     <div className="absolute inset-0 bg-black/30 group-hover:bg-transparent transition-all" />
                   </div>
-                  <button onClick={(e) => { e.stopPropagation(); toggleStarChannel(channel.channelid); }} className={cn("absolute top-1 right-1 w-12 h-12 rounded-full flex items-center justify-center border border-white/15 backdrop-blur-3xl transition-all active:scale-90 z-20 focusable", isStarred ? "bg-accent text-black shadow-glow" : "bg-black/50 text-white/40 hover:text-white")}>
+                  <button onClick={(e) => { e.stopPropagation(); toggleStarChannel(channel.channelid); }} className={cn("absolute top-1 right-1 w-12 h-12 rounded-full flex items-center justify-center border border-white/15 backdrop-blur-3xl transition-all active:scale-90 z-20", isStarred ? "bg-accent text-black shadow-glow" : "bg-black/50 text-white/40 hover:text-white")}>
                     <Star className={cn("w-6 h-6", isStarred && "fill-current")} />
                   </button>
-                  <button onClick={(e) => { e.stopPropagation(); removeChannel(channel.channelid); }} className="absolute top-1 left-1 w-10 h-10 rounded-full bg-red-600/20 text-red-500 border border-red-500/20 flex items-center justify-center shadow-xl hover:bg-red-600 hover:text-white transition-all active:scale-90 z-20 focusable">
+                  <button onClick={(e) => { e.stopPropagation(); removeChannel(channel.channelid); }} className="absolute top-1 left-1 w-10 h-10 rounded-full bg-red-600/20 text-red-500 border border-red-500/20 flex items-center justify-center shadow-xl hover:bg-red-600 hover:text-white transition-all active:scale-90 z-20">
                     <Trash2 className="w-5 h-5" />
                   </button>
                   <div className="flex flex-col items-center">
