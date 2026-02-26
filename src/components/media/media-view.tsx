@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -390,7 +389,7 @@ export function MediaView() {
             </ScrollArea>
           </div>
         )}
-      </section>
+      </header>
 
       {selectedChannel ? (
         <div className="space-y-8 animate-in fade-in slide-in-from-left-6 duration-700 pb-24 text-right">
