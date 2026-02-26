@@ -251,7 +251,7 @@ export function MediaView() {
         </div>
 
         <div className="flex flex-col md:flex-row gap-8 items-stretch h-auto min-h-[200px]">
-          {/* Reciter Selection - 50% Right - Always Right */}
+          {/* Reciter Selection - 50% Right */}
           <div className="w-full md:w-1/2 flex flex-col gap-3 md:order-1">
             <div className="flex items-center gap-2 px-2">
               <Users className="w-4 h-4 text-primary" />
@@ -296,7 +296,7 @@ export function MediaView() {
                             setShowReciterGrid(false);
                           }}
                           className={cn(
-                            "h-16 rounded-2xl border-2 transition-all font-black text-lg text-right px-4 justify-start",
+                            "h-16 rounded-2xl border-2 transition-all font-black text-lg text-right px-4 justify-start focusable",
                             selectedReciter?.name === reciter.name 
                               ? "bg-primary text-white border-primary shadow-glow" 
                               : "bg-white/5 border-transparent text-white/70 hover:bg-white/10 hover:border-white/20"
@@ -416,6 +416,7 @@ export function MediaView() {
                   <Button
                     variant="ghost"
                     size="icon"
+                    tabIndex={-1}
                     onClick={() => toggleStarChannel(selectedChannel!.channelid)}
                     className={cn("w-16 h-16 rounded-full border border-white/10 backdrop-blur-md transition-all", selectedChannel.starred ? "bg-accent/20 text-accent shadow-glow" : "text-white/40 hover:text-white")}
                   >
@@ -446,7 +447,13 @@ export function MediaView() {
                     <Image src={video.thumbnail} alt={video.title} fill className="object-cover opacity-80 group-hover:opacity-100 transition-all duration-1000 scale-105 group-hover:scale-110" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
                     <div className="absolute top-6 left-6 z-20">
-                       <Button size="icon" variant="ghost" onClick={(e) => handleToggleSave(e, video)} className={cn("w-14 h-14 rounded-full backdrop-blur-3xl border border-white/15 transition-all", isSaved ? "bg-accent text-black shadow-glow" : "bg-black/50 text-white hover:bg-black/70")}>
+                       <Button 
+                        size="icon" 
+                        variant="ghost" 
+                        tabIndex={-1}
+                        onClick={(e) => handleToggleSave(e, video)} 
+                        className={cn("w-14 h-14 rounded-full backdrop-blur-3xl border border-white/15 transition-all", isSaved ? "bg-accent text-black shadow-glow" : "bg-black/50 text-white hover:bg-black/70")}
+                       >
                          <Bookmark className={cn("w-7 h-7", isSaved && "fill-current")} />
                        </Button>
                     </div>
@@ -494,7 +501,7 @@ export function MediaView() {
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-10">
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
-                <div className="flex flex-col items-center gap-4 group cursor-pointer" tabIndex={0}>
+                <div className="flex flex-col items-center gap-4 group cursor-pointer focusable" tabIndex={0}>
                   <div className="w-32 h-32 sm:w-40 sm:h-40 rounded-full border-4 border-dashed border-white/15 flex items-center justify-center bg-white/5 group-hover:bg-white/10 group-hover:border-primary transition-all duration-500 shadow-2xl relative">
                     <Plus className="w-14 h-14 text-white/20 group-hover:text-primary transition-all group-hover:scale-110" />
                   </div>
@@ -516,7 +523,7 @@ export function MediaView() {
                     {channelResults.map((channel) => {
                       const isSubscribed = favoriteChannels.some(c => c.channelid === channel.channelid);
                       return (
-                        <div key={channel.channelid} className="flex items-center gap-6 p-6 rounded-[2rem] bg-white/5 border border-white/5 hover:bg-white/10 transition-all group">
+                        <div key={channel.channelid} className="flex items-center gap-6 p-6 rounded-[2rem] bg-white/5 border border-white/5 hover:bg-white/10 transition-all group focusable" tabIndex={0} onClick={() => isSubscribed ? removeChannel(channel.channelid) : addChannel(channel)}>
                           <div className="relative w-24 h-24 rounded-full overflow-hidden border-2 border-white/10 group-hover:border-primary transition-all flex-shrink-0">
                             <Image src={channel.image} alt={channel.name} fill className="object-cover" />
                           </div>
@@ -527,10 +534,10 @@ export function MediaView() {
                               <Users className="w-4 h-4 text-accent" />
                             </div>
                           </div>
-                          <Button onClick={() => isSubscribed ? removeChannel(channel.channelid) : addChannel(channel)} variant={isSubscribed ? "secondary" : "default"} className={cn("rounded-full h-14 px-8 font-black text-base shadow-lg transition-all flex-shrink-0 relative z-10 min-w-[140px] focusable", isSubscribed ? "bg-accent/20 text-accent border border-accent/20" : "bg-primary text-white hover:scale-105")}>
+                          <div className={cn("rounded-full h-14 px-8 font-black text-base shadow-lg transition-all flex-shrink-0 relative z-10 min-w-[140px] flex items-center justify-center", isSubscribed ? "bg-accent/20 text-accent border border-accent/20" : "bg-primary text-white")}>
                             {isSubscribed ? <Check className="w-5 h-5 ml-2" /> : <Plus className="w-5 h-5 ml-2" />}
                             {isSubscribed ? "مشترك" : "إضافة"}
-                          </Button>
+                          </div>
                         </div>
                       );
                     })}
@@ -542,15 +549,15 @@ export function MediaView() {
             {favoriteChannels.map((channel) => {
               const isStarred = channel.starred;
               return (
-                <div key={channel.channelid} className="flex flex-col items-center gap-4 group relative animate-in zoom-in-95 duration-700">
-                  <div className="w-32 h-32 sm:w-40 sm:h-40 rounded-full overflow-hidden border-4 border-white/10 group-hover:border-primary transition-all duration-700 cursor-pointer shadow-2xl relative" onClick={() => handleSelectChannel(channel)}>
+                <div key={channel.channelid} className="flex flex-col items-center gap-4 group relative animate-in zoom-in-95 duration-700 focusable" tabIndex={0} onClick={() => handleSelectChannel(channel)}>
+                  <div className="w-32 h-32 sm:w-40 sm:h-40 rounded-full overflow-hidden border-4 border-white/10 group-hover:border-primary transition-all duration-700 cursor-pointer shadow-2xl relative">
                     <Image src={channel.image} alt={channel.name} fill className="object-cover group-hover:scale-115 transition-transform duration-1000" />
                     <div className="absolute inset-0 bg-black/30 group-hover:bg-transparent transition-all" />
                   </div>
-                  <button onClick={(e) => { e.stopPropagation(); toggleStarChannel(channel.channelid); }} className={cn("absolute top-1 right-1 w-12 h-12 rounded-full flex items-center justify-center border border-white/15 backdrop-blur-3xl transition-all active:scale-90 z-20", isStarred ? "bg-accent text-black shadow-glow" : "bg-black/50 text-white/40 hover:text-white")}>
+                  <button tabIndex={-1} onClick={(e) => { e.stopPropagation(); toggleStarChannel(channel.channelid); }} className={cn("absolute top-1 right-1 w-12 h-12 rounded-full flex items-center justify-center border border-white/15 backdrop-blur-3xl transition-all active:scale-90 z-20", isStarred ? "bg-accent text-black shadow-glow" : "bg-black/50 text-white/40 hover:text-white")}>
                     <Star className={cn("w-6 h-6", isStarred && "fill-current")} />
                   </button>
-                  <button onClick={(e) => { e.stopPropagation(); removeChannel(channel.channelid); }} className="absolute top-1 left-1 w-10 h-10 rounded-full bg-red-600/20 text-red-500 border border-red-500/20 flex items-center justify-center shadow-xl hover:bg-red-600 hover:text-white transition-all active:scale-90 z-20">
+                  <button tabIndex={-1} onClick={(e) => { e.stopPropagation(); removeChannel(channel.channelid); }} className="absolute top-1 left-1 w-10 h-10 rounded-full bg-red-600/20 text-red-500 border border-red-500/20 flex items-center justify-center shadow-xl hover:bg-red-600 hover:text-white transition-all active:scale-90 z-20">
                     <Trash2 className="w-5 h-5" />
                   </button>
                   <div className="flex flex-col items-center">

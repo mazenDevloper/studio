@@ -79,6 +79,7 @@ export function YouTubeSavedWidget() {
                 <Button
                   variant="ghost"
                   size="icon"
+                  tabIndex={-1}
                   className="rounded-full w-10 h-10 text-muted-foreground hover:text-red-500 hover:bg-red-500/10"
                   data-nav-id={`remove-saved-${idx}`}
                   onClick={(e) => {
