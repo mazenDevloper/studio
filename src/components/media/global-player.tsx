@@ -1,10 +1,18 @@
+
 "use client";
 
 import { useMediaStore } from "@/lib/store";
-import { X, Play, Pause, Youtube as YoutubeIcon, Minimize2, Bookmark, Monitor, ChevronDown } from "lucide-react";
+import { X, Youtube as YoutubeIcon, Minimize2, Bookmark, Monitor, ChevronDown, Play, Pause } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useState, useEffect, useRef } from "react";
+
+declare global {
+  interface Window {
+    onYouTubeIframeAPIReady: () => void;
+    YT: any;
+  }
+}
 
 export function GlobalVideoPlayer() {
   const { 
@@ -23,51 +31,121 @@ export function GlobalVideoPlayer() {
   } = useMediaStore();
   
   const [mounted, setMounted] = useState(false);
-  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const playerRef = useRef<any>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const progressInterval = useRef<NodeJS.Timeout | null>(null);
 
-  // Sync progress if video is saved
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (activeVideo && isPlaying && !isMinimized) {
-      // Periodic "progress" simulation or API call if possible.
-      // Since we use standard iframe without heavy wrapper, we'll implement a simple tracker 
-      // that saves current time when paused or closed.
-      // NOTE: Real-time currentTime from iframe requires YouTube IFrame API which is more complex.
-    }
-    return () => clearInterval(interval);
-  }, [isPlaying, activeVideo, isMinimized]);
-
-  useEffect(() => {
-    if (activeVideo && !isMinimized) {
-      setTimeout(() => {
-        const firstControl = document.querySelector('[data-nav-id="player-minimize-btn"]') as HTMLElement;
-        if (firstControl) firstControl.focus();
-      }, 500);
-    }
-  }, [activeVideo, isMinimized]);
-
-  useEffect(() => {
-    if (activeVideo && iframeRef.current?.contentWindow) {
-      const command = isPlaying ? 'playVideo' : 'pauseVideo';
-      iframeRef.current.contentWindow.postMessage(JSON.stringify({
-        event: 'command',
-        func: command,
-        args: []
-      }), '*');
-    }
-  }, [isPlaying, activeVideo]);
-
+  // Load YouTube API
   useEffect(() => {
     setMounted(true);
+    if (!window.YT) {
+      const tag = document.createElement('script');
+      tag.src = "https://www.youtube.com/iframe_api";
+      const firstScriptTag = document.getElementsByTagName('script')[0];
+      firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
+    }
   }, []);
+
+  // Initialize or Update Player
+  useEffect(() => {
+    if (!activeVideo || !mounted) return;
+
+    const savedV = savedVideos.find(v => v.id === activeVideo.id);
+    const startSeconds = savedV?.progress || videoProgress[activeVideo.id] || 0;
+
+    const initPlayer = () => {
+      if (playerRef.current) {
+        playerRef.current.destroy();
+      }
+
+      playerRef.current = new window.YT.Player('youtube-player-element', {
+        height: '100%',
+        width: '100%',
+        videoId: activeVideo.id,
+        playerVars: {
+          autoplay: 1,
+          controls: 1,
+          modestbranding: 1,
+          rel: 0,
+          start: Math.floor(startSeconds),
+          enablejsapi: 1,
+          origin: window.location.origin,
+        },
+        events: {
+          onReady: (event: any) => {
+            if (isPlaying) event.target.playVideo();
+          },
+          onStateChange: (event: any) => {
+            // YT.PlayerState.PLAYING = 1, PAUSED = 2, ENDED = 0
+            if (event.data === 1) {
+              setIsPlaying(true);
+              startProgressTracking();
+            } else if (event.data === 2 || event.data === 0) {
+              setIsPlaying(false);
+              stopProgressTracking();
+              saveCurrentProgress();
+            }
+          }
+        }
+      });
+    };
+
+    if (window.YT && window.YT.Player) {
+      initPlayer();
+    } else {
+      window.onYouTubeIframeAPIReady = initPlayer;
+    }
+
+    return () => {
+      stopProgressTracking();
+      if (playerRef.current) {
+        saveCurrentProgress();
+      }
+    };
+  }, [activeVideo?.id, mounted]);
+
+  // Sync isPlaying state with YT Player
+  useEffect(() => {
+    if (playerRef.current && playerRef.current.getPlayerState) {
+      const state = playerRef.current.getPlayerState();
+      if (isPlaying && state !== 1) {
+        playerRef.current.playVideo();
+      } else if (!isPlaying && state === 1) {
+        playerRef.current.pauseVideo();
+      }
+    }
+  }, [isPlaying]);
+
+  const saveCurrentProgress = () => {
+    if (playerRef.current && playerRef.current.getCurrentTime && activeVideo) {
+      const currentTime = Math.floor(playerRef.current.getCurrentTime());
+      if (currentTime > 0) {
+        updateVideoProgress(activeVideo.id, currentTime);
+      }
+    }
+  };
+
+  const startProgressTracking = () => {
+    stopProgressTracking();
+    progressInterval.current = setInterval(() => {
+      if (playerRef.current && playerRef.current.getCurrentTime && activeVideo) {
+        const currentTime = Math.floor(playerRef.current.getCurrentTime());
+        // We update local state frequently, but store.ts handles the debounced JSONBin update
+        updateVideoProgress(activeVideo.id, currentTime);
+      }
+    }, 5000); // Track every 5 seconds
+  };
+
+  const stopProgressTracking = () => {
+    if (progressInterval.current) {
+      clearInterval(progressInterval.current);
+      progressInterval.current = null;
+    }
+  };
 
   if (!mounted || !activeVideo) return null;
 
   const isSaved = savedVideos.some(v => v.id === activeVideo.id);
-  const savedV = savedVideos.find(v => v.id === activeVideo.id);
-  const startSeconds = savedV?.progress || videoProgress[activeVideo.id] || 0;
-
-  const youtubeUrl = `https://www.youtube.com/embed/${activeVideo.id}?autoplay=1&controls=1&modestbranding=1&rel=0&start=${startSeconds}&enablejsapi=1&vq=large`;
 
   return (
     <div 
@@ -86,16 +164,8 @@ export function GlobalVideoPlayer() {
         isMinimized ? "opacity-0 scale-0 pointer-events-none" : "inset-0 opacity-100",
         !isFullScreen && !isMinimized && "relative w-[65vw] h-[68vh] glass-panel rounded-[3.5rem] bg-black/98 ring-4 ring-white/10"
       )}>
-        <div className="w-full h-full bg-black relative">
-          <iframe 
-            ref={iframeRef}
-            key={activeVideo.id} 
-            className="w-full h-full" 
-            src={youtubeUrl} 
-            frameBorder="0" 
-            allow="autoplay; encrypted-media" 
-            allowFullScreen
-          ></iframe>
+        <div className="w-full h-full bg-black relative" id="youtube-player-container">
+          <div id="youtube-player-element" className="w-full h-full"></div>
         </div>
       </div>
 
@@ -132,7 +202,11 @@ export function GlobalVideoPlayer() {
                </Button>
 
                <Button 
-                onClick={(e) => { e.stopPropagation(); toggleSaveVideo(activeVideo); }}
+                onClick={(e) => { 
+                  e.stopPropagation(); 
+                  saveCurrentProgress();
+                  toggleSaveVideo(activeVideo); 
+                }}
                 className={cn("w-16 h-16 rounded-full border-2 transition-all focusable", isSaved ? "bg-accent/20 border-accent text-accent" : "bg-white/5 border-white/10 text-white")}
                 data-nav-id="player-save-btn"
                 tabIndex={0}
@@ -145,7 +219,11 @@ export function GlobalVideoPlayer() {
                <Button 
                 variant="destructive" 
                 size="icon" 
-                onClick={(e) => { e.stopPropagation(); setActiveVideo(null); }} 
+                onClick={(e) => { 
+                  e.stopPropagation(); 
+                  saveCurrentProgress();
+                  setActiveVideo(null); 
+                }} 
                 className="w-16 h-16 rounded-full shadow-2xl focusable"
                 data-nav-id="player-close-btn"
                 tabIndex={0}

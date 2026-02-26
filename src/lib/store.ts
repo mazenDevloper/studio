@@ -141,7 +141,7 @@ export const useMediaStore = create<MediaState>()(
           } else {
             const videoToSave: YouTubeVideo = {
               ...video,
-              progress: video.progress || 0,
+              progress: video.progress || get().videoProgress[video.id] || 0,
               duration: video.duration || "0:00",
               channelId: video.channelId || ""
             };
@@ -161,12 +161,27 @@ export const useMediaStore = create<MediaState>()(
       },
 
       updateVideoProgress: (videoId, progress) => {
+        const state = get();
+        // Check if the progress has significantly changed to avoid constant API calls
+        const lastProgress = state.videoProgress[videoId] || 0;
+        if (Math.abs(lastProgress - progress) < 5 && progress !== 0) return;
+
         set((state) => {
-          const newList = state.savedVideos.map(v => 
-            v.id === videoId ? { ...v, progress } : v
-          );
-          updateBin(JSONBIN_SAVED_VIDEOS_BIN_ID, newList);
-          return { savedVideos: newList, videoProgress: { ...state.videoProgress, [videoId]: progress } };
+          const isSaved = state.savedVideos.some(v => v.id === videoId);
+          let updatedSaved = state.savedVideos;
+          
+          if (isSaved) {
+            updatedSaved = state.savedVideos.map(v => 
+              v.id === videoId ? { ...v, progress } : v
+            );
+            // Debounce or only sync if saved
+            updateBin(JSONBIN_SAVED_VIDEOS_BIN_ID, updatedSaved);
+          }
+          
+          return { 
+            savedVideos: updatedSaved, 
+            videoProgress: { ...state.videoProgress, [videoId]: progress } 
+          };
         });
       },
 
@@ -241,7 +256,8 @@ export const useMediaStore = create<MediaState>()(
         favoriteLeagueIds: state.favoriteLeagueIds,
         mapSettings: state.mapSettings,
         reminders: state.reminders,
-        prayerTimes: state.prayerTimes
+        prayerTimes: state.prayerTimes,
+        videoProgress: state.videoProgress
       }),
     }
   )
@@ -298,7 +314,6 @@ if (typeof window !== "undefined") {
         if (Array.isArray(data.record)) {
           useMediaStore.setState({ prayerTimes: data.record });
         } else {
-          // If bin is empty or new format, store the default
           await updateBin(JSONBIN_PRAYER_TIMES_BIN_ID, prayerTimesData);
         }
       }
