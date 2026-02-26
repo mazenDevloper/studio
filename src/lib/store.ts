@@ -1,3 +1,4 @@
+
 "use client";
 
 import { create } from "zustand";
@@ -25,7 +26,7 @@ export interface MapSettings {
 interface MediaState {
   favoriteChannels: YouTubeChannel[];
   savedVideos: YouTubeVideo[];
-  starredChannelIds: string[]; // سنحتفظ بهذا للمزامنة المحلية السريعة ولكن المصدر هو starred داخل الكائن
+  starredChannelIds: string[];
   videoProgress: Record<string, number>;
   favoriteTeamIds: number[];
   favoriteLeagueIds: number[];
@@ -77,7 +78,7 @@ export const useMediaStore = create<MediaState>()(
       savedVideos: [],
       starredChannelIds: [],
       videoProgress: {},
-      favoriteTeamIds: [541, 2939, 2931],
+      favoriteTeamIds: [],
       favoriteLeagueIds: [307, 39, 2],
       reminders: [],
       mapSettings: { zoom: 19.5, tilt: 65, carScale: 1.02, backgroundIndex: 0 },
@@ -128,19 +129,11 @@ export const useMediaStore = create<MediaState>()(
 
       toggleStarChannel: (channelid) => {
         set((state) => {
-          // تحديث حالة النجمة داخل كائن القناة نفسه للمزامنة السحابية
           const newList = state.favoriteChannels.map(c => 
             c.channelid === channelid ? { ...c, starred: !c.starred } : c
           );
-          
-          // تحديث starredChannelIds للمزامنة المحلية السريعة (Legacy support)
-          const newStarredIds = newList.filter(c => c.starred).map(c => c.channelid);
-          
           updateBin(JSONBIN_CHANNELS_BIN_ID, newList);
-          return { 
-            favoriteChannels: newList,
-            starredChannelIds: newStarredIds
-          };
+          return { favoriteChannels: newList };
         });
       },
 
@@ -155,12 +148,10 @@ export const useMediaStore = create<MediaState>()(
       },
 
       toggleFavoriteLeagueId: (leagueId) => {
-        set((state) => {
-          const newList = state.favoriteLeagueIds.includes(leagueId) 
-            ? state.favoriteLeagueIds.filter(id => id !== leagueId) 
-            : [...state.favoriteLeagueIds, leagueId];
-          return { favoriteLeagueIds: newList };
-        });
+        set((state) => ({ favoriteLeagueIds: state.favoriteLeagueIds.includes(leagueId) 
+          ? state.favoriteLeagueIds.filter(id => id !== leagueId) 
+          : [...state.favoriteLeagueIds, leagueId] 
+        }));
       },
 
       updateMapSettings: (settings) => {
@@ -198,11 +189,10 @@ export const useMediaStore = create<MediaState>()(
       setIsFullScreen: (fullScreen) => set({ isFullScreen: fullScreen, isMinimized: false }),
     }),
     {
-      name: "drivecast-atomic-jsonbin",
+      name: "drivecast-jsonbin-sync",
       partialize: (state) => ({ 
         favoriteChannels: state.favoriteChannels,
         savedVideos: state.savedVideos,
-        starredChannelIds: state.starredChannelIds,
         favoriteTeamIds: state.favoriteTeamIds,
         favoriteLeagueIds: state.favoriteLeagueIds,
         mapSettings: state.mapSettings,
@@ -221,13 +211,7 @@ if (typeof window !== "undefined") {
       if (chRes.ok) {
         const data = await chRes.json();
         if (Array.isArray(data.record)) {
-          // جلب الحالات المميزة من السحاب وتحديث القائمة المحلية
-          const cloudChannels = data.record;
-          const cloudStarredIds = cloudChannels.filter((c: any) => c.starred).map((c: any) => c.channelid);
-          useMediaStore.setState({ 
-            favoriteChannels: cloudChannels,
-            starredChannelIds: cloudStarredIds
-          });
+          useMediaStore.setState({ favoriteChannels: data.record });
         }
       }
 
@@ -241,7 +225,7 @@ if (typeof window !== "undefined") {
         }
       }
     } catch (e) {
-      console.error("Initial Bin Sync Error:", e);
+      console.error("Bin Sync Error:", e);
     }
   };
   syncWithBins();
