@@ -162,7 +162,6 @@ export const useMediaStore = create<MediaState>()(
 
       updateVideoProgress: (videoId, progress) => {
         const state = get();
-        // Check if the progress has significantly changed to avoid constant API calls
         const lastProgress = state.videoProgress[videoId] || 0;
         if (Math.abs(lastProgress - progress) < 5 && progress !== 0) return;
 
@@ -174,7 +173,6 @@ export const useMediaStore = create<MediaState>()(
             updatedSaved = state.savedVideos.map(v => 
               v.id === videoId ? { ...v, progress } : v
             );
-            // Debounce or only sync if saved
             updateBin(JSONBIN_SAVED_VIDEOS_BIN_ID, updatedSaved);
           }
           
@@ -257,7 +255,9 @@ export const useMediaStore = create<MediaState>()(
         mapSettings: state.mapSettings,
         reminders: state.reminders,
         prayerTimes: state.prayerTimes,
-        videoProgress: state.videoProgress
+        videoProgress: state.videoProgress,
+        activeVideo: state.activeVideo,
+        isMinimized: state.isMinimized
       }),
     }
   )
@@ -266,7 +266,6 @@ export const useMediaStore = create<MediaState>()(
 if (typeof window !== "undefined") {
   const syncWithBins = async () => {
     try {
-      // Sync Channels
       const chRes = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_CHANNELS_BIN_ID}/latest`, {
         headers: { 'X-Access-Key': JSONBIN_ACCESS_KEY_CHANNELS }
       });
@@ -277,7 +276,6 @@ if (typeof window !== "undefined") {
         }
       }
 
-      // Sync Saved Videos
       const svRes = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_SAVED_VIDEOS_BIN_ID}/latest`, {
         headers: { 'X-Master-Key': JSONBIN_MASTER_KEY }
       });
@@ -291,7 +289,6 @@ if (typeof window !== "undefined") {
         }
       }
 
-      // Sync Clubs
       const clRes = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_CLUBS_BIN_ID}/latest`, {
         headers: { 'X-Master-Key': JSONBIN_MASTER_KEY }
       });
@@ -305,7 +302,6 @@ if (typeof window !== "undefined") {
         }
       }
 
-      // Sync Prayer Times
       const ptRes = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_PRAYER_TIMES_BIN_ID}/latest`, {
         headers: { 'X-Master-Key': JSONBIN_MASTER_KEY }
       });
