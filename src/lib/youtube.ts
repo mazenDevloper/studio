@@ -1,3 +1,4 @@
+
 "use client";
 
 import { YT_KEYS_POOL } from "./constants";
@@ -35,7 +36,7 @@ function formatSubscriberCount(count: string): string {
   return count;
 }
 
-function formatYouTubeDuration(duration: string): string {
+export function formatYouTubeDuration(duration: string): string {
   const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
   if (!match) return "0:00";
   const hours = parseInt(match[1] || "0");

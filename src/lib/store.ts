@@ -140,10 +140,15 @@ export const useMediaStore = create<MediaState>()(
             newList = state.savedVideos.filter(v => v.id !== video.id);
           } else {
             const videoToSave: YouTubeVideo = {
-              ...video,
-              progress: video.progress || get().videoProgress[video.id] || 0,
+              id: video.id,
+              title: video.title,
+              description: video.description || "",
+              thumbnail: video.thumbnail,
+              publishedAt: video.publishedAt || new Date().toISOString(),
+              channelTitle: video.channelTitle || "Unknown Channel",
+              channelId: video.channelId || "",
               duration: video.duration || "0:00",
-              channelId: video.channelId || ""
+              progress: 0
             };
             newList = [videoToSave, ...state.savedVideos];
           }
