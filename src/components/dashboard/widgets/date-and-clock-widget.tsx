@@ -1,13 +1,16 @@
+
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { prayerTimesData, convertTo12Hour } from "@/lib/constants";
+import { convertTo12Hour } from "@/lib/constants";
 import { Clock, Timer, Calendar } from "lucide-react";
 import Image from "next/image";
+import { useMediaStore } from "@/lib/store";
 
 export function DateAndClockWidget() {
   const [mounted, setMounted] = useState(false);
   const [now, setNow] = useState<Date | null>(null);
+  const { prayerTimes } = useMediaStore();
   
   useEffect(() => {
     setMounted(true);
@@ -17,9 +20,10 @@ export function DateAndClockWidget() {
   }, []);
 
   const nextPrayer = useMemo(() => {
-    if (!now) return null;
+    if (!now || !prayerTimes || prayerTimes.length === 0) return null;
     
     const timeToMinutes = (t: string) => {
+      if (!t) return 0;
       const [h, m] = t.split(':').map(Number);
       return h * 60 + m;
     };
@@ -27,7 +31,7 @@ export function DateAndClockWidget() {
     const currentMinutes = now.getHours() * 60 + now.getMinutes();
     const day = now.getDate().toString().padStart(2, '0');
     const dateStr = `2026-02-${day}`;
-    const pTimes = prayerTimesData.find(p => p.date === dateStr) || prayerTimesData[0];
+    const pTimes = prayerTimes.find(p => p.date === dateStr) || prayerTimes[0];
     
     const prayers = [
       { name: "الفجر", time: pTimes.fajr },
@@ -52,7 +56,7 @@ export function DateAndClockWidget() {
       time: next.time,
       countdown: `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`
     };
-  }, [now]);
+  }, [now, prayerTimes]);
 
   if (!mounted || !now) return (
     <div className="h-full w-full flex items-center justify-center bg-black/20 animate-pulse">
@@ -84,7 +88,6 @@ export function DateAndClockWidget() {
           <span className="text-[9px] text-white/90 font-bold uppercase tracking-[0.2em]">{dayName} {dayNum} {monthName}</span>
         </div>
         
-        {/* تصغير حجم خط الساعة لمنع الضخامة */}
         <div className="text-3xl font-black text-white tracking-tighter mb-4 drop-shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
           {timeString}
         </div>

@@ -4,18 +4,20 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Star } from "lucide-react";
-import { prayerTimesData, convertTo12Hour } from "@/lib/constants";
+import { convertTo12Hour } from "@/lib/constants";
+import { useMediaStore } from "@/lib/store";
 
 export function PrayerWidget() {
   const [todayPrayer, setTodayPrayer] = useState<any>(null);
   const [currentTime, setCurrentTime] = useState("");
+  const { prayerTimes } = useMediaStore();
 
   useEffect(() => {
-    // Look up today's data (matching year 2026 as per user data requirement)
-    // For demo purposes, we'll pick Feb 1st if it's currently Feb or mock it
+    if (!prayerTimes || prayerTimes.length === 0) return;
+    
     const now = new Date();
     const dateStr = `2026-02-${now.getDate().toString().padStart(2, '0')}`;
-    const found = prayerTimesData.find(p => p.date === dateStr) || prayerTimesData[0];
+    const found = prayerTimes.find(p => p.date === dateStr) || prayerTimes[0];
     setTodayPrayer(found);
 
     const timer = setInterval(() => {
@@ -24,7 +26,7 @@ export function PrayerWidget() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [prayerTimes]);
 
   if (!todayPrayer) return null;
 
@@ -37,7 +39,6 @@ export function PrayerWidget() {
     { name: "Isha", time: todayPrayer.isha },
   ];
 
-  // Logic to find current active prayer
   const activePrayer = prayers.slice().reverse().find(p => currentTime >= p.time) || prayers[0];
 
   return (

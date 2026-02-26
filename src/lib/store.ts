@@ -1,3 +1,4 @@
+
 "use client";
 
 import { create } from "zustand";
@@ -8,7 +9,9 @@ import {
   JSONBIN_CHANNELS_BIN_ID, 
   JSONBIN_CLUBS_BIN_ID, 
   JSONBIN_SAVED_VIDEOS_BIN_ID,
-  JSONBIN_ACCESS_KEY_CHANNELS 
+  JSONBIN_PRAYER_TIMES_BIN_ID,
+  JSONBIN_ACCESS_KEY_CHANNELS,
+  prayerTimesData
 } from "./constants";
 
 export interface Reminder {
@@ -41,6 +44,7 @@ interface MediaState {
   videoProgress: Record<string, number>;
   favoriteTeams: FavoriteTeam[];
   favoriteLeagueIds: number[];
+  prayerTimes: any[];
   reminders: Reminder[];
   mapSettings: MapSettings;
   aiSuggestions: any[];
@@ -92,6 +96,7 @@ export const useMediaStore = create<MediaState>()(
       videoProgress: {},
       favoriteTeams: [],
       favoriteLeagueIds: [307, 39, 2],
+      prayerTimes: prayerTimesData,
       reminders: [],
       mapSettings: { zoom: 19.5, tilt: 65, carScale: 1.02, backgroundIndex: 0 },
       aiSuggestions: [],
@@ -134,7 +139,6 @@ export const useMediaStore = create<MediaState>()(
           if (exists) {
             newList = state.savedVideos.filter(v => v.id !== video.id);
           } else {
-            // Ensure fields match the user requirements
             const videoToSave: YouTubeVideo = {
               ...video,
               progress: video.progress || 0,
@@ -161,8 +165,6 @@ export const useMediaStore = create<MediaState>()(
           const newList = state.savedVideos.map(v => 
             v.id === videoId ? { ...v, progress } : v
           );
-          // Only update cloud if progress changed significantly or on certain triggers
-          // For simplicity, we'll sync it here. 
           updateBin(JSONBIN_SAVED_VIDEOS_BIN_ID, newList);
           return { savedVideos: newList, videoProgress: { ...state.videoProgress, [videoId]: progress } };
         });
@@ -238,7 +240,8 @@ export const useMediaStore = create<MediaState>()(
         favoriteTeams: state.favoriteTeams,
         favoriteLeagueIds: state.favoriteLeagueIds,
         mapSettings: state.mapSettings,
-        reminders: state.reminders
+        reminders: state.reminders,
+        prayerTimes: state.prayerTimes
       }),
     }
   )
@@ -247,6 +250,7 @@ export const useMediaStore = create<MediaState>()(
 if (typeof window !== "undefined") {
   const syncWithBins = async () => {
     try {
+      // Sync Channels
       const chRes = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_CHANNELS_BIN_ID}/latest`, {
         headers: { 'X-Access-Key': JSONBIN_ACCESS_KEY_CHANNELS }
       });
@@ -257,6 +261,7 @@ if (typeof window !== "undefined") {
         }
       }
 
+      // Sync Saved Videos
       const svRes = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_SAVED_VIDEOS_BIN_ID}/latest`, {
         headers: { 'X-Master-Key': JSONBIN_MASTER_KEY }
       });
@@ -264,13 +269,13 @@ if (typeof window !== "undefined") {
         const data = await svRes.json();
         if (Array.isArray(data.record)) {
           useMediaStore.setState({ savedVideos: data.record });
-          // Pre-populate progress record
           const progressMap: Record<string, number> = {};
           data.record.forEach((v: any) => { if(v.progress) progressMap[v.id] = v.progress; });
           useMediaStore.setState({ videoProgress: progressMap });
         }
       }
 
+      // Sync Clubs
       const clRes = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_CLUBS_BIN_ID}/latest`, {
         headers: { 'X-Master-Key': JSONBIN_MASTER_KEY }
       });
@@ -281,6 +286,20 @@ if (typeof window !== "undefined") {
             typeof item === 'number' ? { id: item, name: 'فريق محفوظ', logo: '' } : item
           );
           useMediaStore.setState({ favoriteTeams: teams });
+        }
+      }
+
+      // Sync Prayer Times
+      const ptRes = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_PRAYER_TIMES_BIN_ID}/latest`, {
+        headers: { 'X-Master-Key': JSONBIN_MASTER_KEY }
+      });
+      if (ptRes.ok) {
+        const data = await ptRes.json();
+        if (Array.isArray(data.record)) {
+          useMediaStore.setState({ prayerTimes: data.record });
+        } else {
+          // If bin is empty or new format, store the default
+          await updateBin(JSONBIN_PRAYER_TIMES_BIN_ID, prayerTimesData);
         }
       }
     } catch (e) {

@@ -1,13 +1,16 @@
+
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { prayerTimesData, convertTo12Hour } from "@/lib/constants";
+import { convertTo12Hour } from "@/lib/constants";
 import { Timer, Clock, BellRing, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useMediaStore } from "@/lib/store";
 
 export function PrayerCountdownCard() {
   const [mounted, setMounted] = useState(false);
   const [now, setNow] = useState<Date | null>(null);
+  const { prayerTimes } = useMediaStore();
   
   useEffect(() => {
     setMounted(true);
@@ -17,9 +20,10 @@ export function PrayerCountdownCard() {
   }, []);
 
   const prayerStatus = useMemo(() => {
-    if (!now) return null;
+    if (!now || !prayerTimes || prayerTimes.length === 0) return null;
     
     const timeToMinutes = (t: string) => {
+      if (!t) return 0;
       const [h, m] = t.split(':').map(Number);
       return h * 60 + m;
     };
@@ -27,7 +31,7 @@ export function PrayerCountdownCard() {
     const currentMinutes = now.getHours() * 60 + now.getMinutes();
     const day = now.getDate().toString().padStart(2, '0');
     const dateStr = `2026-02-${day}`;
-    const pTimes = prayerTimesData.find(p => p.date === dateStr) || prayerTimesData[0];
+    const pTimes = prayerTimes.find(p => p.date === dateStr) || prayerTimes[0];
     
     const prayers = [
       { name: "الفجر", time: pTimes.fajr, iqamah: 25 },
@@ -69,7 +73,7 @@ export function PrayerCountdownCard() {
       remaining: `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`,
       time: convertTo12Hour(next.time)
     };
-  }, [now]);
+  }, [now, prayerTimes]);
 
   if (!mounted || !now || !prayerStatus) return (
     <div className="h-full w-full glass-panel rounded-[2.5rem] flex items-center justify-center animate-pulse">
@@ -111,7 +115,6 @@ export function PrayerCountdownCard() {
         </div>
       </div>
 
-      {/* تقليل حجم الخط لمنع القص وضمان ظهور الوقت بالكامل */}
       <div className={cn(
         "text-3xl font-black tracking-tighter drop-shadow-[0_10px_40px_rgba(0,0,0,0.9)] font-mono relative z-10 tabular-nums",
         isIqamah ? "text-white scale-105 transition-transform duration-1000" : "text-white"

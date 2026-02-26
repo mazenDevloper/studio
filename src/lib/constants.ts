@@ -1,3 +1,4 @@
+
 export const AI_ASSISTANT_API_KEY = 'AIzaSyBMmtON9ww4dJxMHrl1wKyWTvI0ipJXJws'; 
 export const WEATHER_API_KEY = '7acefc26deee4904a2393917252207'; 
 export const GOOGLE_MAPS_API_KEY = 'AIzaSyBRqAHJ2elbE_Z7NXXYC50XZpqi6HbG6Rk';
@@ -17,6 +18,7 @@ export const JSONBIN_MASTER_KEY = '$2a$10$SYrYv.ct8hiMU9YeUxEQ.ecRkOrTqs.TDchJRV
 export const JSONBIN_CHANNELS_BIN_ID = '68ef1b3dd0ea881f40a38bd1';
 export const JSONBIN_CLUBS_BIN_ID = '699d8c2aae596e708f452936';
 export const JSONBIN_SAVED_VIDEOS_BIN_ID = '68e4ac2e43b1c97be95d24af';
+export const JSONBIN_PRAYER_TIMES_BIN_ID = '69a00f6eae596e708f4b7291';
 export const JSONBIN_ACCESS_KEY_CHANNELS = '$2a$10$J8o3WrPtnqmKAd///uDw6.BOWnGIBekHFOImbeEZZwsJ/h/XPbVUy';
 
 export const prayerTimesData = [
