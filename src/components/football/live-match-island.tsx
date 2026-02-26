@@ -1,18 +1,21 @@
 
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { Match } from "@/lib/football-data";
 import { fetchFootballData } from "@/lib/football-api";
 import { useMediaStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { Activity, Trophy, Clock, Timer } from "lucide-react";
+import { Activity, Trophy, Clock, Timer, BellRing, Sparkles } from "lucide-react";
 
 export function LiveMatchIsland() {
-  const { favoriteTeams, favoriteLeagueIds } = useMediaStore();
+  const { favoriteTeams, favoriteLeagueIds, prayerTimes } = useMediaStore();
   const [topMatches, setTopMatches] = useState<Match[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [isDetailed, setIsDetailed] = useState(false);
+  
+  // نظام التنبيهات
+  const [notification, setNotification] = useState<{ type: 'azan' | 'iqamah', name: string } | null>(null);
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -20,7 +23,6 @@ export function LiveMatchIsland() {
       const currentHour = now.getHours();
       
       let matches: Match[] = [];
-      // جلب مباريات اليوم (وأمس إذا كنا في وقت مبكر جداً)
       if (currentHour < 6) {
         const [yesterday, today] = await Promise.all([
           fetchFootballData('yesterday'),
@@ -41,11 +43,6 @@ export function LiveMatchIsland() {
         (m.awayTeamId && favoriteTeams.some(t => t.id === m.awayTeamId)) ||
         (m.leagueId && favoriteLeagueIds.includes(m.leagueId));
 
-      // منطق الأولويات الصارم:
-      // 1. مباشر مفضل
-      // 2. قادم مفضل (الأقرب وقتاً)
-      // 3. مباشر عام
-      // 4. قادم عام
       const favLive = matches.filter(m => m.status === 'live' && isFavoriteMatch(m))
         .sort((a,b) => (b.minute || 0) - (a.minute || 0));
       
@@ -65,13 +62,55 @@ export function LiveMatchIsland() {
     }
   }, [favoriteTeams, favoriteLeagueIds]);
 
+  // مراقبة مواقيت الصلاة للتنبيه
+  useEffect(() => {
+    const checkPrayers = () => {
+      if (!prayerTimes || prayerTimes.length === 0) return;
+      
+      const now = new Date();
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+      const day = now.getDate().toString().padStart(2, '0');
+      const dateStr = `2026-02-${day}`;
+      const pData = prayerTimes.find(p => p.date === dateStr) || prayerTimes[0];
+      
+      const list = [
+        { name: "الفجر", time: pData.fajr, iqamah: 25 },
+        { name: "الظهر", time: pData.dhuhr, iqamah: 20 },
+        { name: "العصر", time: pData.asr, iqamah: 20 },
+        { name: "المغرب", time: pData.maghrib, iqamah: 10 },
+        { name: "العشاء", time: pData.isha, iqamah: 20 },
+      ];
+
+      const timeToMinutes = (t: string) => {
+        const [h, m] = t.split(':').map(Number);
+        return h * 60 + m;
+      };
+
+      for (let p of list) {
+        const azanMins = timeToMinutes(p.time);
+        const iqamahMins = azanMins + p.iqamah;
+
+        if (currentMinutes === azanMins && now.getSeconds() < 10) {
+          setNotification({ type: 'azan', name: p.name });
+          setTimeout(() => setNotification(null), 15000); // 15 ثانية تنبيه
+        } else if (currentMinutes === iqamahMins && now.getSeconds() < 10) {
+          setNotification({ type: 'iqamah', name: p.name });
+          setTimeout(() => setNotification(null), 15000);
+        }
+      }
+    };
+
+    const interval = setInterval(checkPrayers, 1000);
+    return () => clearInterval(interval);
+  }, [prayerTimes]);
+
   useEffect(() => {
     fetchStatus();
     const interval = setInterval(fetchStatus, 45000); 
     return () => clearInterval(interval);
   }, [fetchStatus]);
 
-  if (topMatches.length === 0) return null;
+  if (topMatches.length === 0 && !notification) return null;
 
   const handleIslandClick = (index: number) => {
     if (index === activeIndex) {
@@ -81,6 +120,38 @@ export function LiveMatchIsland() {
       setIsDetailed(false);
     }
   };
+
+  // عرض التنبيه إذا كان مفعلاً
+  if (notification) {
+    return (
+      <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[9999] pointer-events-auto">
+        <div className={cn(
+          "bg-black rounded-full shadow-[0_40px_100px_rgba(0,0,0,1)] border-2 border-accent transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] w-[500px] h-24 flex items-center justify-between px-10 relative overflow-hidden ring-8 ring-accent/10",
+          "animate-in fade-in zoom-in-95"
+        )}>
+          <div className="absolute inset-0 bg-gradient-to-t from-accent/20 via-transparent to-transparent animate-pulse" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-accent/10 via-transparent to-transparent opacity-50" />
+          
+          <div className="flex items-center gap-6 relative z-10">
+            <div className="w-14 h-14 rounded-full bg-accent flex items-center justify-center shadow-[0_0_30px_rgba(65,184,131,0.8)] animate-bounce">
+              <BellRing className="w-8 h-8 text-black fill-current" />
+            </div>
+            <div className="flex flex-col text-right">
+              <span className="text-xl font-black text-white uppercase tracking-tighter">
+                {notification.type === 'azan' ? `حان وقت أذان ${notification.name}` : `إقامة صلاة ${notification.name}`}
+              </span>
+              <span className="text-[10px] text-accent font-black uppercase tracking-[0.4em]">
+                {notification.type === 'azan' ? "DIRECT SPIRITUAL FEED" : "PRAYER COMMENCING"}
+              </span>
+            </div>
+          </div>
+          <div className="relative z-10 flex items-center gap-2">
+            <Sparkles className="w-6 h-6 text-accent animate-spin-slow" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[9999] flex items-center gap-3 pointer-events-none">
@@ -195,7 +266,6 @@ export function LiveMatchIsland() {
             </div>
           );
         } else {
-          // جزر مصغرة (Minimized)
           return (
             <div 
               key={match.id} 
