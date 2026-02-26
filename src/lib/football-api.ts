@@ -2,7 +2,7 @@
 'use client';
 
 import { FOOTBALL_API_KEY, FOOTBALL_API_BASE_URL } from "./constants";
-import { Match } from "./football-data";
+import { Match, TEAM_LIST } from "./football-data";
 
 /**
  * محرك جلب البيانات الرياضية الموحد. يدعم الآن 'yesterday' للتعامل مع مباريات منتصف الليل.
@@ -90,11 +90,29 @@ export async function fetchFootballData(type: 'today' | 'live' | 'yesterday' | '
 }
 
 /**
- * بحث عالمي عن الأندية في قاعدة بيانات API-Sports.
+ * بحث عالمي عن الأندية في قاعدة بيانات API-Sports مع دعم البحث المحلي باللغة العربية أولاً.
  */
 export async function searchFootballTeams(query: string, leagueId?: string): Promise<any[]> {
   if (!query && (!leagueId || leagueId === 'all')) return [];
 
+  // 1. البحث المحلي في قاعدة بيانات الأسماء العربية أولاً (Local Search)
+  if (query.trim()) {
+    const localResults = TEAM_LIST.filter(t => 
+      t.name.includes(query) && 
+      (leagueId === 'all' || !leagueId || t.leagueId === parseInt(leagueId))
+    ).map(t => ({
+      team: {
+        id: t.id,
+        name: t.name,
+        logo: `https://media.api-sports.io/football/teams/${t.id}.png`
+      }
+    }));
+
+    // إذا وجدنا نتائج محلية بالعربية، نعطيها الأولوية
+    if (localResults.length > 0) return localResults;
+  }
+
+  // 2. إذا لم يتم العثور على نتائج محلية، نستخدم البحث العالمي (API Search)
   const headers = {
     'x-apisports-key': FOOTBALL_API_KEY || '2f79edc60ed7f63aa4af1feea0f1ff2c',
     'x-rapidapi-host': 'v3.football.api-sports.io'
@@ -104,7 +122,7 @@ export async function searchFootballTeams(query: string, leagueId?: string): Pro
   if (query) params.append('search', query);
   if (leagueId && leagueId !== 'all') {
     params.append('league', leagueId);
-    params.append('season', '2024'); // استخدام الموسم الحالي كافتراضي
+    params.append('season', '2024'); 
   }
 
   const url = `${FOOTBALL_API_BASE_URL}/teams?${params.toString()}`;

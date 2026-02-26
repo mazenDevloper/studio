@@ -71,7 +71,7 @@ export function SettingsView() {
 
   const handleGlobalSearch = useCallback(async () => {
     if (!clubSearch.trim() && leagueFilter === 'all') {
-      toast({ variant: "destructive", title: "خطأ", description: "يرجى إدخال اسم النادي أو تحديد دوري للبحث." });
+      toast({ variant: "destructive", title: "خطأ", description: "يرجى إدخال اسم النادي بالعربية أو الإنجليزية للبحث." });
       return;
     }
     
@@ -80,7 +80,7 @@ export function SettingsView() {
       const results = await searchFootballTeams(clubSearch, leagueFilter);
       setSearchResults(results);
       if (results.length === 0) {
-        toast({ title: "لا توجد نتائج", description: "لم يتم العثور على أندية تطابق بحثك." });
+        toast({ title: "لا توجد نتائج", description: "لم يتم العثور على أندية تطابق بحثك في القاعدة العربية أو العالمية." });
       }
     } catch (error) {
       toast({ variant: "destructive", title: "خطأ في البحث", description: "فشل الاتصال بمحرك البحث العالمي." });
@@ -204,7 +204,7 @@ export function SettingsView() {
               <Card className="bg-zinc-900/50 border-white/10 rounded-[2.5rem] p-8 text-right">
                 <CardHeader className="p-0 mb-6">
                   <CardTitle className="text-xl font-black text-white flex items-center justify-end gap-3">
-                    <Globe className="w-6 h-6 text-primary" /> محرك البحث العالمي
+                    <Globe className="w-6 h-6 text-primary" /> محرك البحث العربي الذكي
                   </CardTitle>
                 </CardHeader>
                 <div className="space-y-6">
@@ -223,10 +223,10 @@ export function SettingsView() {
                     </Select>
                   </div>
                   <div className="space-y-3">
-                    <label className="text-[10px] font-black text-white/40 uppercase tracking-widest">اسم النادي</label>
+                    <label className="text-[10px] font-black text-white/40 uppercase tracking-widest">اسم النادي بالعربية</label>
                     <div className="relative">
                       <Input 
-                        placeholder="ابحث عن أي نادٍ في العالم..." 
+                        placeholder="ابحث عن أنديتك المفضلة بالعربية..." 
                         className="bg-white/5 border-white/10 h-14 px-6 rounded-2xl focusable text-right"
                         value={clubSearch}
                         onChange={(e) => setClubSearch(e.target.value)}
@@ -240,7 +240,7 @@ export function SettingsView() {
                     className="w-full h-14 rounded-2xl bg-primary text-white font-black shadow-lg focusable"
                   >
                     {isSearching ? <Loader2 className="w-6 h-6 animate-spin" /> : <Search className="w-6 h-6 ml-2" />}
-                    بحث عالمي
+                    بحث في القاعدة العربية
                   </Button>
                 </div>
               </Card>
@@ -277,7 +277,7 @@ export function SettingsView() {
               {searchResults.length > 0 && (
                 <Card className="bg-zinc-900/50 border-white/10 rounded-[2.5rem] p-8 animate-in fade-in slide-in-from-top-6 duration-700">
                   <CardHeader className="p-0 mb-6 flex flex-row items-center justify-between">
-                    <CardTitle className="text-xl font-black text-white">نتائج البحث العالمي</CardTitle>
+                    <CardTitle className="text-xl font-black text-white">نتائج البحث المترجمة</CardTitle>
                     <Button variant="ghost" onClick={() => setSearchResults([])} className="text-white/20 hover:text-white rounded-full focusable">إغلاق النتائج</Button>
                   </CardHeader>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
