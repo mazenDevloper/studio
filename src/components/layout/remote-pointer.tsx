@@ -88,11 +88,24 @@ export function RemotePointer() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
+      // Map Numbers to Directions: 2=Up, 4=Left, 6=Right, 8=Down
+      const keyMap: Record<string, string> = {
+        "2": "ArrowUp",
+        "4": "ArrowLeft",
+        "6": "ArrowRight",
+        "8": "ArrowDown",
+        "ArrowUp": "ArrowUp",
+        "ArrowDown": "ArrowDown",
+        "ArrowLeft": "ArrowLeft",
+        "ArrowRight": "ArrowRight"
+      };
+
+      if (keyMap[e.key]) {
         e.preventDefault();
-        navigate(e.key);
+        navigate(keyMap[e.key]);
       }
-      if (e.key === "Enter") {
+
+      if (e.key === "Enter" || e.key === "5") {
         const current = document.activeElement as HTMLElement;
         if (current && current.classList.contains("focusable")) {
           current.click();
@@ -121,17 +134,17 @@ export function RemotePointer() {
 
   return (
     <div 
-      className="fixed pointer-events-none z-[3000] transition-all duration-300 ease-out"
+      className="fixed pointer-events-none z-[3000] transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)]"
       style={{
-        top: rect.top - 4,
-        left: rect.left - 4,
-        width: rect.width + 8,
-        height: rect.height + 8,
-        borderRadius: borderRadius !== '0px' ? `calc(${borderRadius} + 4px)` : '12px'
+        top: rect.top - 2,
+        left: rect.left - 2,
+        width: rect.width + 4,
+        height: rect.height + 4,
+        borderRadius: borderRadius !== '0px' ? `calc(${borderRadius} + 2px)` : '14px'
       }}
     >
       <div 
-        className="w-full h-full border-4 border-primary shadow-[0_0_40px_hsl(var(--primary)/0.6)] animate-pulse" 
+        className="w-full h-full border-[3px] border-primary shadow-[0_0_30px_hsl(var(--primary)/0.5)] animate-pulse bg-transparent" 
         style={{ borderRadius: 'inherit' }}
       />
     </div>
