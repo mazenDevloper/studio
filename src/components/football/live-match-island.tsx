@@ -175,7 +175,7 @@ export function LiveMatchIsland() {
               <div 
                 onClick={() => handleIslandClick(idx)}
                 className={cn(
-                  "liquid-glass rounded-full shadow-[0_40px_100px_rgba(0,0,0,1)] transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] cursor-pointer overflow-hidden focusable outline-none relative",
+                  "liquid-glass rounded-[2.5rem] shadow-[0_40px_100px_rgba(0,0,0,1)] transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] cursor-pointer overflow-hidden focusable outline-none relative",
                   isDetailed ? "w-[600px] h-52 px-12" : "w-80 h-16 px-6"
                 )}
               >
