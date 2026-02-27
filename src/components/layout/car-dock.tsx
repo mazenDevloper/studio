@@ -1,20 +1,15 @@
 "use client";
 
-import { LayoutDashboard, Radio, Settings, GripVertical, ArrowLeft, Trophy, ZoomIn, ZoomOut, Mic, Loader2 } from "lucide-react";
+import { LayoutDashboard, Radio, Settings, GripVertical, ArrowLeft, Trophy } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { useMediaStore } from "@/lib/store";
-import { useState, useCallback, useEffect } from "react";
-import { useToast } from "@/hooks/use-toast";
+import { useEffect } from "react";
 
 export function CarDock() {
   const pathname = usePathname();
   const router = useRouter();
-  const { toast } = useToast();
-  const { mapSettings, updateMapSettings } = useMediaStore();
-  const [isListening, setIsListening] = useState(false);
 
   const apps = [
     { name: "Home", href: "/", icon: LayoutDashboard, color: "bg-blue-600" },
@@ -31,23 +26,6 @@ export function CarDock() {
     }, 1000);
     return () => clearTimeout(timer);
   }, []);
-
-  const handleVoiceSearch = useCallback(() => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitRecognition;
-    if (!SpeechRecognition) return;
-
-    const recognition = new SpeechRecognition();
-    recognition.lang = 'ar-SA';
-    recognition.onstart = () => setIsListening(true);
-    recognition.onresult = (event: any) => {
-      const transcript = event.results[0][0].transcript;
-      setIsListening(false);
-      router.push(`/media?q=${encodeURIComponent(transcript)}`);
-    };
-    recognition.onerror = () => setIsListening(false);
-    recognition.onend = () => setIsListening(false);
-    recognition.start();
-  }, [router]);
 
   return (
     <div className={cn(
@@ -81,39 +59,6 @@ export function CarDock() {
       </div>
 
       <div className="hidden md:flex mt-auto flex-col items-center gap-6">
-        <div className="flex flex-col items-center gap-4 bg-white/5 p-2 rounded-3xl border border-white/5 backdrop-blur-2xl">
-          <button
-            onClick={handleVoiceSearch}
-            className={cn(
-              "w-12 h-12 rounded-full transition-all flex items-center justify-center focusable",
-              isListening ? "bg-red-500 animate-pulse shadow-[0_0_20px_red]" : "bg-primary/20 text-primary"
-            )}
-          >
-            {isListening ? <Loader2 className="w-6 h-6 animate-spin text-white" /> : <Mic className="w-6 h-6" />}
-          </button>
-
-          <div className="h-px w-8 bg-white/10" />
-
-          <div className="flex flex-col gap-2">
-            <Button 
-              size="icon" 
-              variant="ghost" 
-              onClick={() => updateMapSettings({ zoom: Math.min(21, mapSettings.zoom + 0.5) })} 
-              className="w-10 h-10 rounded-full bg-white/5 text-primary focusable"
-            >
-              <ZoomIn className="w-5 h-5" />
-            </Button>
-            <Button 
-              size="icon" 
-              variant="ghost" 
-              onClick={() => updateMapSettings({ zoom: Math.max(15, mapSettings.zoom - 0.5) })} 
-              className="w-10 h-10 rounded-full bg-white/5 text-primary focusable"
-            >
-              <ZoomOut className="w-5 h-5" />
-            </Button>
-          </div>
-        </div>
-
         <Button
           variant="ghost"
           size="icon"
