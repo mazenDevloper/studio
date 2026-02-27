@@ -45,7 +45,7 @@
   }
 }
 
-/* Liquid Fluid Glass Effect - High Distortion & Inner Stroke */
+/* Liquid Fluid Glass Engine - Precise Refraction & Inner Stroke */
 .liquid-glass {
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
   backdrop-filter: blur(80px) saturate(250%) contrast(120%);
