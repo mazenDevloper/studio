@@ -40,19 +40,11 @@ export function LiveMatchIsland() {
         return;
       }
 
-      // خوارزمية الأولوية الذكية
       const getMatchPriorityScore = (m: Match) => {
         let score = 0;
-        
-        // 1. الجرس (أعلى أولوية)
         if (belledMatchIds.includes(m.id)) score += 10000;
-        
         const isFavTeam = favoriteTeams.some(t => t.id === m.homeTeamId || t.id === m.awayTeamId);
-        
-        // 2. فريق مفضل ومباشر
         if (isFavTeam && m.status === 'live') score += 5000;
-        
-        // 3. فريق مفضل وقريب (Upcoming)
         if (isFavTeam && m.status === 'upcoming') {
           score += 2000;
           try {
@@ -62,13 +54,8 @@ export function LiveMatchIsland() {
             }
           } catch(e) {}
         }
-        
-        // 4. مباشر عام
         if (m.status === 'live') score += 1000;
-        
-        // 5. دوري مفضل
         if (m.leagueId && favoriteLeagueIds.includes(m.leagueId)) score += 500;
-
         return score;
       };
 
@@ -271,17 +258,22 @@ export function LiveMatchIsland() {
             <div 
               key={match.id} 
               onClick={() => handleIslandClick(idx)}
-              className="pointer-events-auto w-20 h-20 rounded-[1.5rem] liquid-glass border border-white/20 flex flex-col items-center justify-center p-2 shadow-2xl cursor-pointer hover:scale-110 active:scale-90 transition-all focusable outline-none relative overflow-hidden"
+              className="pointer-events-auto w-24 h-32 rounded-[2rem] liquid-glass border border-white/20 flex flex-col items-center justify-center p-3 shadow-2xl cursor-pointer hover:scale-110 active:scale-90 transition-all focusable outline-none relative overflow-hidden"
             >
                <FluidGlass scale={1} />
-               <div className="flex flex-col items-center gap-1.5 relative z-10">
-                  <div className="flex items-center gap-2">
-                    <img src={match.homeLogo} alt="" className="w-6 h-6 object-contain drop-shadow-lg" />
-                    <img src={match.awayLogo} alt="" className="w-6 h-6 object-contain drop-shadow-lg" />
+               <div className="flex flex-col items-center gap-3 relative z-10 w-full">
+                  <div className="flex items-center justify-center gap-2 w-full">
+                    <img src={match.homeLogo} alt="" className="w-8 h-8 object-contain drop-shadow-lg" />
+                    <img src={match.awayLogo} alt="" className="w-8 h-8 object-contain drop-shadow-lg" />
                   </div>
                   {isLive && (
-                    <span className="text-lg font-black text-primary tabular-nums leading-none drop-shadow-lg">
+                    <span className="text-3xl font-black text-primary tabular-nums leading-none drop-shadow-[0_0_15px_rgba(var(--primary),0.5)]">
                       {match.score?.home}-{match.score?.away}
+                    </span>
+                  )}
+                  {!isLive && (
+                    <span className="text-xl font-black text-white/80 tabular-nums leading-none">
+                      {match.startTime}
                     </span>
                   )}
                </div>

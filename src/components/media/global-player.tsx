@@ -150,7 +150,7 @@ export function GlobalVideoPlayer() {
             ? "inset-0 bg-black flex flex-col"
             : "w-[65vw] h-[50vh] glass-panel rounded-[3.5rem] bg-black/95 shadow-[0_60px_150px_rgba(0,0,0,1)]"
       )}
-      style={!isMinimized && !isFullScreen ? { bottom: '35rem', left: '5rem' } : {}}
+      style={!isMinimized && !isFullScreen ? { bottom: '14rem', left: '5rem' } : {}}
       onClick={() => isMinimized && setIsFullScreen(true)}
     >
       <FluidGlass scale={isMinimized ? 1.5 : 2} className="opacity-20" />
@@ -207,7 +207,7 @@ export function GlobalVideoPlayer() {
 
       {!isMinimized && (
         <div className={cn(
-          "fixed bottom-32 left-1/2 -translate-x-1/2 flex items-center gap-6 z-[5200] transition-all duration-1000",
+          "fixed bottom-12 left-1/2 -translate-x-1/2 flex items-center gap-6 z-[5200] transition-all duration-1000",
           isFullScreen ? "scale-110" : "scale-100"
         )}>
           <div className="flex items-center gap-4 liquid-glass p-5 rounded-full border-2 border-white/20 shadow-[0_50px_120px_rgba(0,0,0,1)]">
