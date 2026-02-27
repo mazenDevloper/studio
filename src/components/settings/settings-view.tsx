@@ -1,7 +1,6 @@
-
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useMediaStore, Reminder, FavoriteTeam } from "@/lib/store";
 import { 
   Settings, 
@@ -68,6 +67,14 @@ export function SettingsView() {
   const [searchResults, setSearchResults] = useState<any[]>([]);
 
   const isFavTeam = (id: number) => favoriteTeams.some(t => t.id === id);
+
+  // Smart Focus: focus first tab trigger on mount
+  useEffect(() => {
+    setTimeout(() => {
+      const firstTab = document.querySelector('[data-nav-id="tab-appearance"]') as HTMLElement;
+      if (firstTab) firstTab.focus();
+    }, 500);
+  }, []);
 
   const handleGlobalSearch = useCallback(async () => {
     if (!clubSearch.trim() && leagueFilter === 'all') {

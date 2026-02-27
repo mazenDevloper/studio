@@ -1,7 +1,6 @@
-
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -35,6 +34,7 @@ export function MediaView() {
 
   const searchParams = useSearchParams();
   const { toast } = useToast();
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [videoResults, setVideoResults] = useState<YouTubeVideo[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -59,6 +59,13 @@ export function MediaView() {
   const [channelResults, setChannelResults] = useState<YouTubeChannel[]>([]);
   const [isSearchingChannels, setIsSearchingChannels] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  // Smart Focus on mount
+  useEffect(() => {
+    if (searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, []);
 
   useEffect(() => {
     async function fetchReciters() {
@@ -90,6 +97,12 @@ export function MediaView() {
       setVideoResults(results);
       setShowReciterGrid(false);
       setShowSurahGrid(false);
+      
+      // Auto focus first result
+      setTimeout(() => {
+        const firstCard = document.querySelector('.video-result-card') as HTMLElement;
+        if (firstCard) firstCard.focus();
+      }, 500);
     } catch (error) {
       console.error("Video search failed", error);
     } finally {
@@ -285,6 +298,7 @@ export function MediaView() {
               <div className="relative group">
                 <Search className="absolute right-6 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground group-focus-within:text-primary" />
                 <Input
+                  ref={searchInputRef}
                   placeholder="ابحث عن محتوى..."
                   className="pr-16 pl-14 h-20 bg-white/5 border-white/10 rounded-[2rem] text-2xl font-headline focusable text-right"
                   value={searchQuery}
@@ -405,7 +419,7 @@ export function MediaView() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                 {videoResults.map((video) => (
-                  <Card key={video.id} onClick={() => setActiveVideo(video)} className="group relative overflow-hidden bg-white/5 border-none rounded-[2rem] transition-all hover:scale-[1.05] cursor-pointer shadow-xl focusable" tabIndex={0}>
+                  <Card key={video.id} onClick={() => setActiveVideo(video)} className="group video-result-card relative overflow-hidden bg-white/5 border-none rounded-[2rem] transition-all hover:scale-[1.05] cursor-pointer shadow-xl focusable" tabIndex={0}>
                     <div className="aspect-video relative overflow-hidden">
                       <Image src={video.thumbnail} alt={video.title} fill className="object-cover" />
                     </div>

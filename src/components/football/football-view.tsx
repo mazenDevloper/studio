@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
@@ -21,6 +20,16 @@ export function FootballView() {
 
   const isFavTeam = (id: number) => favoriteTeams.some(t => t.id === id);
   const isBelled = (id: string) => belledMatchIds.includes(id);
+
+  // Smart Focus: focus first match card on load
+  useEffect(() => {
+    if (!loading && matches.length > 0) {
+      setTimeout(() => {
+        const firstMatch = document.querySelector('.match-card-item') as HTMLElement;
+        if (firstMatch) firstMatch.focus();
+      }, 500);
+    }
+  }, [loading, activeTab]);
 
   const loadMatches = async (view: string) => {
     setLoading(true);
@@ -80,7 +89,7 @@ export function FootballView() {
       <Card 
         key={match.id} 
         className={cn(
-          "relative overflow-hidden transition-all duration-500 border-white/5 group focusable",
+          "relative match-card-item overflow-hidden transition-all duration-500 border-white/5 group focusable",
           isBelledMatch 
             ? "ring-2 ring-accent bg-accent/5 shadow-[0_0_30px_rgba(var(--accent),0.1)]" 
             : isFavMatch 
@@ -92,6 +101,7 @@ export function FootballView() {
         <div className="absolute top-0 left-0 p-2 z-20 flex gap-2">
           <button 
             onClick={(e) => { e.stopPropagation(); toggleBelledMatch(match.id); }}
+            tabIndex={-1}
             className={cn(
               "w-10 h-10 rounded-full border border-white/10 backdrop-blur-3xl flex items-center justify-center transition-all active:scale-90",
               isBelledMatch ? "bg-accent text-black shadow-[0_0_20px_rgba(var(--accent),0.5)]" : "bg-black/60 text-white/20 hover:text-white"
@@ -141,6 +151,7 @@ export function FootballView() {
                       e.stopPropagation(); 
                       toggleFavoriteTeam({ id: match.homeTeamId, name: match.homeTeam, logo: match.homeLogo }); 
                     }}
+                    tabIndex={-1}
                     className={cn(
                       "absolute -top-2 -right-2 w-8 h-8 rounded-full border border-white/10 backdrop-blur-3xl flex items-center justify-center transition-all active:scale-90 z-30",
                       isFavTeam(match.homeTeamId) ? "bg-yellow-500 text-black shadow-glow" : "bg-black/60 text-white/20 hover:text-white"
@@ -174,6 +185,7 @@ export function FootballView() {
                       e.stopPropagation(); 
                       toggleFavoriteTeam({ id: match.awayTeamId, name: match.awayTeam, logo: match.awayLogo }); 
                     }}
+                    tabIndex={-1}
                     className={cn(
                       "absolute -top-2 -left-2 w-8 h-8 rounded-full border border-white/10 backdrop-blur-3xl flex items-center justify-center transition-all active:scale-90 z-30",
                       isFavTeam(match.awayTeamId) ? "bg-yellow-500 text-black shadow-glow" : "bg-black/60 text-white/20 hover:text-white"
