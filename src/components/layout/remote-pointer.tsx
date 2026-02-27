@@ -3,7 +3,7 @@
 
 import { useEffect, useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Circle, RefreshCw } from "lucide-react";
+import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Circle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
@@ -85,14 +85,15 @@ export function RemotePointer() {
         setIsInverted(prev => {
           const nextVal = !prev;
           toast({
-            title: nextVal ? "تم عكس الريموت" : "تم اعادة الريموت",
-            description: nextVal ? "8 اعلى | 6 يسار | 4 يمين | 2 اسفل" : "2 اعلى | 4 يسار | 6 يمين | 8 اسفل",
+            title: nextVal ? "تم عكس الريموت" : "تم إعادة الريموت",
+            description: nextVal ? "8 أعلى | 6 يسار | 4 يمين | 2 أسفل" : "2 أعلى | 4 يسار | 6 يمين | 8 أسفل",
           });
           return nextVal;
         });
         return;
       }
 
+      // Exclusive Key Mapping
       const standardMap: Record<string, string> = {
         "2": "ArrowUp",
         "4": "ArrowLeft",
@@ -129,6 +130,8 @@ export function RemotePointer() {
       };
 
       if (keyMap[e.key] || e.key === "5" || e.key === "Enter") {
+        e.preventDefault();
+        
         let visualKey = e.key;
         if (e.key === "ArrowUp") visualKey = isInverted ? "8" : "2";
         if (e.key === "ArrowDown") visualKey = isInverted ? "2" : "8";
@@ -143,20 +146,18 @@ export function RemotePointer() {
           setActiveKey(null);
           setIsVisible(false);
         }, 1000);
-      }
 
-      if (keyMap[e.key]) {
-        e.preventDefault();
-        navigate(keyMap[e.key]);
+        if (keyMap[e.key]) {
+          navigate(keyMap[e.key]);
+        } else if (e.key === "5" || e.key === "Enter") {
+          const current = document.activeElement as HTMLElement;
+          if (current && current.classList.contains("focusable")) {
+            current.click();
+          }
+        }
       } else if (colorActionMap[e.key]) {
         e.preventDefault();
         router.push(colorActionMap[e.key]);
-      } else if (e.key === "5" || e.key === "Enter") {
-        e.preventDefault();
-        const current = document.activeElement as HTMLElement;
-        if (current && current.classList.contains("focusable")) {
-          current.click();
-        }
       }
     };
 
@@ -167,58 +168,47 @@ export function RemotePointer() {
     };
   }, [navigate, router, isInverted, toast]);
 
-  useEffect(() => {
-    const handleFocus = (e: FocusEvent) => {
-      const target = e.target as HTMLElement;
-      if (target && target.classList && target.classList.contains("focusable")) {
-        updatePointer(target);
-      }
-    };
-    window.addEventListener("focus", handleFocus, true);
-    return () => window.removeEventListener("focus", handleFocus, true);
-  }, [updatePointer]);
-
   return (
     <div className={cn(
-      "fixed bottom-12 right-12 z-[10000] pointer-events-none flex flex-col items-center gap-3 transition-all duration-500",
-      isVisible ? "opacity-100 scale-100" : "opacity-0 scale-90"
+      "fixed bottom-24 right-12 z-[10000] pointer-events-none flex flex-col items-center gap-3 transition-all duration-500 scale-110",
+      isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"
     )}>
-      {/* HUD D-PAD Map */}
+      {/* HUD D-PAD Map - Only lights up the active functional direction */}
       <div className={cn(
         "w-14 h-14 rounded-2xl flex items-center justify-center border-2 transition-all duration-200",
-        (activeKey === '2' || activeKey === '8') ? "bg-primary/40 border-primary scale-110 shadow-[0_0_30px_hsl(var(--primary))]" : "bg-black/40 border-white/10 backdrop-blur-xl"
+        activeKey === (isInverted ? "8" : "2") ? "bg-primary border-primary shadow-[0_0_40px_hsl(var(--primary))]" : "bg-black/60 border-white/10 backdrop-blur-xl"
       )}>
-        <ChevronUp className={cn("w-8 h-8 text-white", isInverted && activeKey === '2' && "rotate-180")} />
+        <ChevronUp className="w-8 h-8 text-white" />
       </div>
       
       <div className="flex gap-3">
         <div className={cn(
           "w-14 h-14 rounded-2xl flex items-center justify-center border-2 transition-all duration-200",
-          (activeKey === '4' || activeKey === '6') ? "bg-primary/40 border-primary scale-110 shadow-[0_0_30px_hsl(var(--primary))]" : "bg-black/40 border-white/10 backdrop-blur-xl"
+          activeKey === (isInverted ? "6" : "4") ? "bg-primary border-primary shadow-[0_0_40px_hsl(var(--primary))]" : "bg-black/60 border-white/10 backdrop-blur-xl"
         )}>
-          <ChevronLeft className={cn("w-8 h-8 text-white", isInverted && activeKey === '4' && "rotate-180")} />
+          <ChevronLeft className="w-8 h-8 text-white" />
         </div>
         
         <div className={cn(
           "w-14 h-14 rounded-2xl flex items-center justify-center border-2 transition-all duration-200",
-          activeKey === '5' ? "bg-accent/40 border-accent scale-110 shadow-[0_0_30px_hsl(var(--accent))]" : "bg-black/40 border-white/10 backdrop-blur-xl"
+          activeKey === '5' ? "bg-accent border-accent shadow-[0_0_40px_hsl(var(--accent))]" : "bg-black/60 border-white/10 backdrop-blur-xl"
         )}>
           <Circle className="w-8 h-8 text-white" />
         </div>
         
         <div className={cn(
           "w-14 h-14 rounded-2xl flex items-center justify-center border-2 transition-all duration-200",
-          (activeKey === '6' || activeKey === '4') ? "bg-primary/40 border-primary scale-110 shadow-[0_0_30px_hsl(var(--primary))]" : "bg-black/40 border-white/10 backdrop-blur-xl"
+          activeKey === (isInverted ? "4" : "6") ? "bg-primary border-primary shadow-[0_0_40px_hsl(var(--primary))]" : "bg-black/60 border-white/10 backdrop-blur-xl"
         )}>
-          <ChevronRight className={cn("w-8 h-8 text-white", isInverted && activeKey === '6' && "rotate-180")} />
+          <ChevronRight className="w-8 h-8 text-white" />
         </div>
       </div>
       
       <div className={cn(
         "w-14 h-14 rounded-2xl flex items-center justify-center border-2 transition-all duration-200",
-        (activeKey === '8' || activeKey === '2') ? "bg-primary/40 border-primary scale-110 shadow-[0_0_30px_hsl(var(--primary))]" : "bg-black/40 border-white/10 backdrop-blur-xl"
+        activeKey === (isInverted ? "2" : "8") ? "bg-primary border-primary shadow-[0_0_40px_hsl(var(--primary))]" : "bg-black/60 border-white/10 backdrop-blur-xl"
       )}>
-        <ChevronDown className={cn("w-8 h-8 text-white", isInverted && activeKey === '8' && "rotate-180")} />
+        <ChevronDown className="w-8 h-8 text-white" />
       </div>
     </div>
   );

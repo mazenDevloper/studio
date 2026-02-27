@@ -144,12 +144,12 @@ export function GlobalVideoPlayer() {
   return (
     <div 
       className={cn(
-        "fixed z-[2000] transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)]",
+        "fixed z-[2000] transition-all duration-1000 ease-[cubic-bezier(0.23,1,0.32,1)]",
         isMinimized 
-          ? "bottom-10 left-1/2 -translate-x-1/2 w-[650px] h-28 rounded-full liquid-glass cursor-pointer hover:scale-[1.02] active:scale-95 z-[210] shadow-[0_40px_100px_rgba(0,0,0,0.8)]" 
+          ? "bottom-12 left-1/2 -translate-x-1/2 w-[650px] h-32 rounded-[2.5rem] liquid-glass cursor-pointer hover:scale-[1.02] active:scale-95 z-[210] shadow-[0_40px_100px_rgba(0,0,0,0.9)]" 
           : isFullScreen
             ? "inset-0 bg-black flex flex-col"
-            : "bottom-12 right-12 w-[65vw] h-[68vh] glass-panel rounded-[3.5rem] bg-black/98"
+            : "bottom-24 right-12 w-[65vw] h-[68vh] glass-panel rounded-[3.5rem] bg-black/98"
       )}
       onClick={() => isMinimized && setIsMinimized(false)}
     >
@@ -163,9 +163,9 @@ export function GlobalVideoPlayer() {
       </div>
 
       {isMinimized && activeVideo && (
-        <div className="h-full w-full flex items-center justify-between px-10 animate-in fade-in zoom-in-95 duration-500 relative z-10">
+        <div className="h-full w-full flex items-center justify-between px-10 animate-in fade-in zoom-in-95 duration-700 relative z-10">
           <div className="flex items-center gap-6 flex-1 min-w-0">
-            <div className="relative w-24 h-20 rounded-2xl overflow-hidden shadow-2xl flex-shrink-0 border-2 border-white/30">
+            <div className="relative w-28 h-20 rounded-2xl overflow-hidden shadow-2xl flex-shrink-0 border-2 border-white/30">
               <Image src={activeVideo.thumbnail} alt="" fill className="object-cover" />
               {isPlaying && (
                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
@@ -178,7 +178,7 @@ export function GlobalVideoPlayer() {
                 {activeVideo.title}
               </h4>
               <span className="text-[12px] text-accent font-black uppercase tracking-[0.4em] mt-1 drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
-                {activeVideo.channelTitle || "Active Transmission"}
+                {activeVideo.channelTitle || "إرسال نشط"}
               </span>
             </div>
           </div>
@@ -190,7 +190,7 @@ export function GlobalVideoPlayer() {
               onClick={(e) => { e.stopPropagation(); setIsPlaying(!isPlaying); }}
               className="w-16 h-16 rounded-full bg-white/15 text-white hover:bg-white/30 focusable border-2 border-white/20"
             >
-              {isPlaying ? <Pause className="w-9 h-9 fill-current" /> : <Play className="w-9 h-9 fill-current ml-1" />}
+              {isPlaying ? <Pause className="w-10 h-10 fill-current" /> : <Play className="w-10 h-10 fill-current ml-1" />}
             </Button>
             <div className="w-px h-12 bg-white/30" />
             <Button 
@@ -199,7 +199,7 @@ export function GlobalVideoPlayer() {
               onClick={(e) => { e.stopPropagation(); saveCurrentProgress(); setActiveVideo(null); }}
               className="w-14 h-14 rounded-full bg-red-600/40 text-red-500 hover:bg-red-600 hover:text-white transition-all focusable border-2 border-red-600/30"
             >
-              <X className="w-7 h-7" />
+              <X className="w-8 h-8" />
             </Button>
           </div>
         </div>
@@ -207,7 +207,7 @@ export function GlobalVideoPlayer() {
 
       {!isMinimized && (
         <div className={cn(
-          "fixed bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-6 z-[2200] transition-all duration-700",
+          "fixed bottom-24 left-1/2 -translate-x-1/2 flex items-center gap-6 z-[2200] transition-all duration-1000",
           isFullScreen ? "scale-110" : "scale-100"
         )}>
           <div className="flex items-center gap-4 liquid-glass p-5 rounded-full border-2 border-white/20 shadow-[0_50px_120px_rgba(0,0,0,1)]">
@@ -216,7 +216,7 @@ export function GlobalVideoPlayer() {
               className="w-16 h-16 rounded-full bg-white/10 border-white/10 text-white focusable flex flex-col items-center justify-center gap-1"
             >
               <ChevronDown className="w-7 h-7" />
-              <span className="text-[9px] font-black uppercase tracking-widest">Pin</span>
+              <span className="text-[9px] font-black uppercase tracking-widest">تصغير</span>
             </Button>
             <Button 
               onClick={(e) => { e.stopPropagation(); setIsFullScreen(!isFullScreen); }} 
@@ -226,7 +226,7 @@ export function GlobalVideoPlayer() {
               )}
             >
               <Monitor className="w-7 h-7" />
-              <span className="text-[9px] font-black uppercase tracking-widest">Cinema</span>
+              <span className="text-[9px] font-black uppercase tracking-widest">سينما</span>
             </Button>
             <Button 
               onClick={(e) => { e.stopPropagation(); toggleSaveVideo(activeVideo); }}
