@@ -24,14 +24,14 @@ export function RemotePointer() {
     const dx = p2.x - p1.x;
     const dy = p2.y - p1.y;
 
-    // Direct movement check
-    if (direction === "ArrowRight" && dx <= 5) return Infinity;
-    if (direction === "ArrowLeft" && dx >= -5) return Infinity;
-    if (direction === "ArrowDown" && dy <= 5) return Infinity;
-    if (direction === "ArrowUp" && dy >= -5) return Infinity;
+    // Direct movement check with slight tolerance for better UX
+    if (direction === "ArrowRight" && dx <= 2) return Infinity;
+    if (direction === "ArrowLeft" && dx >= -2) return Infinity;
+    if (direction === "ArrowDown" && dy <= 2) return Infinity;
+    if (direction === "ArrowUp" && dy >= -2) return Infinity;
 
-    // Weighting to favor elements in the intended direction
-    const orthogonalWeight = 8.0; 
+    // Adjusted weighting to allow more "diagonal" row-skipping navigation (Smart Remote)
+    const orthogonalWeight = 3.5; 
     if (direction === "ArrowRight" || direction === "ArrowLeft") {
       return Math.sqrt(Math.pow(dx, 2) + Math.pow(dy * orthogonalWeight, 2));
     } else {
@@ -61,8 +61,9 @@ export function RemotePointer() {
         // Ensure element is visible and has dimensions
         if (rect.width === 0 || rect.height === 0) continue;
 
+        // Skip elements inside modals if focus is outside
         const portal = document.querySelector('[role="dialog"]');
-        if (portal && !portal.contains(el)) continue;
+        if (portal && !portal.contains(el) && portal.contains(current)) continue;
 
         const dist = getDistance(currentRect, rect, direction);
         if (dist < minDistance) {
