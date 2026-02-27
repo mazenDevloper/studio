@@ -47,20 +47,14 @@ export function LiveMatchIsland() {
         (m.leagueId && favoriteLeagueIds.includes(m.leagueId));
 
       const belledLive = matches.filter(m => m.status === 'live' && isBelledMatch(m));
-      const belledUpcoming = matches.filter(m => m.status === 'upcoming' && isBelledMatch(m));
       const favLive = matches.filter(m => m.status === 'live' && isFavoriteMatch(m) && !isBelledMatch(m));
+      const prioritizedLive = [...belledLive, ...favLive];
+      
+      const belledUpcoming = matches.filter(m => m.status === 'upcoming' && isBelledMatch(m));
       const favUpcoming = matches.filter(m => m.status === 'upcoming' && isFavoriteMatch(m) && !isBelledMatch(m));
-      const genLive = matches.filter(m => m.status === 'live' && !isFavoriteMatch(m) && !isBelledMatch(m));
-      const genUpcoming = matches.filter(m => m.status === 'upcoming' && !isFavoriteMatch(m) && !isBelledMatch(m));
+      const prioritizedUpcoming = [...belledUpcoming, ...favUpcoming];
 
-      const prioritized = [
-        ...belledLive, 
-        ...favLive, 
-        ...belledUpcoming, 
-        ...favUpcoming, 
-        ...genLive, 
-        ...genUpcoming
-      ].slice(0, 3);
+      const prioritized = [...prioritizedLive, ...prioritizedUpcoming, ...matches.filter(m => !isFavoriteMatch(m) && !isBelledMatch(m))].slice(0, 3);
       
       prioritized.forEach((m, idx) => {
         if (m.status === 'live' && m.score) {
@@ -155,7 +149,7 @@ export function LiveMatchIsland() {
               <BellRing className="w-8 h-8 text-black fill-current" />
             </div>
             <div className="flex flex-col text-right">
-              <span className="text-xl font-black text-white uppercase tracking-tighter">
+              <span className="text-2xl font-black text-white uppercase tracking-tighter">
                 {notification.type === 'azan' ? `حان وقت أذان ${notification.name}` : `إقامة صلاة ${notification.name}`}
               </span>
               <span className="text-[10px] text-accent font-black uppercase tracking-[0.4em]">SPIRITUAL FEED</span>
@@ -180,7 +174,7 @@ export function LiveMatchIsland() {
                 onClick={() => handleIslandClick(idx)}
                 className={cn(
                   "liquid-glass rounded-full shadow-[0_40px_100px_rgba(0,0,0,1)] transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] cursor-pointer overflow-hidden focusable outline-none relative",
-                  isDetailed ? "w-[580px] h-48 px-10" : "w-80 h-16 px-6"
+                  isDetailed ? "w-[600px] h-52 px-12" : "w-80 h-16 px-6"
                 )}
               >
                 {isDetailed && isLive && (
@@ -203,41 +197,45 @@ export function LiveMatchIsland() {
                       </div>
                       <div className="flex items-center gap-3">
                         {isLive ? (
-                          <span className="text-sm font-black text-accent tabular-nums">{match.minute}'</span>
+                          <span className="text-base font-black text-accent tabular-nums">{match.minute}'</span>
                         ) : (
-                          <Clock className="w-4 h-4 text-primary" />
+                          <Clock className="w-5 h-5 text-primary" />
                         )}
                       </div>
                     </div>
                   ) : (
                     <div className="flex items-center justify-between w-full animate-in fade-in zoom-in-95 duration-700">
                       <div className="flex flex-col items-center gap-3 w-32">
-                        <img src={match.homeLogo} alt="" className="w-20 h-20 object-contain" />
-                        <span className="text-[10px] font-black text-white/90 truncate w-full text-center uppercase">{match.homeTeam}</span>
+                        <div className="w-24 h-24 rounded-3xl bg-white/5 p-3 border border-white/10 flex items-center justify-center">
+                          <img src={match.homeLogo} alt="" className="w-full h-full object-contain" />
+                        </div>
+                        <span className="text-[12px] font-black text-white truncate w-full text-center uppercase tracking-tighter">{match.homeTeam}</span>
                       </div>
                       <div className="flex flex-col items-center gap-4">
-                        <div className={cn("flex items-center gap-2 px-4 py-1.5 rounded-full border", isLive ? "bg-red-600/20 border-red-600/30" : "bg-primary/20 border-primary/30")}>
-                          <span className="text-[9px] font-black text-white uppercase tracking-[0.2em]">{isLive ? "LIVE FEED" : "UPCOMING"}</span>
+                        <div className={cn("flex items-center gap-2 px-5 py-2 rounded-full border shadow-lg", isLive ? "bg-red-600/30 border-red-500 text-white" : "bg-primary/30 border-primary text-white")}>
+                          <span className="text-[10px] font-black uppercase tracking-[0.3em]">{isLive ? "LIVE" : "UPCOMING"}</span>
                         </div>
                         <div className="flex items-center gap-8">
                           {isLive ? (
                             <>
-                              <span className="text-7xl font-black text-white tabular-nums">{match.score?.home}</span>
-                              <span className="text-3xl font-black text-primary animate-pulse">{match.minute}'</span>
-                              <span className="text-7xl font-black text-white tabular-nums">{match.score?.away}</span>
+                              <span className="text-8xl font-black text-white tabular-nums drop-shadow-[0_0_20px_rgba(255,255,255,0.3)]">{match.score?.home}</span>
+                              <span className="text-4xl font-black text-primary animate-pulse tracking-tighter">{match.minute}'</span>
+                              <span className="text-8xl font-black text-white tabular-nums drop-shadow-[0_0_20px_rgba(255,255,255,0.3)]">{match.score?.away}</span>
                             </>
                           ) : (
-                            <span className="text-8xl font-black text-white tabular-nums tracking-tighter">{match.startTime}</span>
+                            <span className="text-9xl font-black text-white tabular-nums tracking-tighter drop-shadow-[0_0_30px_rgba(255,255,255,0.3)]">{match.startTime}</span>
                           )}
                         </div>
-                        <div className="text-[9px] font-bold text-white/40 uppercase tracking-[0.3em] flex items-center gap-2">
-                          <Trophy className="w-4 h-4 text-accent" />
+                        <div className="text-[10px] font-black text-white/50 uppercase tracking-[0.4em] flex items-center gap-2">
+                          <Trophy className="w-5 h-5 text-accent" />
                           <span className="truncate max-w-[200px]">{match.league}</span>
                         </div>
                       </div>
                       <div className="flex flex-col items-center gap-3 w-32">
-                        <img src={match.awayLogo} alt="" className="w-20 h-20 object-contain" />
-                        <span className="text-[10px] font-black text-white/90 truncate w-full text-center uppercase">{match.awayTeam}</span>
+                        <div className="w-24 h-24 rounded-3xl bg-white/5 p-3 border border-white/10 flex items-center justify-center">
+                          <img src={match.awayLogo} alt="" className="w-full h-full object-contain" />
+                        </div>
+                        <span className="text-[12px] font-black text-white truncate w-full text-center uppercase tracking-tighter">{match.awayTeam}</span>
                       </div>
                     </div>
                   )}

@@ -145,7 +145,7 @@ export function GlobalVideoPlayer() {
       className={cn(
         "fixed z-[2000] transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)]",
         isMinimized 
-          ? "bottom-10 left-1/2 -translate-x-1/2 w-[600px] h-24 rounded-full liquid-glass cursor-pointer hover:scale-[1.02] active:scale-95 z-[210]" 
+          ? "bottom-10 left-1/2 -translate-x-1/2 w-[650px] h-28 rounded-full liquid-glass cursor-pointer hover:scale-[1.02] active:scale-95 z-[210] shadow-[0_40px_100px_rgba(0,0,0,0.8)]" 
           : isFullScreen
             ? "inset-0 bg-black flex flex-col"
             : "bottom-12 right-12 w-[65vw] h-[68vh] glass-panel rounded-[3.5rem] bg-black/98"
@@ -160,45 +160,45 @@ export function GlobalVideoPlayer() {
         <div id="youtube-player-element" className="w-full h-full"></div>
       </div>
 
-      {/* Minimized Capsule UI - Fixed Info Rendering */}
+      {/* Minimized Capsule UI with Bold Fonts & Glass Styling */}
       {isMinimized && activeVideo && (
-        <div className="h-full w-full flex items-center justify-between px-8 animate-in fade-in zoom-in-95 duration-500">
-          <div className="flex items-center gap-5 flex-1 min-w-0">
-            <div className="relative w-16 h-12 rounded-xl overflow-hidden shadow-2xl flex-shrink-0 border border-white/15">
+        <div className="h-full w-full flex items-center justify-between px-10 animate-in fade-in zoom-in-95 duration-500">
+          <div className="flex items-center gap-6 flex-1 min-w-0">
+            <div className="relative w-20 h-16 rounded-2xl overflow-hidden shadow-2xl flex-shrink-0 border-2 border-white/20">
               <Image src={activeVideo.thumbnail} alt="" fill className="object-cover" />
               {isPlaying && (
                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                  <Activity className="w-5 h-5 text-accent animate-pulse" />
+                  <Activity className="w-7 h-7 text-accent animate-pulse" />
                 </div>
               )}
             </div>
             <div className="flex flex-col min-w-0 text-right">
-              <h4 className="text-sm font-black text-white truncate uppercase tracking-tighter font-headline">
+              <h4 className="text-lg font-black text-white truncate uppercase tracking-tighter font-headline leading-tight">
                 {activeVideo.title}
               </h4>
-              <span className="text-[10px] text-accent font-black uppercase tracking-[0.2em] opacity-70">
+              <span className="text-[11px] text-accent font-black uppercase tracking-[0.4em] mt-1 opacity-90 drop-shadow-md">
                 {activeVideo.channelTitle || "Active Transmission"}
               </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-6">
             <Button 
               variant="ghost" 
               size="icon" 
               onClick={(e) => { e.stopPropagation(); setIsPlaying(!isPlaying); }}
-              className="w-12 h-12 rounded-full bg-white/10 text-white hover:bg-white/20 focusable"
+              className="w-14 h-14 rounded-full bg-white/10 text-white hover:bg-white/20 focusable border border-white/10"
             >
-              {isPlaying ? <Pause className="w-6 h-6 fill-current" /> : <Play className="w-6 h-6 fill-current ml-0.5" />}
+              {isPlaying ? <Pause className="w-8 h-8 fill-current" /> : <Play className="w-8 h-8 fill-current ml-1" />}
             </Button>
-            <div className="w-px h-8 bg-white/10" />
+            <div className="w-px h-10 bg-white/20" />
             <Button 
               variant="ghost" 
               size="icon" 
               onClick={(e) => { e.stopPropagation(); saveCurrentProgress(); setActiveVideo(null); }}
-              className="w-10 h-10 rounded-full bg-red-500/20 text-red-500 hover:bg-red-500 hover:text-white focusable"
+              className="w-12 h-12 rounded-full bg-red-600/30 text-red-500 hover:bg-red-600 hover:text-white transition-all focusable border border-red-600/20"
             >
-              <X className="w-5 h-5" />
+              <X className="w-6 h-6" />
             </Button>
           </div>
         </div>
@@ -210,13 +210,13 @@ export function GlobalVideoPlayer() {
           "fixed bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-6 z-[2200] transition-all duration-700",
           isFullScreen ? "scale-110" : "scale-100"
         )}>
-          <div className="flex items-center gap-4 liquid-glass p-3 rounded-full border border-white/20 shadow-[0_40px_100px_rgba(0,0,0,1)]">
+          <div className="flex items-center gap-4 liquid-glass p-4 rounded-full border border-white/20 shadow-[0_50px_120px_rgba(0,0,0,1)]">
             <Button 
               onClick={(e) => { e.stopPropagation(); setIsMinimized(true); }} 
               className="w-16 h-16 rounded-full bg-white/10 border-white/10 text-white focusable flex flex-col items-center justify-center gap-1"
             >
               <ChevronDown className="w-7 h-7" />
-              <span className="text-[8px] font-black uppercase">Pin</span>
+              <span className="text-[9px] font-black uppercase tracking-widest">Pin</span>
             </Button>
             <Button 
               onClick={(e) => { e.stopPropagation(); setIsFullScreen(!isFullScreen); }} 
@@ -226,7 +226,7 @@ export function GlobalVideoPlayer() {
               )}
             >
               <Monitor className="w-7 h-7" />
-              <span className="text-[8px] font-black uppercase">Cinema</span>
+              <span className="text-[9px] font-black uppercase tracking-widest">Cinema</span>
             </Button>
             <Button 
               onClick={(e) => { e.stopPropagation(); toggleSaveVideo(activeVideo); }}
@@ -234,14 +234,14 @@ export function GlobalVideoPlayer() {
             >
               <Bookmark className={cn("w-7 h-7", isSaved && "fill-current")} />
             </Button>
-            <div className="w-px h-10 bg-white/10 mx-2" />
+            <div className="w-px h-12 bg-white/20 mx-2" />
             <Button 
               variant="destructive" 
               size="icon" 
               onClick={(e) => { e.stopPropagation(); saveCurrentProgress(); setActiveVideo(null); }} 
-              className="w-16 h-16 rounded-full shadow-2xl focusable"
+              className="w-16 h-16 rounded-full shadow-3xl focusable border-2 border-red-500/20"
             >
-              <X className="w-8 h-8" />
+              <X className="w-9 h-9" />
             </Button>
           </div>
         </div>
