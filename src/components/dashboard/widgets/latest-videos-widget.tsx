@@ -76,9 +76,10 @@ export function LatestVideosWidget({ channels }: Props) {
               {videos.map((video, idx) => (
                 <div 
                   key={video.id} 
-                  className="w-80 group relative overflow-hidden bg-zinc-900/80 border-none rounded-[2rem] transition-all hover:scale-[1.02] cursor-pointer shadow-xl focusable"
+                  className="w-80 group relative overflow-hidden bg-zinc-900/80 border-none rounded-[2rem] transition-all hover:scale-[1.02] cursor-pointer shadow-xl focusable transmission-card-item"
                   onClick={() => setActiveVideo(video)}
                   tabIndex={0}
+                  data-nav-id={`starred-video-${idx}`}
                 >
                   <div className="aspect-video relative overflow-hidden">
                     <Image src={video.thumbnail} alt={video.title} fill className="object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
@@ -89,12 +90,12 @@ export function LatestVideosWidget({ channels }: Props) {
                       </div>
                     </div>
                   </div>
-                  <div className="p-5 space-y-2">
+                  <div className="p-5 space-y-2 text-right">
                     <h3 className="font-bold text-base truncate text-white font-headline">{video.title}</h3>
-                    <div className="flex items-center gap-3 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                       <span className="flex items-center gap-1 text-accent"><Clock className="w-3 h-3" /> Latest</span>
-                       <span className="opacity-30">•</span>
+                    <div className="flex items-center justify-end gap-3 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
                        <span>Live Feed</span>
+                       <span className="opacity-30">•</span>
+                       <span className="flex items-center gap-1 text-accent"><Clock className="w-3 h-3" /> Latest</span>
                     </div>
                   </div>
                 </div>

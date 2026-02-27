@@ -98,9 +98,9 @@ export function MediaView() {
       setShowReciterGrid(false);
       setShowSurahGrid(false);
       
-      // Auto focus first search result
+      // Smart Focus: focus first search result
       setTimeout(() => {
-        const firstCard = document.querySelector('.video-result-card') as HTMLElement;
+        const firstCard = document.querySelector('[data-nav-id="search-result-0"]') as HTMLElement;
         if (firstCard) firstCard.focus();
       }, 600);
     } catch (error) {
@@ -179,9 +179,9 @@ export function MediaView() {
       const videos = await fetchChannelVideos(channel.channelid);
       setChannelVideos(videos);
       
-      // Auto focus first channel video card
+      // Smart Focus: focus first channel video card
       setTimeout(() => {
-        const firstCard = document.querySelector('.channel-video-card') as HTMLElement;
+        const firstCard = document.querySelector('[data-nav-id="channel-video-0"]') as HTMLElement;
         if (firstCard) firstCard.focus();
       }, 600);
     } finally {
@@ -283,6 +283,11 @@ export function MediaView() {
                             setSelectedReciter(reciter);
                             setShowSurahGrid(true);
                             setShowReciterGrid(false);
+                            // Auto focus first surah
+                            setTimeout(() => {
+                              const firstSurah = document.querySelector('[data-nav-id="surah-0"]') as HTMLElement;
+                              if (firstSurah) firstSurah.focus();
+                            }, 600);
                           }}
                           className={cn(
                             "h-16 rounded-2xl border-2 transition-all font-black text-lg text-right px-4 justify-start focusable",
@@ -353,6 +358,7 @@ export function MediaView() {
                   <Button
                     key={idx}
                     variant="ghost"
+                    data-nav-id={`surah-${idx}`}
                     onClick={() => handleSurahClick(surah)}
                     className={cn(
                       "h-24 rounded-[2rem] flex flex-col items-center justify-center border-2 transition-all hover:scale-[1.08] focusable px-4 shadow-xl",
@@ -402,9 +408,10 @@ export function MediaView() {
                 <Loader2 className="w-16 h-16 animate-spin text-primary" />
                 <span className="text-white/40 font-black uppercase tracking-[0.5em] text-sm">جاري التحميل...</span>
               </div>
-            ) : channelVideos.map((video) => (
+            ) : channelVideos.map((video, idx) => (
               <Card 
                 key={video.id} 
+                data-nav-id={`channel-video-${idx}`}
                 className="group channel-video-card relative overflow-hidden bg-white/5 border-none rounded-[3rem] transition-all hover:scale-[1.03] cursor-pointer shadow-2xl focusable"
                 tabIndex={0}
                 onClick={() => setActiveVideo(video)}
@@ -429,8 +436,8 @@ export function MediaView() {
                 <h2 className="text-3xl font-black font-headline text-primary flex items-center gap-4">نتائج البحث <Search className="w-8 h-8" /></h2>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                {videoResults.map((video) => (
-                  <Card key={video.id} onClick={() => setActiveVideo(video)} className="group video-result-card relative overflow-hidden bg-white/5 border-none rounded-[2rem] transition-all hover:scale-[1.05] cursor-pointer shadow-xl focusable" tabIndex={0}>
+                {videoResults.map((video, idx) => (
+                  <Card key={video.id} data-nav-id={`search-result-${idx}`} onClick={() => setActiveVideo(video)} className="group video-result-card relative overflow-hidden bg-white/5 border-none rounded-[2rem] transition-all hover:scale-[1.05] cursor-pointer shadow-xl focusable" tabIndex={0}>
                     <div className="aspect-video relative overflow-hidden">
                       <Image src={video.thumbnail} alt={video.title} fill className="object-cover" />
                     </div>
@@ -450,7 +457,7 @@ export function MediaView() {
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-10">
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
-                <div className="flex flex-col items-center gap-4 group cursor-pointer focusable" tabIndex={0}>
+                <div className="flex flex-col items-center gap-4 group cursor-pointer focusable" tabIndex={0} data-nav-id="add-channel-btn">
                   <div className="w-32 h-32 sm:w-40 sm:h-40 rounded-full border-4 border-dashed border-white/15 flex items-center justify-center bg-white/5 group-hover:bg-white/10 group-hover:border-primary transition-all shadow-2xl">
                     <Plus className="w-14 h-14 text-white/20 group-hover:text-primary transition-all group-hover:scale-110" />
                   </div>
@@ -469,10 +476,10 @@ export function MediaView() {
                 </DialogHeader>
                 <ScrollArea className="max-h-[65vh]">
                   <div className="p-10 space-y-6">
-                    {channelResults.map((channel) => {
+                    {channelResults.map((channel, idx) => {
                       const isSubscribed = favoriteChannels.some(c => c.channelid === channel.channelid);
                       return (
-                        <div key={channel.channelid} className="flex items-center gap-6 p-6 rounded-[2rem] bg-white/5 border border-white/5 hover:bg-white/10 transition-all group focusable" tabIndex={0} onClick={() => isSubscribed ? removeChannel(channel.channelid) : addChannel(channel)}>
+                        <div key={channel.channelid} data-nav-id={`channel-search-result-${idx}`} className="flex items-center gap-6 p-6 rounded-[2rem] bg-white/5 border border-white/5 hover:bg-white/10 transition-all group focusable" tabIndex={0} onClick={() => isSubscribed ? removeChannel(channel.channelid) : addChannel(channel)}>
                           <div className="relative w-24 h-24 rounded-full overflow-hidden border-2 border-white/10 flex-shrink-0">
                             <Image src={channel.image} alt={channel.name} fill className="object-cover" />
                           </div>
@@ -490,8 +497,8 @@ export function MediaView() {
               </DialogContent>
             </Dialog>
 
-            {favoriteChannels.map((channel) => (
-              <div key={channel.channelid} className="flex flex-col items-center gap-4 group relative animate-in zoom-in-95 duration-700 focusable" tabIndex={0} onClick={() => handleSelectChannel(channel)}>
+            {favoriteChannels.map((channel, idx) => (
+              <div key={channel.channelid} data-nav-id={`fav-channel-${idx}`} className="flex flex-col items-center gap-4 group relative animate-in zoom-in-95 duration-700 focusable" tabIndex={0} onClick={() => handleSelectChannel(channel)}>
                 <div className="w-32 h-32 sm:w-40 sm:h-40 rounded-full overflow-hidden border-4 border-white/10 group-hover:border-primary transition-all duration-700 cursor-pointer shadow-2xl relative">
                   <Image src={channel.image} alt={channel.name} fill className="object-cover group-hover:scale-115 transition-transform duration-1000" />
                   <div className="absolute inset-0 bg-black/30 group-hover:bg-transparent transition-all" />

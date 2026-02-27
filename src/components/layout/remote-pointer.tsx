@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useCallback, useState } from "react";
@@ -15,7 +14,7 @@ export function RemotePointer() {
   const [isInverted, setIsInverted] = useState(false);
 
   const updatePointer = useCallback((el: HTMLElement) => {
-    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, []);
 
   const getDistance = (rect1: DOMRect, rect2: DOMRect, direction: string) => {
@@ -25,12 +24,14 @@ export function RemotePointer() {
     const dx = p2.x - p1.x;
     const dy = p2.y - p1.y;
 
+    // Direct movement check
     if (direction === "ArrowRight" && dx <= 5) return Infinity;
     if (direction === "ArrowLeft" && dx >= -5) return Infinity;
     if (direction === "ArrowDown" && dy <= 5) return Infinity;
     if (direction === "ArrowUp" && dy >= -5) return Infinity;
 
-    const orthogonalWeight = 15.0; 
+    // Weighting to favor elements in the intended direction
+    const orthogonalWeight = 8.0; 
     if (direction === "ArrowRight" || direction === "ArrowLeft") {
       return Math.sqrt(Math.pow(dx, 2) + Math.pow(dy * orthogonalWeight, 2));
     } else {
@@ -56,6 +57,8 @@ export function RemotePointer() {
       for (const el of focusables) {
         if (el === current) continue;
         const rect = el.getBoundingClientRect();
+        
+        // Ensure element is visible and has dimensions
         if (rect.width === 0 || rect.height === 0) continue;
 
         const portal = document.querySelector('[role="dialog"]');
