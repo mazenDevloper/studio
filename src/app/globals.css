@@ -50,20 +50,20 @@
 /* iOS-like Smoothness & Focus Enhancement */
 .focusable {
   @apply transition-all;
-  transition-duration: 300ms;
+  transition-duration: 200ms;
   transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
   will-change: transform, opacity, box-shadow;
   transform: translateZ(0); /* Hardware Acceleration */
 }
 
 .focusable:focus {
-  @apply ring-[3px] ring-primary ring-offset-4 ring-offset-black scale-[1.05] z-[100];
-  box-shadow: 0 0 60px hsl(var(--primary) / 0.8), 0 0 20px hsl(var(--primary) / 0.4);
+  @apply ring-[4px] ring-primary ring-offset-4 ring-offset-black scale-[1.05] z-[100];
+  box-shadow: 0 0 60px hsl(var(--primary) / 0.9), 0 0 20px hsl(var(--primary) / 0.5);
 }
 
 .glass-panel {
   @apply bg-white/5 backdrop-blur-3xl border border-white/10 shadow-2xl;
-  transition: all 500ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 300ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* iPhone Fluid Glass Effect */
@@ -102,7 +102,7 @@
 
 .capsule-player {
   @apply bg-black/90 backdrop-blur-3xl border border-white/15 rounded-full shadow-[0_30px_60px_rgba(0,0,0,1)];
-  transition: all 600ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 400ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* Safe Area Insets for Modern Phones */

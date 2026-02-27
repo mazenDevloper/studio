@@ -1,11 +1,15 @@
 
 "use client";
 
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
+import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Circle } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export function RemotePointer() {
   const router = useRouter();
+  const [activeKey, setActiveKey] = useState<string | null>(null);
+  const [isVisible, setIsVisible] = useState(false);
 
   const updatePointer = useCallback((el: HTMLElement) => {
     el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -71,8 +75,9 @@ export function RemotePointer() {
   }, [updatePointer]);
 
   useEffect(() => {
+    let timeout: NodeJS.Timeout;
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Directions: 2=Up, 4=Left, 6=Right, 8=Down
       const keyMap: Record<string, string> = {
         "2": "ArrowUp",
         "4": "ArrowLeft",
@@ -84,11 +89,6 @@ export function RemotePointer() {
         "ArrowRight": "ArrowRight"
       };
 
-      // Action Keys (Color Buttons / Special)
-      // Red (F1 / 7) -> Home
-      // Green (F2 / 9) -> Media
-      // Yellow (F3 / 1) -> Football
-      // Blue (F4 / 3) -> Settings
       const colorActionMap: Record<string, string> = {
         "7": "/",
         "9": "/media",
@@ -100,16 +100,29 @@ export function RemotePointer() {
         "F4": "/settings"
       };
 
+      if (keyMap[e.key] || e.key === "5" || e.key === "Enter") {
+        const visualKey = e.key === "ArrowUp" ? "2" : 
+                         e.key === "ArrowDown" ? "8" : 
+                         e.key === "ArrowLeft" ? "4" : 
+                         e.key === "ArrowRight" ? "6" : 
+                         (e.key === "Enter" ? "5" : e.key);
+        
+        setActiveKey(visualKey);
+        setIsVisible(true);
+        if (timeout) clearTimeout(timeout);
+        timeout = setTimeout(() => {
+          setActiveKey(null);
+          setIsVisible(false);
+        }, 1000);
+      }
+
       if (keyMap[e.key]) {
         e.preventDefault();
         navigate(keyMap[e.key]);
       } else if (colorActionMap[e.key]) {
         e.preventDefault();
         router.push(colorActionMap[e.key]);
-      }
-
-      // 5 or Enter -> Force Click
-      if (e.key === "5" || e.key === "Enter") {
+      } else if (e.key === "5" || e.key === "Enter") {
         e.preventDefault();
         const current = document.activeElement as HTMLElement;
         if (current && current.classList.contains("focusable")) {
@@ -119,7 +132,10 @@ export function RemotePointer() {
     };
 
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      if (timeout) clearTimeout(timeout);
+    };
   }, [navigate, router]);
 
   useEffect(() => {
@@ -133,5 +149,48 @@ export function RemotePointer() {
     return () => window.removeEventListener("focus", handleFocus, true);
   }, [updatePointer]);
 
-  return null;
+  return (
+    <div className={cn(
+      "fixed bottom-12 right-12 z-[10000] pointer-events-none flex flex-col items-center gap-3 transition-all duration-500",
+      isVisible ? "opacity-100 scale-100" : "opacity-0 scale-90"
+    )}>
+      {/* HUD D-PAD Map */}
+      <div className={cn(
+        "w-14 h-14 rounded-2xl flex items-center justify-center border-2 transition-all duration-200",
+        activeKey === '2' ? "bg-primary/40 border-primary scale-110 shadow-[0_0_30px_hsl(var(--primary))]" : "bg-black/40 border-white/10 backdrop-blur-xl"
+      )}>
+        <ChevronUp className="w-8 h-8 text-white" />
+      </div>
+      
+      <div className="flex gap-3">
+        <div className={cn(
+          "w-14 h-14 rounded-2xl flex items-center justify-center border-2 transition-all duration-200",
+          activeKey === '4' ? "bg-primary/40 border-primary scale-110 shadow-[0_0_30px_hsl(var(--primary))]" : "bg-black/40 border-white/10 backdrop-blur-xl"
+        )}>
+          <ChevronLeft className="w-8 h-8 text-white" />
+        </div>
+        
+        <div className={cn(
+          "w-14 h-14 rounded-2xl flex items-center justify-center border-2 transition-all duration-200",
+          activeKey === '5' ? "bg-accent/40 border-accent scale-110 shadow-[0_0_30px_hsl(var(--accent))]" : "bg-black/40 border-white/10 backdrop-blur-xl"
+        )}>
+          <Circle className="w-8 h-8 text-white" />
+        </div>
+        
+        <div className={cn(
+          "w-14 h-14 rounded-2xl flex items-center justify-center border-2 transition-all duration-200",
+          activeKey === '6' ? "bg-primary/40 border-primary scale-110 shadow-[0_0_30px_hsl(var(--primary))]" : "bg-black/40 border-white/10 backdrop-blur-xl"
+        )}>
+          <ChevronRight className="w-8 h-8 text-white" />
+        </div>
+      </div>
+      
+      <div className={cn(
+        "w-14 h-14 rounded-2xl flex items-center justify-center border-2 transition-all duration-200",
+        activeKey === '8' ? "bg-primary/40 border-primary scale-110 shadow-[0_0_30px_hsl(var(--primary))]" : "bg-black/40 border-white/10 backdrop-blur-xl"
+      )}>
+        <ChevronDown className="w-8 h-8 text-white" />
+      </div>
+    </div>
+  );
 }
