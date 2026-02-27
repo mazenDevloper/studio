@@ -98,11 +98,11 @@ export function MediaView() {
       setShowReciterGrid(false);
       setShowSurahGrid(false);
       
-      // Auto focus first result
+      // Auto focus first search result
       setTimeout(() => {
         const firstCard = document.querySelector('.video-result-card') as HTMLElement;
         if (firstCard) firstCard.focus();
-      }, 500);
+      }, 600);
     } catch (error) {
       console.error("Video search failed", error);
     } finally {
@@ -178,18 +178,29 @@ export function MediaView() {
     try {
       const videos = await fetchChannelVideos(channel.channelid);
       setChannelVideos(videos);
+      
+      // Auto focus first channel video card
+      setTimeout(() => {
+        const firstCard = document.querySelector('.channel-video-card') as HTMLElement;
+        if (firstCard) firstCard.focus();
+      }, 600);
     } finally {
       setIsLoadingVideos(false);
     }
   };
 
-  const getJuzColor = (juz: number) => {
-    if (juz <= 5) return "border-blue-500/40 bg-blue-500/10 text-blue-400";
-    if (juz <= 10) return "border-emerald-500/40 bg-emerald-500/10 text-emerald-400";
-    if (juz <= 15) return "border-amber-500/40 bg-amber-500/10 text-amber-400";
-    if (juz <= 20) return "border-purple-500/40 bg-purple-500/10 text-purple-400";
-    if (juz <= 25) return "border-rose-500/40 bg-rose-500/10 text-rose-400";
-    return "border-cyan-500/40 bg-cyan-500/10 text-cyan-400";
+  const getJuzColor = (idx: number) => {
+    const groups = ["blue", "emerald", "amber", "purple", "rose", "cyan"];
+    const groupIdx = Math.floor(idx / 19) % groups.length;
+    const colors: Record<string, string> = {
+      blue: "border-blue-500/40 bg-blue-500/10 text-blue-400",
+      emerald: "border-emerald-500/40 bg-emerald-500/10 text-emerald-400",
+      amber: "border-amber-500/40 bg-amber-500/10 text-amber-400",
+      purple: "border-purple-500/40 bg-purple-500/10 text-purple-400",
+      rose: "border-rose-500/40 bg-rose-500/10 text-rose-400",
+      cyan: "border-cyan-500/40 bg-cyan-500/10 text-cyan-400"
+    };
+    return colors[groups[groupIdx]];
   };
 
   return (
@@ -336,8 +347,8 @@ export function MediaView() {
                 </div>
               </div>
             </div>
-            <ScrollArea className="h-[380px] w-full">
-              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4 p-2">
+            <ScrollArea className="h-[400px] w-full">
+              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4 p-2 pb-12">
                 {SURAHS_LIST.map((surah, idx) => (
                   <Button
                     key={idx}
@@ -345,7 +356,7 @@ export function MediaView() {
                     onClick={() => handleSurahClick(surah)}
                     className={cn(
                       "h-24 rounded-[2rem] flex flex-col items-center justify-center border-2 transition-all hover:scale-[1.08] focusable px-4 shadow-xl",
-                      getJuzColor(Math.ceil((idx + 1) / 4)) // Placeholder logic for parts
+                      getJuzColor(idx)
                     )}
                   >
                     <span className="text-xl font-black tracking-tight mb-1">{surah}</span>
@@ -394,7 +405,7 @@ export function MediaView() {
             ) : channelVideos.map((video) => (
               <Card 
                 key={video.id} 
-                className="group relative overflow-hidden bg-white/5 border-none rounded-[3rem] transition-all hover:scale-[1.03] cursor-pointer shadow-2xl focusable"
+                className="group channel-video-card relative overflow-hidden bg-white/5 border-none rounded-[3rem] transition-all hover:scale-[1.03] cursor-pointer shadow-2xl focusable"
                 tabIndex={0}
                 onClick={() => setActiveVideo(video)}
               >

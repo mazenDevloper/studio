@@ -52,6 +52,14 @@ export function DashboardView() {
     return () => clearInterval(interval);
   }, [api]);
 
+  // Smart Focus: focus carousel dots on mount
+  useEffect(() => {
+    setTimeout(() => {
+      const firstDot = document.querySelector('.carousel-indicator-dots') as HTMLElement;
+      if (firstDot) firstDot.focus();
+    }, 600);
+  }, []);
+
   // تصفية القنوات المميزة بنجمة بناءً على حقل starred السحابي
   const starredChannels = favoriteChannels.filter(c => c.starred);
 
@@ -71,9 +79,7 @@ export function DashboardView() {
         {/* Left Column - 50/50 Split */}
         <div className="md:col-span-4 flex flex-col gap-6 h-full">
           <div 
-            className="glass-panel rounded-[2.5rem] relative group overflow-hidden flex flex-col w-full shadow-2xl h-1/2 focusable outline-none"
-            tabIndex={0}
-            data-nav-id="widget-carousel"
+            className="glass-panel rounded-[2.5rem] relative group overflow-hidden flex flex-col w-full shadow-2xl h-1/2 outline-none"
           >
             <Carousel setApi={setApi} opts={{ loop: true }} className="flex-1 w-full h-full">
               <CarouselContent className="h-full">
@@ -119,7 +125,10 @@ export function DashboardView() {
               </CarouselContent>
             </Carousel>
 
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
+            <div 
+              className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-20 focusable carousel-indicator-dots p-2 rounded-full outline-none" 
+              tabIndex={0}
+            >
               {Array.from({ length: count }).map((_, i) => (
                 <div
                   key={i}
@@ -152,10 +161,10 @@ export function DashboardView() {
             />
           </div>
           <div className="absolute bottom-10 flex gap-4 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-500 bg-black/80 backdrop-blur-3xl p-3 rounded-full border border-white/20 shadow-2xl z-20">
-            <button className="flex items-center gap-2 px-6 py-2.5 bg-white/5 border border-white/10 rounded-full hover:bg-white/10 transition-all font-black text-[9px] text-white uppercase tracking-[0.2em] focusable outline-none">
+            <button className="flex items-center gap-2 px-6 py-2.5 bg-white/5 border border-white/10 rounded-full hover:bg-white/10 transition-all font-black text-[9px] text-white uppercase tracking-[0.2em] outline-none">
               <RotateCcw className="w-4 h-4" /> Reset
             </button>
-            <button className="flex items-center gap-2 px-6 py-2.5 bg-white/5 border border-white/10 rounded-full hover:bg-white/10 transition-all font-black text-[9px] text-white uppercase tracking-[0.2em] focusable outline-none">
+            <button className="flex items-center gap-2 px-6 py-2.5 bg-white/5 border border-white/10 rounded-full hover:bg-white/10 transition-all font-black text-[9px] text-white uppercase tracking-[0.2em] outline-none">
               <Upload className="w-4 h-4" /> Sync
             </button>
           </div>

@@ -143,16 +143,16 @@ export function GlobalVideoPlayer() {
   return (
     <div 
       className={cn(
-        "fixed z-[2000] transition-all duration-1000 ease-[cubic-bezier(0.23,1,0.32,1)]",
+        "fixed z-[5000] transition-all duration-1000 ease-[cubic-bezier(0.23,1,0.32,1)]",
         isMinimized 
-          ? "bottom-32 left-1/2 -translate-x-1/2 w-[650px] h-32 rounded-[2.5rem] liquid-glass cursor-pointer hover:scale-[1.02] active:scale-95 z-[210] shadow-[0_40px_100px_rgba(0,0,0,0.9)]" 
+          ? "bottom-32 left-1/2 -translate-x-1/2 w-[650px] h-32 rounded-[2.5rem] liquid-glass cursor-pointer hover:scale-[1.02] active:scale-95 z-[5100] shadow-[0_40px_100px_rgba(0,0,0,0.9)]" 
           : isFullScreen
             ? "inset-0 bg-black flex flex-col"
-            : "bottom-24 right-12 w-[65vw] h-[68vh] glass-panel rounded-[3.5rem] bg-black/98"
+            : "bottom-32 right-12 w-[65vw] h-[68vh] glass-panel rounded-[3.5rem] bg-black/95 shadow-[0_60px_150px_rgba(0,0,0,1)]"
       )}
       onClick={() => isMinimized && setIsFullScreen(true)}
     >
-      <FluidGlass scale={isMinimized ? 1.5 : 2} />
+      <FluidGlass scale={isMinimized ? 1.5 : 2} className="opacity-40" />
 
       <div className={cn(
         "absolute inset-0 transition-all duration-700 overflow-hidden rounded-[inherit]",
@@ -206,7 +206,7 @@ export function GlobalVideoPlayer() {
 
       {!isMinimized && (
         <div className={cn(
-          "fixed bottom-24 left-1/2 -translate-x-1/2 flex items-center gap-6 z-[2200] transition-all duration-1000",
+          "fixed bottom-24 left-1/2 -translate-x-1/2 flex items-center gap-6 z-[5200] transition-all duration-1000",
           isFullScreen ? "scale-110" : "scale-100"
         )}>
           <div className="flex items-center gap-4 liquid-glass p-5 rounded-full border-2 border-white/20 shadow-[0_50px_120px_rgba(0,0,0,1)]">
