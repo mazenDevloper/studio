@@ -43,20 +43,32 @@ export function LiveMatchIsland() {
 
       const getMatchPriorityScore = (m: Match) => {
         let score = 0;
+        // 1. الجرس أولاً (أولوية مطلقة)
         if (belledMatchIds.includes(m.id)) score += 10000;
+        
         const isFavTeam = favoriteTeams.some(t => t.id === m.homeTeamId || t.id === m.awayTeamId);
+        
+        // 2. الفرق المفضلة المباشرة
         if (isFavTeam && m.status === 'live') score += 5000;
+        
+        // 3. الفرق المفضلة القادمة (الأقرب زمنياً)
         if (isFavTeam && m.status === 'upcoming') {
           score += 2000;
           try {
             const timeDiff = new Date(m.date!).getTime() - Date.now();
             if (timeDiff > 0) {
+              // كلما كانت أقرب زاد السكور (بحد أقصى 1000 إضافي)
               score += Math.max(0, 1000 - (timeDiff / (1000 * 60 * 60))); 
             }
           } catch(e) {}
         }
+        
+        // 4. مباشر عام
         if (m.status === 'live') score += 1000;
+        
+        // 5. دوريات مفضلة
         if (m.leagueId && favoriteLeagueIds.includes(m.leagueId)) score += 500;
+        
         return score;
       };
 
@@ -64,6 +76,7 @@ export function LiveMatchIsland() {
         .sort((a, b) => getMatchPriorityScore(b) - getMatchPriorityScore(a))
         .slice(0, 3);
       
+      // Goal Detection
       prioritized.forEach((m, idx) => {
         if (m.status === 'live' && m.score) {
           const lastScore = lastScoresRef.current[m.id];
@@ -259,15 +272,15 @@ export function LiveMatchIsland() {
             <div 
               key={match.id} 
               onClick={() => handleIslandClick(idx)}
-              className="pointer-events-auto w-28 h-36 rounded-[2.5rem] liquid-glass border border-white/20 flex flex-col items-center justify-between p-4 shadow-2xl cursor-pointer hover:scale-110 active:scale-90 transition-all focusable outline-none relative overflow-hidden"
+              className="pointer-events-auto w-32 h-32 rounded-full liquid-glass border border-white/20 flex flex-col items-center justify-center p-0 shadow-2xl cursor-pointer hover:scale-110 active:scale-90 transition-all focusable outline-none relative overflow-hidden"
             >
                <FluidGlass scale={1} />
-               <div className="flex flex-col items-center gap-2 relative z-10 w-full h-full justify-between">
-                  <div className="flex items-center justify-center gap-3 w-full">
-                    <img src={match.homeLogo} alt="" className="w-10 h-10 object-contain drop-shadow-lg" />
-                    <img src={match.awayLogo} alt="" className="w-10 h-10 object-contain drop-shadow-lg" />
+               <div className="flex flex-col items-center gap-0 relative z-10 w-full h-full justify-center">
+                  <div className="flex items-center justify-center gap-1.5 w-full pt-2">
+                    <img src={match.homeLogo} alt="" className="w-9 h-9 object-contain drop-shadow-lg" />
+                    <img src={match.awayLogo} alt="" className="w-9 h-9 object-contain drop-shadow-lg" />
                   </div>
-                  <div className="flex-1 flex items-center justify-center">
+                  <div className="w-full flex items-center justify-center pb-2 flex-1">
                     {isLive && (
                       <span className="text-4xl font-black text-primary tabular-nums tracking-tighter drop-shadow-[0_0_20px_rgba(var(--primary),0.6)]">
                         {match.score?.home}-{match.score?.away}
