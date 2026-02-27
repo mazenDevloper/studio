@@ -1,4 +1,3 @@
-
 "use client";
 
 import { LayoutDashboard, Radio, Settings, GripVertical, ArrowLeft, Trophy, ZoomIn, ZoomOut, Mic, Loader2 } from "lucide-react";
@@ -7,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useMediaStore } from "@/lib/store";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 
 export function CarDock() {
@@ -23,6 +22,15 @@ export function CarDock() {
     { name: "Football", href: "/football", icon: Trophy, color: "bg-orange-600" },
     { name: "Settings", href: "/settings", icon: Settings, color: "bg-zinc-700" },
   ];
+
+  // Smart Initial Focus: Target the Media icon on startup
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const mediaIcon = document.querySelector('[data-nav-id="dock-Media"]') as HTMLElement;
+      if (mediaIcon) mediaIcon.focus();
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleVoiceSearch = useCallback(() => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitRecognition;
@@ -74,7 +82,7 @@ export function CarDock() {
 
       <div className="hidden md:flex mt-auto flex-col items-center gap-6">
         <div className="flex flex-col items-center gap-4 bg-white/5 p-2 rounded-3xl border border-white/5 backdrop-blur-2xl">
-          <Button
+          <button
             onClick={handleVoiceSearch}
             className={cn(
               "w-12 h-12 rounded-full transition-all flex items-center justify-center focusable",
@@ -82,7 +90,7 @@ export function CarDock() {
             )}
           >
             {isListening ? <Loader2 className="w-6 h-6 animate-spin text-white" /> : <Mic className="w-6 h-6" />}
-          </Button>
+          </button>
 
           <div className="h-px w-8 bg-white/10" />
 

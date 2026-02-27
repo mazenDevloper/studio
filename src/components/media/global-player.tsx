@@ -148,8 +148,9 @@ export function GlobalVideoPlayer() {
           ? "bottom-32 left-1/2 -translate-x-1/2 w-[650px] h-32 rounded-[2.5rem] liquid-glass cursor-pointer hover:scale-[1.02] active:scale-95 shadow-[0_40px_100px_rgba(0,0,0,0.9)]" 
           : isFullScreen
             ? "inset-0 bg-black flex flex-col"
-            : "bottom-60 right-12 w-[65vw] h-[50vh] glass-panel rounded-[3.5rem] bg-black/95 shadow-[0_60px_150px_rgba(0,0,0,1)]"
+            : "w-[65vw] h-[50vh] glass-panel rounded-[3.5rem] bg-black/95 shadow-[0_60px_150px_rgba(0,0,0,1)]"
       )}
+      style={!isMinimized && !isFullScreen ? { bottom: '35rem', left: '5rem' } : {}}
       onClick={() => isMinimized && setIsFullScreen(true)}
     >
       <FluidGlass scale={isMinimized ? 1.5 : 2} className="opacity-20" />
