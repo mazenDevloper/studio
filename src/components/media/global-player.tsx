@@ -55,7 +55,6 @@ export function GlobalVideoPlayer() {
       if (playerRef.current) {
         try { playerRef.current.destroy(); } catch(e) {}
       }
-
       playerRef.current = new window.YT.Player('youtube-player-element', {
         height: '100%',
         width: '100%',
@@ -68,7 +67,7 @@ export function GlobalVideoPlayer() {
           start: Math.floor(startSeconds),
           enablejsapi: 1,
           origin: window.location.origin,
-          vq: 'large' // 480p force
+          vq: 'large'
         },
         events: {
           onReady: (event: any) => {
@@ -146,29 +145,26 @@ export function GlobalVideoPlayer() {
       className={cn(
         "fixed z-[2000] transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)]",
         isMinimized 
-          ? "bottom-10 left-1/2 -translate-x-1/2 w-[600px] h-24 capsule-player z-[210] cursor-pointer hover:scale-[1.02] active:scale-95" 
+          ? "bottom-10 left-1/2 -translate-x-1/2 w-[600px] h-24 rounded-full liquid-glass cursor-pointer hover:scale-[1.02] active:scale-95 z-[210]" 
           : isFullScreen
             ? "inset-0 bg-black flex flex-col"
-            : "bottom-12 right-12 w-auto h-auto flex items-end gap-12"
+            : "bottom-12 right-12 w-[65vw] h-[68vh] glass-panel rounded-[3.5rem] bg-black/98"
       )}
       onClick={() => isMinimized && setIsMinimized(false)}
     >
-      {/* YouTube Player Container */}
+      {/* Player Frame */}
       <div className={cn(
-        "absolute transition-all duration-700 overflow-hidden",
-        isMinimized ? "opacity-0 scale-0 pointer-events-none" : "opacity-100",
-        isFullScreen ? "inset-0" : "relative w-[65vw] h-[68vh] glass-panel rounded-[3.5rem] bg-black/98 ring-4 ring-white/10"
+        "absolute inset-0 transition-all duration-700 overflow-hidden rounded-[inherit]",
+        isMinimized ? "opacity-0 scale-90 pointer-events-none" : "opacity-100 scale-100"
       )}>
-        <div className="w-full h-full bg-black relative" id="youtube-player-container">
-          <div id="youtube-player-element" className="w-full h-full"></div>
-        </div>
+        <div id="youtube-player-element" className="w-full h-full"></div>
       </div>
 
-      {/* Minimized Capsule UI */}
-      {isMinimized && (
-        <div className="h-full w-full flex items-center justify-between px-6 animate-in fade-in duration-500">
-          <div className="flex items-center gap-4 flex-1 min-w-0">
-            <div className="relative w-16 h-12 rounded-xl overflow-hidden shadow-2xl flex-shrink-0 border border-white/10">
+      {/* Minimized Capsule UI - Fixed Info Rendering */}
+      {isMinimized && activeVideo && (
+        <div className="h-full w-full flex items-center justify-between px-8 animate-in fade-in zoom-in-95 duration-500">
+          <div className="flex items-center gap-5 flex-1 min-w-0">
+            <div className="relative w-16 h-12 rounded-xl overflow-hidden shadow-2xl flex-shrink-0 border border-white/15">
               <Image src={activeVideo.thumbnail} alt="" fill className="object-cover" />
               {isPlaying && (
                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
@@ -176,31 +172,31 @@ export function GlobalVideoPlayer() {
                 </div>
               )}
             </div>
-            <div className="flex flex-col min-w-0">
+            <div className="flex flex-col min-w-0 text-right">
               <h4 className="text-sm font-black text-white truncate uppercase tracking-tighter font-headline">
                 {activeVideo.title}
               </h4>
-              <span className="text-[10px] text-accent font-black uppercase tracking-[0.2em] opacity-60">
+              <span className="text-[10px] text-accent font-black uppercase tracking-[0.2em] opacity-70">
                 {activeVideo.channelTitle || "Active Transmission"}
               </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
             <Button 
               variant="ghost" 
               size="icon" 
               onClick={(e) => { e.stopPropagation(); setIsPlaying(!isPlaying); }}
-              className="w-12 h-12 rounded-full bg-white/5 border border-white/10 text-white hover:bg-white/10 focusable"
+              className="w-12 h-12 rounded-full bg-white/10 text-white hover:bg-white/20 focusable"
             >
               {isPlaying ? <Pause className="w-6 h-6 fill-current" /> : <Play className="w-6 h-6 fill-current ml-0.5" />}
             </Button>
-            <div className="w-px h-8 bg-white/10 mx-1" />
+            <div className="w-px h-8 bg-white/10" />
             <Button 
               variant="ghost" 
               size="icon" 
               onClick={(e) => { e.stopPropagation(); saveCurrentProgress(); setActiveVideo(null); }}
-              className="w-10 h-10 rounded-full bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all focusable"
+              className="w-10 h-10 rounded-full bg-red-500/20 text-red-500 hover:bg-red-500 hover:text-white focusable"
             >
               <X className="w-5 h-5" />
             </Button>
@@ -208,60 +204,46 @@ export function GlobalVideoPlayer() {
         </div>
       )}
 
-      {/* Full Player Controls (Always visible in Cinema/Popup) */}
+      {/* Full Player Controls */}
       {!isMinimized && (
         <div className={cn(
           "fixed bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-6 z-[2200] transition-all duration-700",
           isFullScreen ? "scale-110" : "scale-100"
         )}>
-            <div className="flex items-center gap-4 bg-black/80 backdrop-blur-3xl p-3 rounded-full border border-white/20 shadow-[0_20px_60px_rgba(0,0,0,1)]">
-               <Button 
-                onClick={(e) => { e.stopPropagation(); setIsMinimized(true); }} 
-                className="w-16 h-16 rounded-full border-2 bg-white/5 border-white/10 text-white focusable flex flex-col items-center justify-center gap-1"
-                data-nav-id="player-minimize-btn"
-               >
-                 <ChevronDown className="w-7 h-7" />
-                 <span className="text-[8px] font-black uppercase">Pin</span>
-               </Button>
-               
-               <Button 
-                onClick={(e) => { e.stopPropagation(); setIsFullScreen(!isFullScreen); }} 
-                className={cn(
-                  "w-16 h-16 rounded-full border-2 transition-all flex flex-col items-center justify-center gap-1 focusable",
-                  isFullScreen ? "bg-primary/20 border-primary text-primary" : "bg-white/5 border-white/10 text-white"
-                )}
-                data-nav-id="player-fullscreen-btn"
-               >
-                 <Monitor className="w-7 h-7" />
-                 <span className="text-[8px] font-black uppercase">Cinema</span>
-               </Button>
-
-               <Button 
-                onClick={(e) => { 
-                  e.stopPropagation(); 
-                  saveCurrentProgress();
-                  toggleSaveVideo(activeVideo); 
-                }}
-                className={cn("w-16 h-16 rounded-full border-2 transition-all focusable", isSaved ? "bg-accent/20 border-accent text-accent" : "bg-white/5 border-white/10 text-white")}
-               >
-                 <Bookmark className={cn("w-7 h-7", isSaved && "fill-current")} />
-               </Button>
-
-               <div className="w-px h-10 bg-white/10 mx-2" />
-
-               <Button 
-                variant="destructive" 
-                size="icon" 
-                onClick={(e) => { 
-                  e.stopPropagation(); 
-                  saveCurrentProgress();
-                  setActiveVideo(null); 
-                }} 
-                className="w-16 h-16 rounded-full shadow-2xl focusable"
-               >
-                  <X className="w-8 h-8" />
-               </Button>
-            </div>
+          <div className="flex items-center gap-4 liquid-glass p-3 rounded-full border border-white/20 shadow-[0_40px_100px_rgba(0,0,0,1)]">
+            <Button 
+              onClick={(e) => { e.stopPropagation(); setIsMinimized(true); }} 
+              className="w-16 h-16 rounded-full bg-white/10 border-white/10 text-white focusable flex flex-col items-center justify-center gap-1"
+            >
+              <ChevronDown className="w-7 h-7" />
+              <span className="text-[8px] font-black uppercase">Pin</span>
+            </Button>
+            <Button 
+              onClick={(e) => { e.stopPropagation(); setIsFullScreen(!isFullScreen); }} 
+              className={cn(
+                "w-16 h-16 rounded-full border-2 transition-all flex flex-col items-center justify-center gap-1 focusable",
+                isFullScreen ? "bg-primary/30 border-primary text-white" : "bg-white/10 border-white/10 text-white"
+              )}
+            >
+              <Monitor className="w-7 h-7" />
+              <span className="text-[8px] font-black uppercase">Cinema</span>
+            </Button>
+            <Button 
+              onClick={(e) => { e.stopPropagation(); toggleSaveVideo(activeVideo); }}
+              className={cn("w-16 h-16 rounded-full border-2 transition-all focusable", isSaved ? "bg-accent/30 border-accent text-accent" : "bg-white/10 border-white/10 text-white")}
+            >
+              <Bookmark className={cn("w-7 h-7", isSaved && "fill-current")} />
+            </Button>
+            <div className="w-px h-10 bg-white/10 mx-2" />
+            <Button 
+              variant="destructive" 
+              size="icon" 
+              onClick={(e) => { e.stopPropagation(); saveCurrentProgress(); setActiveVideo(null); }} 
+              className="w-16 h-16 rounded-full shadow-2xl focusable"
+            >
+              <X className="w-8 h-8" />
+            </Button>
+          </div>
         </div>
       )}
     </div>
