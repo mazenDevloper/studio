@@ -2,10 +2,12 @@
 "use client";
 
 import { useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 
 export function RemotePointer() {
+  const router = useRouter();
+
   const updatePointer = useCallback((el: HTMLElement) => {
-    // We only care about scrolling now, the CSS glow handles the visual focus accurately
     el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }, []);
 
@@ -22,8 +24,8 @@ export function RemotePointer() {
     if (direction === "ArrowDown" && dy <= 5) return Infinity;
     if (direction === "ArrowUp" && dy >= -5) return Infinity;
 
-    // Favor the movement axis
-    const orthogonalWeight = 8.0; 
+    // Extreme bias for the movement axis to ensure predictability
+    const orthogonalWeight = 15.0; 
     if (direction === "ArrowRight" || direction === "ArrowLeft") {
       return Math.sqrt(Math.pow(dx, 2) + Math.pow(dy * orthogonalWeight, 2));
     } else {
@@ -32,7 +34,6 @@ export function RemotePointer() {
   };
 
   const navigate = useCallback((direction: string) => {
-    // Find all focusable elements
     const focusables = Array.from(document.querySelectorAll(".focusable")) as HTMLElement[];
     if (focusables.length === 0) return;
 
@@ -49,11 +50,9 @@ export function RemotePointer() {
 
       for (const el of focusables) {
         if (el === current) continue;
-        
         const rect = el.getBoundingClientRect();
         if (rect.width === 0 || rect.height === 0) continue;
 
-        // Check if inside a visible dialog/portal if one is open
         const portal = document.querySelector('[role="dialog"]');
         if (portal && !portal.contains(el)) continue;
 
@@ -73,7 +72,7 @@ export function RemotePointer() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Map Numbers to Directions: 2=Up, 4=Left, 6=Right, 8=Down
+      // Directions: 2=Up, 4=Left, 6=Right, 8=Down
       const keyMap: Record<string, string> = {
         "2": "ArrowUp",
         "4": "ArrowLeft",
@@ -85,12 +84,33 @@ export function RemotePointer() {
         "ArrowRight": "ArrowRight"
       };
 
+      // Action Keys (Color Buttons / Special)
+      // Red (F1 / 7) -> Home
+      // Green (F2 / 9) -> Media
+      // Yellow (F3 / 1) -> Football
+      // Blue (F4 / 3) -> Settings
+      const colorActionMap: Record<string, string> = {
+        "7": "/",
+        "9": "/media",
+        "1": "/football",
+        "3": "/settings",
+        "F1": "/",
+        "F2": "/media",
+        "F3": "/football",
+        "F4": "/settings"
+      };
+
       if (keyMap[e.key]) {
         e.preventDefault();
         navigate(keyMap[e.key]);
+      } else if (colorActionMap[e.key]) {
+        e.preventDefault();
+        router.push(colorActionMap[e.key]);
       }
 
-      if (e.key === "Enter" || e.key === "5") {
+      // 5 or Enter -> Force Click
+      if (e.key === "5" || e.key === "Enter") {
+        e.preventDefault();
         const current = document.activeElement as HTMLElement;
         if (current && current.classList.contains("focusable")) {
           current.click();
@@ -100,7 +120,7 @@ export function RemotePointer() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [navigate]);
+  }, [navigate, router]);
 
   useEffect(() => {
     const handleFocus = (e: FocusEvent) => {
@@ -113,6 +133,5 @@ export function RemotePointer() {
     return () => window.removeEventListener("focus", handleFocus, true);
   }, [updatePointer]);
 
-  // Return null because we rely on native focus glow (CSS) instead of drawing a helper div
   return null;
 }

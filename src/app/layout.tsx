@@ -1,5 +1,5 @@
 
-import type {Metadata} from 'next';
+import type {Metadata, Viewport} from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { GlobalVideoPlayer } from "@/components/media/global-player";
@@ -10,6 +10,19 @@ import { RemotePointer } from "@/components/layout/remote-pointer";
 export const metadata: Metadata = {
   title: 'DriveCast | CarPlay',
   description: 'Futuristic automotive interface.',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'DriveCast',
+  },
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: 'cover',
 };
 
 export default function RootLayout({
@@ -26,16 +39,16 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased bg-black text-foreground overflow-hidden h-screen w-full relative" suppressHydrationWarning>
         <FirebaseClientProvider>
-          {/* الجزيرة العائمة تظهر فوق كافة العناصر في كل الشاشات - TOP FIXED */}
+          {/* الجزيرة العائمة - مركز التنبيهات الذكي */}
           <LiveMatchIsland />
           
-          {/* المؤشر الذكي للتحكم بالريموت */}
+          {/* محرك الريموت الفائق */}
           <RemotePointer />
           
-          <div className="flex w-full h-full overflow-hidden">
-            {/* المساحة المخصصة لـ CarDock الجانبي */}
-            <div className="w-24 shrink-0 h-full" /> 
-            <div className="flex-1 overflow-auto relative h-full">
+          <div className="flex flex-col md:flex-row w-full h-full overflow-hidden">
+            {/* المساحة المخصصة لـ CarDock الجانبي أو السفلي */}
+            <div className="h-0 w-0 md:w-24 shrink-0 md:h-full" /> 
+            <div className="flex-1 overflow-auto relative h-full safe-p-bottom">
               {children}
             </div>
           </div>
