@@ -78,8 +78,11 @@ export function DashboardView() {
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6 h-[460px]">
         {/* Left Column - 50/50 Split */}
         <div className="md:col-span-4 flex flex-col gap-6 h-full">
+          {/* Main Hero Widget - Focusable as a whole */}
           <div 
-            className="glass-panel rounded-[2.5rem] relative group overflow-hidden flex flex-col w-full shadow-2xl h-1/2 outline-none"
+            className="glass-panel rounded-[2.5rem] relative group overflow-hidden flex flex-col w-full shadow-2xl h-1/2 focusable outline-none"
+            tabIndex={0}
+            data-nav-id="widget-carousel-hero"
           >
             <Carousel setApi={setApi} opts={{ loop: true }} className="flex-1 w-full h-full">
               <CarouselContent className="h-full">
@@ -94,28 +97,31 @@ export function DashboardView() {
                     {weather ? (
                       <>
                         <div className="relative w-full mb-4 flex flex-col items-center">
-                          <span className="text-6xl font-black text-white/90 tracking-tighter drop-shadow-2xl">
+                          <span className="text-7xl font-black text-white/95 tracking-tighter drop-shadow-2xl">
                             {Math.round(weather.current.temp_c)}°
                           </span>
-                          <div className="mt-1 flex items-center gap-2">
+                          <div className="mt-2 flex items-center gap-2 bg-white/5 px-4 py-1 rounded-full border border-white/10 backdrop-blur-md">
                              <img src={weather.current.condition.icon} alt="Weather" className="w-10 h-10" />
-                             <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">{weather.current.condition.text}</span>
+                             <span className="text-[11px] font-black text-white/60 uppercase tracking-widest">{weather.current.condition.text}</span>
                           </div>
                         </div>
-                        <div className="grid grid-cols-3 gap-2 w-full max-w-[240px]">
-                          <div className="metric-box py-2">
-                            <div className="text-blue-400 font-bold text-xs">{weather.current.humidity}%</div>
+                        <div className="grid grid-cols-3 gap-2 w-full max-w-[260px] mt-4">
+                          <div className="metric-box py-3 bg-white/5 rounded-2xl border border-white/5">
+                            <div className="text-blue-400 font-black text-sm">{weather.current.humidity}%</div>
+                            <div className="text-[8px] text-white/20 font-bold uppercase mt-1">Hum</div>
                           </div>
-                          <div className="metric-box py-2">
-                            <div className="text-yellow-400 font-bold text-xs">{weather.current.uv}</div>
+                          <div className="metric-box py-3 bg-white/5 rounded-2xl border border-white/5">
+                            <div className="text-yellow-400 font-black text-sm">{weather.current.uv}</div>
+                            <div className="text-[8px] text-white/20 font-bold uppercase mt-1">UV</div>
                           </div>
-                          <div className="metric-box py-2">
-                            <div className="text-accent font-bold text-xs">{Math.round(weather.current.wind_kph)}</div>
+                          <div className="metric-box py-3 bg-white/5 rounded-2xl border border-white/5">
+                            <div className="text-accent font-black text-sm">{Math.round(weather.current.wind_kph)}</div>
+                            <div className="text-[8px] text-white/20 font-bold uppercase mt-1">Wind</div>
                           </div>
                         </div>
                       </>
                     ) : (
-                      <div className="animate-pulse text-white/20 font-bold text-[10px] uppercase tracking-[0.4em]">Satellite Sync...</div>
+                      <div className="animate-pulse text-white/20 font-black text-[12px] uppercase tracking-[0.5em]">Satellite Sync...</div>
                     )}
                   </div>
                 </CarouselItem>
@@ -126,21 +132,21 @@ export function DashboardView() {
             </Carousel>
 
             <div 
-              className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-20 focusable carousel-indicator-dots p-2 rounded-full outline-none" 
-              tabIndex={0}
+              className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-20 p-2 rounded-full outline-none carousel-indicator-dots" 
             >
               {Array.from({ length: count }).map((_, i) => (
                 <div
                   key={i}
                   className={cn(
                     "h-1 rounded-full transition-all duration-500",
-                    current === i ? "w-6 bg-primary shadow-[0_0_8px_hsl(var(--primary))]" : "w-1 bg-white/10"
+                    current === i ? "w-6 bg-primary shadow-[0_0_12px_hsl(var(--primary))]" : "w-1 bg-white/10"
                   )}
                 />
               ))}
             </div>
           </div>
 
+          {/* Prayer Countdown Widget */}
           <div className="h-1/2 w-full focusable outline-none rounded-[2.5rem]" tabIndex={0} data-nav-id="widget-prayer-countdown">
             <PrayerCountdownCard />
           </div>
@@ -191,7 +197,6 @@ export function DashboardView() {
       </div>
 
       <div className="w-full space-y-6">
-        {/* سيتم عرض الفيديوهات بناءً على القنوات المميزة بـ starred: true */}
         <LatestVideosWidget channels={starredChannels} />
         <YouTubeSavedWidget />
       </div>

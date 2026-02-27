@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
@@ -70,38 +69,47 @@ export function DateAndClockWidget() {
   const monthName = now.toLocaleDateString('ar-EG', { month: 'long' });
 
   return (
-    <div className="h-full w-full flex flex-col items-center justify-center p-8 relative overflow-hidden bg-black rounded-[2.5rem]">
+    <div className="h-full w-full flex flex-col items-center justify-center p-4 relative overflow-hidden bg-black rounded-[2.5rem]">
       <div className="absolute inset-0 z-0">
         <Image 
           src="https://images.unsplash.com/photo-1534067783941-51c9c23ecefd?auto=format&fit=crop&q=80&w=1000"
           alt="Atmospheric Background"
           fill
-          className="object-cover opacity-30 group-hover:scale-105 transition-transform duration-[8s]"
+          className="object-cover opacity-20 transition-transform duration-[8s]"
           data-ai-hint="mountain night"
         />
-        <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/60 via-black/40 to-black" />
+        <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/40 via-black/60 to-black" />
       </div>
 
-      <div className="relative z-10 flex flex-col items-center">
-        <div className="flex items-center gap-2 mb-3 bg-white/10 px-3 py-1 rounded-full border border-white/10 backdrop-blur-md">
-          <Calendar className="w-3 h-3 text-accent" />
-          <span className="text-[9px] text-white/90 font-bold uppercase tracking-[0.2em]">{dayName} {dayNum} {monthName}</span>
-        </div>
-        
-        <div className="text-3xl font-black text-white tracking-tighter mb-4 drop-shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
-          {timeString}
+      <div className="relative z-10 flex flex-col items-center w-full max-w-[90%] gap-4">
+        {/* Main Hero Element: The Clock */}
+        <div className="flex flex-col items-center text-center">
+          <div className="text-7xl font-black text-white tracking-tighter drop-shadow-[0_15px_45px_rgba(0,0,0,0.8)] leading-none mb-2">
+            {timeString}
+          </div>
+          <div className="flex items-center gap-2 bg-white/5 px-4 py-1.5 rounded-full border border-white/10 backdrop-blur-3xl">
+            <Calendar className="w-3.5 h-3.5 text-accent" />
+            <span className="text-[11px] text-white/80 font-black uppercase tracking-[0.2em]">{dayName} {dayNum} {monthName}</span>
+          </div>
         </div>
         
         {nextPrayer && (
-          <div className="mt-2 flex flex-col items-center gap-1.5">
-            <div className="bg-primary/20 text-primary px-3 py-0.5 rounded-full border border-primary/30 backdrop-blur-md">
-              <span className="text-[8px] font-black uppercase tracking-widest">الصلاة القادمة: {nextPrayer.name}</span>
+          <div className="w-full flex flex-col items-center gap-2 mt-2 bg-primary/5 p-4 rounded-[2rem] border border-primary/10 backdrop-blur-md">
+            <div className="flex items-center gap-3 w-full justify-center">
+              <div className="bg-primary/20 text-primary px-4 py-1 rounded-full border border-primary/30">
+                <span className="text-[10px] font-black uppercase tracking-widest">الصلاة القادمة: {nextPrayer.name}</span>
+              </div>
+              <span className="text-2xl font-black text-accent drop-shadow-2xl">
+                {convertTo12Hour(nextPrayer.time)}
+              </span>
             </div>
-            <span className="text-xl font-black text-accent drop-shadow-2xl">
-              {convertTo12Hour(nextPrayer.time)}
-            </span>
-            <div className="text-[7px] font-bold text-white/40 uppercase mt-1 tracking-[0.3em] flex items-center gap-1.5">
-              <Timer className="w-3 h-3" /> متبقي {nextPrayer.countdown}
+            
+            <div className="flex items-center gap-3 text-white/60">
+              <div className="h-px w-8 bg-white/10" />
+              <div className="text-[10px] font-black uppercase tracking-[0.4em] flex items-center gap-2">
+                <Timer className="w-4 h-4 text-primary animate-pulse" /> متبقي {nextPrayer.countdown}
+              </div>
+              <div className="h-px w-8 bg-white/10" />
             </div>
           </div>
         )}
