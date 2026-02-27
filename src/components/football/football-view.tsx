@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
@@ -21,7 +22,6 @@ export function FootballView() {
   const isFavTeam = (id: number) => favoriteTeams.some(t => t.id === id);
   const isBelled = (id: string) => belledMatchIds.includes(id);
 
-  // Smart Focus: focus first match card on load
   useEffect(() => {
     if (!loading && matches.length > 0) {
       setTimeout(() => {
@@ -66,13 +66,20 @@ export function FootballView() {
     }
 
     return result.sort((a, b) => {
+      // 1. الجرس أولاً
       const aIsBelled = isBelled(a.id);
       const bIsBelled = isBelled(b.id);
       if (aIsBelled && !bIsBelled) return -1;
       if (!aIsBelled && bIsBelled) return 1;
 
+      // 2. الفرق المفضلة + مباشر
       const aIsFav = isFavTeam(a.homeTeamId) || isFavTeam(a.awayTeamId);
       const bIsFav = isFavTeam(b.homeTeamId) || isFavTeam(b.awayTeamId);
+      
+      if (aIsFav && a.status === 'live' && !(bIsFav && b.status === 'live')) return -1;
+      if (bIsFav && b.status === 'live' && !(aIsFav && a.status === 'live')) return 1;
+
+      // 3. الفرق المفضلة (عام)
       if (aIsFav && !bIsFav) return -1;
       if (!aIsFav && bIsFav) return 1;
       

@@ -41,13 +41,42 @@ export function LiveMatchIsland() {
         return;
       }
 
-      const isBelledMatch = (m: Match) => belledMatchIds.includes(m.id);
-      const isFavoriteMatch = (m: Match) => 
-        (m.homeTeamId && favoriteTeams.some(t => t.id === m.homeTeamId)) || 
-        (m.awayTeamId && favoriteTeams.some(t => t.id === m.awayTeamId)) ||
-        (m.leagueId && favoriteLeagueIds.includes(m.leagueId));
+      // خوارزمية الأولوية الذكية
+      const getMatchPriorityScore = (m: Match) => {
+        let score = 0;
+        
+        // 1. الجرس (أعلى أولوية)
+        if (belledMatchIds.includes(m.id)) score += 10000;
+        
+        const isFavTeam = favoriteTeams.some(t => t.id === m.homeTeamId || t.id === m.awayTeamId);
+        
+        // 2. فريق مفضل ومباشر
+        if (isFavTeam && m.status === 'live') score += 5000;
+        
+        // 3. فريق مفضل وقريب (Upcoming)
+        if (isFavTeam && m.status === 'upcoming') {
+          score += 2000;
+          // إضافة وزن يعتمد على اقتراب الوقت (كلما كان الوقت أقرب زاد السكور)
+          try {
+            const timeDiff = new Date(m.date!).getTime() - Date.now();
+            if (timeDiff > 0) {
+              score += Math.max(0, 1000 - (timeDiff / (1000 * 60 * 60))); 
+            }
+          } catch(e) {}
+        }
+        
+        // 4. مباشر عام
+        if (m.status === 'live') score += 1000;
+        
+        // 5. دوري مفضل
+        if (m.leagueId && favoriteLeagueIds.includes(m.leagueId)) score += 500;
 
-      const prioritized = matches.filter(m => isBelledMatch(m) || isFavoriteMatch(m) || m.status === 'live').slice(0, 3);
+        return score;
+      };
+
+      const prioritized = [...matches]
+        .sort((a, b) => getMatchPriorityScore(b) - getMatchPriorityScore(a))
+        .slice(0, 3);
       
       prioritized.forEach((m, idx) => {
         if (m.status === 'live' && m.score) {
