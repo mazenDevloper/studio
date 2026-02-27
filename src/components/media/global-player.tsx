@@ -151,7 +151,7 @@ export function GlobalVideoPlayer() {
             ? "inset-0 bg-black flex flex-col"
             : "w-[65vw] h-[50vh] glass-panel rounded-[3.5rem] bg-black/95 shadow-[0_60px_150px_rgba(0,0,0,1)]"
       )}
-      style={!isMinimized && !isFullScreen ? { bottom: '22rem', left: '4rem' } : {}}
+      style={!isMinimized && !isFullScreen ? { bottom: '35rem', left: '5rem' } : {}}
       onClick={() => isMinimized && setIsFullScreen(true)}
     >
       <FluidGlass scale={isMinimized ? 1.5 : 2} className="opacity-10" />
