@@ -153,10 +153,8 @@ export function GlobalVideoPlayer() {
       )}
       onClick={() => isMinimized && setIsMinimized(false)}
     >
-      {/* Stable Liquid Glass Engine */}
-      <FluidGlass mode={isMinimized ? 'lens' : 'bar'} scale={isMinimized ? 1.5 : 2} />
+      <FluidGlass scale={isMinimized ? 1.5 : 2} />
 
-      {/* Player Frame */}
       <div className={cn(
         "absolute inset-0 transition-all duration-700 overflow-hidden rounded-[inherit]",
         isMinimized ? "opacity-0 scale-90 pointer-events-none" : "opacity-100 scale-100"
@@ -164,7 +162,6 @@ export function GlobalVideoPlayer() {
         <div id="youtube-player-element" className="w-full h-full"></div>
       </div>
 
-      {/* Minimized Capsule UI with Enhanced Visibility */}
       {isMinimized && activeVideo && (
         <div className="h-full w-full flex items-center justify-between px-10 animate-in fade-in zoom-in-95 duration-500 relative z-10">
           <div className="flex items-center gap-6 flex-1 min-w-0">
@@ -208,7 +205,6 @@ export function GlobalVideoPlayer() {
         </div>
       )}
 
-      {/* Full Player Controls */}
       {!isMinimized && (
         <div className={cn(
           "fixed bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-6 z-[2200] transition-all duration-700",

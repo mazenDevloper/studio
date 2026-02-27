@@ -47,15 +47,7 @@ export function LiveMatchIsland() {
         (m.awayTeamId && favoriteTeams.some(t => t.id === m.awayTeamId)) ||
         (m.leagueId && favoriteLeagueIds.includes(m.leagueId));
 
-      const belledLive = matches.filter(m => m.status === 'live' && isBelledMatch(m));
-      const favLive = matches.filter(m => m.status === 'live' && isFavoriteMatch(m) && !isBelledMatch(m));
-      const prioritizedLive = [...belledLive, ...favLive];
-      
-      const belledUpcoming = matches.filter(m => m.status === 'upcoming' && isBelledMatch(m));
-      const favUpcoming = matches.filter(m => m.status === 'upcoming' && isFavoriteMatch(m) && !isBelledMatch(m));
-      const prioritizedUpcoming = [...belledUpcoming, ...favUpcoming];
-
-      const prioritized = [...prioritizedLive, ...prioritizedUpcoming, ...matches.filter(m => !isFavoriteMatch(m) && !isBelledMatch(m))].slice(0, 3);
+      const prioritized = matches.filter(m => isBelledMatch(m) || isFavoriteMatch(m) || m.status === 'live').slice(0, 3);
       
       prioritized.forEach((m, idx) => {
         if (m.status === 'live' && m.score) {
@@ -144,7 +136,7 @@ export function LiveMatchIsland() {
           "liquid-glass rounded-full shadow-[0_40px_100px_rgba(0,0,0,1)] border-2 border-accent transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] w-[500px] h-24 flex items-center justify-between px-10 relative overflow-hidden ring-8 ring-accent/10",
           "animate-in fade-in zoom-in-95"
         )}>
-          <FluidGlass scale={2} thickness={5} ior={1.2} />
+          <FluidGlass scale={2} />
           <div className="absolute inset-0 bg-gradient-to-t from-accent/20 via-transparent to-transparent animate-pulse" />
           <div className="flex items-center gap-6 relative z-10">
             <div className="w-14 h-14 rounded-full bg-accent flex items-center justify-center shadow-[0_0_30px_rgba(65,184,131,0.8)] animate-bounce">
@@ -179,7 +171,7 @@ export function LiveMatchIsland() {
                   isDetailed ? "w-[600px] h-52 px-12" : "w-80 h-16 px-6"
                 )}
               >
-                <FluidGlass scale={isDetailed ? 3 : 1.5} thickness={isDetailed ? 8 : 2} ior={1.15} chromaticAberration={0.1} />
+                <FluidGlass scale={isDetailed ? 3 : 1.5} />
                 
                 {isDetailed && isLive && (
                   <div className="absolute inset-0 bg-accent/5 animate-pulse pointer-events-none" />
@@ -254,7 +246,7 @@ export function LiveMatchIsland() {
               onClick={() => handleIslandClick(idx)}
               className="pointer-events-auto w-16 h-16 rounded-full liquid-glass border border-white/20 flex flex-col items-center justify-center p-2 shadow-2xl cursor-pointer hover:scale-110 active:scale-90 transition-all focusable outline-none relative overflow-hidden"
             >
-               <FluidGlass scale={1} thickness={1} ior={1.1} />
+               <FluidGlass scale={1} />
                <div className="flex flex-col gap-1 items-center scale-90 relative z-10">
                   <img src={match.homeLogo} alt="" className="w-6 h-6 object-contain drop-shadow-lg" />
                   {isLive && (

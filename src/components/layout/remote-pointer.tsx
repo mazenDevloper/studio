@@ -3,13 +3,16 @@
 
 import { useEffect, useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Circle } from "lucide-react";
+import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Circle, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 export function RemotePointer() {
   const router = useRouter();
+  const { toast } = useToast();
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const [isVisible, setIsVisible] = useState(false);
+  const [isInverted, setIsInverted] = useState(false);
 
   const updatePointer = useCallback((el: HTMLElement) => {
     el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -22,13 +25,11 @@ export function RemotePointer() {
     const dx = p2.x - p1.x;
     const dy = p2.y - p1.y;
 
-    // Strict directional checks
     if (direction === "ArrowRight" && dx <= 5) return Infinity;
     if (direction === "ArrowLeft" && dx >= -5) return Infinity;
     if (direction === "ArrowDown" && dy <= 5) return Infinity;
     if (direction === "ArrowUp" && dy >= -5) return Infinity;
 
-    // Extreme bias for the movement axis to ensure predictability
     const orthogonalWeight = 15.0; 
     if (direction === "ArrowRight" || direction === "ArrowLeft") {
       return Math.sqrt(Math.pow(dx, 2) + Math.pow(dy * orthogonalWeight, 2));
@@ -78,7 +79,21 @@ export function RemotePointer() {
     let timeout: NodeJS.Timeout;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      const keyMap: Record<string, string> = {
+      // Toggle Inversion with Key 0
+      if (e.key === "0") {
+        e.preventDefault();
+        setIsInverted(prev => {
+          const nextVal = !prev;
+          toast({
+            title: nextVal ? "تم عكس الريموت" : "تم اعادة الريموت",
+            description: nextVal ? "8 اعلى | 6 يسار | 4 يمين | 2 اسفل" : "2 اعلى | 4 يسار | 6 يمين | 8 اسفل",
+          });
+          return nextVal;
+        });
+        return;
+      }
+
+      const standardMap: Record<string, string> = {
         "2": "ArrowUp",
         "4": "ArrowLeft",
         "6": "ArrowRight",
@@ -88,6 +103,19 @@ export function RemotePointer() {
         "ArrowLeft": "ArrowLeft",
         "ArrowRight": "ArrowRight"
       };
+
+      const invertedMap: Record<string, string> = {
+        "8": "ArrowUp",
+        "6": "ArrowLeft",
+        "4": "ArrowRight",
+        "2": "ArrowDown",
+        "ArrowUp": "ArrowUp",
+        "ArrowDown": "ArrowDown",
+        "ArrowLeft": "ArrowLeft",
+        "ArrowRight": "ArrowRight"
+      };
+
+      const keyMap = isInverted ? invertedMap : standardMap;
 
       const colorActionMap: Record<string, string> = {
         "7": "/",
@@ -101,11 +129,12 @@ export function RemotePointer() {
       };
 
       if (keyMap[e.key] || e.key === "5" || e.key === "Enter") {
-        const visualKey = e.key === "ArrowUp" ? "2" : 
-                         e.key === "ArrowDown" ? "8" : 
-                         e.key === "ArrowLeft" ? "4" : 
-                         e.key === "ArrowRight" ? "6" : 
-                         (e.key === "Enter" ? "5" : e.key);
+        let visualKey = e.key;
+        if (e.key === "ArrowUp") visualKey = isInverted ? "8" : "2";
+        if (e.key === "ArrowDown") visualKey = isInverted ? "2" : "8";
+        if (e.key === "ArrowLeft") visualKey = isInverted ? "6" : "4";
+        if (e.key === "ArrowRight") visualKey = isInverted ? "4" : "6";
+        if (e.key === "Enter") visualKey = "5";
         
         setActiveKey(visualKey);
         setIsVisible(true);
@@ -136,7 +165,7 @@ export function RemotePointer() {
       window.removeEventListener("keydown", handleKeyDown);
       if (timeout) clearTimeout(timeout);
     };
-  }, [navigate, router]);
+  }, [navigate, router, isInverted, toast]);
 
   useEffect(() => {
     const handleFocus = (e: FocusEvent) => {
@@ -157,17 +186,17 @@ export function RemotePointer() {
       {/* HUD D-PAD Map */}
       <div className={cn(
         "w-14 h-14 rounded-2xl flex items-center justify-center border-2 transition-all duration-200",
-        activeKey === '2' ? "bg-primary/40 border-primary scale-110 shadow-[0_0_30px_hsl(var(--primary))]" : "bg-black/40 border-white/10 backdrop-blur-xl"
+        (activeKey === '2' || activeKey === '8') ? "bg-primary/40 border-primary scale-110 shadow-[0_0_30px_hsl(var(--primary))]" : "bg-black/40 border-white/10 backdrop-blur-xl"
       )}>
-        <ChevronUp className="w-8 h-8 text-white" />
+        <ChevronUp className={cn("w-8 h-8 text-white", isInverted && activeKey === '2' && "rotate-180")} />
       </div>
       
       <div className="flex gap-3">
         <div className={cn(
           "w-14 h-14 rounded-2xl flex items-center justify-center border-2 transition-all duration-200",
-          activeKey === '4' ? "bg-primary/40 border-primary scale-110 shadow-[0_0_30px_hsl(var(--primary))]" : "bg-black/40 border-white/10 backdrop-blur-xl"
+          (activeKey === '4' || activeKey === '6') ? "bg-primary/40 border-primary scale-110 shadow-[0_0_30px_hsl(var(--primary))]" : "bg-black/40 border-white/10 backdrop-blur-xl"
         )}>
-          <ChevronLeft className="w-8 h-8 text-white" />
+          <ChevronLeft className={cn("w-8 h-8 text-white", isInverted && activeKey === '4' && "rotate-180")} />
         </div>
         
         <div className={cn(
@@ -179,17 +208,17 @@ export function RemotePointer() {
         
         <div className={cn(
           "w-14 h-14 rounded-2xl flex items-center justify-center border-2 transition-all duration-200",
-          activeKey === '6' ? "bg-primary/40 border-primary scale-110 shadow-[0_0_30px_hsl(var(--primary))]" : "bg-black/40 border-white/10 backdrop-blur-xl"
+          (activeKey === '6' || activeKey === '4') ? "bg-primary/40 border-primary scale-110 shadow-[0_0_30px_hsl(var(--primary))]" : "bg-black/40 border-white/10 backdrop-blur-xl"
         )}>
-          <ChevronRight className="w-8 h-8 text-white" />
+          <ChevronRight className={cn("w-8 h-8 text-white", isInverted && activeKey === '6' && "rotate-180")} />
         </div>
       </div>
       
       <div className={cn(
         "w-14 h-14 rounded-2xl flex items-center justify-center border-2 transition-all duration-200",
-        activeKey === '8' ? "bg-primary/40 border-primary scale-110 shadow-[0_0_30px_hsl(var(--primary))]" : "bg-black/40 border-white/10 backdrop-blur-xl"
+        (activeKey === '8' || activeKey === '2') ? "bg-primary/40 border-primary scale-110 shadow-[0_0_30px_hsl(var(--primary))]" : "bg-black/40 border-white/10 backdrop-blur-xl"
       )}>
-        <ChevronDown className="w-8 h-8 text-white" />
+        <ChevronDown className={cn("w-8 h-8 text-white", isInverted && activeKey === '8' && "rotate-180")} />
       </div>
     </div>
   );
