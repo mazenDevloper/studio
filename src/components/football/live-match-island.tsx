@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
@@ -56,7 +55,6 @@ export function LiveMatchIsland() {
         // 3. فريق مفضل وقريب (Upcoming)
         if (isFavTeam && m.status === 'upcoming') {
           score += 2000;
-          // إضافة وزن يعتمد على اقتراب الوقت (كلما كان الوقت أقرب زاد السكور)
           try {
             const timeDiff = new Date(m.date!).getTime() - Date.now();
             if (timeDiff > 0) {
@@ -160,7 +158,7 @@ export function LiveMatchIsland() {
 
   if (notification) {
     return (
-      <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[9999] pointer-events-auto">
+      <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[10001] pointer-events-auto">
         <div className={cn(
           "liquid-glass rounded-full shadow-[0_40px_100px_rgba(0,0,0,1)] border-2 border-accent transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] w-[500px] h-24 flex items-center justify-between px-10 relative overflow-hidden ring-8 ring-accent/10",
           "animate-in fade-in zoom-in-95"
@@ -178,14 +176,14 @@ export function LiveMatchIsland() {
               <span className="text-[10px] text-accent font-black uppercase tracking-[0.4em]">SPIRITUAL FEED</span>
             </div>
           </div>
-          <Sparkles className="w-6 h-6 text-accent animate-spin-slow relative z-10" />
+          <span className="text-2xl animate-spin-slow relative z-10">✨</span>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[9999] flex items-center gap-3 pointer-events-none">
+    <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[10001] flex items-center gap-3 pointer-events-none">
       {topMatches.map((match, idx) => {
         const isActive = idx === activeIndex;
         const isLive = match.status === 'live';
@@ -273,17 +271,19 @@ export function LiveMatchIsland() {
             <div 
               key={match.id} 
               onClick={() => handleIslandClick(idx)}
-              className="pointer-events-auto w-16 h-16 rounded-full liquid-glass border border-white/20 flex flex-col items-center justify-center p-2 shadow-2xl cursor-pointer hover:scale-110 active:scale-90 transition-all focusable outline-none relative overflow-hidden"
+              className="pointer-events-auto w-20 h-20 rounded-[1.5rem] liquid-glass border border-white/20 flex flex-col items-center justify-center p-2 shadow-2xl cursor-pointer hover:scale-110 active:scale-90 transition-all focusable outline-none relative overflow-hidden"
             >
                <FluidGlass scale={1} />
-               <div className="flex flex-col gap-1 items-center scale-90 relative z-10">
-                  <img src={match.homeLogo} alt="" className="w-6 h-6 object-contain drop-shadow-lg" />
+               <div className="flex flex-col items-center gap-1.5 relative z-10">
+                  <div className="flex items-center gap-2">
+                    <img src={match.homeLogo} alt="" className="w-6 h-6 object-contain drop-shadow-lg" />
+                    <img src={match.awayLogo} alt="" className="w-6 h-6 object-contain drop-shadow-lg" />
+                  </div>
                   {isLive && (
-                    <span className="text-[10px] font-black text-primary tabular-nums leading-none drop-shadow-lg">
+                    <span className="text-lg font-black text-primary tabular-nums leading-none drop-shadow-lg">
                       {match.score?.home}-{match.score?.away}
                     </span>
                   )}
-                  <img src={match.awayLogo} alt="" className="w-6 h-6 object-contain drop-shadow-lg" />
                </div>
             </div>
           );
