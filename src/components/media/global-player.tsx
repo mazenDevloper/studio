@@ -153,8 +153,8 @@ export function GlobalVideoPlayer() {
       )}
       onClick={() => isMinimized && setIsMinimized(false)}
     >
-      {/* Three.js Fluid Glass Element */}
-      <FluidGlass mode={isMinimized ? 'lens' : 'bar'} scale={isMinimized ? 2.5 : 4} thickness={isMinimized ? 8 : 15} ior={1.2} distortion={0.9} />
+      {/* Stable Liquid Glass Engine */}
+      <FluidGlass mode={isMinimized ? 'lens' : 'bar'} scale={isMinimized ? 1.5 : 2} />
 
       {/* Player Frame */}
       <div className={cn(
@@ -164,7 +164,7 @@ export function GlobalVideoPlayer() {
         <div id="youtube-player-element" className="w-full h-full"></div>
       </div>
 
-      {/* Minimized Capsule UI with Information */}
+      {/* Minimized Capsule UI with Enhanced Visibility */}
       {isMinimized && activeVideo && (
         <div className="h-full w-full flex items-center justify-between px-10 animate-in fade-in zoom-in-95 duration-500 relative z-10">
           <div className="flex items-center gap-6 flex-1 min-w-0">
@@ -177,10 +177,10 @@ export function GlobalVideoPlayer() {
               )}
             </div>
             <div className="flex flex-col min-w-0 text-right">
-              <h4 className="text-xl font-black text-white truncate uppercase tracking-tighter font-headline leading-tight drop-shadow-[0_10px_20px_rgba(0,0,0,0.8)]">
+              <h4 className="text-xl font-black text-white truncate uppercase tracking-tighter font-headline leading-tight drop-shadow-[0_4px_12px_rgba(0,0,0,1)]">
                 {activeVideo.title}
               </h4>
-              <span className="text-[12px] text-accent font-black uppercase tracking-[0.4em] mt-1 opacity-100 drop-shadow-lg">
+              <span className="text-[12px] text-accent font-black uppercase tracking-[0.4em] mt-1 drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
                 {activeVideo.channelTitle || "Active Transmission"}
               </span>
             </div>
