@@ -7,6 +7,7 @@ import { fetchFootballData } from "@/lib/football-api";
 import { useMediaStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { Activity, Trophy, Clock, Timer, BellRing, Sparkles } from "lucide-react";
+import { FluidGlass } from "@/components/ui/fluid-glass";
 
 export function LiveMatchIsland() {
   const { favoriteTeams, favoriteLeagueIds, prayerTimes, belledMatchIds } = useMediaStore();
@@ -143,19 +144,20 @@ export function LiveMatchIsland() {
           "liquid-glass rounded-full shadow-[0_40px_100px_rgba(0,0,0,1)] border-2 border-accent transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] w-[500px] h-24 flex items-center justify-between px-10 relative overflow-hidden ring-8 ring-accent/10",
           "animate-in fade-in zoom-in-95"
         )}>
+          <FluidGlass scale={2} thickness={5} ior={1.2} />
           <div className="absolute inset-0 bg-gradient-to-t from-accent/20 via-transparent to-transparent animate-pulse" />
           <div className="flex items-center gap-6 relative z-10">
             <div className="w-14 h-14 rounded-full bg-accent flex items-center justify-center shadow-[0_0_30px_rgba(65,184,131,0.8)] animate-bounce">
               <BellRing className="w-8 h-8 text-black fill-current" />
             </div>
             <div className="flex flex-col text-right">
-              <span className="text-2xl font-black text-white uppercase tracking-tighter">
+              <span className="text-2xl font-black text-white uppercase tracking-tighter drop-shadow-xl">
                 {notification.type === 'azan' ? `حان وقت أذان ${notification.name}` : `إقامة صلاة ${notification.name}`}
               </span>
               <span className="text-[10px] text-accent font-black uppercase tracking-[0.4em]">SPIRITUAL FEED</span>
             </div>
           </div>
-          <Sparkles className="w-6 h-6 text-accent animate-spin-slow" />
+          <Sparkles className="w-6 h-6 text-accent animate-spin-slow relative z-10" />
         </div>
       </div>
     );
@@ -177,65 +179,67 @@ export function LiveMatchIsland() {
                   isDetailed ? "w-[600px] h-52 px-12" : "w-80 h-16 px-6"
                 )}
               >
+                <FluidGlass scale={isDetailed ? 3 : 1.5} thickness={isDetailed ? 8 : 2} ior={1.15} chromaticAberration={0.1} />
+                
                 {isDetailed && isLive && (
                   <div className="absolute inset-0 bg-accent/5 animate-pulse pointer-events-none" />
                 )}
-                <div className="h-full flex items-center justify-between">
+                <div className="h-full flex items-center justify-between relative z-10">
                   {!isDetailed ? (
                     <div className="flex items-center justify-between w-full animate-in fade-in slide-in-from-top-4">
                       <div className="flex items-center gap-4">
-                        <img src={match.homeLogo} alt="" className="w-9 h-9 object-contain" />
+                        <img src={match.homeLogo} alt="" className="w-9 h-9 object-contain drop-shadow-2xl" />
                         <div className={cn(
-                          "px-4 py-1.5 rounded-2xl border transition-all min-w-[100px] flex justify-center items-center",
+                          "px-4 py-1.5 rounded-2xl border transition-all min-w-[100px] flex justify-center items-center backdrop-blur-md",
                           isLive ? "bg-white/10 border-white/10" : "bg-primary/20 border-primary/40"
                         )}>
-                          <span className={cn("font-black tabular-nums tracking-tighter", isLive ? "text-xl text-primary" : "text-3xl text-white")}>
+                          <span className={cn("font-black tabular-nums tracking-tighter drop-shadow-2xl", isLive ? "text-xl text-primary" : "text-3xl text-white")}>
                             {isLive ? `${match.score?.home} - ${match.score?.away}` : match.startTime}
                           </span>
                         </div>
-                        <img src={match.awayLogo} alt="" className="w-9 h-9 object-contain" />
+                        <img src={match.awayLogo} alt="" className="w-9 h-9 object-contain drop-shadow-2xl" />
                       </div>
                       <div className="flex items-center gap-3">
                         {isLive ? (
-                          <span className="text-base font-black text-accent tabular-nums">{match.minute}'</span>
+                          <span className="text-base font-black text-accent tabular-nums drop-shadow-xl">{match.minute}'</span>
                         ) : (
-                          <Clock className="w-5 h-5 text-primary" />
+                          <Clock className="w-5 h-5 text-primary drop-shadow-xl" />
                         )}
                       </div>
                     </div>
                   ) : (
                     <div className="flex items-center justify-between w-full animate-in fade-in zoom-in-95 duration-700">
                       <div className="flex flex-col items-center gap-3 w-32">
-                        <div className="w-24 h-24 rounded-3xl bg-white/5 p-3 border border-white/10 flex items-center justify-center">
+                        <div className="w-24 h-24 rounded-3xl bg-white/5 p-3 border border-white/10 flex items-center justify-center backdrop-blur-xl shadow-2xl">
                           <img src={match.homeLogo} alt="" className="w-full h-full object-contain" />
                         </div>
-                        <span className="text-[12px] font-black text-white truncate w-full text-center uppercase tracking-tighter">{match.homeTeam}</span>
+                        <span className="text-[12px] font-black text-white truncate w-full text-center uppercase tracking-tighter drop-shadow-lg">{match.homeTeam}</span>
                       </div>
                       <div className="flex flex-col items-center gap-4">
-                        <div className={cn("flex items-center gap-2 px-5 py-2 rounded-full border shadow-lg", isLive ? "bg-red-600/30 border-red-500 text-white" : "bg-primary/30 border-primary text-white")}>
+                        <div className={cn("flex items-center gap-2 px-5 py-2 rounded-full border shadow-lg backdrop-blur-3xl", isLive ? "bg-red-600/30 border-red-500 text-white" : "bg-primary/30 border-primary text-white")}>
                           <span className="text-[10px] font-black uppercase tracking-[0.3em]">{isLive ? "LIVE" : "UPCOMING"}</span>
                         </div>
                         <div className="flex items-center gap-8">
                           {isLive ? (
                             <>
-                              <span className="text-8xl font-black text-white tabular-nums drop-shadow-[0_0_20px_rgba(255,255,255,0.3)]">{match.score?.home}</span>
-                              <span className="text-4xl font-black text-primary animate-pulse tracking-tighter">{match.minute}'</span>
-                              <span className="text-8xl font-black text-white tabular-nums drop-shadow-[0_0_20px_rgba(255,255,255,0.3)]">{match.score?.away}</span>
+                              <span className="text-8xl font-black text-white tabular-nums drop-shadow-[0_0_30px_rgba(255,255,255,0.5)]">{match.score?.home}</span>
+                              <span className="text-4xl font-black text-primary animate-pulse tracking-tighter drop-shadow-xl">{match.minute}'</span>
+                              <span className="text-8xl font-black text-white tabular-nums drop-shadow-[0_0_30px_rgba(255,255,255,0.5)]">{match.score?.away}</span>
                             </>
                           ) : (
-                            <span className="text-9xl font-black text-white tabular-nums tracking-tighter drop-shadow-[0_0_30px_rgba(255,255,255,0.3)]">{match.startTime}</span>
+                            <span className="text-9xl font-black text-white tabular-nums tracking-tighter drop-shadow-[0_0_40px_rgba(255,255,255,0.4)]">{match.startTime}</span>
                           )}
                         </div>
-                        <div className="text-[10px] font-black text-white/50 uppercase tracking-[0.4em] flex items-center gap-2">
+                        <div className="text-[10px] font-black text-white/50 uppercase tracking-[0.4em] flex items-center gap-2 drop-shadow-md">
                           <Trophy className="w-5 h-5 text-accent" />
                           <span className="truncate max-w-[200px]">{match.league}</span>
                         </div>
                       </div>
                       <div className="flex flex-col items-center gap-3 w-32">
-                        <div className="w-24 h-24 rounded-3xl bg-white/5 p-3 border border-white/10 flex items-center justify-center">
+                        <div className="w-24 h-24 rounded-3xl bg-white/5 p-3 border border-white/10 flex items-center justify-center backdrop-blur-xl shadow-2xl">
                           <img src={match.awayLogo} alt="" className="w-full h-full object-contain" />
                         </div>
-                        <span className="text-[12px] font-black text-white truncate w-full text-center uppercase tracking-tighter">{match.awayTeam}</span>
+                        <span className="text-[12px] font-black text-white truncate w-full text-center uppercase tracking-tighter drop-shadow-lg">{match.awayTeam}</span>
                       </div>
                     </div>
                   )}
@@ -248,16 +252,17 @@ export function LiveMatchIsland() {
             <div 
               key={match.id} 
               onClick={() => handleIslandClick(idx)}
-              className="pointer-events-auto w-16 h-16 rounded-full liquid-glass border border-white/20 flex flex-col items-center justify-center p-2 shadow-2xl cursor-pointer hover:scale-110 active:scale-90 transition-all focusable outline-none relative"
+              className="pointer-events-auto w-16 h-16 rounded-full liquid-glass border border-white/20 flex flex-col items-center justify-center p-2 shadow-2xl cursor-pointer hover:scale-110 active:scale-90 transition-all focusable outline-none relative overflow-hidden"
             >
-               <div className="flex flex-col gap-1 items-center scale-90">
-                  <img src={match.homeLogo} alt="" className="w-6 h-6 object-contain" />
+               <FluidGlass scale={1} thickness={1} ior={1.1} />
+               <div className="flex flex-col gap-1 items-center scale-90 relative z-10">
+                  <img src={match.homeLogo} alt="" className="w-6 h-6 object-contain drop-shadow-lg" />
                   {isLive && (
-                    <span className="text-[10px] font-black text-primary tabular-nums leading-none">
+                    <span className="text-[10px] font-black text-primary tabular-nums leading-none drop-shadow-lg">
                       {match.score?.home}-{match.score?.away}
                     </span>
                   )}
-                  <img src={match.awayLogo} alt="" className="w-6 h-6 object-contain" />
+                  <img src={match.awayLogo} alt="" className="w-6 h-6 object-contain drop-shadow-lg" />
                </div>
             </div>
           );
