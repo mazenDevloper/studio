@@ -110,7 +110,7 @@ export const useMediaStore = create<MediaState>()(
       isPlaying: false,
       isMinimized: false,
       isFullScreen: false,
-      dockSide: 'right', // Default set to right as requested
+      dockSide: 'right', 
 
       addChannel: (channel) => {
         set((state) => {

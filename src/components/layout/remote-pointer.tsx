@@ -14,24 +14,34 @@ export function RemotePointer() {
   const [isVisible, setIsVisible] = useState(false);
   const [isVirtualCursorEnabled, setIsVirtualCursorEnabled] = useState(false);
 
-  // Handle Virtual Cursor Meta Tag & CSS for Hisense VIDAA
+  // Handle Virtual Cursor Meta Tag & CSS for Hisense VIDAA 2.5.13+
   useEffect(() => {
-    const metaId = 'vidaa-cursor-meta';
-    let meta = document.getElementById(metaId) as HTMLMetaElement;
-
+    const metaIds = ['vidaa-cursor-meta', 'vidaa-pointer-meta', 'vidaa-none-meta'];
+    
     if (!isVirtualCursorEnabled) {
-      if (!meta) {
-        meta = document.createElement('meta');
-        meta.id = metaId;
-        meta.name = 'cursor';
-        meta.content = 'disabled';
-        document.head.appendChild(meta);
-      }
+      // Inject multiple meta tags to force browser into "Focus Mode"
+      const metaTags = [
+        { name: 'cursor', content: 'disabled' },
+        { name: 'cursor', content: 'none' },
+        { name: 'pointer', content: 'none' }
+      ];
+
+      metaTags.forEach((tag, idx) => {
+        let meta = document.getElementById(metaIds[idx]) as HTMLMetaElement;
+        if (!meta) {
+          meta = document.createElement('meta');
+          meta.id = metaIds[idx];
+          meta.name = tag.name;
+          meta.content = tag.content;
+          document.head.appendChild(meta);
+        }
+      });
       document.body.classList.add('no-cursor');
     } else {
-      if (meta) {
-        meta.remove();
-      }
+      metaIds.forEach(id => {
+        const meta = document.getElementById(id);
+        if (meta) meta.remove();
+      });
       document.body.classList.remove('no-cursor');
     }
   }, [isVirtualCursorEnabled]);
@@ -128,7 +138,7 @@ export function RemotePointer() {
           const newState = !prev;
           toast({
             title: newState ? "المؤشر الوهمي مفعّل" : "المؤشر الوهمي معطّل",
-            description: newState ? "يمكنك استخدام الفأرة الآن" : "التنقل الذكي مفعل بالكامل",
+            description: newState ? "يمكنك استخدام الفأرة الآن" : "التنقل الذكي مفعل بالكامل (Focus Mode)",
             duration: 3000,
           });
           return newState;
