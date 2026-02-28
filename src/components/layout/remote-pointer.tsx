@@ -1,9 +1,8 @@
-
 "use client";
 
 import { useEffect, useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Circle } from "lucide-react";
+import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Circle, MousePointer2, MousePointer } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
@@ -12,13 +11,34 @@ export function RemotePointer() {
   const { toast } = useToast();
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const [isVisible, setIsVisible] = useState(false);
-  const [isInverted, setIsInverted] = useState(false);
+  const [isVirtualCursorEnabled, setIsVirtualCursorEnabled] = useState(false);
+
+  // Handle Virtual Cursor Meta Tag & CSS
+  useEffect(() => {
+    const metaId = 'vidaa-cursor-meta';
+    let meta = document.getElementById(metaId) as HTMLMetaElement;
+
+    if (!isVirtualCursorEnabled) {
+      if (!meta) {
+        meta = document.createElement('meta');
+        meta.id = metaId;
+        meta.name = 'cursor';
+        meta.content = 'disabled';
+        document.head.appendChild(meta);
+      }
+      document.body.classList.add('no-cursor');
+    } else {
+      if (meta) {
+        meta.remove();
+      }
+      document.body.classList.remove('no-cursor');
+    }
+  }, [isVirtualCursorEnabled]);
 
   const updatePointer = useCallback((el: HTMLElement) => {
     el.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, []);
 
-  // وظيفة لضمان وجود تركيز دائماً على عنصر Focusable
   const ensureFocus = useCallback(() => {
     const active = document.activeElement;
     const isFocusable = active && active.classList.contains("focusable");
@@ -26,7 +46,7 @@ export function RemotePointer() {
     if (!isFocusable || active === document.body) {
       const allFocusables = Array.from(document.querySelectorAll(".focusable")) as HTMLElement[];
       if (allFocusables.length > 0) {
-        // نفضل التركيز على أيقونة الميديا كأولوية في حالة الفقد
+        // نفضل التركيز على أيقونة الميديا كبداية ذكية
         const mediaIcon = document.querySelector('[data-nav-id="dock-Media"]') as HTMLElement;
         if (mediaIcon) {
           mediaIcon.focus();
@@ -75,7 +95,6 @@ export function RemotePointer() {
       for (const el of focusables) {
         if (el === current) continue;
         const rect = el.getBoundingClientRect();
-        
         if (rect.width === 0 || rect.height === 0) continue;
 
         const dist = getDistance(currentRect, rect, direction);
@@ -90,28 +109,28 @@ export function RemotePointer() {
       next.focus();
       updatePointer(next);
     } else {
-      // إذا لم يجد هدفاً في الاتجاه، نضمن بقاء التركيز على العنصر الحالي
       ensureFocus();
     }
   }, [updatePointer, ensureFocus]);
 
   useEffect(() => {
-    // تشغيل ضمان التركيز عند التحميل وعند أي نقرة في الفراغ
     ensureFocus();
     window.addEventListener("mousedown", () => setTimeout(ensureFocus, 50));
     
     let timeout: NodeJS.Timeout;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "0") {
+      // التبديل بين وضع الريموت والماوس عبر رقم "1" (Key Code 49)
+      if (e.key === "1") {
         e.preventDefault();
-        setIsInverted(prev => {
-          const nextVal = !prev;
+        setIsVirtualCursorEnabled(prev => {
+          const newState = !prev;
           toast({
-            title: nextVal ? "تم عكس الريموت" : "تم إعادة الريموت",
-            description: nextVal ? "8 أعلى | 6 يسار | 4 يمين | 2 أسفل" : "2 أعلى | 4 يسار | 6 يمين | 8 أسفل",
+            title: newState ? "المؤشر الوهمي مفعّل" : "المؤشر الوهمي معطّل",
+            description: newState ? "يمكنك استخدام الفأرة الآن" : "الريموت له الأولوية القصوى",
+            duration: 3000,
           });
-          return nextVal;
+          return newState;
         });
         return;
       }
@@ -121,26 +140,19 @@ export function RemotePointer() {
         "ArrowUp": "ArrowUp", "ArrowDown": "ArrowDown", "ArrowLeft": "ArrowLeft", "ArrowRight": "ArrowRight"
       };
 
-      const invertedMap: Record<string, string> = {
-        "8": "ArrowUp", "6": "ArrowLeft", "4": "ArrowRight", "2": "ArrowDown",
-        "ArrowUp": "ArrowUp", "ArrowDown": "ArrowDown", "ArrowLeft": "ArrowLeft", "ArrowRight": "ArrowRight"
-      };
-
-      const keyMap = isInverted ? invertedMap : standardMap;
-
       const colorActionMap: Record<string, string> = {
         "7": "/", "9": "/media", "1": "/football", "3": "/settings",
         "F1": "/", "F2": "/media", "F3": "/football", "F4": "/settings"
       };
 
-      if (keyMap[e.key] || e.key === "5" || e.key === "Enter") {
+      if (standardMap[e.key] || e.key === "5" || e.key === "Enter") {
         e.preventDefault();
         
         let visualKey = e.key;
-        if (e.key === "ArrowUp") visualKey = isInverted ? "8" : "2";
-        if (e.key === "ArrowDown") visualKey = isInverted ? "2" : "8";
-        if (e.key === "ArrowLeft") visualKey = isInverted ? "6" : "4";
-        if (e.key === "ArrowRight") visualKey = isInverted ? "4" : "6";
+        if (e.key === "ArrowUp") visualKey = "2";
+        if (e.key === "ArrowDown") visualKey = "8";
+        if (e.key === "ArrowLeft") visualKey = "4";
+        if (e.key === "ArrowRight") visualKey = "6";
         if (e.key === "Enter") visualKey = "5";
         
         setActiveKey(visualKey);
@@ -151,8 +163,8 @@ export function RemotePointer() {
           setIsVisible(false);
         }, 1000);
 
-        if (keyMap[e.key]) {
-          navigate(keyMap[e.key]);
+        if (standardMap[e.key]) {
+          navigate(standardMap[e.key]);
         } else if (e.key === "5" || e.key === "Enter") {
           const current = document.activeElement as HTMLElement;
           if (current && current.classList.contains("focusable")) {
@@ -161,7 +173,7 @@ export function RemotePointer() {
             ensureFocus();
           }
         }
-      } else if (colorActionMap[e.key]) {
+      } else if (colorActionMap[e.key] && e.key !== "1") {
         e.preventDefault();
         router.push(colorActionMap[e.key]);
       }
@@ -173,49 +185,62 @@ export function RemotePointer() {
       window.removeEventListener("mousedown", ensureFocus);
       if (timeout) clearTimeout(timeout);
     };
-  }, [navigate, router, isInverted, toast, ensureFocus]);
+  }, [navigate, router, toast, ensureFocus]);
 
   return (
-    <div className={cn(
-      "fixed bottom-24 right-12 z-[10000] pointer-events-none flex flex-col items-center gap-3 transition-all duration-500 scale-110",
-      isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"
-    )}>
+    <>
       <div className={cn(
-        "w-14 h-14 rounded-2xl flex items-center justify-center border-2 transition-all duration-200",
-        activeKey === (isInverted ? "8" : "2") ? "bg-primary border-primary shadow-[0_0_40px_hsl(var(--primary))]" : "bg-black/60 border-white/10 backdrop-blur-xl"
+        "fixed bottom-24 right-12 z-[10000] pointer-events-none flex flex-col items-center gap-3 transition-all duration-500 scale-110",
+        isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"
       )}>
-        <ChevronUp className="w-8 h-8 text-white" />
-      </div>
-      
-      <div className="flex gap-3">
         <div className={cn(
           "w-14 h-14 rounded-2xl flex items-center justify-center border-2 transition-all duration-200",
-          activeKey === (isInverted ? "6" : "4") ? "bg-primary border-primary shadow-[0_0_40px_hsl(var(--primary))]" : "bg-black/60 border-white/10 backdrop-blur-xl"
+          activeKey === "2" ? "bg-primary border-primary shadow-[0_0_40px_hsl(var(--primary))]" : "bg-black/60 border-white/10 backdrop-blur-xl"
         )}>
-          <ChevronLeft className="w-8 h-8 text-white" />
+          <ChevronUp className="w-8 h-8 text-white" />
+        </div>
+        
+        <div className="flex gap-3">
+          <div className={cn(
+            "w-14 h-14 rounded-2xl flex items-center justify-center border-2 transition-all duration-200",
+            activeKey === "4" ? "bg-primary border-primary shadow-[0_0_40px_hsl(var(--primary))]" : "bg-black/60 border-white/10 backdrop-blur-xl"
+          )}>
+            <ChevronLeft className="w-8 h-8 text-white" />
+          </div>
+          
+          <div className={cn(
+            "w-14 h-14 rounded-2xl flex items-center justify-center border-2 transition-all duration-200",
+            activeKey === '5' ? "bg-accent border-accent shadow-[0_0_40px_hsl(var(--accent))]" : "bg-black/60 border-white/10 backdrop-blur-xl"
+          )}>
+            <Circle className="w-8 h-8 text-white" />
+          </div>
+          
+          <div className={cn(
+            "w-14 h-14 rounded-2xl flex items-center justify-center border-2 transition-all duration-200",
+            activeKey === "6" ? "bg-primary border-primary shadow-[0_0_40px_hsl(var(--primary))]" : "bg-black/60 border-white/10 backdrop-blur-xl"
+          )}>
+            <ChevronRight className="w-8 h-8 text-white" />
+          </div>
         </div>
         
         <div className={cn(
           "w-14 h-14 rounded-2xl flex items-center justify-center border-2 transition-all duration-200",
-          activeKey === '5' ? "bg-accent border-accent shadow-[0_0_40px_hsl(var(--accent))]" : "bg-black/60 border-white/10 backdrop-blur-xl"
+          activeKey === "8" ? "bg-primary border-primary shadow-[0_0_40px_hsl(var(--primary))]" : "bg-black/60 border-white/10 backdrop-blur-xl"
         )}>
-          <Circle className="w-8 h-8 text-white" />
-        </div>
-        
-        <div className={cn(
-          "w-14 h-14 rounded-2xl flex items-center justify-center border-2 transition-all duration-200",
-          activeKey === (isInverted ? "4" : "6") ? "bg-primary border-primary shadow-[0_0_40px_hsl(var(--primary))]" : "bg-black/60 border-white/10 backdrop-blur-xl"
-        )}>
-          <ChevronRight className="w-8 h-8 text-white" />
+          <ChevronDown className="w-8 h-8 text-white" />
         </div>
       </div>
-      
+
+      {/* Virtual Cursor Status Indicator */}
       <div className={cn(
-        "w-14 h-14 rounded-2xl flex items-center justify-center border-2 transition-all duration-200",
-        activeKey === (isInverted ? "2" : "8") ? "bg-primary border-primary shadow-[0_0_40px_hsl(var(--primary))]" : "bg-black/60 border-white/10 backdrop-blur-xl"
+        "fixed top-8 left-8 z-[10001] px-4 py-2 rounded-full backdrop-blur-3xl border flex items-center gap-3 transition-all duration-500",
+        isVirtualCursorEnabled ? "bg-accent/20 border-accent/40" : "bg-primary/20 border-primary/40 opacity-30"
       )}>
-        <ChevronDown className="w-8 h-8 text-white" />
+        {isVirtualCursorEnabled ? <MousePointer2 className="w-4 h-4 text-accent" /> : <MousePointer className="w-4 h-4 text-primary" />}
+        <span className="text-[10px] font-black uppercase tracking-widest text-white">
+          {isVirtualCursorEnabled ? "Mouse Mode" : "Remote Mode"}
+        </span>
       </div>
-    </div>
+    </>
   );
 }

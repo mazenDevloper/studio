@@ -1,12 +1,12 @@
-
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Bookmark, Play, Trash2, Clock } from "lucide-react";
+import { Bookmark, Play, Trash2, Clock, Activity } from "lucide-react";
 import { useMediaStore } from "@/lib/store";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { cn } from "@/lib/utils";
 
 export function YouTubeSavedWidget() {
   const { savedVideos, removeVideo, setActiveVideo } = useMediaStore();
@@ -20,78 +20,88 @@ export function YouTubeSavedWidget() {
   };
 
   return (
-    <Card className="h-full border-none bg-zinc-900/50 rounded-[2.5rem] ios-shadow overflow-hidden flex flex-col">
+    <Card className="border-none bg-zinc-900/50 rounded-[2.5rem] shadow-2xl overflow-hidden">
       <CardHeader className="p-8 flex flex-row items-center justify-between space-y-0 pb-4">
         <CardTitle className="text-xl font-bold font-headline text-white flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-accent flex items-center justify-center ios-shadow">
+          <div className="w-10 h-10 rounded-2xl bg-accent flex items-center justify-center shadow-lg">
             <Bookmark className="h-6 w-6 text-black fill-current" />
           </div>
           Saved Transmissions
+          <span className="text-xs text-muted-foreground uppercase tracking-widest ml-2 font-bold opacity-50">Bookmarked Feed</span>
         </CardTitle>
         <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 bg-white/5 rounded-full border border-white/5">
           {savedVideos.length} Saved
         </span>
       </CardHeader>
-      <CardContent className="p-8 pt-0 flex-1 overflow-y-auto max-h-[400px]">
+      <CardContent className="p-8 pt-0">
         {savedVideos.length === 0 ? (
           <div className="py-12 text-center bg-white/5 rounded-[2rem] border border-dashed border-white/5">
             <p className="text-muted-foreground italic text-lg font-medium">No bookmarks found. Save videos in Media to view them here.</p>
           </div>
         ) : (
-          <div className="space-y-4">
-            {savedVideos.map((video, idx) => (
-              <div 
-                key={video.id} 
-                className="flex items-center gap-4 p-4 rounded-[1.5rem] bg-white/5 hover:bg-white/10 transition-all border border-transparent hover:border-white/10 group cursor-pointer focusable"
-                onClick={() => setActiveVideo(video)}
-                data-nav-id={`saved-video-${idx}`}
-                tabIndex={0}
-              >
-                <div className="relative w-24 h-16 rounded-xl overflow-hidden flex-shrink-0">
-                  <Image 
-                    src={video.thumbnail} 
-                    alt={video.title} 
-                    fill 
-                    className="object-cover opacity-80 group-hover:opacity-100 transition-opacity"
-                  />
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <Play className="w-6 h-6 text-white fill-white opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </div>
-                  {video.progress && video.progress > 0 && (
-                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/40">
-                      <div className="h-full bg-accent shadow-[0_0_8px_hsl(var(--accent))]" style={{ width: '30%' }} />
+          <ScrollArea className="w-full whitespace-nowrap">
+            <div className="flex w-max gap-6 pb-4">
+              {savedVideos.map((video, idx) => (
+                <div 
+                  key={video.id} 
+                  className="w-80 group relative overflow-hidden bg-zinc-900/80 border-none rounded-[2rem] transition-all hover:scale-[1.02] cursor-pointer shadow-xl focusable"
+                  onClick={() => setActiveVideo(video)}
+                  tabIndex={0}
+                  data-nav-id={`saved-video-${idx}`}
+                >
+                  <div className="aspect-video relative overflow-hidden">
+                    <Image src={video.thumbnail} alt={video.title} fill className="object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                    
+                    {/* Delete Button - Functional and accessible */}
+                    <Button
+                      variant="destructive"
+                      size="icon"
+                      className="absolute top-4 right-4 w-10 h-10 rounded-full opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-all focusable z-30"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeVideo(video.id);
+                      }}
+                      tabIndex={-1} // Handled by group focus or separate navigation if needed
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </Button>
+
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-3xl flex items-center justify-center border border-white/20 opacity-0 group-hover:opacity-100 transition-all scale-75 group-hover:scale-100 shadow-2xl">
+                        <Play className="w-8 h-8 text-white fill-white ml-1" />
+                      </div>
                     </div>
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h4 className="text-sm font-bold truncate text-white font-headline">{video.title}</h4>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-[10px] text-accent font-black uppercase tracking-widest">
-                      {video.progress && video.progress > 0 ? `Resume at ${formatTime(video.progress)}` : 'Ready to Stream'}
-                    </span>
-                    {video.duration && (
-                      <span className="text-[9px] text-white/20 font-bold uppercase tracking-widest flex items-center gap-1">
-                        <Clock className="w-3 h-3" /> {video.duration}
-                      </span>
+
+                    {/* Progress Bar */}
+                    {video.progress && video.progress > 0 && (
+                      <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-black/40">
+                        <div 
+                          className="h-full bg-accent shadow-[0_0_12px_hsl(var(--accent))]" 
+                          style={{ width: `${Math.min(100, (video.progress / 3600) * 100)}%` }} // Simplified percentage logic
+                        />
+                      </div>
                     )}
                   </div>
+                  <div className="p-5 space-y-2 text-right">
+                    <h3 className="font-bold text-base truncate text-white font-headline">{video.title}</h3>
+                    <div className="flex items-center justify-end gap-3 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                       {video.progress && video.progress > 0 ? (
+                         <span className="text-accent flex items-center gap-1">
+                           <Activity className="w-3 h-3" /> Resume at {formatTime(video.progress)}
+                         </span>
+                       ) : (
+                         <span>Ready to Stream</span>
+                       )}
+                       <span className="opacity-30">•</span>
+                       <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {video.duration || "---"}</span>
+                    </div>
+                  </div>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  tabIndex={-1}
-                  className="rounded-full w-10 h-10 text-muted-foreground hover:text-red-500 hover:bg-red-500/10"
-                  data-nav-id={`remove-saved-${idx}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    removeVideo(video.id);
-                  }}
-                >
-                  <Trash2 className="w-5 h-5" />
-                </Button>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+            <ScrollBar orientation="horizontal" className="bg-white/5 h-2" />
+          </ScrollArea>
         )}
       </CardContent>
     </Card>

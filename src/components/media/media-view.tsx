@@ -60,7 +60,6 @@ export function MediaView() {
   const [isSearchingChannels, setIsSearchingChannels] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  // Smart Focus on mount
   useEffect(() => {
     if (searchInputRef.current) {
       searchInputRef.current.focus();
@@ -98,7 +97,6 @@ export function MediaView() {
       setShowReciterGrid(false);
       setShowSurahGrid(false);
       
-      // Smart Focus: focus first search result
       setTimeout(() => {
         const firstCard = document.querySelector('[data-nav-id="search-result-0"]') as HTMLElement;
         if (firstCard) firstCard.focus();
@@ -179,7 +177,6 @@ export function MediaView() {
       const videos = await fetchChannelVideos(channel.channelid);
       setChannelVideos(videos);
       
-      // Smart Focus: focus first channel video card
       setTimeout(() => {
         const firstCard = document.querySelector('[data-nav-id="channel-video-0"]') as HTMLElement;
         if (firstCard) firstCard.focus();
@@ -242,7 +239,6 @@ export function MediaView() {
         </div>
 
         <div className="flex flex-col md:flex-row gap-8 items-stretch">
-          {/* Reciter Grid - 50% Right */}
           <div className="w-full md:w-1/2 flex flex-col gap-3 order-1">
             <div className="flex items-center gap-2 px-2">
               <Users className="w-4 h-4 text-primary" />
@@ -263,34 +259,34 @@ export function MediaView() {
                 <ChevronDown className="w-6 h-6 opacity-40" />
               </Button>
             ) : (
-              <div className="iphone-fluid-glass border-2 border-primary/40 rounded-[2.5rem] p-4 relative animate-in zoom-in-95 duration-500 shadow-[0_0_50px_rgba(var(--primary),0.1)]">
-                <div className="flex items-center justify-between mb-4 px-2">
+              <div className="iphone-fluid-glass border-2 border-primary/40 rounded-[2.5rem] p-6 relative animate-in zoom-in-95 duration-500 shadow-[0_0_50px_rgba(var(--primary),0.1)]">
+                <div className="flex items-center justify-between mb-6 px-2">
                   <span className="text-xs font-black text-primary uppercase tracking-[0.2em]">قائمة القراء المتاحة</span>
-                  <Button variant="ghost" size="icon" onClick={() => setShowReciterGrid(false)} className="rounded-full w-8 h-8 text-white/40 hover:text-white hover:bg-white/10 focusable">
-                    <X className="w-4 h-4" />
+                  <Button variant="ghost" size="icon" onClick={() => setShowReciterGrid(false)} className="rounded-full w-10 h-10 text-white/40 hover:text-white hover:bg-white/10 focusable">
+                    <X className="w-5 h-5" />
                   </Button>
                 </div>
                 {isLoadingReciters ? (
-                  <div className="h-40 flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
+                  <div className="h-60 flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-primary" /></div>
                 ) : (
-                  <ScrollArea className="h-60 pr-2">
-                    <div className="grid grid-cols-2 gap-3 pb-4">
+                  <ScrollArea className="h-80 pr-2">
+                    <div className="grid grid-cols-2 gap-4 pb-6">
                       {reciters.map((reciter, idx) => (
                         <Button
                           key={idx}
                           variant="ghost"
+                          data-nav-id={`reciter-${idx}`}
                           onClick={() => {
                             setSelectedReciter(reciter);
                             setShowSurahGrid(true);
                             setShowReciterGrid(false);
-                            // Auto focus first surah
                             setTimeout(() => {
                               const firstSurah = document.querySelector('[data-nav-id="surah-0"]') as HTMLElement;
                               if (firstSurah) firstSurah.focus();
                             }, 600);
                           }}
                           className={cn(
-                            "h-16 rounded-2xl border-2 transition-all font-black text-lg text-right px-4 justify-start focusable",
+                            "h-18 rounded-2xl border-2 transition-all font-black text-lg text-right px-6 justify-start focusable",
                             selectedReciter?.name === reciter.name ? "bg-primary text-white border-primary shadow-glow" : "bg-white/5 border-transparent text-white/70 hover:bg-white/10"
                           )}
                         >
@@ -304,7 +300,6 @@ export function MediaView() {
             )}
           </div>
 
-          {/* Search Area - 50% Left */}
           <div className="w-full md:w-1/2 flex flex-col justify-end gap-6 order-2">
             <div className="space-y-3">
               <div className="flex items-center gap-2 px-2">

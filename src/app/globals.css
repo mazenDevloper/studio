@@ -44,7 +44,11 @@
   }
 }
 
-/* Liquid Fluid Glass Engine - Optimized for High-End Clarity */
+/* Virtual Cursor Disabler */
+.no-cursor, .no-cursor * {
+  cursor: none !important;
+}
+
 .liquid-glass {
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.01));
   backdrop-filter: blur(80px) saturate(250%) contrast(125%);
