@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useCallback, useState } from "react";
@@ -47,13 +46,12 @@ export function RemotePointer() {
     if (!isFocusable || active === document.body) {
       const allFocusables = Array.from(document.querySelectorAll(".focusable")) as HTMLElement[];
       if (allFocusables.length > 0) {
-        // Prefer first favorite channel in Media view
+        // Smart focus priority
         const firstChannel = document.querySelector('[data-nav-id="fav-channel-0"]') as HTMLElement;
-        if (firstChannel) {
-          firstChannel.focus();
-        } else {
-          allFocusables[0].focus();
-        }
+        const firstVideo = document.querySelector('.transmission-card-item') as HTMLElement;
+        if (firstChannel) firstChannel.focus();
+        else if (firstVideo) firstVideo.focus();
+        else allFocusables[0].focus();
       }
     }
   }, []);

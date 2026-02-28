@@ -1,5 +1,4 @@
-
-'use client';
+"use client";
 
 import { useMediaStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -18,7 +17,7 @@ export function MainLayoutShell({ children }: { children: React.ReactNode }) {
       dockSide === 'left' ? "md:flex-row" : "md:flex-row-reverse"
     )}>
       {/* Spacer div that creates room for the fixed CarDock on MD+ screens */}
-      <div className="h-0 w-0 md:w-24 shrink-0 md:h-full" /> 
+      <div className="h-0 w-0 md:w-24 shrink-0 md:h-full transition-all duration-700" /> 
       
       {/* Main content area */}
       <div className="flex-1 overflow-auto relative h-full safe-p-bottom">
