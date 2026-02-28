@@ -47,11 +47,14 @@ export function RemotePointer() {
     if (!isFocusable || active === document.body) {
       const allFocusables = Array.from(document.querySelectorAll(".focusable")) as HTMLElement[];
       if (allFocusables.length > 0) {
-        // Smart focus priority: Media first, then videos
+        // Priority focus logic
         const firstChannel = document.querySelector('[data-nav-id="fav-channel-0"]') as HTMLElement;
         const firstVideo = document.querySelector('.transmission-card-item') as HTMLElement;
+        const dockHome = document.querySelector('[data-nav-id="dock-Home"]') as HTMLElement;
+        
         if (firstChannel) firstChannel.focus();
         else if (firstVideo) firstVideo.focus();
+        else if (dockHome) dockHome.focus();
         else allFocusables[0].focus();
       }
     }
@@ -64,13 +67,13 @@ export function RemotePointer() {
     const dx = p2.x - p1.x;
     const dy = p2.y - p1.y;
 
-    // Reject elements in the opposite direction
+    // Reject elements in the opposite direction with a small buffer
     if (direction === "ArrowRight" && dx <= 2) return Infinity;
     if (direction === "ArrowLeft" && dx >= -2) return Infinity;
     if (direction === "ArrowDown" && dy <= 2) return Infinity;
     if (direction === "ArrowUp" && dy >= -2) return Infinity;
 
-    // Calculate Manhattan-style weighted distance to prefer orthogonal elements
+    // Calculate Manhattan-style weighted distance
     const orthogonalWeight = 3.5; 
     if (direction === "ArrowRight" || direction === "ArrowLeft") {
       return Math.sqrt(Math.pow(dx, 2) + Math.pow(dy * orthogonalWeight, 2));
@@ -97,7 +100,6 @@ export function RemotePointer() {
       for (const el of focusables) {
         if (el === current) continue;
         const rect = el.getBoundingClientRect();
-        // Skip invisible elements
         if (rect.width === 0 || rect.height === 0) continue;
 
         const dist = getDistance(currentRect, rect, direction);
@@ -120,7 +122,6 @@ export function RemotePointer() {
     ensureFocus();
     
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Toggle Virtual Cursor using '1' key (KeyCode 49)
       if (e.key === "1") {
         e.preventDefault();
         setIsVirtualCursorEnabled(prev => {
@@ -167,7 +168,6 @@ export function RemotePointer() {
 
   return (
     <>
-      {/* Directional Visual Feedback */}
       <div className={cn(
         "fixed bottom-24 right-12 z-[10000] pointer-events-none flex flex-col items-center gap-3 transition-all duration-500 scale-110",
         isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"
@@ -210,7 +210,6 @@ export function RemotePointer() {
         </div>
       </div>
 
-      {/* Control Mode Indicator */}
       <div className={cn(
         "fixed top-8 left-8 z-[10001] px-4 py-2 rounded-full backdrop-blur-3xl border flex items-center gap-3 transition-all duration-500",
         isVirtualCursorEnabled ? "bg-accent/20 border-accent/40" : "bg-primary/20 border-primary/40 opacity-30"
