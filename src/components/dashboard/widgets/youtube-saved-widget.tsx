@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,17 +27,17 @@ export function YouTubeSavedWidget() {
           <div className="w-10 h-10 rounded-2xl bg-accent flex items-center justify-center shadow-lg">
             <Bookmark className="h-6 w-6 text-black fill-current" />
           </div>
-          Saved Transmissions
-          <span className="text-xs text-muted-foreground uppercase tracking-widest ml-2 font-bold opacity-50">Bookmarked Feed</span>
+          البثوث المحفوظة
+          <span className="text-xs text-muted-foreground uppercase tracking-widest ml-2 font-bold opacity-50">Saved Feed</span>
         </CardTitle>
         <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 bg-white/5 rounded-full border border-white/5">
-          {savedVideos.length} Saved
+          {savedVideos.length} فيديو
         </span>
       </CardHeader>
       <CardContent className="p-8 pt-0">
         {savedVideos.length === 0 ? (
           <div className="py-12 text-center bg-white/5 rounded-[2rem] border border-dashed border-white/5">
-            <p className="text-muted-foreground italic text-lg font-medium">No bookmarks found. Save videos in Media to view them here.</p>
+            <p className="text-muted-foreground italic text-lg font-medium">لا توجد فيديوهات محفوظة حالياً.</p>
           </div>
         ) : (
           <ScrollArea className="w-full whitespace-nowrap">
@@ -53,7 +54,6 @@ export function YouTubeSavedWidget() {
                     <Image src={video.thumbnail} alt={video.title} fill className="object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
                     
-                    {/* Delete Button - Functional and accessible */}
                     <Button
                       variant="destructive"
                       size="icon"
@@ -62,7 +62,6 @@ export function YouTubeSavedWidget() {
                         e.stopPropagation();
                         removeVideo(video.id);
                       }}
-                      tabIndex={-1} // Handled by group focus or separate navigation if needed
                     >
                       <Trash2 className="w-5 h-5" />
                     </Button>
@@ -73,12 +72,12 @@ export function YouTubeSavedWidget() {
                       </div>
                     </div>
 
-                    {/* Progress Bar */}
+                    {/* Progress Bar - Essential Feature */}
                     {video.progress && video.progress > 0 && (
                       <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-black/40">
                         <div 
                           className="h-full bg-accent shadow-[0_0_12px_hsl(var(--accent))]" 
-                          style={{ width: `${Math.min(100, (video.progress / 3600) * 100)}%` }} // Simplified percentage logic
+                          style={{ width: `${Math.min(100, (video.progress / 3600) * 100)}%` }}
                         />
                       </div>
                     )}
@@ -88,10 +87,10 @@ export function YouTubeSavedWidget() {
                     <div className="flex items-center justify-end gap-3 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
                        {video.progress && video.progress > 0 ? (
                          <span className="text-accent flex items-center gap-1">
-                           <Activity className="w-3 h-3" /> Resume at {formatTime(video.progress)}
+                           <Activity className="w-3 h-3" /> استكمال عند {formatTime(video.progress)}
                          </span>
                        ) : (
-                         <span>Ready to Stream</span>
+                         <span>جاهز للمشاهدة</span>
                        )}
                        <span className="opacity-30">•</span>
                        <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {video.duration || "---"}</span>

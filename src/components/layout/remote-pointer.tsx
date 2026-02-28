@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useCallback, useState } from "react";
@@ -13,7 +14,7 @@ export function RemotePointer() {
   const [isVisible, setIsVisible] = useState(false);
   const [isVirtualCursorEnabled, setIsVirtualCursorEnabled] = useState(false);
 
-  // Handle Virtual Cursor Meta Tag & CSS
+  // Handle Virtual Cursor Meta Tag & CSS for Hisense VIDAA
   useEffect(() => {
     const metaId = 'vidaa-cursor-meta';
     let meta = document.getElementById(metaId) as HTMLMetaElement;
@@ -46,7 +47,6 @@ export function RemotePointer() {
     if (!isFocusable || active === document.body) {
       const allFocusables = Array.from(document.querySelectorAll(".focusable")) as HTMLElement[];
       if (allFocusables.length > 0) {
-        // نفضل التركيز على أيقونة الميديا كبداية ذكية
         const mediaIcon = document.querySelector('[data-nav-id="dock-Media"]') as HTMLElement;
         if (mediaIcon) {
           mediaIcon.focus();
@@ -115,19 +115,16 @@ export function RemotePointer() {
 
   useEffect(() => {
     ensureFocus();
-    window.addEventListener("mousedown", () => setTimeout(ensureFocus, 50));
     
-    let timeout: NodeJS.Timeout;
-
     const handleKeyDown = (e: KeyboardEvent) => {
-      // التبديل بين وضع الريموت والماوس عبر رقم "1" (Key Code 49)
+      // Toggle Virtual Cursor using '1' key (KeyCode 49)
       if (e.key === "1") {
         e.preventDefault();
         setIsVirtualCursorEnabled(prev => {
           const newState = !prev;
           toast({
             title: newState ? "المؤشر الوهمي مفعّل" : "المؤشر الوهمي معطّل",
-            description: newState ? "يمكنك استخدام الفأرة الآن" : "الريموت له الأولوية القصوى",
+            description: newState ? "يمكنك استخدام الفأرة الآن" : "التنقل الذكي مفعل بالكامل",
             duration: 3000,
           });
           return newState;
@@ -140,51 +137,31 @@ export function RemotePointer() {
         "ArrowUp": "ArrowUp", "ArrowDown": "ArrowDown", "ArrowLeft": "ArrowLeft", "ArrowRight": "ArrowRight"
       };
 
-      const colorActionMap: Record<string, string> = {
-        "7": "/", "9": "/media", "1": "/football", "3": "/settings",
-        "F1": "/", "F2": "/media", "F3": "/football", "F4": "/settings"
-      };
-
-      if (standardMap[e.key] || e.key === "5" || e.key === "Enter") {
+      if (standardMap[e.key]) {
         e.preventDefault();
+        // Always navigate with Smart Pointer if we are using directions
+        navigate(standardMap[e.key]);
         
+        // UI Feedback
         let visualKey = e.key;
         if (e.key === "ArrowUp") visualKey = "2";
         if (e.key === "ArrowDown") visualKey = "8";
         if (e.key === "ArrowLeft") visualKey = "4";
         if (e.key === "ArrowRight") visualKey = "6";
-        if (e.key === "Enter") visualKey = "5";
-        
         setActiveKey(visualKey);
         setIsVisible(true);
-        if (timeout) clearTimeout(timeout);
-        timeout = setTimeout(() => {
-          setActiveKey(null);
-          setIsVisible(false);
-        }, 1000);
-
-        if (standardMap[e.key]) {
-          navigate(standardMap[e.key]);
-        } else if (e.key === "5" || e.key === "Enter") {
-          const current = document.activeElement as HTMLElement;
-          if (current && current.classList.contains("focusable")) {
-            current.click();
-          } else {
-            ensureFocus();
-          }
+        const timeout = setTimeout(() => setIsVisible(false), 1000);
+        return () => clearTimeout(timeout);
+      } else if (e.key === "5" || e.key === "Enter") {
+        const current = document.activeElement as HTMLElement;
+        if (current && current.classList.contains("focusable")) {
+          current.click();
         }
-      } else if (colorActionMap[e.key] && e.key !== "1") {
-        e.preventDefault();
-        router.push(colorActionMap[e.key]);
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("mousedown", ensureFocus);
-      if (timeout) clearTimeout(timeout);
-    };
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [navigate, router, toast, ensureFocus]);
 
   return (
@@ -231,14 +208,13 @@ export function RemotePointer() {
         </div>
       </div>
 
-      {/* Virtual Cursor Status Indicator */}
       <div className={cn(
         "fixed top-8 left-8 z-[10001] px-4 py-2 rounded-full backdrop-blur-3xl border flex items-center gap-3 transition-all duration-500",
         isVirtualCursorEnabled ? "bg-accent/20 border-accent/40" : "bg-primary/20 border-primary/40 opacity-30"
       )}>
         {isVirtualCursorEnabled ? <MousePointer2 className="w-4 h-4 text-accent" /> : <MousePointer className="w-4 h-4 text-primary" />}
         <span className="text-[10px] font-black uppercase tracking-widest text-white">
-          {isVirtualCursorEnabled ? "Mouse Mode" : "Remote Mode"}
+          {isVirtualCursorEnabled ? "Virtual Mouse" : "Smart Remote"}
         </span>
       </div>
     </>
