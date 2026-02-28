@@ -1,15 +1,18 @@
+
 "use client";
 
-import { LayoutDashboard, Radio, Settings, GripVertical, ArrowLeft, Trophy } from "lucide-react";
+import { LayoutDashboard, Radio, Settings, GripVertical, ArrowLeft, Trophy, ArrowRightLeft } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useEffect } from "react";
+import { useMediaStore } from "@/lib/store";
 
 export function CarDock() {
   const pathname = usePathname();
   const router = useRouter();
+  const { dockSide, toggleDockSide } = useMediaStore();
 
   const apps = [
     { name: "Home", href: "/", icon: LayoutDashboard, color: "bg-blue-600" },
@@ -30,7 +33,10 @@ export function CarDock() {
   return (
     <div className={cn(
       "fixed z-[100] transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]",
-      "bottom-0 left-0 right-0 h-20 bg-black/80 backdrop-blur-3xl border-t border-white/5 flex flex-row items-center justify-around px-4 md:fixed md:top-0 md:left-0 md:h-screen md:w-24 md:flex-col md:border-r md:py-8 md:gap-8 md:shadow-[20px_0_50px_rgba(0,0,0,0.8)]"
+      "bottom-0 left-0 right-0 h-20 bg-black/80 backdrop-blur-3xl border-t border-white/5 flex flex-row items-center justify-around px-4 md:fixed md:top-0 md:h-screen md:w-24 md:flex-col md:py-8 md:gap-8",
+      dockSide === 'left' 
+        ? "md:left-0 md:border-r md:shadow-[20px_0_50px_rgba(0,0,0,0.8)]" 
+        : "md:right-0 md:border-l md:shadow-[-20px_0_50px_rgba(0,0,0,0.8)]"
     )}>
       <div className="hidden md:block mb-2">
         <GripVertical className="text-white/10 w-6 h-6" />
@@ -52,13 +58,27 @@ export function CarDock() {
           >
             <app.icon className="w-6 h-6 md:w-7 md:h-7 text-white" />
             {pathname === app.href && (
-              <div className="absolute -bottom-2 md:-left-6 md:bottom-auto w-6 h-1 md:w-1.5 md:h-6 bg-white rounded-full shadow-[0_0_10px_white]" />
+              <div className={cn(
+                "absolute rounded-full shadow-[0_0_10px_white] bg-white",
+                "bottom-2 w-6 h-1 md:w-1.5 md:h-6",
+                dockSide === 'left' ? "md:-left-6 md:bottom-auto" : "md:-right-6 md:bottom-auto"
+              )} />
             )}
           </Link>
         ))}
       </div>
 
       <div className="hidden md:flex mt-auto flex-col items-center gap-6">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={toggleDockSide}
+          className="w-12 h-12 rounded-full bg-white/5 border border-white/10 text-white/40 focusable"
+          title="تبديل جهة شريط المهام"
+        >
+          <ArrowRightLeft className="w-6 h-6" />
+        </Button>
+        
         <Button
           variant="ghost"
           size="icon"

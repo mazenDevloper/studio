@@ -53,6 +53,7 @@ interface MediaState {
   isPlaying: boolean;
   isMinimized: boolean;
   isFullScreen: boolean;
+  dockSide: 'left' | 'right';
   addChannel: (channel: YouTubeChannel) => void;
   removeChannel: (channelid: string) => void;
   incrementChannelClick: (channelid: string) => void;
@@ -72,6 +73,8 @@ interface MediaState {
   setIsPlaying: (playing: boolean) => void;
   setIsMinimized: (minimized: boolean) => void;
   setIsFullScreen: (fullScreen: boolean) => void;
+  setDockSide: (side: 'left' | 'right') => void;
+  toggleDockSide: () => void;
 }
 
 const updateBin = async (binId: string, data: any) => {
@@ -107,6 +110,7 @@ export const useMediaStore = create<MediaState>()(
       isPlaying: false,
       isMinimized: false,
       isFullScreen: false,
+      dockSide: 'left',
 
       addChannel: (channel) => {
         set((state) => {
@@ -265,6 +269,8 @@ export const useMediaStore = create<MediaState>()(
       setIsPlaying: (playing) => set({ isPlaying: playing }),
       setIsMinimized: (minimized) => set({ isMinimized: minimized, isFullScreen: false }),
       setIsFullScreen: (fullScreen) => set({ isFullScreen: fullScreen, isMinimized: false }),
+      setDockSide: (side) => set({ dockSide: side }),
+      toggleDockSide: () => set((state) => ({ dockSide: state.dockSide === 'left' ? 'right' : 'left' })),
     }),
     {
       name: "drivecast-jsonbin-sync",
@@ -280,7 +286,8 @@ export const useMediaStore = create<MediaState>()(
         videoProgress: state.videoProgress,
         activeVideo: state.activeVideo,
         isMinimized: state.isMinimized,
-        isFullScreen: state.isFullScreen
+        isFullScreen: state.isFullScreen,
+        dockSide: state.dockSide
       }),
     }
   )

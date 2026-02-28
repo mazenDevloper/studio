@@ -7,6 +7,7 @@ import { FirebaseClientProvider } from "@/firebase";
 import { LiveMatchIsland } from "@/components/football/live-match-island";
 import { RemotePointer } from "@/components/layout/remote-pointer";
 import { VoiceCommandHub } from "@/components/layout/voice-command-hub";
+import { MainLayoutShell } from "@/components/layout/main-layout-shell";
 
 export const metadata: Metadata = {
   title: 'DriveCast | CarPlay',
@@ -51,12 +52,9 @@ export default function RootLayout({
           {/* نظام الأوامر الصوتية العالمي */}
           <VoiceCommandHub />
           
-          <div className="flex flex-col md:flex-row w-full h-full overflow-hidden">
-            <div className="h-0 w-0 md:w-24 shrink-0 md:h-full" /> 
-            <div className="flex-1 overflow-auto relative h-full safe-p-bottom">
-              {children}
-            </div>
-          </div>
+          <MainLayoutShell>
+            {children}
+          </MainLayoutShell>
           
           <GlobalVideoPlayer />
           
