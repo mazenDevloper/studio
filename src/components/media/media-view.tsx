@@ -60,11 +60,38 @@ export function MediaView() {
   const [isSearchingChannels, setIsSearchingChannels] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
+  // Smart Initial Focus: Target the first channel on startup instead of search
   useEffect(() => {
-    if (searchInputRef.current) {
-      searchInputRef.current.focus();
-    }
+    const timer = setTimeout(() => {
+      const firstChannel = document.querySelector('[data-nav-id="fav-channel-0"]') as HTMLElement;
+      if (firstChannel) {
+        firstChannel.focus();
+      } else {
+        searchInputRef.current?.focus();
+      }
+    }, 600);
+    return () => clearTimeout(timer);
   }, []);
+
+  // Handle focus when reciter grid appears
+  useEffect(() => {
+    if (showReciterGrid) {
+      setTimeout(() => {
+        const firstReciter = document.querySelector('[data-nav-id="reciter-0"]') as HTMLElement;
+        if (firstReciter) firstReciter.focus();
+      }, 100);
+    }
+  }, [showReciterGrid]);
+
+  // Handle focus when surah grid appears
+  useEffect(() => {
+    if (showSurahGrid) {
+      setTimeout(() => {
+        const firstSurah = document.querySelector('[data-nav-id="surah-0"]') as HTMLElement;
+        if (firstSurah) firstSurah.focus();
+      }, 100);
+    }
+  }, [showSurahGrid]);
 
   useEffect(() => {
     async function fetchReciters() {
@@ -216,7 +243,7 @@ export function MediaView() {
                   <span className="text-[10px] font-black uppercase tracking-widest">إضافة بالرابط</span>
                 </Button>
               </DialogTrigger>
-              <DialogContent className="bg-zinc-950 border-white/10 rounded-[2.5rem] p-8 max-w-md iphone-fluid-glass">
+              <DialogContent className="bg-zinc-950 border-white/10 rounded-[2.5rem] p-8 max-w-md">
                 <DialogHeader>
                   <DialogTitle className="text-2xl font-black text-white mb-4 text-right">إضافة فيديو بالرابط</DialogTitle>
                 </DialogHeader>
@@ -259,7 +286,7 @@ export function MediaView() {
                 <ChevronDown className="w-6 h-6 opacity-40" />
               </Button>
             ) : (
-              <div className="iphone-fluid-glass border-2 border-primary/40 rounded-[2.5rem] p-6 relative animate-in zoom-in-95 duration-500 shadow-[0_0_50px_rgba(var(--primary),0.1)]">
+              <div className="bg-zinc-900 border-2 border-primary/40 rounded-[2.5rem] p-6 relative animate-in zoom-in-95 duration-300 shadow-2xl">
                 <div className="flex items-center justify-between mb-6 px-2">
                   <span className="text-xs font-black text-primary uppercase tracking-[0.2em]">قائمة القراء المتاحة</span>
                   <Button variant="ghost" size="icon" onClick={() => setShowReciterGrid(false)} className="rounded-full w-10 h-10 text-white/40 hover:text-white hover:bg-white/10 focusable">
@@ -280,10 +307,6 @@ export function MediaView() {
                             setSelectedReciter(reciter);
                             setShowSurahGrid(true);
                             setShowReciterGrid(false);
-                            setTimeout(() => {
-                              const firstSurah = document.querySelector('[data-nav-id="surah-0"]') as HTMLElement;
-                              if (firstSurah) firstSurah.focus();
-                            }, 600);
                           }}
                           className={cn(
                             "h-18 rounded-2xl border-2 transition-all font-black text-lg text-right px-6 justify-start focusable",
@@ -331,7 +354,7 @@ export function MediaView() {
         </div>
 
         {showSurahGrid && selectedReciter && (
-          <div className="iphone-fluid-glass p-8 rounded-[3rem] border border-primary/20 animate-in fade-in slide-in-from-top-4 duration-700 shadow-2xl relative overflow-hidden">
+          <div className="bg-zinc-950 p-8 rounded-[3rem] border border-primary/20 animate-in fade-in slide-in-from-top-4 duration-500 shadow-2xl relative overflow-hidden">
             <div className="absolute top-8 left-8 z-20">
               <Button variant="ghost" onClick={() => setShowSurahGrid(false)} className="rounded-full w-12 h-12 bg-white/5 border border-white/10 text-white focusable">
                 <X className="w-6 h-6" />
@@ -373,8 +396,8 @@ export function MediaView() {
       </header>
 
       {selectedChannel ? (
-        <div className="space-y-8 animate-in fade-in slide-in-from-left-6 duration-700 pb-24 text-right">
-          <div className="flex items-center gap-8 p-12 rounded-[3.5rem] bg-white/5 border border-white/10 iphone-fluid-glass relative shadow-2xl">
+        <div className="space-y-8 animate-in fade-in slide-in-from-left-6 duration-500 pb-24 text-right">
+          <div className="flex items-center gap-8 p-12 rounded-[3.5rem] bg-white/5 border border-white/10 relative shadow-2xl">
              <div className="relative w-40 h-40 rounded-full overflow-hidden border-4 border-primary shadow-xl shrink-0">
                 <Image src={selectedChannel.image} alt={selectedChannel.name} fill className="object-cover" />
              </div>
@@ -423,7 +446,7 @@ export function MediaView() {
           </div>
         </div>
       ) : (
-        <section className="space-y-10 animate-in fade-in duration-1000 text-right">
+        <section className="space-y-10 animate-in fade-in duration-500 text-right">
           {videoResults.length > 0 && (
             <div className="space-y-8 mb-12">
               <div className="flex items-center justify-between border-b border-white/10 pb-6">
@@ -459,7 +482,7 @@ export function MediaView() {
                   <span className="font-black text-xs uppercase tracking-[0.3em] text-white/40 group-hover:text-primary">إضافة قناة</span>
                 </div>
               </DialogTrigger>
-              <DialogContent className="max-w-4xl bg-zinc-950 border-white/10 rounded-[3.5rem] p-0 overflow-hidden shadow-2xl iphone-fluid-glass">
+              <DialogContent className="max-w-4xl bg-zinc-950 border-white/10 rounded-[3.5rem] p-0 overflow-hidden shadow-2xl">
                 <DialogHeader className="p-10 border-b border-white/10">
                   <DialogTitle className="text-3xl font-black text-white mb-6 text-right">البحث عن القنوات</DialogTitle>
                   <div className="flex gap-4">
@@ -493,9 +516,9 @@ export function MediaView() {
             </Dialog>
 
             {favoriteChannels.map((channel, idx) => (
-              <div key={channel.channelid} data-nav-id={`fav-channel-${idx}`} className="flex flex-col items-center gap-4 group relative animate-in zoom-in-95 duration-700 focusable" tabIndex={0} onClick={() => handleSelectChannel(channel)}>
-                <div className="w-32 h-32 sm:w-40 sm:h-40 rounded-full overflow-hidden border-4 border-white/10 group-hover:border-primary transition-all duration-700 cursor-pointer shadow-2xl relative">
-                  <Image src={channel.image} alt={channel.name} fill className="object-cover group-hover:scale-115 transition-transform duration-1000" />
+              <div key={channel.channelid} data-nav-id={`fav-channel-${idx}`} className="flex flex-col items-center gap-4 group relative focusable" tabIndex={0} onClick={() => handleSelectChannel(channel)}>
+                <div className="w-32 h-32 sm:w-40 sm:h-40 rounded-full overflow-hidden border-4 border-white/10 group-hover:border-primary transition-all duration-500 cursor-pointer shadow-2xl relative">
+                  <Image src={channel.image} alt={channel.name} fill className="object-cover group-hover:scale-115 transition-transform duration-700" />
                   <div className="absolute inset-0 bg-black/30 group-hover:bg-transparent transition-all" />
                 </div>
                 <div className="flex flex-col items-center">
