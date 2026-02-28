@@ -14,12 +14,11 @@ export function RemotePointer() {
   const [isVisible, setIsVisible] = useState(false);
   const [isVirtualCursorEnabled, setIsVirtualCursorEnabled] = useState(false);
 
-  // Handle Virtual Cursor Meta Tag & CSS for Hisense VIDAA 2.5.13+
+  // التحكم في وسوم الميتا لمتصفحات VIDAA لتعطيل المؤشر تماماً
   useEffect(() => {
     const metaIds = ['vidaa-cursor-meta', 'vidaa-pointer-meta', 'vidaa-none-meta'];
     
     if (!isVirtualCursorEnabled) {
-      // Inject multiple meta tags to force browser into "Focus Mode"
       const metaTags = [
         { name: 'cursor', content: 'disabled' },
         { name: 'cursor', content: 'none' },
@@ -50,6 +49,7 @@ export function RemotePointer() {
     el.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, []);
 
+  // ضمان وجود تركيز نشط دائماً
   const ensureFocus = useCallback(() => {
     const active = document.activeElement;
     const isFocusable = active && active.classList.contains("focusable");
@@ -57,19 +57,18 @@ export function RemotePointer() {
     if (!isFocusable || active === document.body) {
       const allFocusables = Array.from(document.querySelectorAll(".focusable")) as HTMLElement[];
       if (allFocusables.length > 0) {
-        // Priority focus logic
+        // ترتيب الأولويات: القنوات أولاً، ثم عناصر الدوك
         const firstChannel = document.querySelector('[data-nav-id="fav-channel-0"]') as HTMLElement;
-        const firstVideo = document.querySelector('.transmission-card-item') as HTMLElement;
         const dockHome = document.querySelector('[data-nav-id="dock-Home"]') as HTMLElement;
         
         if (firstChannel) firstChannel.focus();
-        else if (firstVideo) firstVideo.focus();
         else if (dockHome) dockHome.focus();
         else allFocusables[0].focus();
       }
     }
   }, []);
 
+  // خوارزمية حساب المسافة لـ Spatial Navigation
   const getDistance = (rect1: DOMRect, rect2: DOMRect, direction: string) => {
     const p1 = { x: rect1.left + rect1.width / 2, y: rect1.top + rect1.height / 2 };
     const p2 = { x: rect2.left + rect2.width / 2, y: rect2.top + rect2.height / 2 };
@@ -77,13 +76,13 @@ export function RemotePointer() {
     const dx = p2.x - p1.x;
     const dy = p2.y - p1.y;
 
-    // Reject elements in the opposite direction with a small buffer
+    // استبعاد العناصر التي تقع في الاتجاه المعاكس
     if (direction === "ArrowRight" && dx <= 2) return Infinity;
     if (direction === "ArrowLeft" && dx >= -2) return Infinity;
     if (direction === "ArrowDown" && dy <= 2) return Infinity;
     if (direction === "ArrowUp" && dy >= -2) return Infinity;
 
-    // Calculate Manhattan-style weighted distance
+    // حساب المسافة المرجحة (تميل للعناصر التي تقع مباشرة في المسار)
     const orthogonalWeight = 3.5; 
     if (direction === "ArrowRight" || direction === "ArrowLeft") {
       return Math.sqrt(Math.pow(dx, 2) + Math.pow(dy * orthogonalWeight, 2));
@@ -132,6 +131,7 @@ export function RemotePointer() {
     ensureFocus();
     
     const handleKeyDown = (e: KeyboardEvent) => {
+      // زر 1 للتبديل بين وضع الماوس ووضع الريموت
       if (e.key === "1") {
         e.preventDefault();
         setIsVirtualCursorEnabled(prev => {
@@ -146,6 +146,7 @@ export function RemotePointer() {
         return;
       }
 
+      // خريطة الأزرار القياسية للريموت
       const standardMap: Record<string, string> = {
         "2": "ArrowUp", "4": "ArrowLeft", "6": "ArrowRight", "8": "ArrowDown",
         "ArrowUp": "ArrowUp", "ArrowDown": "ArrowDown", "ArrowLeft": "ArrowLeft", "ArrowRight": "ArrowRight"

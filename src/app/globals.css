@@ -45,7 +45,7 @@
   }
 }
 
-/* Virtual Cursor Disabler for VIDAA */
+/* تعطيل مؤشر الماوس لـ VIDAA */
 .no-cursor, .no-cursor * {
   cursor: none !important;
 }
