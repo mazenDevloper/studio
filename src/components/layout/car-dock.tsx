@@ -60,7 +60,7 @@ export function CarDock() {
               <div className={cn(
                 "absolute rounded-full shadow-[0_0_10px_white] bg-white",
                 "bottom-2 w-6 h-1 md:w-1.5 md:h-6",
-                dockSide === 'left' ? "md:-left-6 md:bottom-auto" : "md:-right-6 md:bottom-auto"
+                dockSide === 'left' ? "md:-right-6 md:bottom-auto" : "md:-left-6 md:bottom-auto"
               )} />
             )}
           </Link>

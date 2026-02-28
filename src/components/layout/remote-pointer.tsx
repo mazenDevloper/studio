@@ -46,7 +46,7 @@ export function RemotePointer() {
     if (!isFocusable || active === document.body) {
       const allFocusables = Array.from(document.querySelectorAll(".focusable")) as HTMLElement[];
       if (allFocusables.length > 0) {
-        // Smart focus priority
+        // Smart focus priority: Media first, then videos
         const firstChannel = document.querySelector('[data-nav-id="fav-channel-0"]') as HTMLElement;
         const firstVideo = document.querySelector('.transmission-card-item') as HTMLElement;
         if (firstChannel) firstChannel.focus();
