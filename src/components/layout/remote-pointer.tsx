@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useCallback, useState } from "react";
@@ -14,15 +13,14 @@ export function RemotePointer() {
   const [isVisible, setIsVisible] = useState(false);
   const [isVirtualCursorEnabled, setIsVirtualCursorEnabled] = useState(false);
 
-  // التحكم في وسوم الميتا لمتصفحات VIDAA لتعطيل المؤشر تماماً
+  // إجبار وضع التنقل (Navigation Mode) عبر وسوم الميتا
   useEffect(() => {
-    const metaIds = ['vidaa-cursor-meta', 'vidaa-pointer-meta', 'vidaa-none-meta'];
+    const metaIds = ['vidaa-cursor-meta', 'vidaa-mode-meta'];
     
     if (!isVirtualCursorEnabled) {
       const metaTags = [
         { name: 'cursor', content: 'disabled' },
-        { name: 'cursor', content: 'none' },
-        { name: 'pointer', content: 'none' }
+        { name: 'cursor-mode', content: 'navigation' }
       ];
 
       metaTags.forEach((tag, idx) => {
@@ -50,7 +48,7 @@ export function RemotePointer() {
     el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
   }, []);
 
-  // ضمان وجود تركيز نشط دائماً
+  // ضمان وجود تركيز نشط دائماً (Sticky Focus Guard)
   const ensureFocus = useCallback(() => {
     const active = document.activeElement;
     const isFocusable = active && active.classList.contains("focusable");
@@ -60,11 +58,16 @@ export function RemotePointer() {
       if (allFocusables.length > 0) {
         // ترتيب الأولويات: عناصر الدوك أولاً لسهولة البداية
         const dockHome = document.querySelector('[data-nav-id="dock-Home"]') as HTMLElement;
-        if (dockHome) dockHome.focus();
-        else allFocusables[0].focus();
+        if (dockHome) {
+          dockHome.focus();
+          updatePointer(dockHome);
+        } else {
+          allFocusables[0].focus();
+          updatePointer(allFocusables[0]);
+        }
       }
     }
-  }, []);
+  }, [updatePointer]);
 
   // خوارزمية حساب المسافة لـ Spatial Navigation
   const getDistance = (rect1: DOMRect, rect2: DOMRect, direction: string) => {
@@ -74,13 +77,11 @@ export function RemotePointer() {
     const dx = p2.x - p1.x;
     const dy = p2.y - p1.y;
 
-    // استبعاد العناصر التي تقع في الاتجاه المعاكس
     if (direction === "ArrowRight" && dx <= 2) return Infinity;
     if (direction === "ArrowLeft" && dx >= -2) return Infinity;
     if (direction === "ArrowDown" && dy <= 2) return Infinity;
     if (direction === "ArrowUp" && dy >= -2) return Infinity;
 
-    // حساب المسافة المرجحة (تميل للعناصر التي تقع مباشرة في المسار)
     const orthogonalWeight = 3.5; 
     if (direction === "ArrowRight" || direction === "ArrowLeft") {
       return Math.sqrt(Math.pow(dx, 2) + Math.pow(dy * orthogonalWeight, 2));
@@ -128,8 +129,10 @@ export function RemotePointer() {
   useEffect(() => {
     ensureFocus();
     
+    // فحص دوري للتأكد من وجود تركيز (للتغلب على تحديثات الـ DOM المفاجئة)
+    const focusInterval = setInterval(ensureFocus, 2000);
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      // زر 1 للتبديل بين وضع الماوس ووضع الريموت
       if (e.key === "1") {
         e.preventDefault();
         setIsVirtualCursorEnabled(prev => {
@@ -144,7 +147,6 @@ export function RemotePointer() {
         return;
       }
 
-      // خريطة الأزرار القياسية للريموت (الأسهم والأرقام 2, 4, 6, 8)
       const standardMap: Record<string, string> = {
         "2": "ArrowUp", "4": "ArrowLeft", "6": "ArrowRight", "8": "ArrowDown",
         "ArrowUp": "ArrowUp", "ArrowDown": "ArrowDown", "ArrowLeft": "ArrowLeft", "ArrowRight": "ArrowRight"
@@ -155,7 +157,6 @@ export function RemotePointer() {
         const dir = standardMap[e.key];
         navigate(dir);
         
-        // التغذية البصرية للأزرار
         let visualKey = e.key;
         if (e.key === "ArrowUp") visualKey = "2";
         if (e.key === "ArrowDown") visualKey = "8";
@@ -177,12 +178,14 @@ export function RemotePointer() {
     };
 
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      clearInterval(focusInterval);
+    };
   }, [navigate, router, toast, ensureFocus]);
 
   return (
     <>
-      {/* واجهة الريموت البصرية (تظهر عند الضغط) */}
       <div className={cn(
         "fixed bottom-24 right-12 z-[10000] pointer-events-none flex flex-col items-center gap-3 transition-all duration-500 scale-110",
         isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"
@@ -225,7 +228,6 @@ export function RemotePointer() {
         </div>
       </div>
 
-      {/* مؤشر حالة النظام */}
       <div className={cn(
         "fixed top-8 left-8 z-[10001] px-4 py-2 rounded-full backdrop-blur-3xl border flex items-center gap-3 transition-all duration-500",
         isVirtualCursorEnabled ? "bg-accent/20 border-accent/40" : "bg-primary/20 border-primary/40 opacity-30"

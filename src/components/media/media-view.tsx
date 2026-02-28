@@ -60,20 +60,22 @@ export function MediaView() {
   const [isSearchingChannels, setIsSearchingChannels] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  // Smart Initial Focus: Target the first channel on startup instead of search
+  // التركيز التلقائي عند التحميل: استهداف أول قناة لضمان اختفاء مؤشر VIDAA
   useEffect(() => {
     const timer = setTimeout(() => {
       const firstChannel = document.querySelector('[data-nav-id="fav-channel-0"]') as HTMLElement;
       if (firstChannel) {
         firstChannel.focus();
       } else {
-        searchInputRef.current?.focus();
+        const addBtn = document.querySelector('[data-nav-id="add-channel-btn"]') as HTMLElement;
+        if (addBtn) addBtn.focus();
+        else searchInputRef.current?.focus();
       }
     }, 600);
     return () => clearTimeout(timer);
   }, []);
 
-  // Handle focus when reciter grid appears
+  // التركيز التلقائي عند فتح قائمة القراء
   useEffect(() => {
     if (showReciterGrid) {
       setTimeout(() => {
@@ -83,7 +85,7 @@ export function MediaView() {
     }
   }, [showReciterGrid]);
 
-  // Handle focus when surah grid appears
+  // التركيز التلقائي عند فتح فهرس السور
   useEffect(() => {
     if (showSurahGrid) {
       setTimeout(() => {
@@ -238,7 +240,7 @@ export function MediaView() {
           <div className="flex items-center gap-4">
             <Dialog open={isUrlDialogOpen} onOpenChange={setIsUrlDialogOpen}>
               <DialogTrigger asChild>
-                <Button variant="ghost" className="h-12 px-6 rounded-full bg-white/5 border border-white/10 text-white hover:bg-white/10 focusable flex items-center gap-2">
+                <Button variant="ghost" className="h-12 px-6 rounded-full bg-white/5 border border-white/10 text-white hover:bg-white/10 focusable flex items-center gap-2" tabIndex={0} data-nav-id="btn-add-url">
                   <LinkIcon className="w-4 h-4 text-primary" />
                   <span className="text-[10px] font-black uppercase tracking-widest">إضافة بالرابط</span>
                 </Button>
@@ -276,6 +278,8 @@ export function MediaView() {
               <Button
                 onClick={() => setShowReciterGrid(true)}
                 className="h-20 w-full rounded-[2rem] bg-white/5 border-2 border-white/10 text-white font-black text-xl hover:bg-white/10 transition-all shadow-xl focusable flex items-center justify-between px-8 text-right"
+                tabIndex={0}
+                data-nav-id="btn-select-reciter"
               >
                 <div className="flex items-center gap-4">
                    <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
@@ -289,7 +293,7 @@ export function MediaView() {
               <div className="bg-zinc-900 border-2 border-primary/40 rounded-[2.5rem] p-6 relative animate-in zoom-in-95 duration-300 shadow-2xl">
                 <div className="flex items-center justify-between mb-6 px-2">
                   <span className="text-xs font-black text-primary uppercase tracking-[0.2em]">قائمة القراء المتاحة</span>
-                  <Button variant="ghost" size="icon" onClick={() => setShowReciterGrid(false)} className="rounded-full w-10 h-10 text-white/40 hover:text-white hover:bg-white/10 focusable">
+                  <Button variant="ghost" size="icon" onClick={() => setShowReciterGrid(false)} className="rounded-full w-10 h-10 text-white/40 hover:text-white hover:bg-white/10 focusable" tabIndex={0}>
                     <X className="w-5 h-5" />
                   </Button>
                 </div>
@@ -312,6 +316,7 @@ export function MediaView() {
                             "h-18 rounded-2xl border-2 transition-all font-black text-lg text-right px-6 justify-start focusable",
                             selectedReciter?.name === reciter.name ? "bg-primary text-white border-primary shadow-glow" : "bg-white/5 border-transparent text-white/70 hover:bg-white/10"
                           )}
+                          tabIndex={0}
                         >
                           {reciter.name}
                         </Button>
@@ -338,15 +343,17 @@ export function MediaView() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleVideoSearch()}
+                  tabIndex={0}
+                  data-nav-id="media-search-input"
                 />
                 <div className="absolute left-6 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                  <button onClick={handleVoiceSearch} className={cn("p-3 rounded-full transition-all", isListening ? "text-red-500 animate-pulse bg-red-500/10" : "text-muted-foreground")}>
+                  <button onClick={handleVoiceSearch} className={cn("p-3 rounded-full transition-all focusable", isListening ? "text-red-500 animate-pulse bg-red-500/10" : "text-muted-foreground")} tabIndex={0} data-nav-id="btn-voice-search">
                     <Mic className="h-7 w-7" />
                   </button>
                 </div>
               </div>
             </div>
-            <Button onClick={() => handleVideoSearch()} disabled={isSearching} className="h-20 w-full rounded-[2rem] bg-primary text-white font-black text-xl hover:scale-[1.02] shadow-2xl focusable flex items-center justify-center gap-4">
+            <Button onClick={() => handleVideoSearch()} disabled={isSearching} className="h-20 w-full rounded-[2rem] bg-primary text-white font-black text-xl hover:scale-[1.02] shadow-2xl focusable flex items-center justify-center gap-4" tabIndex={0} data-nav-id="btn-execute-search">
               {isSearching ? <Loader2 className="w-8 h-8 animate-spin" /> : <Search className="w-8 h-8" />}
               <span>تنفيذ البحث</span>
             </Button>
@@ -356,7 +363,7 @@ export function MediaView() {
         {showSurahGrid && selectedReciter && (
           <div className="bg-zinc-950 p-8 rounded-[3rem] border border-primary/20 animate-in fade-in slide-in-from-top-4 duration-500 shadow-2xl relative overflow-hidden">
             <div className="absolute top-8 left-8 z-20">
-              <Button variant="ghost" onClick={() => setShowSurahGrid(false)} className="rounded-full w-12 h-12 bg-white/5 border border-white/10 text-white focusable">
+              <Button variant="ghost" onClick={() => setShowSurahGrid(false)} className="rounded-full w-12 h-12 bg-white/5 border border-white/10 text-white focusable" tabIndex={0}>
                 <X className="w-6 h-6" />
               </Button>
             </div>
@@ -382,6 +389,7 @@ export function MediaView() {
                       "h-24 rounded-[2rem] flex flex-col items-center justify-center border-2 transition-all hover:scale-[1.08] focusable px-4 shadow-xl",
                       getJuzColor(idx)
                     )}
+                    tabIndex={0}
                   >
                     <span className="text-xl font-black tracking-tight mb-1">{surah}</span>
                     <div className="bg-black/30 px-3 py-1 rounded-full text-[10px] font-black opacity-90 border border-white/5">
@@ -410,12 +418,14 @@ export function MediaView() {
                       "rounded-full h-16 px-12 text-xl font-black shadow-2xl focusable",
                       favoriteChannels.some(c => c.channelid === selectedChannel!.channelid) ? "bg-accent text-black" : "bg-white text-black"
                     )}
+                    tabIndex={0}
+                    data-nav-id="btn-subscribe-toggle"
                   >
                     {favoriteChannels.some(c => c.channelid === selectedChannel!.channelid) ? 'مشترك' : 'إشتراك'}
                   </Button>
                 </div>
              </div>
-             <Button onClick={() => setSelectedChannel(null)} className="absolute top-10 left-10 w-14 h-14 rounded-full bg-white/10 border border-white/20 text-white focusable">
+             <Button onClick={() => setSelectedChannel(null)} className="absolute top-10 left-10 w-14 h-14 rounded-full bg-white/10 border border-white/20 text-white focusable" tabIndex={0}>
                 <X className="w-8 h-8" />
               </Button>
           </div>
@@ -450,7 +460,7 @@ export function MediaView() {
           {videoResults.length > 0 && (
             <div className="space-y-8 mb-12">
               <div className="flex items-center justify-between border-b border-white/10 pb-6">
-                <Button variant="ghost" onClick={() => setVideoResults([])} className="text-white/40 hover:text-white rounded-full h-12 px-6 focusable">إغلاق النتائج</Button>
+                <Button variant="ghost" onClick={() => setVideoResults([])} className="text-white/40 hover:text-white rounded-full h-12 px-6 focusable" tabIndex={0}>إغلاق النتائج</Button>
                 <h2 className="text-3xl font-black font-headline text-primary flex items-center gap-4">نتائج البحث <Search className="w-8 h-8" /></h2>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -486,8 +496,8 @@ export function MediaView() {
                 <DialogHeader className="p-10 border-b border-white/10">
                   <DialogTitle className="text-3xl font-black text-white mb-6 text-right">البحث عن القنوات</DialogTitle>
                   <div className="flex gap-4">
-                    <Input placeholder="اسم القناة..." value={channelSearchQuery} onChange={(e) => setChannelSearchQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleChannelSearch()} className="bg-white/5 border-white/10 h-16 rounded-[1.5rem] text-xl px-8 text-right focusable flex-1" />
-                    <Button onClick={handleChannelSearch} disabled={isSearchingChannels} className="h-16 w-20 bg-primary rounded-[1.5rem] shadow-xl focusable">
+                    <Input placeholder="اسم القناة..." value={channelSearchQuery} onChange={(e) => setChannelSearchQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleChannelSearch()} className="bg-white/5 border-white/10 h-16 rounded-[1.5rem] text-xl px-8 text-right focusable flex-1" tabIndex={0} data-nav-id="channel-search-input" />
+                    <Button onClick={handleChannelSearch} disabled={isSearchingChannels} className="h-16 w-20 bg-primary rounded-[1.5rem] shadow-xl focusable" tabIndex={0}>
                       {isSearchingChannels ? <Loader2 className="w-8 h-8 animate-spin" /> : <Search className="w-8 h-8" />}
                     </Button>
                   </div>

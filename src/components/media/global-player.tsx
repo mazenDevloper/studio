@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useMediaStore } from "@/lib/store";
@@ -189,6 +188,7 @@ export function GlobalVideoPlayer() {
               size="icon" 
               onClick={(e) => { e.stopPropagation(); setIsPlaying(!isPlaying); }}
               className="w-16 h-16 rounded-full bg-white/15 text-white hover:bg-white/30 focusable border-2 border-white/20"
+              tabIndex={0}
             >
               {isPlaying ? <Pause className="w-10 h-10 fill-current" /> : <Play className="w-10 h-10 fill-current ml-1" />}
             </Button>
@@ -198,6 +198,7 @@ export function GlobalVideoPlayer() {
               size="icon" 
               onClick={(e) => { e.stopPropagation(); saveCurrentProgress(); setActiveVideo(null); }}
               className="w-14 h-14 rounded-full bg-red-600/40 text-red-500 hover:bg-red-600 hover:text-white transition-all focusable border-2 border-red-600/30"
+              tabIndex={0}
             >
               <X className="w-8 h-8" />
             </Button>
@@ -214,6 +215,7 @@ export function GlobalVideoPlayer() {
             <Button 
               onClick={(e) => { e.stopPropagation(); setIsMinimized(true); }} 
               className="w-16 h-16 rounded-full bg-white/10 border border-white/10 text-white focusable flex flex-col items-center justify-center gap-1"
+              tabIndex={0}
             >
               <ChevronDown className="w-7 h-7" />
               <span className="text-[9px] font-black uppercase tracking-widest">تصغير</span>
@@ -224,6 +226,7 @@ export function GlobalVideoPlayer() {
                 "w-16 h-16 rounded-full border-2 transition-all flex flex-col items-center justify-center gap-1 focusable",
                 isFullScreen ? "bg-primary/30 border-primary text-white" : "bg-white/10 border-white/10 text-white"
               )}
+              tabIndex={0}
             >
               <Monitor className="w-7 h-7" />
               <span className="text-[9px] font-black uppercase tracking-widest">سينما</span>
@@ -231,6 +234,7 @@ export function GlobalVideoPlayer() {
             <Button 
               onClick={(e) => { e.stopPropagation(); toggleSaveVideo(activeVideo); }}
               className={cn("w-16 h-16 rounded-full border-2 transition-all focusable", isSaved ? "bg-accent/30 border-accent text-accent" : "bg-white/10 border-white/10 text-white")}
+              tabIndex={0}
             >
               <Bookmark className={cn("w-7 h-7", isSaved && "fill-current")} />
             </Button>
@@ -240,6 +244,7 @@ export function GlobalVideoPlayer() {
               size="icon" 
               onClick={(e) => { e.stopPropagation(); saveCurrentProgress(); setActiveVideo(null); }} 
               className="w-16 h-16 rounded-full shadow-3xl focusable border-2 border-red-500/20"
+              tabIndex={0}
             >
               <X className="w-9 h-9" />
             </Button>

@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -45,10 +44,11 @@ export function DashboardView() {
     return () => clearInterval(interval);
   }, [api]);
 
+  // التركيز التلقائي عند التحميل لضمان اختفاء مؤشر VIDAA
   useEffect(() => {
     setTimeout(() => {
-      const firstDot = document.querySelector('.carousel-indicator-dots') as HTMLElement;
-      if (firstDot) firstDot.focus();
+      const heroWidget = document.querySelector('[data-nav-id="widget-carousel-hero"]') as HTMLElement;
+      if (heroWidget) heroWidget.focus();
     }, 600);
   }, []);
 
@@ -128,10 +128,10 @@ export function DashboardView() {
             />
           </div>
           <div className="absolute bottom-10 flex gap-4 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-500 bg-black/80 backdrop-blur-3xl p-3 rounded-full border border-white/20 shadow-2xl z-20">
-            <button className="flex items-center gap-2 px-6 py-2.5 bg-white/5 border border-white/10 rounded-full hover:bg-white/10 transition-all font-black text-[9px] text-white uppercase tracking-[0.2em] outline-none">
+            <button className="flex items-center gap-2 px-6 py-2.5 bg-white/5 border border-white/10 rounded-full hover:bg-white/10 transition-all font-black text-[9px] text-white uppercase tracking-[0.2em] outline-none focusable" tabIndex={0}>
               <RotateCcw className="w-4 h-4" /> Reset
             </button>
-            <button className="flex items-center gap-2 px-6 py-2.5 bg-white/5 border border-white/10 rounded-full hover:bg-white/10 transition-all font-black text-[9px] text-white uppercase tracking-[0.2em] outline-none">
+            <button className="flex items-center gap-2 px-6 py-2.5 bg-white/5 border border-white/10 rounded-full hover:bg-white/10 transition-all font-black text-[9px] text-white uppercase tracking-[0.2em] outline-none focusable" tabIndex={0}>
               <Upload className="w-4 h-4" /> Sync
             </button>
           </div>
