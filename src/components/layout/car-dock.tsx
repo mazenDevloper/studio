@@ -21,7 +21,7 @@ export function CarDock() {
     { name: "Settings", href: "/settings", icon: Settings, color: "bg-zinc-700" },
   ];
 
-  // Smart Initial Focus: Target the Media icon on startup
+  // Smart Initial Focus: Target the Media icon on startup to hide VIDAA cursor
   useEffect(() => {
     const timer = setTimeout(() => {
       const mediaIcon = document.querySelector('[data-nav-id="dock-Media"]') as HTMLElement;
