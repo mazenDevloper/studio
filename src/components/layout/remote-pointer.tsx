@@ -116,7 +116,7 @@ export function RemotePointer() {
     ensureFocus();
     
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Toggle Virtual Cursor using '1' key
+      // Toggle Virtual Cursor using '1' key (KeyCode 49)
       if (e.key === "1") {
         e.preventDefault();
         setIsVirtualCursorEnabled(prev => {
@@ -163,6 +163,7 @@ export function RemotePointer() {
 
   return (
     <>
+      {/* Directional Visual Feedback */}
       <div className={cn(
         "fixed bottom-24 right-12 z-[10000] pointer-events-none flex flex-col items-center gap-3 transition-all duration-500 scale-110",
         isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"
@@ -205,6 +206,7 @@ export function RemotePointer() {
         </div>
       </div>
 
+      {/* Control Mode Indicator */}
       <div className={cn(
         "fixed top-8 left-8 z-[10001] px-4 py-2 rounded-full backdrop-blur-3xl border flex items-center gap-3 transition-all duration-500",
         isVirtualCursorEnabled ? "bg-accent/20 border-accent/40" : "bg-primary/20 border-primary/40 opacity-30"

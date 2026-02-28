@@ -53,10 +53,11 @@ export function YouTubeSavedWidget() {
                     <Image src={video.thumbnail} alt={video.title} fill className="object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
                     
+                    {/* Delete Button - Red and prominent */}
                     <Button
                       variant="destructive"
                       size="icon"
-                      className="absolute top-4 right-4 w-10 h-10 rounded-full opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-all focusable z-30"
+                      className="absolute top-4 right-4 w-10 h-10 rounded-full opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-all focusable z-30 bg-red-600 hover:bg-red-700 shadow-2xl"
                       onClick={(e) => {
                         e.stopPropagation();
                         removeVideo(video.id);
@@ -71,6 +72,7 @@ export function YouTubeSavedWidget() {
                       </div>
                     </div>
 
+                    {/* Progress Bar */}
                     {video.progress && video.progress > 0 && (
                       <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-black/40">
                         <div 

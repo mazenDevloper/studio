@@ -12,16 +12,22 @@ export function MainLayoutShell({ children }: { children: React.ReactNode }) {
   const { dockSide } = useMediaStore();
 
   return (
-    <div className={cn(
-      "flex flex-col w-full h-full overflow-hidden transition-all duration-700",
-      dockSide === 'left' ? "md:flex-row" : "md:flex-row-reverse"
-    )}>
-      {/* Spacer div that creates room for the fixed CarDock on MD+ screens */}
-      <div className="h-0 w-0 md:w-24 shrink-0 md:h-full transition-all duration-700" /> 
-      
-      {/* Main content area */}
-      <div className="flex-1 overflow-auto relative h-full safe-p-bottom">
-        {children}
+    <div className="flex flex-col w-full h-full overflow-hidden transition-all duration-700">
+      <div className="flex flex-1 overflow-hidden relative">
+        {/* Spacer on the Left if Dock is on the Left */}
+        {dockSide === 'left' && (
+          <div className="hidden md:block md:w-24 shrink-0 h-full transition-all duration-700" />
+        )}
+        
+        {/* Main content area */}
+        <div className="flex-1 overflow-auto relative h-full safe-p-bottom">
+          {children}
+        </div>
+
+        {/* Spacer on the Right if Dock is on the Right */}
+        {dockSide === 'right' && (
+          <div className="hidden md:block md:w-24 shrink-0 h-full transition-all duration-700" />
+        )}
       </div>
     </div>
   );

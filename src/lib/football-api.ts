@@ -25,6 +25,7 @@ const ARABIC_TO_ENGLISH_MAP: Record<string, string> = {
   "النصر": "Al Nassr",
   "الاتحاد": "Al Ittihad",
   "الأهلي": "Al Ahli",
+  "الأهلي المصري": "Al Ahly",
   "الزمالك": "Zamalek",
   "العين": "Al Ain",
   "السد": "Al Sadd",
@@ -94,7 +95,7 @@ export async function searchFootballTeams(query: string, leagueId?: string): Pro
     team: { id: t.id, name: t.name, logo: `https://media.api-sports.io/football/teams/${t.id}.png` }
   }));
 
-  if (results.length > 0) return results.slice(0, 3);
+  if (results.length >= 3) return results.slice(0, 3);
 
   // Translate Arabic Query to English for Global Search
   let translatedQuery = query;
@@ -114,10 +115,20 @@ export async function searchFootballTeams(query: string, leagueId?: string): Pro
 
   try {
     const response = await fetch(url, { method: 'GET', headers: headers });
-    if (!response.ok) return [];
+    if (!response.ok) return results;
     const data = await response.json();
-    return (data.response || []).slice(0, 3);
+    const apiResults = (data.response || []).slice(0, 3);
+    
+    // Merge local and API results, avoiding duplicates
+    const combined = [...results];
+    apiResults.forEach((res: any) => {
+      if (!combined.some(c => c.team.id === res.team.id)) {
+        combined.push(res);
+      }
+    });
+    
+    return combined.slice(0, 3);
   } catch (error) {
-    return [];
+    return results;
   }
 }
