@@ -82,34 +82,34 @@ export function DateAndClockWidget() {
       </div>
 
       <div className="relative z-10 flex flex-col items-center w-full max-w-[90%] gap-4">
-        {/* Main Hero Element: The Clock */}
+        {/* Main Hero Element: The Clock - Enhanced for Prominence */}
         <div className="flex flex-col items-center text-center">
-          <div className="text-7xl font-black text-white tracking-tighter drop-shadow-[0_15px_45px_rgba(0,0,0,0.8)] leading-none mb-2">
+          <div className="text-8xl font-black text-white tracking-tighter drop-shadow-[0_20px_60px_rgba(0,0,0,1)] leading-none mb-4 animate-in fade-in zoom-in-95 duration-1000">
             {timeString}
           </div>
-          <div className="flex items-center gap-2 bg-white/5 px-4 py-1.5 rounded-full border border-white/10 backdrop-blur-3xl">
-            <Calendar className="w-3.5 h-3.5 text-accent" />
-            <span className="text-[11px] text-white/80 font-black uppercase tracking-[0.2em]">{dayName} {dayNum} {monthName}</span>
+          <div className="flex items-center gap-2 bg-white/5 px-6 py-2 rounded-full border border-white/10 backdrop-blur-3xl shadow-2xl">
+            <Calendar className="w-4 h-4 text-accent" />
+            <span className="text-[13px] text-white/90 font-black uppercase tracking-[0.25em]">{dayName} {dayNum} {monthName}</span>
           </div>
         </div>
         
         {nextPrayer && (
-          <div className="w-full flex flex-col items-center gap-2 mt-2 bg-primary/5 p-4 rounded-[2rem] border border-primary/10 backdrop-blur-md">
-            <div className="flex items-center gap-3 w-full justify-center">
-              <div className="bg-primary/20 text-primary px-4 py-1 rounded-full border border-primary/30">
-                <span className="text-[10px] font-black uppercase tracking-widest">الصلاة القادمة: {nextPrayer.name}</span>
+          <div className="w-full flex flex-col items-center gap-2 mt-4 bg-primary/10 p-5 rounded-[2rem] border border-primary/20 backdrop-blur-xl shadow-2xl">
+            <div className="flex items-center gap-4 w-full justify-center">
+              <div className="bg-primary/20 text-primary px-5 py-1.5 rounded-full border border-primary/30">
+                <span className="text-[11px] font-black uppercase tracking-widest">الصلاة القادمة: {nextPrayer.name}</span>
               </div>
-              <span className="text-2xl font-black text-accent drop-shadow-2xl">
+              <span className="text-3xl font-black text-accent drop-shadow-[0_0_20px_rgba(65,184,131,0.5)]">
                 {convertTo12Hour(nextPrayer.time)}
               </span>
             </div>
             
-            <div className="flex items-center gap-3 text-white/60">
-              <div className="h-px w-8 bg-white/10" />
-              <div className="text-[10px] font-black uppercase tracking-[0.4em] flex items-center gap-2">
-                <Timer className="w-4 h-4 text-primary animate-pulse" /> متبقي {nextPrayer.countdown}
+            <div className="flex items-center gap-4 text-white/60">
+              <div className="h-px w-10 bg-white/10" />
+              <div className="text-[11px] font-black uppercase tracking-[0.4em] flex items-center gap-3">
+                <Timer className="w-5 h-5 text-primary animate-pulse" /> متبقي {nextPrayer.countdown}
               </div>
-              <div className="h-px w-8 bg-white/10" />
+              <div className="h-px w-10 bg-white/10" />
             </div>
           </div>
         )}

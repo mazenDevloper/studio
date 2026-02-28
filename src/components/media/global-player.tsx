@@ -145,10 +145,10 @@ export function GlobalVideoPlayer() {
       className={cn(
         "fixed z-[9999] transition-all duration-1000 ease-[cubic-bezier(0.23,1,0.32,1)] left-0 right-0 mx-auto",
         isMinimized 
-          ? "bottom-32 w-[650px] h-32 rounded-[2.5rem] liquid-glass cursor-pointer shadow-[0_40px_100px_rgba(0,0,0,0.9)]" 
+          ? "bottom-32 left-1/2 -translate-x-1/2 w-[650px] h-32 rounded-[2.5rem] liquid-glass cursor-pointer shadow-[0_40px_100px_rgba(0,0,0,0.9)]" 
           : isFullScreen
             ? "inset-0 w-full h-full bg-black flex flex-col"
-            : "top-1/2 -translate-y-1/2 w-[70vw] h-[50vh] glass-panel rounded-[3.5rem] bg-black/95 shadow-[0_60px_150px_rgba(0,0,0,1)]"
+            : "top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[70vw] h-[50vh] glass-panel rounded-[3.5rem] bg-black/95 shadow-[0_60px_150px_rgba(0,0,0,1)]"
       )}
       onClick={() => isMinimized && setIsFullScreen(true)}
     >
@@ -183,25 +183,21 @@ export function GlobalVideoPlayer() {
           </div>
 
           <div className="flex items-center gap-6 shrink-0">
-            <Button 
-              variant="ghost" 
-              size="icon" 
+            <button 
               onClick={(e) => { e.stopPropagation(); setIsPlaying(!isPlaying); }}
-              className="w-16 h-16 rounded-full bg-white/15 text-white hover:bg-white/30 focusable border-2 border-white/20"
+              className="w-16 h-16 rounded-full bg-white/15 text-white hover:bg-white/30 focusable border-2 border-white/20 flex items-center justify-center outline-none"
               tabIndex={0}
             >
               {isPlaying ? <Pause className="w-10 h-10 fill-current" /> : <Play className="w-10 h-10 fill-current ml-1" />}
-            </Button>
+            </button>
             <div className="w-px h-12 bg-white/30" />
-            <Button 
-              variant="ghost" 
-              size="icon" 
+            <button 
               onClick={(e) => { e.stopPropagation(); saveCurrentProgress(); setActiveVideo(null); }}
-              className="w-14 h-14 rounded-full bg-red-600/40 text-red-500 hover:bg-red-600 hover:text-white transition-all focusable border-2 border-red-600/30"
+              className="w-14 h-14 rounded-full bg-red-600/40 text-red-500 hover:bg-red-600 hover:text-white transition-all focusable border-2 border-red-600/30 flex items-center justify-center outline-none"
               tabIndex={0}
             >
               <X className="w-8 h-8" />
-            </Button>
+            </button>
           </div>
         </div>
       )}
@@ -212,42 +208,40 @@ export function GlobalVideoPlayer() {
           isFullScreen ? "scale-110" : "scale-100"
         )}>
           <div className="flex items-center gap-4 liquid-glass p-5 rounded-full border-2 border-white/20 shadow-[0_50px_120px_rgba(0,0,0,1)]">
-            <Button 
+            <button 
               onClick={(e) => { e.stopPropagation(); setIsMinimized(true); }} 
-              className="w-16 h-16 rounded-full bg-white/10 border border-white/10 text-white focusable flex flex-col items-center justify-center gap-1"
+              className="w-16 h-16 rounded-full bg-white/10 border border-white/10 text-white focusable flex flex-col items-center justify-center gap-1 outline-none"
               tabIndex={0}
             >
               <ChevronDown className="w-7 h-7" />
               <span className="text-[9px] font-black uppercase tracking-widest">تصغير</span>
-            </Button>
-            <Button 
+            </button>
+            <button 
               onClick={(e) => { e.stopPropagation(); setIsFullScreen(!isFullScreen); }} 
               className={cn(
-                "w-16 h-16 rounded-full border-2 transition-all flex flex-col items-center justify-center gap-1 focusable",
+                "w-16 h-16 rounded-full border-2 transition-all flex flex-col items-center justify-center gap-1 focusable outline-none",
                 isFullScreen ? "bg-primary/30 border-primary text-white" : "bg-white/10 border-white/10 text-white"
               )}
               tabIndex={0}
             >
               <Monitor className="w-7 h-7" />
               <span className="text-[9px] font-black uppercase tracking-widest">سينما</span>
-            </Button>
-            <Button 
+            </button>
+            <button 
               onClick={(e) => { e.stopPropagation(); toggleSaveVideo(activeVideo); }}
-              className={cn("w-16 h-16 rounded-full border-2 transition-all focusable", isSaved ? "bg-accent/30 border-accent text-accent" : "bg-white/10 border-white/10 text-white")}
+              className={cn("w-16 h-16 rounded-full border-2 transition-all focusable outline-none flex items-center justify-center", isSaved ? "bg-accent/30 border-accent text-accent" : "bg-white/10 border-white/10 text-white")}
               tabIndex={0}
             >
               <Bookmark className={cn("w-7 h-7", isSaved && "fill-current")} />
-            </Button>
+            </button>
             <div className="w-px h-12 bg-white/20 mx-2" />
-            <Button 
-              variant="destructive" 
-              size="icon" 
+            <button 
               onClick={(e) => { e.stopPropagation(); saveCurrentProgress(); setActiveVideo(null); }} 
-              className="w-16 h-16 rounded-full shadow-3xl focusable border-2 border-red-500/20"
+              className="w-16 h-16 rounded-full shadow-3xl focusable border-2 border-red-500/20 bg-red-600/80 text-white flex items-center justify-center outline-none"
               tabIndex={0}
             >
               <X className="w-9 h-9" />
-            </Button>
+            </button>
           </div>
         </div>
       )}
