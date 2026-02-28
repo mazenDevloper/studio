@@ -11,6 +11,7 @@ import { VoiceCommandHub } from "@/components/layout/voice-command-hub";
 export const metadata: Metadata = {
   title: 'DriveCast | CarPlay',
   description: 'Futuristic automotive interface.',
+  manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
