@@ -35,8 +35,8 @@ export function CarDock() {
       "fixed z-[100] transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]",
       "bottom-0 left-0 right-0 h-20 bg-black/80 backdrop-blur-3xl border-t border-white/5 flex flex-row items-center justify-around px-4 md:fixed md:top-0 md:h-screen md:w-24 md:flex-col md:py-8 md:gap-8",
       dockSide === 'left' 
-        ? "md:left-0 md:border-r md:shadow-[20px_0_50px_rgba(0,0,0,0.8)]" 
-        : "md:right-0 md:border-l md:shadow-[-20px_0_50px_rgba(0,0,0,0.8)]"
+        ? "md:left-0 md:right-auto md:border-r md:shadow-[20px_0_50px_rgba(0,0,0,0.8)]" 
+        : "md:right-0 md:left-auto md:border-l md:shadow-[-20px_0_50px_rgba(0,0,0,0.8)]"
     )}>
       <div className="hidden md:block mb-2">
         <GripVertical className="text-white/10 w-6 h-6" />
