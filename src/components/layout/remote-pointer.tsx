@@ -46,7 +46,8 @@ export function RemotePointer() {
   }, [isVirtualCursorEnabled]);
 
   const updatePointer = useCallback((el: HTMLElement) => {
-    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // جعل المؤشر البصري يتبع العنصر عبر تمركزه في الشاشة
+    el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
   }, []);
 
   // ضمان وجود تركيز نشط دائماً
@@ -57,12 +58,9 @@ export function RemotePointer() {
     if (!isFocusable || active === document.body) {
       const allFocusables = Array.from(document.querySelectorAll(".focusable")) as HTMLElement[];
       if (allFocusables.length > 0) {
-        // ترتيب الأولويات: القنوات أولاً، ثم عناصر الدوك
-        const firstChannel = document.querySelector('[data-nav-id="fav-channel-0"]') as HTMLElement;
+        // ترتيب الأولويات: عناصر الدوك أولاً لسهولة البداية
         const dockHome = document.querySelector('[data-nav-id="dock-Home"]') as HTMLElement;
-        
-        if (firstChannel) firstChannel.focus();
-        else if (dockHome) dockHome.focus();
+        if (dockHome) dockHome.focus();
         else allFocusables[0].focus();
       }
     }
@@ -146,7 +144,7 @@ export function RemotePointer() {
         return;
       }
 
-      // خريطة الأزرار القياسية للريموت
+      // خريطة الأزرار القياسية للريموت (الأسهم والأرقام 2, 4, 6, 8)
       const standardMap: Record<string, string> = {
         "2": "ArrowUp", "4": "ArrowLeft", "6": "ArrowRight", "8": "ArrowDown",
         "ArrowUp": "ArrowUp", "ArrowDown": "ArrowDown", "ArrowLeft": "ArrowLeft", "ArrowRight": "ArrowRight"
@@ -154,8 +152,10 @@ export function RemotePointer() {
 
       if (standardMap[e.key]) {
         e.preventDefault();
-        navigate(standardMap[e.key]);
+        const dir = standardMap[e.key];
+        navigate(dir);
         
+        // التغذية البصرية للأزرار
         let visualKey = e.key;
         if (e.key === "ArrowUp") visualKey = "2";
         if (e.key === "ArrowDown") visualKey = "8";
@@ -163,12 +163,15 @@ export function RemotePointer() {
         if (e.key === "ArrowRight") visualKey = "6";
         setActiveKey(visualKey);
         setIsVisible(true);
-        const timeout = setTimeout(() => setIsVisible(false), 1000);
+        const timeout = setTimeout(() => setIsVisible(false), 800);
         return () => clearTimeout(timeout);
       } else if (e.key === "5" || e.key === "Enter") {
         const current = document.activeElement as HTMLElement;
         if (current && current.classList.contains("focusable")) {
           current.click();
+          setActiveKey('5');
+          setIsVisible(true);
+          setTimeout(() => setIsVisible(false), 500);
         }
       }
     };
@@ -179,6 +182,7 @@ export function RemotePointer() {
 
   return (
     <>
+      {/* واجهة الريموت البصرية (تظهر عند الضغط) */}
       <div className={cn(
         "fixed bottom-24 right-12 z-[10000] pointer-events-none flex flex-col items-center gap-3 transition-all duration-500 scale-110",
         isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"
@@ -221,6 +225,7 @@ export function RemotePointer() {
         </div>
       </div>
 
+      {/* مؤشر حالة النظام */}
       <div className={cn(
         "fixed top-8 left-8 z-[10001] px-4 py-2 rounded-full backdrop-blur-3xl border flex items-center gap-3 transition-all duration-500",
         isVirtualCursorEnabled ? "bg-accent/20 border-accent/40" : "bg-primary/20 border-primary/40 opacity-30"
