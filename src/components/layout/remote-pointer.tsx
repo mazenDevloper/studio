@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useCallback, useState } from "react";
@@ -47,9 +46,10 @@ export function RemotePointer() {
     if (!isFocusable || active === document.body) {
       const allFocusables = Array.from(document.querySelectorAll(".focusable")) as HTMLElement[];
       if (allFocusables.length > 0) {
-        const mediaIcon = document.querySelector('[data-nav-id="dock-Media"]') as HTMLElement;
-        if (mediaIcon) {
-          mediaIcon.focus();
+        // Prefer first favorite channel in Media view
+        const firstChannel = document.querySelector('[data-nav-id="fav-channel-0"]') as HTMLElement;
+        if (firstChannel) {
+          firstChannel.focus();
         } else {
           allFocusables[0].focus();
         }
@@ -117,7 +117,7 @@ export function RemotePointer() {
     ensureFocus();
     
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Toggle Virtual Cursor using '1' key (KeyCode 49)
+      // Toggle Virtual Cursor using '1' key
       if (e.key === "1") {
         e.preventDefault();
         setIsVirtualCursorEnabled(prev => {
@@ -139,10 +139,8 @@ export function RemotePointer() {
 
       if (standardMap[e.key]) {
         e.preventDefault();
-        // Always navigate with Smart Pointer if we are using directions
         navigate(standardMap[e.key]);
         
-        // UI Feedback
         let visualKey = e.key;
         if (e.key === "ArrowUp") visualKey = "2";
         if (e.key === "ArrowDown") visualKey = "8";

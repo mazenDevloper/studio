@@ -1,4 +1,3 @@
-
 'use client';
 
 import { FOOTBALL_API_KEY, FOOTBALL_API_BASE_URL } from "./constants";

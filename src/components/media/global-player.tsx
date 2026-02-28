@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useMediaStore } from "@/lib/store";
@@ -146,7 +145,7 @@ export function GlobalVideoPlayer() {
       className={cn(
         "fixed z-[9999] transition-all duration-1000 ease-[cubic-bezier(0.23,1,0.32,1)]",
         isMinimized 
-          ? "bottom-32 left-1/2 -translate-x-1/2 w-[650px] h-32 rounded-[2.5rem] liquid-glass cursor-pointer shadow-[0_40px_100px_rgba(0,0,0,0.9)]" 
+          ? "bottom-32 left-0 right-0 mx-auto -translate-x-0 w-[650px] h-32 rounded-[2.5rem] liquid-glass cursor-pointer shadow-[0_40px_100px_rgba(0,0,0,0.9)]" 
           : isFullScreen
             ? "inset-0 bg-black flex flex-col"
             : "top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[70vw] h-[50vh] glass-panel rounded-[3.5rem] bg-black/95 shadow-[0_60px_150px_rgba(0,0,0,1)]"

@@ -1,4 +1,3 @@
-
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -72,7 +71,6 @@ export function YouTubeSavedWidget() {
                       </div>
                     </div>
 
-                    {/* Progress Bar - Essential Feature */}
                     {video.progress && video.progress > 0 && (
                       <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-black/40">
                         <div 

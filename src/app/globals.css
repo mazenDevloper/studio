@@ -44,7 +44,7 @@
   }
 }
 
-/* Virtual Cursor Disabler */
+/* Virtual Cursor Disabler for VIDAA */
 .no-cursor, .no-cursor * {
   cursor: none !important;
 }
