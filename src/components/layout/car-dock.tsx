@@ -1,7 +1,8 @@
+
 "use client";
 
 import { LayoutDashboard, Radio, Settings, GripVertical, ArrowLeft, Trophy, ArrowRightLeft } from "lucide-react";
-import Link from "next/link";
+import Link from "next/navigation";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -43,9 +44,9 @@ export function CarDock() {
 
       <div className="flex flex-row md:flex-col items-center gap-4 md:gap-6 flex-1 justify-around md:justify-start">
         {apps.map((app) => (
-          <Link
+          <button
             key={app.name}
-            href={app.href}
+            onClick={() => router.push(app.href)}
             data-nav-id={`dock-${app.name}`}
             className={cn(
               "w-12 h-12 md:w-14 md:h-14 rounded-[1.2rem] flex items-center justify-center transition-all duration-500 relative group focusable outline-none",
@@ -63,7 +64,7 @@ export function CarDock() {
                 dockSide === 'left' ? "md:-right-6 md:bottom-auto" : "md:-left-6 md:bottom-auto"
               )} />
             )}
-          </Link>
+          </button>
         ))}
       </div>
 

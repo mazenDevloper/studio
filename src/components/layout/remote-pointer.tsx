@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useCallback, useState } from "react";
@@ -63,11 +64,13 @@ export function RemotePointer() {
     const dx = p2.x - p1.x;
     const dy = p2.y - p1.y;
 
+    // Reject elements in the opposite direction
     if (direction === "ArrowRight" && dx <= 2) return Infinity;
     if (direction === "ArrowLeft" && dx >= -2) return Infinity;
     if (direction === "ArrowDown" && dy <= 2) return Infinity;
     if (direction === "ArrowUp" && dy >= -2) return Infinity;
 
+    // Calculate Manhattan-style weighted distance to prefer orthogonal elements
     const orthogonalWeight = 3.5; 
     if (direction === "ArrowRight" || direction === "ArrowLeft") {
       return Math.sqrt(Math.pow(dx, 2) + Math.pow(dy * orthogonalWeight, 2));
@@ -94,6 +97,7 @@ export function RemotePointer() {
       for (const el of focusables) {
         if (el === current) continue;
         const rect = el.getBoundingClientRect();
+        // Skip invisible elements
         if (rect.width === 0 || rect.height === 0) continue;
 
         const dist = getDistance(currentRect, rect, direction);
