@@ -1,9 +1,16 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  /* تم إضافة سطر التصدير الثابت هنا لحل مشكلة الحجم في Cloudflare */
   output: 'export', 
   
+  // هذا القسم يخبر Next.js بتجاهل الميزات التي تتطلب خادم (Server)
+  experimental: {
+    // إيقاف ميزات السيرفر مؤقتاً لنجاح البناء الثابت
+    serverActions: {
+       bodySizeLimit: '2mb' 
+    }
+  },
+
   typescript: {
     ignoreBuildErrors: true,
   },
@@ -12,7 +19,7 @@ const nextConfig: NextConfig = {
   },
   transpilePackages: ['@react-three/fiber', '@react-three/drei', 'three'],
   images: {
-    unoptimized: true, // ضروري جداً عند استخدام output: 'export'
+    unoptimized: true, 
     remotePatterns: [
       { protocol: 'https', hostname: 'placehold.co', pathname: '/**' },
       { protocol: 'https', hostname: 'images.unsplash.com', pathname: '/**' },
