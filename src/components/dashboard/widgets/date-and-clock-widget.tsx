@@ -84,7 +84,7 @@ export function DateAndClockWidget() {
 
       <div className="relative z-10 flex flex-col items-center w-full max-w-[95%] gap-2">
         <div className="flex flex-col items-center text-center">
-          {/* Prominent Clock - Ultra Visibility */}
+          {/* Prominent Clock - Ultra Visibility as requested */}
           <div className="text-[11rem] font-black text-white tracking-tighter drop-shadow-[0_40px_100px_rgba(0,0,0,1)] leading-none mb-4 animate-in fade-in zoom-in-95 duration-1000">
             {timeString}
           </div>
