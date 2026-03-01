@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -39,12 +40,11 @@ export function DashboardView() {
 
     const interval = setInterval(() => {
       api.scrollNext();
-    }, 5000);
+    }, 8000); // 8 seconds for prominence
 
     return () => clearInterval(interval);
   }, [api]);
 
-  // التركيز التلقائي عند التحميل لضمان اختفاء مؤشر VIDAA
   useEffect(() => {
     setTimeout(() => {
       const heroWidget = document.querySelector('[data-nav-id="widget-carousel-hero"]') as HTMLElement;
@@ -66,10 +66,10 @@ export function DashboardView() {
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-6 h-[460px]">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-6 h-[480px]">
         {/* Left Column - 50/50 Split */}
         <div className="md:col-span-4 flex flex-col gap-6 h-full">
-          {/* Main Hero Widget */}
+          {/* Main Hero Widget with Scrolled Dots */}
           <div 
             className="glass-panel rounded-[2.5rem] relative group overflow-hidden flex flex-col w-full shadow-2xl h-1/2 focusable outline-none"
             tabIndex={0}
@@ -83,7 +83,7 @@ export function DashboardView() {
                 <CarouselItem className="h-full flex items-center justify-center">
                   <MoonWidget />
                 </CarouselItem>
-                <CarouselItem className="h-full">
+                <CarouselItem className="h-full flex items-center justify-center">
                   <WeatherWidget />
                 </CarouselItem>
                 <CarouselItem className="h-full flex items-center justify-center">
@@ -92,22 +92,22 @@ export function DashboardView() {
               </CarouselContent>
             </Carousel>
 
+            {/* Scrolled Dots Implementation */}
             <div 
-              className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-20 p-2 rounded-full outline-none carousel-indicator-dots" 
+              className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 z-20 p-2.5 rounded-full bg-black/20 backdrop-blur-xl border border-white/5" 
             >
               {Array.from({ length: count }).map((_, i) => (
                 <div
                   key={i}
                   className={cn(
-                    "h-1 rounded-full transition-all duration-500",
-                    current === i ? "w-6 bg-primary shadow-[0_0_12px_hsl(var(--primary))]" : "w-1 bg-white/10"
+                    "h-1.5 rounded-full transition-all duration-700",
+                    current === i ? "w-8 bg-primary shadow-[0_0_15px_hsl(var(--primary))]" : "w-1.5 bg-white/20"
                   )}
                 />
               ))}
             </div>
           </div>
 
-          {/* Prayer Countdown Widget */}
           <div className="h-1/2 w-full focusable outline-none rounded-[2.5rem]" tabIndex={0} data-nav-id="widget-prayer-countdown">
             <PrayerCountdownCard />
           </div>

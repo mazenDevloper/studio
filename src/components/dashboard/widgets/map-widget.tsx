@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { Card } from "@/components/ui/card";
-import { Compass, Plus, Minus, ChevronUp, ChevronDown, Target, Loader2, AlertTriangle, ZoomIn, ZoomOut } from "lucide-react";
+import { Compass, Target, Loader2, AlertTriangle, ZoomIn, ZoomOut, Plus, Minus, ChevronUp, ChevronDown } from "lucide-react";
 import { GOOGLE_MAPS_API_KEY } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { useMediaStore } from "@/lib/store";
@@ -64,49 +64,28 @@ export function MapWidget() {
       const scene = new THREE.Scene();
       const camera = new THREE.PerspectiveCamera();
       
-      scene.add(new THREE.AmbientLight(0xffffff, 0.65));
-      const light1 = new THREE.DirectionalLight(0xffffff, 0.68);
-      light1.position.set(25, 8, 15); 
+      scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+      const light1 = new THREE.DirectionalLight(0xffffff, 1);
+      light1.position.set(25, 50, 15); 
       scene.add(light1);
 
       const loader = new GLTFLoader();
-      loader.load('https://dmusera.netlify.app/ES350E.gltf', (gltf) => {
+      // Updated to load the local 3D model from the /es350e folder
+      loader.load('/es350e/scene.glb', (gltf) => {
         const carModel = gltf.scene;
         carModelRef.current = carModel;
         
         carModel.traverse((node: any) => {
           if (node.isMesh) {
-            const originalColor = node.material.color.clone();
-            const isTransparent = node.material.transparent || node.material.opacity < 0.9;
-            const isNeutral = (originalColor.r === originalColor.g && originalColor.g === originalColor.b) || 
-                             (originalColor.r < 0.5 && originalColor.g < 0.5 && originalColor.b < 0.5);
-
-            if (isTransparent || isNeutral) {
-              node.material = new THREE.MeshPhongMaterial({
-                color: isTransparent ? originalColor : 0x050505,
-                specular: 0x444444,
-                shininess: 100,
-                side: THREE.DoubleSide,
-                transparent: isTransparent,
-                opacity: node.material.opacity
-              });
-            } else {
-              node.material = new THREE.MeshPhongMaterial({
-                color: 0xcccaac,
-                specular: 0x888888,    
-                shininess: 2000,       
-                emissive: 0x221100,    
-                emissiveIntensity: 0.2,
-                side: THREE.DoubleSide,
-                flatShading: false
-              });
-            }
+            node.material.envMapIntensity = 1.5;
             node.material.needsUpdate = true;
           }
         });
 
         carModel.rotation.x = Math.PI / 2;
         scene.add(carModel);
+      }, undefined, (error) => {
+        console.error("3D Model Loading Error:", error);
       });
 
       (overlay as any).scene = scene;
@@ -136,7 +115,7 @@ export function MapWidget() {
       const matrix = transformer.fromLatLngAltitude({ 
         lat: carStateRef.current.location.lat, 
         lng: carStateRef.current.location.lng, 
-        altitude: 3.5 
+        altitude: 2.0 
       });
       
       camera.projectionMatrix = new THREE.Matrix4().fromArray(matrix);
@@ -232,7 +211,7 @@ export function MapWidget() {
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <div className="flex flex-col items-center gap-4">
             <Loader2 className="w-10 h-10 animate-spin text-blue-500" />
-            <span className="text-white/60 font-bold text-xs uppercase tracking-widest">تحميل نظام الملاحة...</span>
+            <span className="text-white/60 font-bold text-xs uppercase tracking-widest">Satellite Signal Syncing...</span>
           </div>
         </div>
       )}
@@ -251,35 +230,32 @@ export function MapWidget() {
       
       {!apiError && !isLoading && (
         <div className="absolute top-6 right-6 z-20 flex flex-col gap-3">
-          {/* Map Zoom Controls */}
           <div className="flex flex-col gap-1 bg-black/60 backdrop-blur-xl p-2 rounded-2xl border border-white/10 shadow-2xl">
-            <Button size="icon" variant="ghost" onClick={() => updateMapSettings({ zoom: Math.min(21, mapSettings.zoom + 0.5) })} className="h-10 w-10 text-primary">
+            <Button size="icon" variant="ghost" onClick={() => updateMapSettings({ zoom: Math.min(21, mapSettings.zoom + 0.5) })} className="h-10 w-10 text-primary focusable">
               <ZoomIn className="w-5 h-5" />
             </Button>
             <span className="text-[10px] text-white/40 font-black text-center uppercase tracking-tighter">Zoom</span>
-            <Button size="icon" variant="ghost" onClick={() => updateMapSettings({ zoom: Math.max(15, mapSettings.zoom - 0.5) })} className="h-10 w-10 text-primary">
+            <Button size="icon" variant="ghost" onClick={() => updateMapSettings({ zoom: Math.max(15, mapSettings.zoom - 0.5) })} className="h-10 w-10 text-primary focusable">
               <ZoomOut className="w-5 h-5" />
             </Button>
           </div>
 
-          {/* Car Scale Controls */}
           <div className="flex flex-col gap-1 bg-black/60 backdrop-blur-xl p-2 rounded-2xl border border-white/10 shadow-2xl">
-            <Button size="icon" variant="ghost" onClick={() => updateMapSettings({ carScale: mapSettings.carScale + 0.05 })} className="h-10 w-10 text-white">
+            <Button size="icon" variant="ghost" onClick={() => updateMapSettings({ carScale: mapSettings.carScale + 0.05 })} className="h-10 w-10 text-white focusable">
               <Plus className="w-4 h-4" />
             </Button>
             <span className="text-[10px] text-white/40 font-bold text-center">CAR</span>
-            <Button size="icon" variant="ghost" onClick={() => updateMapSettings({ carScale: Math.max(0.1, mapSettings.carScale - 0.05) })} className="h-10 w-10 text-white">
+            <Button size="icon" variant="ghost" onClick={() => updateMapSettings({ carScale: Math.max(0.1, mapSettings.carScale - 0.05) })} className="h-10 w-10 text-white focusable">
               <Minus className="w-4 h-4" />
             </Button>
           </div>
 
-          {/* Tilt Controls */}
           <div className="flex flex-col gap-1 bg-black/60 backdrop-blur-xl p-2 rounded-2xl border border-white/10 shadow-2xl">
-            <Button size="icon" variant="ghost" onClick={() => updateMapSettings({ tilt: Math.min(85, mapSettings.tilt + 5) })} className="h-10 w-10 text-white">
+            <Button size="icon" variant="ghost" onClick={() => updateMapSettings({ tilt: Math.min(85, mapSettings.tilt + 5) })} className="h-10 w-10 text-white focusable">
               <ChevronUp className="w-4 h-4" />
             </Button>
             <span className="text-[10px] text-white/40 font-bold text-center">TILT</span>
-            <Button size="icon" variant="ghost" onClick={() => updateMapSettings({ tilt: Math.max(0, mapSettings.tilt - 5) })} className="h-10 w-10 text-white">
+            <Button size="icon" variant="ghost" onClick={() => updateMapSettings({ tilt: Math.max(0, mapSettings.tilt - 5) })} className="h-10 w-10 text-white focusable">
               <ChevronDown className="w-4 h-4" />
             </Button>
           </div>
@@ -287,7 +263,7 @@ export function MapWidget() {
       )}
 
       <div className="absolute bottom-8 right-8 z-20 flex flex-col gap-4">
-        <Button className="w-16 h-16 rounded-full bg-blue-600 shadow-2xl hover:bg-blue-500 transition-all active:scale-95" onClick={() => {
+        <Button className="w-16 h-16 rounded-full bg-blue-600 shadow-2xl hover:bg-blue-500 transition-all active:scale-95 focusable" onClick={() => {
           if (navigator.geolocation && mapInstanceRef.current) {
             navigator.geolocation.getCurrentPosition((p) => {
               const pos = { lat: p.coords.latitude, lng: p.coords.longitude };
@@ -297,7 +273,7 @@ export function MapWidget() {
         }}>
           <Target className="w-7 h-7 text-white" />
         </Button>
-        <Button className="w-16 h-16 rounded-full bg-black/60 backdrop-blur-xl border border-white/10 shadow-2xl">
+        <Button className="w-16 h-16 rounded-full bg-black/60 backdrop-blur-xl border border-white/10 shadow-2xl focusable">
           <Compass className="w-7 h-7 text-white animate-[spin_10s_linear_infinite]" />
         </Button>
       </div>
