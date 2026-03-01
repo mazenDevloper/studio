@@ -40,7 +40,7 @@ export function DashboardView() {
 
     const interval = setInterval(() => {
       api.scrollNext();
-    }, 8000); // 8 seconds for prominence
+    }, 8000); 
 
     return () => clearInterval(interval);
   }, [api]);
@@ -67,7 +67,7 @@ export function DashboardView() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6 h-[480px]">
-        {/* Left Column - 50/50 Split */}
+        {/* Left Column - Hero & Prayer */}
         <div className="md:col-span-4 flex flex-col gap-6 h-full">
           {/* Main Hero Widget with Scrolled Dots */}
           <div 
@@ -76,32 +76,34 @@ export function DashboardView() {
             data-nav-id="widget-carousel-hero"
           >
             <Carousel setApi={setApi} opts={{ loop: true }} className="flex-1 w-full h-full overflow-hidden">
-              <CarouselContent className="h-full">
-                <CarouselItem className="h-full flex items-center justify-center">
+              <CarouselContent className="h-full ml-0">
+                <CarouselItem className="h-full pl-0 flex items-center justify-center">
                   <DateAndClockWidget />
                 </CarouselItem>
-                <CarouselItem className="h-full flex items-center justify-center">
+                <CarouselItem className="h-full pl-0 flex items-center justify-center">
                   <MoonWidget />
                 </CarouselItem>
-                <CarouselItem className="h-full flex items-center justify-center">
+                <CarouselItem className="h-full pl-0 flex items-center justify-center">
                   <WeatherWidget />
                 </CarouselItem>
-                <CarouselItem className="h-full flex items-center justify-center">
+                <CarouselItem className="h-full pl-0 flex items-center justify-center">
                   <PlayingNowWidget />
                 </CarouselItem>
               </CarouselContent>
             </Carousel>
 
-            {/* Scrolled Dots Implementation */}
+            {/* Scrolled Dots Implementation - Inspired by Reference */}
             <div 
-              className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 z-20 p-2.5 rounded-full bg-black/20 backdrop-blur-xl border border-white/5" 
+              className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-20" 
             >
               {Array.from({ length: count }).map((_, i) => (
                 <div
                   key={i}
                   className={cn(
-                    "h-1.5 rounded-full transition-all duration-700",
-                    current === i ? "w-8 bg-primary shadow-[0_0_15px_hsl(var(--primary))]" : "w-1.5 bg-white/20"
+                    "h-1 rounded-full transition-all duration-500",
+                    current === i 
+                      ? "w-6 bg-primary shadow-[0_0_10px_hsl(var(--primary))]" 
+                      : "w-1 bg-white/20"
                   )}
                 />
               ))}

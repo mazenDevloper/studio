@@ -76,41 +76,41 @@ export function DateAndClockWidget() {
           src="https://images.unsplash.com/photo-1534067783941-51c9c23ecefd?auto=format&fit=crop&q=80&w=1000"
           alt="Atmospheric Background"
           fill
-          className="object-cover opacity-25 transition-transform duration-[8s]"
+          className="object-cover opacity-30 transition-transform duration-[8s]"
           data-ai-hint="mountain night"
         />
-        <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/40 via-black/60 to-black" />
+        <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/60 via-black/60 to-black" />
       </div>
 
-      <div className="relative z-10 flex flex-col items-center w-full max-w-[95%] gap-4">
+      <div className="relative z-10 flex flex-col items-center w-full max-w-[95%] gap-2">
         <div className="flex flex-col items-center text-center">
-          {/* Prominent Clock - Max Size */}
-          <div className="text-[11rem] font-black text-white tracking-tighter drop-shadow-[0_40px_100px_rgba(0,0,0,1)] leading-none mb-6 animate-in fade-in zoom-in-95 duration-1000">
+          {/* Prominent Clock - Maximum Visibility */}
+          <div className="text-[11rem] font-black text-white tracking-tighter drop-shadow-[0_40px_100px_rgba(0,0,0,1)] leading-none mb-4 animate-in fade-in zoom-in-95 duration-1000">
             {timeString}
           </div>
-          <div className="flex items-center gap-2 bg-white/5 px-10 py-4 rounded-full border border-white/10 backdrop-blur-3xl shadow-2xl">
-            <Calendar className="w-6 h-6 text-accent" />
-            <span className="text-[18px] text-white/90 font-black uppercase tracking-[0.4em]">{dayName} {dayNum} {monthName}</span>
+          <div className="flex items-center gap-2 bg-white/5 px-8 py-3 rounded-full border border-white/10 backdrop-blur-3xl shadow-2xl">
+            <Calendar className="w-5 h-5 text-accent" />
+            <span className="text-[16px] text-white/90 font-black uppercase tracking-[0.4em]">{dayName} {dayNum} {monthName}</span>
           </div>
         </div>
         
         {nextPrayer && (
-          <div className="w-full flex flex-col items-center gap-2 mt-6 bg-primary/10 p-6 rounded-[2.5rem] border border-primary/20 backdrop-blur-xl shadow-2xl">
-            <div className="flex items-center gap-6 w-full justify-center">
-              <div className="bg-primary/20 text-primary px-6 py-2 rounded-full border border-primary/30">
-                <span className="text-[12px] font-black uppercase tracking-widest">الصلاة القادمة: {nextPrayer.name}</span>
+          <div className="w-full flex flex-col items-center gap-1.5 mt-4 bg-primary/10 p-4 rounded-[2rem] border border-primary/20 backdrop-blur-xl shadow-2xl">
+            <div className="flex items-center gap-4 w-full justify-center">
+              <div className="bg-primary/20 text-primary px-4 py-1.5 rounded-full border border-primary/30">
+                <span className="text-[10px] font-black uppercase tracking-widest">الصلاة القادمة: {nextPrayer.name}</span>
               </div>
-              <span className="text-4xl font-black text-accent drop-shadow-[0_0_20px_rgba(65,184,131,0.5)]">
+              <span className="text-3xl font-black text-accent drop-shadow-[0_0_20px_rgba(65,184,131,0.5)]">
                 {convertTo12Hour(nextPrayer.time)}
               </span>
             </div>
             
-            <div className="flex items-center gap-4 text-white/60">
-              <div className="h-px w-12 bg-white/10" />
-              <div className="text-[12px] font-black uppercase tracking-[0.5em] flex items-center gap-4">
-                <Timer className="w-6 h-6 text-primary animate-pulse" /> متبقي {nextPrayer.countdown}
+            <div className="flex items-center gap-3 text-white/60">
+              <div className="h-px w-8 bg-white/10" />
+              <div className="text-[10px] font-black uppercase tracking-[0.5em] flex items-center gap-2">
+                <Timer className="w-4 h-4 text-primary animate-pulse" /> متبقي {nextPrayer.countdown}
               </div>
-              <div className="h-px w-12 bg-white/10" />
+              <div className="h-px w-8 bg-white/10" />
             </div>
           </div>
         )}

@@ -110,7 +110,7 @@ export const useMediaStore = create<MediaState>()(
       isPlaying: false,
       isMinimized: false,
       isFullScreen: false,
-      dockSide: 'right', // شريط المهام في اليمين كوضع افتراضي
+      dockSide: 'left', // Default to left as requested
 
       addChannel: (channel) => {
         set((state) => {

@@ -64,13 +64,13 @@ export function MapWidget() {
       const scene = new THREE.Scene();
       const camera = new THREE.PerspectiveCamera();
       
-      scene.add(new THREE.AmbientLight(0xffffff, 1.2));
-      const light1 = new THREE.DirectionalLight(0xffffff, 1.5);
+      scene.add(new THREE.AmbientLight(0xffffff, 1.5));
+      const light1 = new THREE.DirectionalLight(0xffffff, 2.0);
       light1.position.set(25, 50, 15); 
       scene.add(light1);
 
       const loader = new GLTFLoader();
-      // Using the user specified GLTF path
+      // Updated correct path for ES350E
       loader.load('/ES350E/ES350E.gltf', (gltf) => {
         const carModel = gltf.scene;
         carModelRef.current = carModel;
@@ -179,7 +179,6 @@ export function MapWidget() {
 
         setIsLoading(false);
       } catch (e) {
-        console.error("Map Init Error:", e);
         setApiError(true);
         setIsLoading(false);
       }
