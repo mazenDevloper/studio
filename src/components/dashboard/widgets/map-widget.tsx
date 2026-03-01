@@ -71,13 +71,14 @@ export function MapWidget() {
       scene.add(light1);
 
       const loader = new GLTFLoader();
-      loader.load('/ES350E/ES350E.gltf', (gltf) => {
+      // Corrected Path: Path from public folder
+      loader.load('ES350E/ES350E.gltf', (gltf) => {
         const carModel = gltf.scene;
         carModelRef.current = carModel;
         
         carModel.traverse((node: any) => {
           if (node.isMesh && node.material) {
-            // Material Fixes from Reference
+            // Material Fixes for proper 3D rendering
             node.material.emissive = node.material.color.clone().multiplyScalar(0.2); 
             node.material.metalness = 0.4;
             node.material.roughness = 0.5;
@@ -208,7 +209,7 @@ export function MapWidget() {
     return () => {
       if (watchIdRef.current) navigator.geolocation.clearWatch(watchIdRef.current);
     };
-  }, [setup3DCarSystem]);
+  }, [setup3DCarSystem, mapSettings.zoom, mapSettings.tilt, carState.location]);
 
   return (
     <Card className="h-full w-full overflow-hidden border-none bg-black relative group rounded-[2.5rem] shadow-2xl">

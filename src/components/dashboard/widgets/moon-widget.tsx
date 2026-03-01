@@ -10,7 +10,7 @@ interface MoonData {
   image: {
     url: string;
   };
-  phase: string;
+  phase: string | number;
   illumination: number;
 }
 
@@ -20,7 +20,7 @@ export function MoonWidget() {
   const [error, setError] = useState(false);
   const [rotation, setRotation] = useState(0);
 
-  // المنطق الحاسم لجلب تاريخ NASA SVS
+  // المنطق الحاسم لجلب تاريخ NASA SVS بناءً على وقت التحديث 18:00
   function getNasaDateTime(date: Date) {
     const hours = date.getHours();
     let targetDate = new Date(date);
@@ -59,7 +59,7 @@ export function MoonWidget() {
     return () => clearInterval(rotTimer);
   }, []);
 
-  const hijriDay = "١١"; // Fallback for now
+  const hijriDay = "١١"; 
 
   return (
     <div className="h-full w-full bg-black rounded-[2.5rem] border border-white/5 overflow-hidden relative group shadow-2xl flex flex-col items-center justify-center">
@@ -87,7 +87,6 @@ export function MoonWidget() {
             </div>
           ) : (
             <div className="relative w-32 h-32 mx-auto">
-              {/* Hijri Moon Overlay */}
               <div id="hijri-moon-overlay" 
                 className="absolute inset-0 flex items-center justify-center z-20 font-black text-6xl opacity-30 pointer-events-none"
                 style={{ WebkitTextStroke: '1.5px rgba(255,255,255,0.7)', textShadow: '0 4px 10px rgba(0,0,0,0.5)', transform: 'scale(3.5)' }}
@@ -123,7 +122,7 @@ export function MoonWidget() {
             <p className="text-[10px] text-white/30 font-bold uppercase tracking-widest mt-1">Illumination</p>
           </div>
           <div className="mt-2 text-primary/80 font-black uppercase tracking-[0.2em] text-[8px] bg-white/5 px-3 py-1 rounded-full border border-white/5">
-            {moonData ? moonData.phase.replace(/-/g, ' ') : "Scanning Orbit..."}
+            {moonData ? String(moonData.phase).replace(/-/g, ' ') : "Scanning Orbit..."}
           </div>
         </div>
       </CardContent>
