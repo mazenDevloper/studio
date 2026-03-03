@@ -1,16 +1,6 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  output: 'export', 
-  
-  // هذا القسم يخبر Next.js بتجاهل الميزات التي تتطلب خادم (Server)
-  experimental: {
-    // إيقاف ميزات السيرفر مؤقتاً لنجاح البناء الثابت
-    serverActions: {
-       bodySizeLimit: '2mb' 
-    }
-  },
-
   typescript: {
     ignoreBuildErrors: true,
   },
