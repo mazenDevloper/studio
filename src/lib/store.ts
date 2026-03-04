@@ -10,7 +10,7 @@ import {
   JSONBIN_CLUBS_BIN_ID, 
   JSONBIN_SAVED_VIDEOS_BIN_ID,
   JSONBIN_PRAYER_TIMES_BIN_ID,
-  JSONBIN_ACCESS_KEY_CHANNELS,
+  JSONBIN_IPTV_FAVS_BIN_ID,
   prayerTimesData
 } from "./constants";
 
@@ -37,6 +37,14 @@ export interface FavoriteTeam {
   logo: string;
 }
 
+export interface IptvChannel {
+  name: string;
+  stream_id: string;
+  stream_icon: string;
+  category_id: string;
+  starred?: boolean;
+}
+
 interface MediaState {
   favoriteChannels: YouTubeChannel[];
   savedVideos: YouTubeVideo[];
@@ -45,11 +53,14 @@ interface MediaState {
   favoriteTeams: FavoriteTeam[];
   favoriteLeagueIds: number[];
   belledMatchIds: string[];
+  favoriteIptvChannels: IptvChannel[];
+  iptvFormat: 'ts' | 'm3u8';
   prayerTimes: any[];
   reminders: Reminder[];
   mapSettings: MapSettings;
   aiSuggestions: any[];
   activeVideo: YouTubeVideo | null;
+  activeIptv: IptvChannel | null;
   isPlaying: boolean;
   isMinimized: boolean;
   isFullScreen: boolean;
@@ -66,9 +77,12 @@ interface MediaState {
   toggleFavoriteTeam: (team: FavoriteTeam) => void;
   toggleFavoriteLeagueId: (leagueId: number) => void;
   toggleBelledMatch: (matchId: string) => void;
+  toggleFavoriteIptvChannel: (channel: IptvChannel) => void;
+  setIptvFormat: (format: 'ts' | 'm3u8') => void;
   updateMapSettings: (settings: Partial<MapSettings>) => void;
   setAiSuggestions: (suggestions: any[]) => void;
   setActiveVideo: (video: YouTubeVideo | null) => void;
+  setActiveIptv: (channel: IptvChannel | null) => void;
   updateVideoProgress: (videoId: string, progress: number) => void;
   setIsPlaying: (playing: boolean) => void;
   setIsMinimized: (minimized: boolean) => void;
@@ -102,11 +116,14 @@ export const useMediaStore = create<MediaState>()(
       favoriteTeams: [],
       favoriteLeagueIds: [307, 39, 2, 140, 135],
       belledMatchIds: [],
+      favoriteIptvChannels: [],
+      iptvFormat: 'ts',
       prayerTimes: prayerTimesData,
       reminders: [],
       mapSettings: { zoom: 19.5, tilt: 65, carScale: 1.05, backgroundIndex: 0 },
       aiSuggestions: [],
       activeVideo: null,
+      activeIptv: null,
       isPlaying: false,
       isMinimized: false,
       isFullScreen: false,
@@ -235,6 +252,22 @@ export const useMediaStore = create<MediaState>()(
         });
       },
 
+      toggleFavoriteIptvChannel: (channel) => {
+        set((state) => {
+          const exists = state.favoriteIptvChannels.some(c => c.stream_id === channel.stream_id);
+          let newList;
+          if (exists) {
+            newList = state.favoriteIptvChannels.filter(c => c.stream_id !== channel.stream_id);
+          } else {
+            newList = [...state.favoriteIptvChannels, { ...channel, starred: true }];
+          }
+          updateBin(JSONBIN_IPTV_FAVS_BIN_ID, newList);
+          return { favoriteIptvChannels: newList };
+        });
+      },
+
+      setIptvFormat: (format) => set({ iptvFormat: format }),
+
       updateMapSettings: (settings) => {
         set((state) => ({ mapSettings: { ...state.mapSettings, ...settings } }));
       },
@@ -256,18 +289,21 @@ export const useMediaStore = create<MediaState>()(
       setAiSuggestions: (suggestions) => set({ aiSuggestions: suggestions }),
 
       setActiveVideo: (video) => {
-        if (video) {
-          const currentChannels = get().favoriteChannels;
-          const channel = currentChannels.find(c => c.channeltitle === video.channelTitle);
-          if (channel) {
-            get().incrementChannelClick(channel.channelid);
-          }
-        }
         set({ 
-          activeVideo: video, 
+          activeVideo: video,
+          activeIptv: null, 
           isPlaying: !!video, 
           isMinimized: false, 
           isFullScreen: !!video 
+        });
+      },
+      setActiveIptv: (channel) => {
+        set({
+          activeIptv: channel,
+          activeVideo: null,
+          isPlaying: !!channel,
+          isMinimized: false, 
+          isFullScreen: !!channel
         });
       },
       setIsPlaying: (playing) => set({ isPlaying: playing }),
@@ -284,11 +320,14 @@ export const useMediaStore = create<MediaState>()(
         favoriteTeams: state.favoriteTeams,
         favoriteLeagueIds: state.favoriteLeagueIds,
         belledMatchIds: state.belledMatchIds,
+        favoriteIptvChannels: state.favoriteIptvChannels,
+        iptvFormat: state.iptvFormat,
         mapSettings: state.mapSettings,
         reminders: state.reminders,
         prayerTimes: state.prayerTimes,
         videoProgress: state.videoProgress,
         activeVideo: state.activeVideo,
+        activeIptv: state.activeIptv,
         isMinimized: state.isMinimized,
         isFullScreen: state.isFullScreen,
         dockSide: state.dockSide
@@ -325,7 +364,7 @@ if (typeof window !== "undefined") {
         }
       }
 
-      // Sync Saved Videos (Added)
+      // Sync Saved Videos
       const svRes = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_SAVED_VIDEOS_BIN_ID}/latest`, {
         headers: { 'X-Master-Key': JSONBIN_MASTER_KEY }
       });
@@ -333,6 +372,17 @@ if (typeof window !== "undefined") {
         const data = await svRes.json();
         if (Array.isArray(data.record)) {
           useMediaStore.setState({ savedVideos: data.record });
+        }
+      }
+
+      // Sync IPTV Favorites
+      const iptvRes = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_IPTV_FAVS_BIN_ID}/latest`, {
+        headers: { 'X-Master-Key': JSONBIN_MASTER_KEY }
+      });
+      if (iptvRes.ok) {
+        const data = await iptvRes.json();
+        if (data.record && Array.isArray(data.record)) {
+          useMediaStore.setState({ favoriteIptvChannels: data.record });
         }
       }
     } catch (e) {

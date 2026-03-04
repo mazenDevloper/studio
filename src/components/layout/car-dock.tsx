@@ -1,8 +1,7 @@
 
 "use client";
 
-import { LayoutDashboard, Radio, Settings, GripVertical, ArrowLeft, Trophy, ArrowRightLeft } from "lucide-react";
-import Link from "next/navigation";
+import { LayoutDashboard, Radio, Settings, GripVertical, ArrowLeft, Trophy, ArrowRightLeft, Tv } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -17,18 +16,21 @@ export function CarDock() {
   const apps = [
     { name: "Home", href: "/", icon: LayoutDashboard, color: "bg-blue-600" },
     { name: "Media", href: "/media", icon: Radio, color: "bg-red-500" },
+    { name: "IPTV", href: "/iptv", icon: Tv, color: "bg-emerald-600" },
     { name: "Football", href: "/football", icon: Trophy, color: "bg-orange-600" },
     { name: "Settings", href: "/settings", icon: Settings, color: "bg-zinc-700" },
   ];
 
-  // Smart Initial Focus: Target the Media icon on startup to hide VIDAA cursor
+  // Smart Initial Focus
   useEffect(() => {
     const timer = setTimeout(() => {
-      const mediaIcon = document.querySelector('[data-nav-id="dock-Media"]') as HTMLElement;
-      if (mediaIcon) mediaIcon.focus();
+      const activeApp = apps.find(a => a.href === pathname);
+      const targetId = activeApp ? `dock-${activeApp.name}` : 'dock-Home';
+      const target = document.querySelector(`[data-nav-id="${targetId}"]`) as HTMLElement;
+      if (target) target.focus();
     }, 1000);
     return () => clearTimeout(timer);
-  }, []);
+  }, [pathname]);
 
   return (
     <div className={cn(

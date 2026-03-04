@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Search, Plus, Radio, Loader2, Check, Mic, Users, Cloud, Star, X, Bookmark, Link as LinkIcon, BookOpen, ChevronDown, Trash2 } from "lucide-react";
+import { Search, Plus, Radio, Loader2, Check, Mic, Users, Cloud, Star, X, Bookmark, Link as LinkIcon, BookOpen, ChevronDown, Trash2, Tv, Zap } from "lucide-react";
 import { useMediaStore } from "@/lib/store";
 import { searchYouTubeChannels, searchYouTubeVideos, fetchChannelVideos, fetchVideoDetails, YouTubeChannel, YouTubeVideo } from "@/lib/youtube";
 import Image from "next/image";
@@ -21,6 +21,14 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+
+// Priority Live Channels Data
+const PRIORITY_LIVE_CHANNELS = [
+  { id: "UC_vbeChFz6SizVSA_p6_InA", name: "قناة القرآن الكريم", type: "live" },
+  { id: "UCZ_vbeChFz6SizVSA_p6_InA", name: "beIN Sports الإخبارية", type: "live" },
+  { id: "UCfiwzLy-8yKzIbsmZTzxDgw", name: "قناة الجزيرة", type: "live" },
+  { id: "UC-vbeChFz6SizVSA_p6_InA", name: "قناة السنة النبوية", type: "live" }
+];
 
 export function MediaView() {
   const { 
@@ -200,7 +208,7 @@ export function MediaView() {
         <div className="flex justify-between items-end">
           <div className="text-right">
             <h1 className="text-4xl md:text-5xl font-headline font-bold tracking-tighter text-white">DriveCast Media</h1>
-            <p className="text-muted-foreground text-xs font-medium uppercase tracking-widest opacity-60">iPhone Fluid Experience</p>
+            <p className="text-muted-foreground text-xs font-medium uppercase tracking-widest opacity-60">Professional Video Center</p>
           </div>
           <div className="flex items-center gap-4">
             <Dialog open={isUrlDialogOpen} onOpenChange={setIsUrlDialogOpen}>
@@ -367,6 +375,30 @@ export function MediaView() {
           </div>
         )}
       </header>
+
+      {/* Quick Live Channels Section */}
+      <section className="space-y-6">
+        <h2 className="text-2xl font-black text-white flex items-center gap-3">
+          <Zap className="w-6 h-6 text-yellow-500 fill-current" /> قنوات مباشرة مقترحة
+        </h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {PRIORITY_LIVE_CHANNELS.map((ch, idx) => (
+            <Button
+              key={ch.id}
+              variant="outline"
+              className="h-16 rounded-2xl bg-white/5 border-white/10 hover:bg-white/10 text-white font-black text-sm justify-start px-6 gap-4 focusable"
+              onClick={() => handleVideoSearch(ch.name)}
+              tabIndex={0}
+              data-nav-id={`live-priority-${idx}`}
+            >
+              <div className="w-8 h-8 rounded-full bg-red-600 flex items-center justify-center animate-pulse">
+                <Radio className="w-4 h-4 text-white" />
+              </div>
+              {ch.name}
+            </Button>
+          ))}
+        </div>
+      </section>
 
       {selectedChannel ? (
         <div className="space-y-8 animate-in fade-in slide-in-from-left-6 duration-500 pb-24 text-right">

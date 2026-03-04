@@ -53,7 +53,8 @@ export function MapWidget() {
       scene.add(sun);
 
       const loader = new GLTFLoader();
-      loader.load('https://cplay2.netlify.app/E350E.gltf', (gltf) => {
+      // Using requested stable model URL
+      loader.load('https://dmusera.netlify.app/E350E.gltf', (gltf) => {
         const model = gltf.scene;
         model.traverse(node => {
           if ((node as THREE.Mesh).isMesh) {
@@ -74,6 +75,8 @@ export function MapWidget() {
         model.scale.set(1.5, 1.5, 1.5);
         scene.add(model);
         (overlay as any).carModel = model;
+      }, undefined, (error) => {
+        console.error("Failed to load 3D Model:", error);
       });
 
       (overlay as any).scene = scene;

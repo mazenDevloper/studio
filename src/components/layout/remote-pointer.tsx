@@ -2,12 +2,10 @@
 "use client";
 
 import { useEffect, useCallback, useState } from "react";
-import { useRouter } from "next/navigation";
 import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Circle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function RemotePointer() {
-  const router = useRouter();
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const [isVisible, setIsVisible] = useState(false);
 
@@ -18,10 +16,15 @@ export function RemotePointer() {
     const current = document.activeElement as HTMLElement;
     const isCurrentFocusable = current && current.classList.contains("focusable");
     
+    // Smart Auto-Focus if nothing focused
     if (!isCurrentFocusable) {
-      focusables[0].focus();
+      // Try to focus dock first, or first visible item
+      const first = focusables.find(el => el.dataset.navId?.startsWith('dock-')) || focusables[0];
+      first?.focus();
       return;
     }
+
+    if (!direction) return;
 
     const currentRect = current.getBoundingClientRect();
     let minDistance = Infinity;
@@ -33,12 +36,21 @@ export function RemotePointer() {
       const dx = p2.x - p1.x;
       const dy = p2.y - p1.y;
 
-      if (dir === "ArrowRight" && dx <= 2) return Infinity;
-      if (dir === "ArrowLeft" && dx >= -2) return Infinity;
-      if (dir === "ArrowDown" && dy <= 2) return Infinity;
-      if (dir === "ArrowUp" && dy >= -2) return Infinity;
+      // Filter by direction with small threshold
+      if (dir === "ArrowRight" && dx <= 5) return Infinity;
+      if (dir === "ArrowLeft" && dx >= -5) return Infinity;
+      if (dir === "ArrowDown" && dy <= 5) return Infinity;
+      if (dir === "ArrowUp" && dy >= -5) return Infinity;
 
-      return Math.sqrt(Math.pow(dx, 2) + Math.pow(dy, 2));
+      // Prioritize primary axis alignment
+      const primaryAxisWeight = 0.5;
+      const secondaryAxisWeight = 1.5;
+      
+      if (dir === "ArrowRight" || dir === "ArrowLeft") {
+        return Math.sqrt(Math.pow(dx * primaryAxisWeight, 2) + Math.pow(dy * secondaryAxisWeight, 2));
+      } else {
+        return Math.sqrt(Math.pow(dx * secondaryAxisWeight, 2) + Math.pow(dy * primaryAxisWeight, 2));
+      }
     };
 
     for (const el of focusables) {
@@ -51,7 +63,10 @@ export function RemotePointer() {
       }
     }
 
-    if (next) next.focus();
+    if (next) {
+      next.focus();
+      next.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
   }, []);
 
   useEffect(() => {
@@ -73,11 +88,10 @@ export function RemotePointer() {
         if (e.key === "ArrowRight") visualKey = "6";
         setActiveKey(visualKey);
         setIsVisible(true);
-        const timeout = setTimeout(() => setIsVisible(false), 800);
-        return () => clearTimeout(timeout);
+        setTimeout(() => setIsVisible(false), 800);
       } else if (e.key === "5" || e.key === "Enter") {
         const current = document.activeElement as HTMLElement;
-        if (current && current.classList.contains("focusable")) {
+        if (current?.classList.contains("focusable")) {
           current.click();
           setActiveKey('5');
           setIsVisible(true);
@@ -87,7 +101,9 @@ export function RemotePointer() {
     };
 
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    // Initial Smart Focus after mount
+    const timer = setTimeout(() => navigate(''), 1500);
+    return () => { window.removeEventListener("keydown", handleKeyDown); clearTimeout(timer); };
   }, [navigate]);
 
   return (
@@ -95,40 +111,21 @@ export function RemotePointer() {
       "fixed bottom-24 right-12 z-[10000] pointer-events-none flex flex-col items-center gap-3 transition-all duration-500 scale-110",
       isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"
     )}>
-      <div className={cn(
-        "w-14 h-14 rounded-2xl flex items-center justify-center border-2 transition-all duration-200",
-        activeKey === "2" ? "bg-primary border-primary shadow-[0_0_40px_hsl(var(--primary))]" : "bg-black/60 border-white/10 backdrop-blur-xl"
-      )}>
+      <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center border-2", activeKey === "2" ? "bg-primary border-primary shadow-glow" : "bg-black/60 border-white/10 backdrop-blur-xl")}>
         <ChevronUp className="w-8 h-8 text-white" />
       </div>
-      
       <div className="flex gap-3">
-        <div className={cn(
-          "w-14 h-14 rounded-2xl flex items-center justify-center border-2 transition-all duration-200",
-          activeKey === "4" ? "bg-primary border-primary shadow-[0_0_40px_hsl(var(--primary))]" : "bg-black/60 border-white/10 backdrop-blur-xl"
-        )}>
+        <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center border-2", activeKey === "4" ? "bg-primary border-primary shadow-glow" : "bg-black/60 border-white/10 backdrop-blur-xl")}>
           <ChevronLeft className="w-8 h-8 text-white" />
         </div>
-        
-        <div className={cn(
-          "w-14 h-14 rounded-2xl flex items-center justify-center border-2 transition-all duration-200",
-          activeKey === '5' ? "bg-accent border-accent shadow-[0_0_40px_hsl(var(--accent))]" : "bg-black/60 border-white/10 backdrop-blur-xl"
-        )}>
+        <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center border-2", activeKey === '5' ? "bg-accent border-accent shadow-glow" : "bg-black/60 border-white/10 backdrop-blur-xl")}>
           <Circle className="w-8 h-8 text-white" />
         </div>
-        
-        <div className={cn(
-          "w-14 h-14 rounded-2xl flex items-center justify-center border-2 transition-all duration-200",
-          activeKey === "6" ? "bg-primary border-primary shadow-[0_0_40px_hsl(var(--primary))]" : "bg-black/60 border-white/10 backdrop-blur-xl"
-        )}>
+        <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center border-2", activeKey === "6" ? "bg-primary border-primary shadow-glow" : "bg-black/60 border-white/10 backdrop-blur-xl")}>
           <ChevronRight className="w-8 h-8 text-white" />
         </div>
       </div>
-      
-      <div className={cn(
-        "w-14 h-14 rounded-2xl flex items-center justify-center border-2 transition-all duration-200",
-        activeKey === "8" ? "bg-primary border-primary shadow-[0_0_40px_hsl(var(--primary))]" : "bg-black/60 border-white/10 backdrop-blur-xl"
-      )}>
+      <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center border-2", activeKey === "8" ? "bg-primary border-primary shadow-glow" : "bg-black/60 border-white/10 backdrop-blur-xl")}>
         <ChevronDown className="w-8 h-8 text-white" />
       </div>
     </div>
