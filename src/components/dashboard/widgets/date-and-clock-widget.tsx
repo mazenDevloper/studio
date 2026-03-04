@@ -1,8 +1,9 @@
+
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
 import { convertTo12Hour } from "@/lib/constants";
-import { Clock, Timer, Calendar } from "lucide-react";
+import { Timer, Calendar } from "lucide-react";
 import { useMediaStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
@@ -87,7 +88,7 @@ export function DateAndClockWidget() {
         )}>
           <div className="flex items-center gap-2">
             <Timer className={cn("w-4 h-4", prayerStatus.type === "iqamah" ? "text-accent animate-pulse" : "text-primary")} />
-            <span className="text-[11px] font-black text-white/80 uppercase tracking-wide">{prayerStatus.text}</span>
+            <span className="text-[11px] font-black text-white uppercase tracking-wide">{prayerStatus.text}</span>
           </div>
           <span className="text-2xl font-black text-accent drop-shadow-lg">
             {convertTo12Hour(prayerStatus.time)}

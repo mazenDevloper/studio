@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -51,7 +52,7 @@ export function DashboardView() {
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-6 min-h-[420px]">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-6 min-h-[380px]">
         {/* Left: Map */}
         <div className="md:col-span-4 glass-panel rounded-[2.5rem] overflow-hidden relative shadow-2xl h-full focusable" tabIndex={0} data-nav-id="widget-map">
           <MapWidget />
@@ -72,7 +73,7 @@ export function DashboardView() {
         </div>
 
         {/* Right: Hero Carousel */}
-        <div className="md:col-span-4 flex flex-col gap-6 h-full">
+        <div className="md:col-span-4 flex flex-col h-full">
           <div className="glass-panel rounded-[2.5rem] relative group overflow-hidden flex flex-col w-full shadow-2xl flex-1 focusable outline-none" tabIndex={0} data-nav-id="widget-carousel-hero">
             <Carousel setApi={setApi} opts={{ loop: true }} className="flex-1 w-full h-full overflow-hidden">
               <CarouselContent className="h-full ml-0">

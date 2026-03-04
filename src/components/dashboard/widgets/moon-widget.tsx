@@ -1,10 +1,10 @@
+
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
 import { CardContent } from "@/components/ui/card";
-import { Moon as MoonIcon, Star, Loader2 } from "lucide-react";
+import { Moon as MoonIcon, Loader2 } from "lucide-react";
 import Image from "next/image";
-import { cn } from "@/lib/utils";
 
 interface MoonData {
   image: { url: string; };
@@ -18,7 +18,7 @@ export function MoonWidget() {
   const [loading, setLoading] = useState(true);
   const [rotation, setRotation] = useState(0);
   const [infoIndex, setInfoIndex] = useState(0);
-  const [hijriDay, setHijriDay] = useState("١");
+  const [hijriDay, setHijriDay] = useState("");
 
   useEffect(() => {
     async function fetchMoonData() {
@@ -44,7 +44,7 @@ export function MoonWidget() {
       }
     }
 
-    // Dynamic Hijri Day
+    // Dynamic Hijri Day Calculation
     const hDay = new Intl.DateTimeFormat('ar-SA-u-ca-islamic', {day: 'numeric'}).format(new Date());
     setHijriDay(hDay);
 

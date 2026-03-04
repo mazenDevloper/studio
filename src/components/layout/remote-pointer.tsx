@@ -1,59 +1,15 @@
+
 "use client";
 
 import { useEffect, useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Circle, MousePointer2, MousePointer } from "lucide-react";
+import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Circle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useToast } from "@/hooks/use-toast";
 
 export function RemotePointer() {
   const router = useRouter();
-  const { toast } = useToast();
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const [isVisible, setIsVisible] = useState(false);
-
-  const updatePointer = useCallback((el: HTMLElement) => {
-    el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
-  }, []);
-
-  const ensureFocus = useCallback(() => {
-    const active = document.activeElement;
-    const isFocusable = active && active.classList.contains("focusable");
-    
-    if (!isFocusable || active === document.body) {
-      const allFocusables = Array.from(document.querySelectorAll(".focusable")) as HTMLElement[];
-      if (allFocusables.length > 0) {
-        const dockTarget = document.querySelector('[data-nav-id="dock-Home"]') as HTMLElement;
-        if (dockTarget) {
-          dockTarget.focus();
-          updatePointer(dockTarget);
-        } else {
-          allFocusables[0].focus();
-          updatePointer(allFocusables[0]);
-        }
-      }
-    }
-  }, [updatePointer]);
-
-  const getDistance = (rect1: DOMRect, rect2: DOMRect, direction: string) => {
-    const p1 = { x: rect1.left + rect1.width / 2, y: rect1.top + rect1.height / 2 };
-    const p2 = { x: rect2.left + rect2.width / 2, y: rect2.top + rect2.height / 2 };
-
-    const dx = p2.x - p1.x;
-    const dy = p2.y - p1.y;
-
-    if (direction === "ArrowRight" && dx <= 2) return Infinity;
-    if (direction === "ArrowLeft" && dx >= -2) return Infinity;
-    if (direction === "ArrowDown" && dy <= 2) return Infinity;
-    if (direction === "ArrowUp" && dy >= -2) return Infinity;
-
-    const orthogonalWeight = 3.5; 
-    if (direction === "ArrowRight" || direction === "ArrowLeft") {
-      return Math.sqrt(Math.pow(dx, 2) + Math.pow(dy * orthogonalWeight, 2));
-    } else {
-      return Math.sqrt(Math.pow(dx * orthogonalWeight, 2) + Math.pow(dy, 2));
-    }
-  };
 
   const navigate = useCallback((direction: string) => {
     const focusables = Array.from(document.querySelectorAll(".focusable")) as HTMLElement[];
@@ -62,38 +18,43 @@ export function RemotePointer() {
     const current = document.activeElement as HTMLElement;
     const isCurrentFocusable = current && current.classList.contains("focusable");
     
+    if (!isCurrentFocusable) {
+      focusables[0].focus();
+      return;
+    }
+
+    const currentRect = current.getBoundingClientRect();
+    let minDistance = Infinity;
     let next: HTMLElement | null = null;
 
-    if (!isCurrentFocusable) {
-      next = focusables[0];
-    } else {
-      const currentRect = current.getBoundingClientRect();
-      let minDistance = Infinity;
+    const getDistance = (rect1: DOMRect, rect2: DOMRect, dir: string) => {
+      const p1 = { x: rect1.left + rect1.width / 2, y: rect1.top + rect1.height / 2 };
+      const p2 = { x: rect2.left + rect2.width / 2, y: rect2.top + rect2.height / 2 };
+      const dx = p2.x - p1.x;
+      const dy = p2.y - p1.y;
 
-      for (const el of focusables) {
-        if (el === current) continue;
-        const rect = el.getBoundingClientRect();
-        if (rect.width === 0 || rect.height === 0) continue;
+      if (dir === "ArrowRight" && dx <= 2) return Infinity;
+      if (dir === "ArrowLeft" && dx >= -2) return Infinity;
+      if (dir === "ArrowDown" && dy <= 2) return Infinity;
+      if (dir === "ArrowUp" && dy >= -2) return Infinity;
 
-        const dist = getDistance(currentRect, rect, direction);
-        if (dist < minDistance) {
-          minDistance = dist;
-          next = el;
-        }
+      return Math.sqrt(Math.pow(dx, 2) + Math.pow(dy, 2));
+    };
+
+    for (const el of focusables) {
+      if (el === current) continue;
+      const rect = el.getBoundingClientRect();
+      const dist = getDistance(currentRect, rect, direction);
+      if (dist < minDistance) {
+        minDistance = dist;
+        next = el;
       }
     }
 
-    if (next) {
-      next.focus();
-      updatePointer(next);
-    } else {
-      ensureFocus();
-    }
-  }, [updatePointer, ensureFocus]);
+    if (next) next.focus();
+  }, []);
 
   useEffect(() => {
-    const focusInterval = setInterval(ensureFocus, 3000);
-
     const handleKeyDown = (e: KeyboardEvent) => {
       const standardMap: Record<string, string> = {
         "2": "ArrowUp", "4": "ArrowLeft", "6": "ArrowRight", "8": "ArrowDown",
@@ -126,11 +87,8 @@ export function RemotePointer() {
     };
 
     window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      clearInterval(focusInterval);
-    };
-  }, [navigate, router, toast, ensureFocus]);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [navigate]);
 
   return (
     <div className={cn(
