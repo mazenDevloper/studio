@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -49,12 +48,12 @@ export function DashboardView() {
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6 min-h-[380px]">
         {/* Left: Interactive Map */}
-        <div className="md:col-span-4 glass-panel rounded-[2.5rem] overflow-hidden relative shadow-2xl h-full focusable" tabIndex={0}>
+        <div className="md:col-span-4 glass-panel rounded-[2.5rem] overflow-hidden relative shadow-2xl h-full focusable" tabIndex={0} data-nav-id="map-widget-container">
           <MapWidget />
         </div>
 
         {/* Middle: Vehicle Visualizer - Image Fill Card */}
-        <div className="md:col-span-4 glass-panel rounded-[2.5rem] relative flex items-center justify-center overflow-hidden h-full shadow-2xl focusable" tabIndex={0}>
+        <div className="md:col-span-4 glass-panel rounded-[2.5rem] relative flex items-center justify-center overflow-hidden h-full shadow-2xl focusable" tabIndex={0} data-nav-id="car-visualizer-container">
           <div className="absolute inset-0 w-full h-full">
             <Image 
               src="https://dmusera.netlify.app/es350gb.png" 
@@ -68,7 +67,7 @@ export function DashboardView() {
 
         {/* Right: Dynamic Widget Carousel */}
         <div className="md:col-span-4 flex flex-col gap-6 h-full relative">
-          <div className="flex-[1.8] relative overflow-hidden focusable group bg-black/20 rounded-[2.5rem] shadow-2xl" tabIndex={0}>
+          <div className="flex-[1.8] relative overflow-hidden focusable group bg-black/20 rounded-[2.5rem] shadow-2xl" tabIndex={0} data-nav-id="moon-widget-container">
             <Carousel setApi={setApi} opts={{ loop: true }} className="w-full h-full">
               <CarouselContent className="h-full ml-0">
                 <CarouselItem className="pl-0 h-full flex items-center justify-center">
@@ -101,7 +100,7 @@ export function DashboardView() {
             </div>
           </div>
 
-          <div className="flex-1 glass-panel rounded-[2.5rem] relative overflow-hidden shadow-2xl focusable max-h-[160px]" tabIndex={0}>
+          <div className="flex-1 glass-panel rounded-[2.5rem] relative overflow-hidden shadow-2xl focusable max-h-[160px]" tabIndex={0} data-nav-id="clock-widget-container">
             <DateAndClockWidget />
           </div>
         </div>

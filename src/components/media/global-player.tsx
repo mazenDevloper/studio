@@ -1,12 +1,10 @@
-
 "use client";
 
 import { useMediaStore } from "@/lib/store";
-import { X, Minimize2, Bookmark, Monitor, ChevronDown, Play, Pause, Tv, List, SkipForward, SkipBack } from "lucide-react";
+import { X, Minimize2, Bookmark, Monitor, ChevronDown, Play, Pause, Tv, List } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
-import Hls from "hls.js";
 import { useRouter } from "next/navigation";
 import { fetchChannelDetails } from "@/lib/youtube";
 
@@ -19,12 +17,7 @@ export function GlobalVideoPlayer() {
     isMinimized, 
     isFullScreen,
     videoProgress,
-    playlist,
-    iptvPlaylist,
     nextTrack,
-    prevTrack,
-    nextIptvChannel,
-    prevIptvChannel,
     setActiveVideo, 
     setActiveIptv,
     setIsPlaying, 
@@ -37,8 +30,6 @@ export function GlobalVideoPlayer() {
   
   const [mounted, setMounted] = useState(false);
   const playerRef = useRef<any>(null);
-  const videoTagRef = useRef<HTMLVideoElement>(null);
-  const hlsRef = useRef<Hls | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -49,14 +40,12 @@ export function GlobalVideoPlayer() {
     }
   }, []);
 
-  // Strict Navigation Lock & Sandbox
+  // Strict Sandbox & Security
   useEffect(() => {
     const handleFrameSecurity = () => {
       const iframes = document.querySelectorAll('iframe');
       iframes.forEach(frame => {
-        if (!frame.getAttribute('sandbox')) {
-          // STRICT SANDBOX: Only allow basic scripts and same-origin. 
-          // NO POPUPS, NO TOP NAVIGATION (STOPS YOUTUBE REDIRECTS)
+        if (frame.getAttribute('sandbox') !== 'allow-forms allow-scripts allow-same-origin') {
           frame.setAttribute('sandbox', 'allow-forms allow-scripts allow-same-origin');
         }
       });
@@ -66,26 +55,33 @@ export function GlobalVideoPlayer() {
     return () => observer.disconnect();
   }, []);
 
-  // Persistent Player Initialization
   useEffect(() => {
     if (!activeVideo || !mounted || activeIptv) return;
     
     const initPlayer = () => {
-      if (playerRef.current) return;
+      // RADICAL SMOOTHNESS FIX: Reuse player instance and check for API readiness
+      if (playerRef.current && typeof playerRef.current.loadVideoById === 'function') {
+        playerRef.current.loadVideoById(activeVideo.id);
+        updateQuality(playerRef.current);
+        return;
+      }
       
+      // If player element already exists but instance doesn't, or it's first time
       playerRef.current = new (window as any).YT.Player('youtube-player-element', {
         height: '100%',
         width: '100%',
+        host: 'https://www.youtube-nocookie.com',
         videoId: activeVideo.id,
         playerVars: {
           autoplay: 1,
           controls: 1,
           modestbranding: 1,
           rel: 0,
+          playsinline: 1,
+          iv_load_policy: 3,
           start: Math.floor(videoProgress[activeVideo.id] || 0),
           enablejsapi: 1,
-          mute: 0,
-          origin: window.location.origin
+          origin: typeof window !== 'undefined' ? window.location.origin : ''
         },
         events: {
           onReady: (event: any) => {
@@ -95,7 +91,7 @@ export function GlobalVideoPlayer() {
           onStateChange: (event: any) => {
             if (event.data === 1) setIsPlaying(true);
             else if (event.data === 2) setIsPlaying(false);
-            else if (event.data === 0) nextTrack();
+            else if (event.data === 0) nextTrack(); // AUTO-NEXT FOR PLAYLISTS
           }
         }
       });
@@ -105,43 +101,16 @@ export function GlobalVideoPlayer() {
     else (window as any).onYouTubeIframeAPIReady = initPlayer;
   }, [activeVideo?.id, mounted, activeIptv]);
 
-  // Handle video source change without re-init
-  useEffect(() => {
-    if (playerRef.current && activeVideo && typeof playerRef.current.loadVideoById === 'function') {
-      playerRef.current.loadVideoById(activeVideo.id);
-    }
-  }, [activeVideo?.id]);
-
-  // Quality Control based on State (Programmatic only)
   const updateQuality = (player: any) => {
     if (!player || typeof player.setPlaybackQuality !== 'function') return;
-    if (isMinimized) {
-      player.setPlaybackQuality('tiny'); // 144p
-    } else if (isFullScreen) {
-      player.setPlaybackQuality('medium'); // 480p Auto
-    } else {
-      player.setPlaybackQuality('small'); // 240p
-    }
+    if (isMinimized) player.setPlaybackQuality('tiny'); 
+    else if (isFullScreen) player.setPlaybackQuality('medium'); 
+    else player.setPlaybackQuality('small'); 
   };
 
   useEffect(() => {
-    if (playerRef.current) {
-      updateQuality(playerRef.current);
-    }
+    if (playerRef.current) updateQuality(playerRef.current);
   }, [isMinimized, isFullScreen]);
-
-  useEffect(() => {
-    if (activeIptv && videoTagRef.current && activeIptv.type !== 'web') {
-      const url = `http://playstop.watch:2095/live/W87d737/Pd37qj34/${activeIptv.stream_id}.m3u8`;
-      if (hlsRef.current) hlsRef.current.destroy();
-      if (Hls.isSupported()) {
-        const hls = new Hls({ enableWorker: true, lowLatencyMode: true });
-        hls.loadSource(url);
-        hls.attachMedia(videoTagRef.current);
-        hlsRef.current = hls;
-      }
-    }
-  }, [activeIptv?.stream_id]);
 
   if (!mounted || (!activeVideo && !activeIptv)) return null;
 
@@ -167,19 +136,19 @@ export function GlobalVideoPlayer() {
         : isFullScreen
           ? "inset-0 w-full h-full bg-black rounded-0"
           : "bottom-8 right-4 w-[50vw] h-[55vh] glass-panel rounded-[3.5rem] bg-black/95"
-    )}>
+    )}
+    // FINAL SMOOTHNESS FIX: Hardware Acceleration via CSS
+    style={{ transform: 'translate3d(0,0,0)', willChange: 'transform' }}>
       <div className={cn("absolute inset-0 transition-opacity duration-700", isMinimized ? "opacity-0" : "opacity-100")}>
         {activeVideo ? (
           <div id="youtube-player-element" className="w-full h-full"></div>
-        ) : activeIptv?.type === 'web' ? (
+        ) : (
           <iframe 
-            src={`${activeIptv.url}${activeIptv.url!.includes('?') ? '&' : '?'}autoplay=1&mute=0`}
+            src={`${activeIptv?.url}${activeIptv?.url?.includes('?') ? '&' : '?'}autoplay=1&mute=0`}
             className="w-full h-full border-none"
             allow="autoplay; fullscreen"
             sandbox="allow-forms allow-scripts allow-same-origin"
           />
-        ) : (
-          <video ref={videoTagRef} autoPlay controls className="w-full h-full object-contain" />
         )}
       </div>
 
@@ -207,23 +176,13 @@ export function GlobalVideoPlayer() {
           isFullScreen ? "left-10 bottom-10 scale-150 origin-bottom-left" : "right-12 bottom-12 scale-90"
         )}>
           <div className="flex items-center gap-2 liquid-glass p-3 rounded-full border border-white/20 shadow-2xl">
-            {(playlist.length > 0 || iptvPlaylist.length > 0) && (
-              <>
-                <button onClick={() => activeVideo ? prevTrack() : prevIptvChannel()} className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center focusable"><SkipBack className="w-5 h-5" /></button>
-                <button onClick={() => activeVideo ? nextTrack() : nextIptvChannel()} className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center focusable"><SkipForward className="w-5 h-5" /></button>
-              </>
-            )}
-            <button onClick={() => setIsMinimized(true)} className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center focusable"><ChevronDown className="w-5 h-5" /></button>
-            <button onClick={() => setIsFullScreen(!isFullScreen)} className={cn("w-12 h-12 rounded-full flex items-center justify-center focusable", isFullScreen && "bg-primary border-primary")}><Monitor className="w-5 h-5" /></button>
-            {activeVideo && (
-              <>
-                <button onClick={handleAddToIptv} title="Add to IPTV" className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center focusable"><Tv className="w-5 h-5 text-emerald-400" /></button>
-                <button onClick={() => toggleSaveVideo(activeVideo)} className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center focusable"><Bookmark className={cn("w-5 h-5", savedVideos.some(v => v.id === activeVideo.id) && "fill-current text-primary")} /></button>
-              </>
-            )}
-            <button onClick={() => router.push('/iptv')} className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center focusable"><List className="w-5 h-5" /></button>
+            <button onClick={() => setIsMinimized(true)} title="Minimize" className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center focusable"><ChevronDown className="w-5 h-5" /></button>
+            <button onClick={() => setIsFullScreen(!isFullScreen)} title="Cinema Mode" className={cn("w-12 h-12 rounded-full flex items-center justify-center focusable", isFullScreen && "bg-primary border-primary")}><Monitor className="w-5 h-5" /></button>
+            <button onClick={handleAddToIptv} title="Add to IPTV" className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center focusable"><Tv className="w-5 h-5 text-emerald-400" /></button>
+            <button onClick={() => toggleSaveVideo(activeVideo!)} title="Bookmark" className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center focusable"><Bookmark className={cn("w-5 h-5", savedVideos.some(v => v.id === activeVideo?.id) && "fill-current text-primary")} /></button>
+            <button onClick={() => router.push('/iptv')} title="IPTV Library" className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center focusable"><List className="w-5 h-5" /></button>
             <div className="w-px h-8 bg-white/20 mx-1" />
-            <button onClick={() => { setActiveVideo(null); setActiveIptv(null); }} className="w-12 h-12 rounded-full bg-red-600 text-white flex items-center justify-center focusable"><X className="w-5 h-5" /></button>
+            <button onClick={() => { setActiveVideo(null); setActiveIptv(null); }} title="Close Player" className="w-12 h-12 rounded-full bg-red-600 text-white flex items-center justify-center focusable"><X className="w-5 h-5" /></button>
           </div>
         </div>
       )}

@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useCallback, useState } from "react";
@@ -21,7 +20,8 @@ export function RemotePointer() {
     if (!isCurrentFocusable || !direction) {
       let target: HTMLElement | null = null;
       if (pathname === '/') {
-        target = document.querySelector('.prayer-timeline-item') as HTMLElement || focusables[0];
+        // PRIORITY FOCUS: MOON WIDGET
+        target = document.querySelector('[data-nav-id="moon-widget-container"]') as HTMLElement || focusables.find(el => !el.dataset.navId?.startsWith('dock-')) || focusables[0];
       } else if (pathname === '/media') {
         target = document.querySelector('[data-nav-id^="fav-channel-"]') as HTMLElement || focusables[0];
       } else if (pathname === '/iptv') {

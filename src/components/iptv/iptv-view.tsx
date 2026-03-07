@@ -1,22 +1,35 @@
-
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
 import { useMediaStore, IptvChannel } from "@/lib/store";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Tv, List, ChevronRight, Loader2, Play, Search, X, Star, Zap } from "lucide-react";
+import { Tv, List, ChevronRight, Loader2, Play, Search, X, Star, Zap, Link as LinkIcon, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { getIptvCategories, getIptvChannels } from "@/app/actions/iptv";
 import { cn } from "@/lib/utils";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
 
 export function IptvView() {
   const { setActiveIptv, favoriteIptvChannels, toggleFavoriteIptvChannel, setIptvPlaylist } = useMediaStore();
+  const { toast } = useToast();
   const [categories, setCategories] = useState<any[]>([]);
   const [channels, setChannels] = useState<IptvChannel[]>([]);
   const [selectedCat, setSelectedCat] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
+
+  const [isManualAddOpen, setIsManualAddOpen] = useState(false);
+  const [manualName, setManualName] = useState("");
+  const [manualUrl, setManualUrl] = useState("");
+  const [manualIcon, setManualIcon] = useState("");
 
   useEffect(() => { 
     fetchCategories(); 
@@ -47,10 +60,6 @@ export function IptvView() {
     if (catId === 'direct') { 
       setChannels(favoriteIptvChannels); 
       setSelectedCat(catId); 
-      setTimeout(() => {
-        const firstChannel = document.querySelector('.iptv-channel-item') as HTMLElement;
-        if (firstChannel) firstChannel.focus();
-      }, 500);
       return; 
     }
     setLoading(true);
@@ -59,10 +68,6 @@ export function IptvView() {
       const data = await getIptvChannels(catId);
       if (Array.isArray(data)) {
         setChannels(data);
-        setTimeout(() => {
-          const firstChannel = document.querySelector('.iptv-channel-item') as HTMLElement;
-          if (firstChannel) firstChannel.focus();
-        }, 500);
       }
     } finally {
       setLoading(false);
@@ -90,6 +95,27 @@ export function IptvView() {
     setIptvPlaylist(sortedAndFilteredChannels, idx);
   };
 
+  const handleManualAdd = () => {
+    if (!manualName.trim() || !manualUrl.trim()) return;
+    
+    const newChannel: IptvChannel = {
+      stream_id: `custom-${Date.now()}`,
+      name: manualName,
+      url: manualUrl,
+      stream_icon: manualIcon || "https://picsum.photos/seed/iptv/200",
+      category_id: "direct",
+      starred: true,
+      type: 'web'
+    };
+
+    toggleFavoriteIptvChannel(newChannel);
+    setIsManualAddOpen(false);
+    setManualName("");
+    setManualUrl("");
+    setManualIcon("");
+    toast({ title: "تمت الإضافة", description: "تمت إضافة القناة لمفضلة البث المباشر" });
+  };
+
   return (
     <div className="p-8 space-y-8 pb-32 dir-rtl text-right">
       <header className="flex items-center justify-between">
@@ -100,6 +126,27 @@ export function IptvView() {
           <p className="text-white/40 text-xs font-bold uppercase tracking-widest mr-1">Premium Live Feed Hub</p>
         </div>
         <div className="flex items-center gap-4">
+          <Dialog open={isManualAddOpen} onOpenChange={setIsManualAddOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="rounded-full bg-white/5 border-white/10 text-emerald-400 h-12 px-6 focusable">
+                <LinkIcon className="w-4 h-4 ml-2" /> إضافة رابط يدوي
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="bg-zinc-950 border-white/10 rounded-[2.5rem] p-8 w-[90%] max-w-md mx-auto">
+              <DialogHeader>
+                <DialogTitle className="text-2xl font-black text-white mb-4 text-right">إضافة قناة بث مباشر</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-6">
+                <Input placeholder="اسم القناة..." value={manualName} onChange={(e) => setManualName(e.target.value)} className="h-14 bg-white/5 border-white/10 rounded-2xl px-6 text-white text-right" />
+                <Input placeholder="رابط البث (URL)..." value={manualUrl} onChange={(e) => setManualUrl(e.target.value)} className="h-14 bg-white/5 border-white/10 rounded-2xl px-6 text-white text-right" />
+                <Input placeholder="رابط الشعار (اختياري)..." value={manualIcon} onChange={(e) => setManualIcon(e.target.value)} className="h-14 bg-white/5 border-white/10 rounded-2xl px-6 text-white text-right" />
+                <Button onClick={handleManualAdd} className="w-full h-14 bg-emerald-600 text-white font-black rounded-2xl shadow-xl focusable">
+                  حفظ في المفضلة
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+
           <Button onClick={() => fetchChannels('direct')} variant="outline" className={cn("rounded-full transition-all focusable h-12 px-6", selectedCat === 'direct' ? "bg-emerald-500 text-black border-emerald-400 shadow-glow" : "bg-emerald-500/10 border-emerald-500/20 text-emerald-500")}>
             <Zap className="w-4 h-4 ml-2 fill-current" /> القنوات المفضلة
           </Button>
