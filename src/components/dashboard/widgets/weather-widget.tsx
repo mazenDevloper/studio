@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -6,16 +5,30 @@ import { WEATHER_API_KEY } from "@/lib/constants";
 
 export function WeatherWidget() {
   const [weather, setWeather] = useState<any>(null);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
-    // USING SPECIFIED API KEY AND ARABIC LANGUAGE
     fetch(`https://api.weatherapi.com/v1/forecast.json?key=${WEATHER_API_KEY}&q=Salalah&days=1&aqi=yes&lang=ar`)
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error("Weather API failed");
+        return res.json();
+      })
       .then(data => {
         if (data && data.current) setWeather(data);
       })
-      .catch(err => console.error("Weather error:", err));
+      .catch(err => {
+        console.error("Weather error:", err);
+        setError(true);
+      });
   }, []);
+
+  if (error) {
+    return (
+      <div className="h-full w-full p-6 flex flex-col items-center justify-center text-center">
+        <div className="text-white/20 font-black text-[12px] uppercase tracking-widest">Weather Offline</div>
+      </div>
+    );
+  }
 
   if (!weather) {
     return (

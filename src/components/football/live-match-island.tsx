@@ -18,7 +18,7 @@ interface IslandItem {
 }
 
 export function LiveMatchIsland() {
-  const { favoriteTeams, prayerTimes, belledMatchIds, reminders, showIslands } = useMediaStore();
+  const { favoriteTeams, prayerTimes, belledMatchIds, showIslands } = useMediaStore();
   const [topMatches, setTopMatches] = useState<Match[]>([]);
   const [dhikr] = useState("سبحان الله وبحمده");
   const [skippedIds, setSkippedIds] = useState<string[]>([]);
@@ -54,10 +54,8 @@ export function LiveMatchIsland() {
 
   const formatCountdown = (diffSeconds: number) => {
     const absSecs = Math.abs(diffSeconds);
-    const h = Math.floor(absSecs / 3600);
     const m = Math.floor((absSecs % 3600) / 60);
     const s = absSecs % 60;
-    if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
@@ -82,12 +80,11 @@ export function LiveMatchIsland() {
       { name: "العشاء", time: pData.isha, iqamah: 20 },
     ];
 
-    // 1. Check for the +/- 10 minute windows for ANY prayer or iqamah (CRITICAL WINDOW)
     for (const p of list) {
       const azanSecs = tToM(p.time) * 60;
       const iqamahSecs = azanSecs + (p.iqamah * 60);
 
-      // Azan Window (-10 to +10 mins)
+      // CRITICAL WINDOW LOGIC: Only show numeric countdown in 10-min range
       const azanDiff = azanSecs - totalCurrentSecs;
       if (Math.abs(azanDiff) <= 600) {
         const sign = azanDiff >= 0 ? "-" : "+";
@@ -101,7 +98,6 @@ export function LiveMatchIsland() {
         };
       }
 
-      // Iqamah Window (-10 to +10 mins)
       const iqamahDiff = iqamahSecs - totalCurrentSecs;
       if (Math.abs(iqamahDiff) <= 600) {
         const sign = iqamahDiff >= 0 ? "-" : "+";
@@ -116,13 +112,13 @@ export function LiveMatchIsland() {
       }
     }
 
-    // 2. Spiritual reminders (Active during their periods, but no numeric count)
+    // Default active reminders (Static View when no critical timer)
     if (pData) {
-      const fajrMins = tToM(pData.fajr);
       const sunriseMins = tToM(pData.sunrise);
       const asrMins = tToM(pData.asr);
       const maghribMins = tToM(pData.maghrib);
       const dhuhrMins = tToM(pData.dhuhr);
+      const fajrMins = tToM(pData.fajr);
       const duhaStart = sunriseMins + 15;
 
       if (currentMins >= fajrMins && currentMins < sunriseMins + 30) {
@@ -139,7 +135,6 @@ export function LiveMatchIsland() {
       }
     }
 
-    // 3. Default: Return null to show the Dhikr bar if not in a critical 10-min window
     return null;
   }, [now, prayerTimes]);
 
@@ -150,20 +145,12 @@ export function LiveMatchIsland() {
       const isFav = favoriteTeams.some(t => t.id === m.homeTeamId || t.id === m.awayTeamId);
       const isBelled = belledMatchIds.includes(m.id);
       const isLive = m.status === 'live';
-      const isFinished = m.status === 'finished';
       
       let priority = 0;
       if (isLive) {
-        if (isFav && isBelled) priority = 10000;
-        else if (isFav) priority = 9000;
-        else if (isBelled) priority = 8000;
-        else priority = 2000;
+        priority = isFav && isBelled ? 10000 : isFav ? 9000 : isBelled ? 8000 : 2000;
       } else if (m.status === 'upcoming') {
-        if (isFav && isBelled) priority = 7000;
-        else if (isFav) priority = 6000;
-        else priority = 1500;
-      } else if (isFinished && (isFav || isBelled)) {
-        priority = 500;
+        priority = isFav && isBelled ? 7000 : isFav ? 6000 : 1500;
       }
 
       if (priority > 0) items.push({ id: m.id, type: 'match', priority, data: m });
@@ -172,20 +159,21 @@ export function LiveMatchIsland() {
     return items.sort((a, b) => b.priority - a.priority).slice(0, 4);
   }, [topMatches, skippedIds, favoriteTeams, belledMatchIds]);
 
-  const handleSkip = (id: string) => { setSkippedIds(p => [...p, id]); setActiveIndex(0); };
-
   if (!showIslands) return null;
 
   const activeItem = islandQueue[activeIndex];
   const isMatchExpanded = activeItem?.type === 'match' && isDetailedManually;
 
   return (
-    <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[10001] flex items-center gap-4 pointer-events-none">
+    <div 
+      className="fixed top-6 left-1/2 -translate-x-1/2 z-[10001] flex items-center gap-4 pointer-events-none"
+      style={{ contain: 'layout paint' }}
+    >
       {prayerIslandData && (
         <div className="pointer-events-auto group relative cursor-pointer" onClick={() => setActiveIndex((activeIndex + 1) % (islandQueue.length || 1))}>
           <div className={cn(
             "liquid-glass backdrop-blur-[120px] rounded-[2.5rem] shadow-[0_40px_100px_rgba(0,0,0,1)] transition-all duration-700 overflow-hidden relative border border-white/10 w-64 h-14 px-6",
-            prayerIslandData.mode === 'iqamah' || prayerIslandData.mode === 'active' ? "ring-2 ring-accent/40 bg-accent/5" : ""
+            (prayerIslandData.mode === 'iqamah' || prayerIslandData.mode === 'countdown') ? "ring-2 ring-accent/40 bg-accent/5" : ""
           )}>
             <FluidGlass />
             <div className="h-full flex items-center justify-between relative z-10 gap-4">
@@ -207,7 +195,7 @@ export function LiveMatchIsland() {
       )}
 
       {activeItem ? (
-        <div className="pointer-events-auto group relative" onClick={() => activeItem.type === 'match' ? setIsDetailedManually(!isDetailedManually) : handleSkip(activeItem.id)}>
+        <div className="pointer-events-auto group relative" onClick={() => activeItem.type === 'match' ? setIsDetailedManually(!isDetailedManually) : setSkippedIds(p => [...p, activeItem.id])}>
           <div className={cn(
             "liquid-glass backdrop-blur-[120px] rounded-[2.5rem] shadow-[0_40px_100px_rgba(0,0,0,1)] transition-all duration-700 cursor-pointer overflow-hidden relative border border-white/10 p-0",
             isMatchExpanded ? "w-[340px] h-[120px]" : "w-[18rem] h-[3.5rem]"
@@ -232,7 +220,7 @@ export function LiveMatchIsland() {
                       </span>
                       {activeItem.data.status === 'live' && (
                         <div className={cn(
-                          "absolute top-1 right-1/2 translate-x-1/2 px-2 py-0.5 rounded-full shadow-xl border border-white/20 z-[1000]",
+                          "absolute top-1 right-1/2 translate-x-1/2 px-2 py-0.5 rounded-full shadow-xl border border-white/20 z-[10002]",
                           getMinuteBadgeColor(activeItem.data.minute || 0)
                         )}>
                           <span className="font-black text-white uppercase tracking-widest" style={{ fontSize: '0.7rem' }}>{activeItem.data.minute}'</span>
@@ -297,6 +285,7 @@ export function LiveMatchIsland() {
                         <img src={item.data.awayLogo} className="w-10 h-10 object-contain scale-[1.9] -translate-x-2" alt="" />
                       </div>
                       <div className="absolute inset-0 z-10" style={{ background: 'linear-gradient(-1deg, black, transparent)' }} />
+                      
                       <span className="relative z-20 font-black text-white leading-none drop-shadow-lg tabular-nums" dir="ltr" style={{ fontSize: '1rem', bottom: '-11px' }}>
                         {item.data.status === 'upcoming' 
                           ? cleanTime(item.data.startTime)
@@ -304,7 +293,7 @@ export function LiveMatchIsland() {
                       </span>
                       {item.data.status === 'live' && (
                         <div className={cn(
-                          "absolute bottom-1 right-1/2 translate-x-1/2 px-1 py-0 rounded-full shadow-xl z-[1000] animate-pulse",
+                          "absolute bottom-1 right-1/2 translate-x-1/2 px-1 py-0 rounded-full shadow-xl z-[10002] animate-pulse",
                           getMinuteBadgeColor(item.data.minute || 0)
                         )}>
                           <span className="font-black text-white" style={{ fontSize: '0.5rem' }}>{item.data.minute}'</span>

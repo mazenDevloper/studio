@@ -4,7 +4,7 @@
 import { useMediaStore } from "@/lib/store";
 import { X, Minimize2, Bookmark, Monitor, ChevronDown, Play, Pause, Tv, List, ChevronRight, ChevronLeft, Youtube, Activity, Eye, EyeOff } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { fetchChannelDetails } from "@/lib/youtube";
@@ -35,6 +35,7 @@ export function GlobalVideoPlayer() {
   
   const [mounted, setMounted] = useState(false);
   const playerRef = useRef<any>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -45,73 +46,67 @@ export function GlobalVideoPlayer() {
     }
   }, []);
 
-  useEffect(() => {
-    const handleFrameSecurity = () => {
-      const iframes = document.querySelectorAll('iframe');
-      iframes.forEach(frame => {
-        if (frame.getAttribute('sandbox') !== 'allow-forms allow-scripts allow-same-origin') {
-          frame.setAttribute('sandbox', 'allow-forms allow-scripts allow-same-origin');
-        }
-      });
-    };
-    const observer = new MutationObserver(handleFrameSecurity);
-    observer.observe(document.body, { childList: true, subtree: true });
-    return () => observer.disconnect();
-  }, []);
-
-  useEffect(() => {
-    if (!activeVideo || !mounted || activeIptv) return;
+  const initYouTubePlayer = useCallback((videoId: string) => {
+    if (!containerRef.current) return;
     
-    const initPlayer = () => {
-      if (playerRef.current && typeof playerRef.current.loadVideoById === 'function') {
-        playerRef.current.loadVideoById(activeVideo.id);
-        updateQuality(playerRef.current);
+    // Smooth Re-use of Instance
+    if (playerRef.current && typeof playerRef.current.loadVideoById === 'function') {
+      try {
+        playerRef.current.loadVideoById({
+          videoId: videoId,
+          startSeconds: Math.floor(videoProgress[videoId] || 0)
+        });
         return;
+      } catch (e) {
+        console.warn("YouTube loadVideoById failed, falling back to clean init");
       }
-      
-      playerRef.current = new (window as any).YT.Player('youtube-player-element', {
-        height: '100%',
-        width: '100%',
-        videoId: activeVideo.id,
-        playerVars: {
-          autoplay: 1,
-          controls: 1,
-          modestbranding: 1,
-          rel: 0,
-          playsinline: 1,
-          iv_load_policy: 3,
-          start: Math.floor(videoProgress[activeVideo.id] || 0),
-          enablejsapi: 1,
-          origin: typeof window !== 'undefined' ? window.location.origin : ''
+    }
+
+    // Clean Init
+    containerRef.current.innerHTML = '<div id="youtube-source-element"></div>';
+    playerRef.current = new (window as any).YT.Player('youtube-source-element', {
+      height: '100%',
+      width: '100%',
+      videoId: videoId,
+      playerVars: {
+        autoplay: 1,
+        controls: 1,
+        modestbranding: 1,
+        rel: 0,
+        playsinline: 1,
+        iv_load_policy: 3,
+        start: Math.floor(videoProgress[videoId] || 0),
+        enablejsapi: 1,
+        origin: typeof window !== 'undefined' ? window.location.origin : ''
+      },
+      events: {
+        onReady: (event: any) => event.target.playVideo(),
+        onStateChange: (event: any) => {
+          if (event.data === (window as any).YT.PlayerState.PLAYING) setIsPlaying(true);
+          else if (event.data === (window as any).YT.PlayerState.PAUSED) setIsPlaying(false);
+          else if (event.data === (window as any).YT.PlayerState.ENDED) nextTrack();
         },
-        events: {
-          onReady: (event: any) => {
-            event.target.playVideo();
-            updateQuality(event.target);
-          },
-          onStateChange: (event: any) => {
-            if (event.data === 1) setIsPlaying(true);
-            else if (event.data === 2) setIsPlaying(false);
-            else if (event.data === 0) nextTrack();
-          }
-        }
-      });
-    };
-
-    if ((window as any).YT && (window as any).YT.Player) initPlayer();
-    else (window as any).onYouTubeIframeAPIReady = initPlayer;
-  }, [activeVideo?.id, mounted, activeIptv]);
-
-  const updateQuality = (player: any) => {
-    if (!player || typeof player.setPlaybackQuality !== 'function') return;
-    if (isMinimized) player.setPlaybackQuality('tiny'); 
-    else if (isFullScreen) player.setPlaybackQuality('medium'); 
-    else player.setPlaybackQuality('small'); 
-  };
+      }
+    });
+  }, [videoProgress, setIsPlaying, nextTrack]);
 
   useEffect(() => {
-    if (playerRef.current) updateQuality(playerRef.current);
-  }, [isMinimized, isFullScreen]);
+    if (!mounted) return;
+
+    if (activeVideo) {
+      if ((window as any).YT && (window as any).YT.Player) {
+        initYouTubePlayer(activeVideo.id);
+      } else {
+        (window as any).onYouTubeIframeAPIReady = () => initYouTubePlayer(activeVideo.id);
+      }
+    } else {
+      // Release Resources when not in YouTube
+      if (playerRef.current) {
+        try { playerRef.current.destroy(); } catch(e) {}
+        playerRef.current = null;
+      }
+    }
+  }, [activeVideo?.id, activeIptv, mounted, initYouTubePlayer]);
 
   if (!mounted || (!activeVideo && !activeIptv)) return null;
 
@@ -130,17 +125,28 @@ export function GlobalVideoPlayer() {
   };
 
   return (
-    <div className={cn(
-      "fixed z-[9999] transition-all duration-1000 ease-[cubic-bezier(0.23,1,0.32,1)] shadow-2xl overflow-hidden",
-      isMinimized 
-        ? "bottom-12 left-1/2 -translate-x-1/2 w-[500px] h-28 rounded-[2.5rem] liquid-glass" 
-        : isFullScreen
-          ? "inset-0 w-full h-full bg-black rounded-0"
-          : "bottom-8 right-4 w-[50vw] h-[55vh] glass-panel rounded-[3.5rem] bg-black/95"
-    )}>
-      <div className={cn("absolute inset-0 transition-opacity duration-700", isMinimized ? "opacity-0" : "opacity-100")}>
+    <div 
+      className={cn(
+        "fixed z-[9999] transition-all duration-1000 ease-[cubic-bezier(0.23,1,0.32,1)] shadow-2xl overflow-hidden",
+        isMinimized 
+          ? "bottom-12 left-1/2 -translate-x-1/2 w-[500px] h-28 rounded-[2.5rem] liquid-glass" 
+          : isFullScreen
+            ? "inset-0 w-full h-full bg-black rounded-0"
+            : "bottom-8 right-4 w-[50vw] h-[55vh] glass-panel rounded-[3.5rem] bg-black/95"
+      )}
+      style={{
+        transform: 'translate3d(0,0,0)', // GPU Force
+        willChange: 'transform',
+        contain: 'layout paint'
+      }}
+    >
+      {/* Isolation Layer for Core Playback */}
+      <div 
+        className={cn("absolute inset-0 transition-opacity duration-700", isMinimized ? "opacity-0" : "opacity-100")}
+        style={{ backfaceVisibility: 'hidden', transform: 'translateZ(0)' }}
+      >
         {activeVideo ? (
-          <div id="youtube-player-element" className="w-full h-full"></div>
+          <div key={activeVideo.id} ref={containerRef} className="w-full h-full" style={{ background: '#000' }} />
         ) : (
           <iframe 
             key={activeIptv?.stream_id}
@@ -148,10 +154,12 @@ export function GlobalVideoPlayer() {
             className="w-full h-full border-none"
             allow="autoplay; fullscreen"
             sandbox="allow-forms allow-scripts allow-same-origin"
+            style={{ background: '#000' }}
           />
         )}
       </div>
 
+      {/* Info Header Overlay */}
       {!isMinimized && (
         <div className={cn(
           "absolute top-0 left-0 right-0 p-8 z-[5100] transition-all duration-700",
@@ -179,6 +187,7 @@ export function GlobalVideoPlayer() {
         </div>
       )}
 
+      {/* Minimized Capsule View */}
       {isMinimized && (
         <div className="h-full flex items-center justify-between px-8 relative z-10" onClick={() => setIsFullScreen(true)}>
           <div className="flex items-center gap-4 flex-1 min-w-0 text-right">
@@ -193,16 +202,17 @@ export function GlobalVideoPlayer() {
           <div className="flex gap-3">
             {activeIptv && (
               <>
-                <button onClick={(e) => { e.stopPropagation(); prevIptvChannel(); }} className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center border border-white/10"><ChevronRight className="w-5 h-5" /></button>
-                <button onClick={(e) => { e.stopPropagation(); nextIptvChannel(); }} className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center border border-white/10"><ChevronLeft className="w-5 h-5" /></button>
+                <button onClick={(e) => { e.stopPropagation(); prevIptvChannel(); }} className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center border border-white/10 focusable"><ChevronRight className="w-5 h-5" /></button>
+                <button onClick={(e) => { e.stopPropagation(); nextIptvChannel(); }} className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center border border-white/10 focusable"><ChevronLeft className="w-5 h-5" /></button>
               </>
             )}
-            <button onClick={(e) => { e.stopPropagation(); setIsPlaying(!isPlaying); }} className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center border border-white/10">{isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-1" />}</button>
-            <button onClick={(e) => { e.stopPropagation(); setActiveVideo(null); setActiveIptv(null); }} className="w-10 h-10 rounded-full bg-red-600 text-white flex items-center justify-center"><X className="w-5 h-5" /></button>
+            <button onClick={(e) => { e.stopPropagation(); setIsPlaying(!isPlaying); }} className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center border border-white/10 focusable">{isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-1" />}</button>
+            <button onClick={(e) => { e.stopPropagation(); setActiveVideo(null); setActiveIptv(null); }} className="w-10 h-10 rounded-full bg-red-600 text-white flex items-center justify-center focusable"><X className="w-5 h-5" /></button>
           </div>
         </div>
       )}
 
+      {/* Control Bar Overlay */}
       {!isMinimized && (
         <div className={cn(
           "fixed z-[5200] flex items-center gap-4 transition-all duration-500",

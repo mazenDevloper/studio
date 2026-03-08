@@ -39,15 +39,15 @@ export function PrayerTimelineWidget() {
       return h * 60 + m;
     };
 
-    // logic: Next index should only move if currentMinutes > (currentAzan + iqamah + 10 mins grace)
+    // logic: Next index should only move if currentMinutes > (currentAzan + iqamah + 20 mins grace)
     let idx = list.findIndex(p => timeToMinutes(p.time) > currentMinutes);
     if (idx === -1) idx = 0;
 
-    // Check if we are in the "grace period" of the PREVIOUS prayer (10 mins after iqamah)
+    // Check if we are in the "grace period" of the PREVIOUS prayer (20 mins after iqamah)
     const prevIdx = idx === 0 ? list.length - 1 : idx - 1;
     const prevPrayer = list[prevIdx];
     const prevAzanMins = timeToMinutes(prevPrayer.time);
-    const graceTime = prevAzanMins + prevPrayer.iqamah + 10;
+    const graceTime = prevAzanMins + prevPrayer.iqamah + 20;
 
     let finalIndex = idx;
     // If we are still within the grace period of the previous prayer, keep it highlighted

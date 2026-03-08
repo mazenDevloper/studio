@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
@@ -26,12 +25,10 @@ export function MapWidget() {
   const mapInstanceRef = useRef<google.maps.Map | null>(null);
   const carOverlayRef = useRef<google.maps.WebGLOverlayView | null>(null);
   const scriptLoadedRef = useRef(false);
-  const watchIdRef = useRef<number | null>(null);
   const isInteractingRef = useRef(false);
 
-  const { mapSettings, isFullScreen } = useMediaStore();
+  const { isFullScreen } = useMediaStore();
   const [isLoading, setIsLoading] = useState(true);
-  const [apiError, setApiError] = useState(false);
 
   const tuner = { zoom: 20.0, tilt: 65, scale: 1.05 };
 
@@ -40,7 +37,9 @@ export function MapWidget() {
   useEffect(() => { carStateRef.current = carState; }, [carState]);
 
   const setup3DMarker = useCallback((map: google.maps.Map) => {
+    // Only attempt to setup WebGL if the map is rendered as a Vector map
     if (carOverlayRef.current) return;
+    
     const overlay = new google.maps.WebGLOverlayView();
     carOverlayRef.current = overlay;
 
@@ -48,7 +47,6 @@ export function MapWidget() {
       const scene = new THREE.Scene();
       const camera = new THREE.PerspectiveCamera();
       
-      // STUDIO LIGHTING SETUP
       scene.add(new THREE.AmbientLight(0xffffff, 0.65));
       const light1 = new THREE.DirectionalLight(0xffffff, 0.68);
       light1.position.set(25, 8, 15); scene.add(light1);
@@ -75,7 +73,6 @@ export function MapWidget() {
                 opacity: (mesh.material as any).opacity
               });
             } else {
-              // Paint Code 4U7: Satin Cashmere Metallic (Gold)
               mesh.material = new THREE.MeshStandardMaterial({
                 color: 0x968165,
                 metalness: 0.9,
@@ -99,7 +96,6 @@ export function MapWidget() {
     };
 
     overlay.onDraw = ({ transformer }) => {
-      // CINEMA MODE: STOP RENDERING TO REDUCE CPU LOAD
       if (isFullScreen) return;
       
       const { renderer, scene, camera, carModel } = (overlay as any);
@@ -134,16 +130,26 @@ export function MapWidget() {
         gestureHandling: "greedy",
         renderingType: google.maps.RenderingType.VECTOR
       });
+      
       map.addListener('dragstart', () => { isInteractingRef.current = true; });
       mapInstanceRef.current = map;
-      setup3DMarker(map);
+      
+      // Attempt setup when idle/loaded
+      map.addListener('tilesloaded', () => {
+        if (map.getRenderingType() === 'VECTOR') {
+          setup3DMarker(map);
+        }
+      });
+      
       setIsLoading(false);
     };
+
     if (window.google && window.google.maps) initMap();
     else if (!scriptLoadedRef.current) {
       scriptLoadedRef.current = true;
       const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&callback=initMap`;
+      // Added v=weekly for more stable vector support
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&v=weekly&callback=initMap`;
       script.async = true;
       (window as any).initMap = initMap;
       document.head.appendChild(script);
@@ -153,6 +159,11 @@ export function MapWidget() {
   return (
     <Card className="h-full w-full overflow-hidden border-none bg-black relative group rounded-[2.5rem] shadow-2xl">
       <div ref={mapRef} className="absolute inset-0 z-0" />
+      {isLoading && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/40 backdrop-blur-md">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      )}
       {!isFullScreen && (
         <div className="absolute bottom-8 right-8 z-20">
           <Button className="w-16 h-16 rounded-full bg-blue-600 shadow-2xl focusable" onClick={() => { 
