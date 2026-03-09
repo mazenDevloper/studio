@@ -6,7 +6,7 @@ import { Match } from "@/lib/football-data";
 import { fetchFootballData } from "@/lib/football-api";
 import { useMediaStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { Moon, Sun, Bell, Timer, Clock, X, Sparkles } from "lucide-react";
+import { Moon, Sun, Bell, Timer, Clock, X } from "lucide-react";
 import { FluidGlass } from "@/components/ui/fluid-glass";
 
 interface IslandItem {
@@ -17,7 +17,7 @@ interface IslandItem {
 }
 
 export function LiveMatchIsland() {
-  const { favoriteTeams, prayerTimes, belledMatchIds, showIslands, skippedMatchIds, skipMatch, reminders, mapSettings } = useMediaStore();
+  const { favoriteTeams, prayerTimes, belledMatchIds, showIslands, skippedMatchIds, skipMatch, reminders } = useMediaStore();
   const [topMatches, setTopMatches] = useState<Match[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [activeReminderIndex, setActiveReminderIndex] = useState(0);
@@ -147,9 +147,9 @@ export function LiveMatchIsland() {
       .slice(0, 3);
 
     const sunriseMins = tToM(pData.sunrise);
+    const fajrMins = tToM(pData.fajr);
     const asrMins = tToM(pData.asr);
     const maghribMins = tToM(pData.maghrib);
-    const fajrMins = tToM(pData.fajr);
     
     if (currentMins >= fajrMins && currentMins < sunriseMins + 30) {
       activeOrUpcoming.unshift({ id: 'morning-dhikr', name: "أذكار الصباح", label: "تذكير نشط", value: "", icon: Sun, color: "text-orange-400" });
@@ -204,33 +204,39 @@ export function LiveMatchIsland() {
   const activeItem = islandQueue[activeIndex];
   const isMatchExpanded = activeItem?.type === 'match' && isDetailedManually;
 
-  // Shared SVG Style Component
-  const GradientText = ({ text, size = '3rem', id }: { text: string, size?: string, id: string }) => (
-    <svg className="w-full h-full overflow-visible" viewBox="0 0 200 60">
-      <defs>
-        <linearGradient id={`fill-${id}`} x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="rgba(255,255,255,0.8)" />
-          <stop offset="100%" stopColor="rgba(255,255,255,0.1)" />
-        </linearGradient>
-        <linearGradient id={`stroke-${id}`} x1="100%" y1="100%" x2="0%" y2="0%">
-          <stop offset="0%" stopColor="rgba(255,255,255,1)" />
-          <stop offset="100%" stopColor="rgba(255,255,255,0)" />
-        </linearGradient>
-      </defs>
-      <text 
-        x="50%" 
-        y="50%" 
-        textAnchor="middle" 
-        dominantBaseline="central"
-        className="font-black tabular-nums tracking-tighter"
-        style={{ fontSize: size }}
-        fill={`url(#fill-${id})`}
-        stroke={`url(#stroke-${id})`}
-        strokeWidth="0.5"
-      >
-        {text}
-      </text>
-    </svg>
+  const GradientText = ({ text, size = '3rem', id, subtext }: { text: string, size?: string, id: string, subtext?: string }) => (
+    <div className="relative w-full h-full flex flex-col items-center justify-center">
+      <svg className="w-full h-full overflow-visible" viewBox="0 0 200 60">
+        <defs>
+          <linearGradient id={`fill-${id}`} x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="rgba(255,255,255,0.8)" />
+            <stop offset="100%" stopColor="rgba(255,255,255,0.1)" />
+          </linearGradient>
+          <linearGradient id={`stroke-${id}`} x1="100%" y1="100%" x2="0%" y2="0%">
+            <stop offset="0%" stopColor="rgba(255,255,255,1)" />
+            <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+          </linearGradient>
+        </defs>
+        <text 
+          x="50%" 
+          y="50%" 
+          textAnchor="middle" 
+          dominantBaseline="central"
+          className="font-black tabular-nums tracking-tighter"
+          style={{ fontSize: size }}
+          fill={`url(#fill-${id})`}
+          stroke={`url(#stroke-${id})`}
+          strokeWidth="0.5"
+        >
+          {text}
+        </text>
+      </svg>
+      {subtext && (
+        <span className="font-black text-white/40 uppercase tracking-widest absolute" style={{ fontSize: '1rem', bottom: '-11px' }}>
+          {subtext}
+        </span>
+      )}
+    </div>
   );
 
   return (
@@ -246,18 +252,13 @@ export function LiveMatchIsland() {
               <div className={cn("w-9 h-9 rounded-full flex items-center justify-center bg-white/10", activeReminder.color)}>
                 <activeReminder.icon className="w-4.5 h-4.5" />
               </div>
-              <div className="flex flex-col text-right flex-1 min-w-0 justify-center">
+              <div className="flex-1 h-full">
                 {activeReminder.value ? (
-                  <div className="relative flex items-center justify-end h-10">
-                    <div className="w-full h-full absolute -right-2 bottom-0">
-                      <GradientText text={activeReminder.value} size="3rem" id={`rem-${activeReminder.id}`} />
-                    </div>
-                    <span className="font-black text-white/40 uppercase tracking-widest absolute right-0" style={{ fontSize: '1rem', bottom: '-11px' }}>{activeReminder.name}</span>
-                  </div>
+                  <GradientText text={activeReminder.value} size="3rem" id={`rem-${activeReminder.id}`} subtext={activeReminder.name} />
                 ) : (
-                  <div className="flex flex-col">
+                  <div className="flex flex-col items-center justify-center h-full text-center">
                     <span className="font-black text-white tracking-tight truncate leading-tight text-lg">{activeReminder.name}</span>
-                    <span className="font-black text-white/40 uppercase tracking-widest leading-none" style={{ fontSize: '1rem' }}>{activeReminder.label}</span>
+                    <span className="font-black text-white/40 uppercase tracking-widest leading-none text-[10px]">{activeReminder.label}</span>
                   </div>
                 )}
               </div>
@@ -274,7 +275,7 @@ export function LiveMatchIsland() {
       )}
 
       {activeItem ? (
-        <div className="pointer-events-auto group relative" onClick={() => isDetailedManually ? setIsDetailedManually(false) : setIsDetailedManually(true)}>
+        <div className="pointer-events-auto group relative" onClick={() => setIsDetailedManually(!isDetailedManually)}>
           <div className={cn(
             "liquid-glass backdrop-blur-[120px] rounded-[2.5rem] shadow-[0_40px_100px_rgba(0,0,0,1)] transition-all duration-700 cursor-pointer overflow-hidden relative border border-white/10 p-0",
             isMatchExpanded ? "w-[380px] h-[140px]" : "w-[18rem] h-[3.5rem]"
@@ -289,16 +290,15 @@ export function LiveMatchIsland() {
                     <img src={activeItem.data.awayLogo} className="h-full w-auto object-contain scale-[1.5] -translate-x-4" alt="" />
                   </div>
                   <div className="relative w-full h-full flex flex-col items-center justify-center z-20" style={{ background: 'linear-gradient(-1deg, black, transparent)' }}>
-                    <div className="w-full h-full absolute bottom-0">
-                      <GradientText 
-                        text={activeItem.data.status === 'upcoming' ? activeItem.data.startTime : `${activeItem.data.score.away}-${activeItem.data.score.home}`} 
-                        size="3rem" 
-                        id={`match-mini-${activeItem.id}`} 
-                      />
-                    </div>
+                    <GradientText 
+                      text={activeItem.data.status === 'upcoming' ? activeItem.data.startTime : `${activeItem.data.score.away}-${activeItem.data.score.home}`} 
+                      size="3rem" 
+                      id={`match-mini-${activeItem.id}`} 
+                      subtext={activeItem.data.league}
+                    />
                     {activeItem.data.status === 'live' && (
                       <div className={cn("absolute top-1 right-1/2 translate-x-1/2 px-2 py-0.5 rounded-full shadow-xl border border-white/20 z-[10002]", getMinuteBadgeColor(activeItem.data.minute || 0))}>
-                        <span className="font-black text-white uppercase tracking-widest" style={{ fontSize: '0.7rem' }}>{activeItem.data.minute}'</span>
+                        <span className="font-black text-white uppercase tracking-widest text-[0.7rem]">{activeItem.data.minute}'</span>
                       </div>
                     )}
                   </div>
@@ -307,12 +307,13 @@ export function LiveMatchIsland() {
                 <div className="h-full flex flex-col animate-in zoom-in-95 duration-500 text-right overflow-hidden">
                   <div className="flex justify-between items-center px-6 py-3 border-b border-white/10">
                     <div className={cn("px-4 py-1 rounded-full font-black shadow-lg flex items-center gap-2", activeItem.data.status === 'live' ? getMinuteBadgeColor(activeItem.data.minute || 0) : "bg-white/10 text-white/60")}>
-                      <span style={{ fontSize: '0.8rem' }}>{activeItem.data.status === 'live' ? `${activeItem.data.minute}'` : activeItem.data.status === 'finished' ? 'FT' : activeItem.data.startTime}</span>
+                      <span className="text-[0.8rem]">{activeItem.data.status === 'live' ? `${activeItem.data.minute}'` : activeItem.data.status === 'finished' ? 'FT' : activeItem.data.startTime}</span>
                     </div>
                     <span className="text-[10px] font-black text-white/40 uppercase tracking-tighter truncate max-w-[180px] dir-rtl">{activeItem.data.league}</span>
                   </div>
                   <div className="flex items-center justify-between flex-1 px-10 gap-6">
-                    <img src={activeItem.data.homeLogo} className="h-28 w-28 object-contain drop-shadow-2xl" alt="" />
+                    {/* NO SCALE IN LARGE VIEW PER PROMPT */}
+                    <img src={activeItem.data.homeLogo} className="h-16 w-16 object-contain drop-shadow-2xl" alt="" />
                     <div className="w-48 h-20">
                       <GradientText 
                         text={activeItem.data.status === 'upcoming' ? 'VS' : `${activeItem.data.score.home}-${activeItem.data.score.away}`} 
@@ -320,7 +321,7 @@ export function LiveMatchIsland() {
                         id={`match-full-${activeItem.id}`} 
                       />
                     </div>
-                    <img src={activeItem.data.awayLogo} className="h-28 w-28 object-contain drop-shadow-2xl" alt="" />
+                    <img src={activeItem.data.awayLogo} className="h-16 w-16 object-contain drop-shadow-2xl" alt="" />
                   </div>
                 </div>
               )}
@@ -349,7 +350,7 @@ export function LiveMatchIsland() {
                   </div>
                   {item.data.status === 'live' && (
                     <div className={cn("absolute bottom-1 right-1/2 translate-x-1/2 px-1 py-0 rounded-full shadow-xl z-[10002] animate-pulse", getMinuteBadgeColor(item.data.minute || 0))}>
-                      <span className="font-black text-white" style={{ fontSize: '0.5rem' }}>{item.data.minute}'</span>
+                      <span className="font-black text-white text-[0.5rem]">{item.data.minute}'</span>
                     </div>
                   )}
                 </div>

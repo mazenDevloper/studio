@@ -18,7 +18,6 @@ import {
   Loader2,
   Globe,
   Edit2,
-  Timer,
   Clock,
   Zap
 } from "lucide-react";
@@ -296,10 +295,10 @@ export function SettingsView() {
                         <div className="flex items-center gap-6">
                           <div className={cn(
                             "w-16 h-16 rounded-3xl flex items-center justify-center border-2 transition-all", 
-                            (r.color || 'text-blue-400').replace('text-', 'bg-') + '/10', 
-                            (r.color || 'text-blue-400').replace('text-', 'border-') + '/20'
+                            colorClass.replace('text-', 'bg-') + '/10', 
+                            colorClass.replace('text-', 'border-') + '/20'
                           )}>
-                            <Bell className={cn("w-8 h-8", r.color || 'text-blue-400')} />
+                            <Bell className={cn("w-8 h-8", colorClass)} />
                           </div>
                           <div className="flex flex-col gap-1 text-right">
                             <h3 className="font-black text-2xl text-white tracking-tight">{r.label}</h3>
