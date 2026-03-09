@@ -22,9 +22,9 @@ export interface Reminder {
   manualTime?: string; // HH:mm format
   offsetMinutes: number; // Minutes from prayer time
   showCountdown: boolean;
-  countdownWindow: number; // Minutes before target to show timer
+  countdownWindow: number; // Minutes before target
   showCountup: boolean;
-  countupWindow: number; // Minutes after target to show timer
+  countupWindow: number; // Minutes after target
   completed: boolean;
   color: string;
   iconType: 'play' | 'bell' | 'circle';
@@ -35,8 +35,6 @@ export interface MapSettings {
   tilt: number;
   carScale: number;
   backgroundIndex: number;
-  countdownDuration: number; // Fallback global
-  countupDuration: number; // Fallback global
 }
 
 export interface IptvChannel {
@@ -59,7 +57,6 @@ export interface FavoriteTeam {
 interface MediaState {
   favoriteChannels: YouTubeChannel[];
   savedVideos: YouTubeVideo[];
-  starredChannelIds: string[];
   videoProgress: Record<string, number>;
   favoriteTeams: FavoriteTeam[];
   favoriteLeagueIds: number[];
@@ -84,7 +81,6 @@ interface MediaState {
   showIslands: boolean;
   addChannel: (channel: YouTubeChannel) => void;
   removeChannel: (channelid: string) => void;
-  incrementChannelClick: (channelid: string) => void;
   toggleSaveVideo: (video: YouTubeVideo) => void;
   removeVideo: (id: string) => void;
   toggleStarChannel: (channelid: string) => void;
@@ -93,11 +89,9 @@ interface MediaState {
   removeReminder: (id: string) => void;
   toggleReminder: (id: string) => void;
   toggleFavoriteTeam: (team: FavoriteTeam) => void;
-  toggleFavoriteLeagueId: (leagueId: number) => void;
   toggleBelledMatch: (matchId: string) => void;
   skipMatch: (matchId: string) => void;
   toggleFavoriteIptvChannel: (channel: IptvChannel) => void;
-  setIptvFormat: (format: 'ts' | 'm3u8') => void;
   setIptvPlaylist: (channels: IptvChannel[], index: number) => void;
   nextIptvChannel: () => void;
   prevIptvChannel: () => void;
@@ -112,9 +106,7 @@ interface MediaState {
   setIsPlaying: (playing: boolean) => void;
   setIsMinimized: (minimized: boolean) => void;
   setIsFullScreen: (fullScreen: boolean) => void;
-  setDockSide: (side: 'left' | 'right') => void;
   toggleDockSide: () => void;
-  setShowIslands: (show: boolean) => void;
   toggleShowIslands: () => void;
   fetchPrayerTimes: () => Promise<void>;
 }
@@ -139,7 +131,6 @@ export const useMediaStore = create<MediaState>()(
     (set, get) => ({
       favoriteChannels: [],
       savedVideos: [],
-      starredChannelIds: [],
       videoProgress: {},
       favoriteTeams: [],
       favoriteLeagueIds: [307, 39, 2, 140, 135],
@@ -151,14 +142,7 @@ export const useMediaStore = create<MediaState>()(
       iptvPlaylistIndex: 0,
       prayerTimes: prayerTimesData,
       reminders: [],
-      mapSettings: { 
-        zoom: 20.0, 
-        tilt: 65, 
-        carScale: 1.02, 
-        backgroundIndex: 0,
-        countdownDuration: 10,
-        countupDuration: 10
-      },
+      mapSettings: { zoom: 20.0, tilt: 65, carScale: 1.02, backgroundIndex: 0 },
       aiSuggestions: [],
       activeVideo: null,
       activeIptv: null,
@@ -188,7 +172,7 @@ export const useMediaStore = create<MediaState>()(
 
       addChannel: (channel) => {
         set((state) => {
-          const newList = [...state.favoriteChannels.filter(c => c.channelid !== channel.channelid), { ...channel, clickschannel: 0, starred: false }];
+          const newList = [...state.favoriteChannels.filter(c => c.channelid !== channel.channelid), { ...channel, starred: false }];
           updateBin(JSONBIN_CHANNELS_BIN_ID, newList);
           return { favoriteChannels: newList };
         });
@@ -197,14 +181,6 @@ export const useMediaStore = create<MediaState>()(
       removeChannel: (channelid) => {
         set((state) => {
           const newList = state.favoriteChannels.filter(c => c.channelid !== channelid);
-          updateBin(JSONBIN_CHANNELS_BIN_ID, newList);
-          return { favoriteChannels: newList };
-        });
-      },
-
-      incrementChannelClick: (channelid) => {
-        set((state) => {
-          const newList = state.favoriteChannels.map(c => c.channelid === channelid ? { ...c, clickschannel: (c.clickschannel || 0) + 1 } : c);
           updateBin(JSONBIN_CHANNELS_BIN_ID, newList);
           return { favoriteChannels: newList };
         });
@@ -256,10 +232,6 @@ export const useMediaStore = create<MediaState>()(
         });
       },
 
-      toggleFavoriteLeagueId: (leagueId) => {
-        set((state) => ({ favoriteLeagueIds: state.favoriteLeagueIds.includes(leagueId) ? state.favoriteLeagueIds.filter(id => id !== leagueId) : [...state.favoriteLeagueIds, leagueId] }));
-      },
-
       toggleBelledMatch: (matchId) => {
         set((state) => {
           const newMatches = state.belledMatchIds.includes(matchId) ? state.belledMatchIds.filter(id => id !== matchId) : [...state.belledMatchIds, matchId];
@@ -291,7 +263,6 @@ export const useMediaStore = create<MediaState>()(
         });
       },
 
-      setIptvFormat: (format) => set({ iptvFormat: format }),
       setIptvPlaylist: (channels, index) => set({ iptvPlaylist: channels, iptvPlaylistIndex: index }),
       nextIptvChannel: () => {
         const state = get();
@@ -337,15 +308,10 @@ export const useMediaStore = create<MediaState>()(
           set({ activeIptv: null, isPlaying: false, isMinimized: false, isFullScreen: false });
           return;
         }
-
         let finalChannel = { ...channel };
-        const isLiveStream = finalChannel.stream_type === 'live' || finalChannel.type === 'live';
+        finalChannel.type = 'web';
+        finalChannel.url = finalChannel.url || `http://playstop.watch:2095/live/W87d737/Pd37qj34/${finalChannel.stream_id}.m3u8`;
         
-        if (isLiveStream || (!finalChannel.url && finalChannel.stream_id && !finalChannel.stream_id.startsWith('custom-'))) {
-          finalChannel.type = 'web';
-          finalChannel.url = `http://playstop.watch:2095/live/W87d737/Pd37qj34/${finalChannel.stream_id}.m3u8`;
-        }
-
         if (state.favoriteIptvChannels.some(c => c.stream_id === finalChannel.stream_id)) {
           const idx = state.favoriteIptvChannels.findIndex(c => c.stream_id === finalChannel.stream_id);
           set({ iptvPlaylist: state.favoriteIptvChannels, iptvPlaylistIndex: idx });
@@ -371,9 +337,7 @@ export const useMediaStore = create<MediaState>()(
       setIsPlaying: (playing) => set({ isPlaying: playing }),
       setIsMinimized: (minimized) => set({ isMinimized: minimized, isFullScreen: false }),
       setIsFullScreen: (fullScreen) => set({ isFullScreen: fullScreen, isMinimized: false }),
-      setDockSide: (side) => set({ dockSide: side }),
       toggleDockSide: () => set((state) => ({ dockSide: state.dockSide === 'left' ? 'right' : 'left' })),
-      setShowIslands: (show) => set({ showIslands: show }),
       toggleShowIslands: () => set((state) => ({ showIslands: !state.showIslands })),
     }),
     {

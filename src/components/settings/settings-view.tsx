@@ -7,23 +7,16 @@ import {
   Settings, 
   Bell, 
   Trophy, 
-  Info, 
-  ShieldCheck, 
   Trash2, 
   Plus, 
-  Maximize, 
   Search, 
-  Star,
   Palette,
-  Loader2,
-  Globe,
   Edit2,
-  Clock,
-  Zap
+  Clock
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardTitle, CardHeader } from "@/components/ui/card";
+import { Card, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
@@ -204,7 +197,7 @@ export function SettingsView() {
                       <div className={cn("w-16 h-16 rounded-3xl flex items-center justify-center border-2 transition-all", color.replace('text-', 'bg-') + '/10', color.replace('text-', 'border-') + '/20')}>
                         <Bell className={cn("w-8 h-8", color)} />
                       </div>
-                      <div className="flex flex-col gap-1">
+                      <div className="flex flex-col gap-1 text-right">
                         <h3 className="font-black text-2xl text-white">{r.label}</h3>
                         <span className="text-[10px] font-black text-white/40 uppercase">{r.relativePrayer === 'manual' ? r.manualTime : `${PRAYERS.find(p => p.id === r.relativePrayer)?.name} (${r.offsetMinutes >= 0 ? '+' : ''}${r.offsetMinutes})`}</span>
                       </div>
