@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useMediaStore } from "@/lib/store";
@@ -9,6 +8,9 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { fetchChannelDetails } from "@/lib/youtube";
 
+/**
+ * GlobalVideoPlayer - optimized for "Native Performance" using CSS containment and GPU isolation.
+ */
 export function GlobalVideoPlayer() {
   const router = useRouter();
   const { 
@@ -47,6 +49,7 @@ export function GlobalVideoPlayer() {
     }
   }, []);
 
+  // Background Audio Support via Media Session API
   useEffect(() => {
     if ('mediaSession' in navigator && (activeVideo || activeIptv)) {
       navigator.mediaSession.metadata = new MediaMetadata({
@@ -63,6 +66,7 @@ export function GlobalVideoPlayer() {
     }
   }, [activeVideo, activeIptv, setIsPlaying, nextTrack, nextIptvChannel, prevIptvChannel]);
 
+  // Key Bindings: 1 for Previous, 3 for Next (CH+/CH-)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!activeVideo && !activeIptv) return;
@@ -138,6 +142,7 @@ export function GlobalVideoPlayer() {
         </div>
       )}
 
+      {/* Optimized Floating Collapsible Controls */}
       {!isMinimized && (
         <div className={cn(
           "fixed z-[5200] flex items-center transition-all duration-500",

@@ -1,8 +1,10 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
 
+/**
+ * Clock Widget with cross-gradient SVG styling.
+ */
 export function DateAndClockWidget() {
   const [now, setNow] = useState<Date | null>(null);
   
@@ -34,12 +36,12 @@ export function DateAndClockWidget() {
           <svg className="w-full h-full max-h-32 drop-shadow-[0_15px_35px_rgba(0,0,0,0.6)] overflow-visible" viewBox="0 0 300 120" preserveAspectRatio="xMidYMid meet">
             <defs>
               <linearGradient id="clockFill" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="rgba(255,255,255,0.8)" />
-                <stop offset="100%" stopColor="rgba(255,255,255,0.1)" />
+                <stop offset="0%" stopColor="rgba(255,255,255,0.85)" />
+                <stop offset="100%" stopColor="rgba(255,255,255,0.15)" />
               </linearGradient>
               <linearGradient id="clockStroke" x1="100%" y1="100%" x2="0%" y2="0%">
                 <stop offset="0%" stopColor="rgba(255,255,255,1)" />
-                <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+                <stop offset="100%" stopColor="rgba(255,255,255,0.1)" />
               </linearGradient>
             </defs>
             <text 

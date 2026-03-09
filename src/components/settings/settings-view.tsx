@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useCallback } from "react";
@@ -183,6 +182,16 @@ export function SettingsView() {
                     <Switch checked={form.showCountup} onCheckedChange={(v) => setForm({...form, showCountup: v})} />
                   </div>
                 </div>
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-white/40 uppercase">نافذة التنازلي (د)</label>
+                    <Input type="number" className="bg-white/5 border-white/10 h-12 rounded-xl text-center" value={form.countdownWindow} onChange={(e) => setForm({...form, countdownWindow: parseInt(e.target.value) || 0})} />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-white/40 uppercase">نافذة التصاعدي (د)</label>
+                    <Input type="number" className="bg-white/5 border-white/10 h-12 rounded-xl text-center" value={form.countupWindow} onChange={(e) => setForm({...form, countupWindow: parseInt(e.target.value) || 0})} />
+                  </div>
+                </div>
                 <Button onClick={handleSubmitReminder} className="w-full h-16 bg-primary text-white font-black text-2xl rounded-2xl shadow-xl">حفظ التذكير</Button>
               </div>
             </Card>
@@ -191,11 +200,11 @@ export function SettingsView() {
             {reminders.map((r) => {
               const color = r.color || 'text-blue-400';
               return (
-                <Card key={r.id} className="bg-zinc-900/50 border-white/5 rounded-[2.5rem] p-6 group">
-                  <div className="flex items-center justify-between">
+                <Card key={r.id} className="bg-zinc-900/50 border-white/5 rounded-[2.5rem] p-6 group relative overflow-hidden">
+                  <div className="flex items-center justify-between relative z-10">
                     <div className="flex items-center gap-6">
-                      <div className={cn("w-16 h-16 rounded-3xl flex items-center justify-center border-2 transition-all", color.replace('text-', 'bg-') + '/10', color.replace('text-', 'border-') + '/20')}>
-                        <Bell className={cn("w-8 h-8", color)} />
+                      <div className={cn("w-16 h-16 rounded-3xl flex items-center justify-center border-2 transition-all", (r.color || 'text-blue-400').replace('text-', 'bg-') + '/10', (r.color || 'text-blue-400').replace('text-', 'border-') + '/20')}>
+                        <Bell className={cn("w-8 h-8", r.color || 'text-blue-400')} />
                       </div>
                       <div className="flex flex-col gap-1 text-right">
                         <h3 className="font-black text-2xl text-white">{r.label}</h3>
@@ -203,8 +212,8 @@ export function SettingsView() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-all">
-                      <Button variant="ghost" size="icon" onClick={() => handleEdit(r)} className="w-14 h-14 rounded-full bg-white/5"><Edit2 className="w-6 h-6" /></Button>
-                      <Button variant="ghost" size="icon" onClick={() => removeReminder(r.id)} className="w-14 h-14 rounded-full bg-red-600/10 text-red-500"><Trash2 className="w-6 h-6" /></Button>
+                      <Button variant="ghost" size="icon" onClick={() => handleEdit(r)} className="w-14 h-14 rounded-full bg-white/5 focusable"><Edit2 className="w-6 h-6" /></Button>
+                      <Button variant="ghost" size="icon" onClick={() => removeReminder(r.id)} className="w-14 h-14 rounded-full bg-red-600/10 text-red-500 focusable"><Trash2 className="w-6 h-6" /></Button>
                     </div>
                   </div>
                 </Card>
@@ -215,13 +224,13 @@ export function SettingsView() {
 
         <TabsContent value="football" className="outline-none">
           <Card className="bg-zinc-900/50 border-white/10 rounded-[3rem] p-10">
-            <Input placeholder="بحث عن أندية..." value={clubSearch} onChange={(e) => setClubSearch(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleGlobalSearch()} className="h-14 bg-white/5 border-white/10 mb-6 text-right" />
+            <Input placeholder="بحث عن أندية..." value={clubSearch} onChange={(e) => setClubSearch(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleGlobalSearch()} className="h-14 bg-white/5 border-white/10 mb-6 text-right focusable" />
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {favoriteTeams.map(t => (
                 <div key={t.id} className="p-4 rounded-2xl bg-primary/10 border border-primary/20 flex flex-col items-center gap-3">
                   <img src={t.logo} className="w-12 h-12 object-contain" alt="" />
                   <span className="text-[10px] font-black text-primary">{t.name}</span>
-                  <Button onClick={() => toggleFavoriteTeam(t)} size="icon" className="w-8 h-8 rounded-full bg-red-600/20 text-red-500"><Trash2 className="w-4 h-4" /></Button>
+                  <Button onClick={() => toggleFavoriteTeam(t)} size="icon" className="w-8 h-8 rounded-full bg-red-600/20 text-red-500 focusable"><Trash2 className="w-4 h-4" /></Button>
                 </div>
               ))}
             </div>
