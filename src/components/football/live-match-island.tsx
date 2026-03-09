@@ -80,34 +80,27 @@ export function LiveMatchIsland() {
 
     for (const p of prayers) {
       if (p.id === 'sunrise') continue; 
-      
       const azanSecs = tToM(p.time) * 60;
       const iqamahSecs = azanSecs + (p.iqamah * 60);
-
       const azanDiff = azanSecs - totalCurrentSecs;
-      const showAzanTimer = azanDiff <= 10 * 60 && azanDiff >= -10 * 60;
       allEvents.push({
         id: `azan-${p.id}`,
         name: p.name,
         label: azanDiff >= 0 ? "الأذان خلال" : "مضى على الأذان",
-        value: showAzanTimer ? `${azanDiff >= 0 ? "-" : "+"}${formatCountdown(Math.abs(azanDiff))}` : "",
+        value: Math.abs(azanDiff) <= 600 ? `${azanDiff >= 0 ? "-" : "+"}${formatCountdown(Math.abs(azanDiff))}` : "",
         diff: azanDiff,
         icon: Clock,
-        color: "text-accent",
-        priority: azanDiff < 0 ? azanDiff + 100000 : azanDiff
+        color: "text-accent"
       });
-
       const iqamahDiff = iqamahSecs - totalCurrentSecs;
-      const showIqamahTimer = iqamahDiff <= 10 * 60 && iqamahDiff >= -10 * 60;
       allEvents.push({
         id: `iqamah-${p.id}`,
         name: `إقامة ${p.name}`,
         label: iqamahDiff >= 0 ? "الإقامة خلال" : "مضى من الإقامة",
-        value: showIqamahTimer ? `${iqamahDiff >= 0 ? "-" : "+"}${formatCountdown(Math.abs(iqamahDiff))}` : "",
+        value: Math.abs(iqamahDiff) <= 600 ? `${iqamahDiff >= 0 ? "-" : "+"}${formatCountdown(Math.abs(iqamahDiff))}` : "",
         diff: iqamahDiff,
         icon: Timer,
-        color: "text-emerald-400",
-        priority: iqamahDiff < 0 ? iqamahDiff + 100000 : iqamahDiff
+        color: "text-emerald-400"
       });
     }
 
@@ -117,17 +110,13 @@ export function LiveMatchIsland() {
         targetSecs = tToM(rem.manualTime) * 60;
       } else {
         const refPrayer = prayers.find(p => p.id === rem.relativePrayer);
-        if (refPrayer) {
-          targetSecs = (tToM(refPrayer.time) + rem.offsetMinutes) * 60;
-        }
+        if (refPrayer) targetSecs = (tToM(refPrayer.time) + rem.offsetMinutes) * 60;
       }
-
       if (targetSecs > 0) {
         const diff = targetSecs - totalCurrentSecs;
         const winBefore = rem.showCountdown ? (rem.countdownWindow * 60) : 0;
         const winAfter = rem.showCountup ? (rem.countupWindow * 60) : 0;
         const isInWindow = diff <= winBefore && diff >= -winAfter;
-        
         allEvents.push({
           id: rem.id,
           name: rem.label,
@@ -135,54 +124,34 @@ export function LiveMatchIsland() {
           value: isInWindow ? `${diff >= 0 ? "-" : "+"}${formatCountdown(Math.abs(diff))}` : "",
           diff: diff,
           icon: Bell,
-          color: rem.color || "text-blue-400",
-          priority: diff < 0 ? diff + 100000 : diff
+          color: rem.color || "text-blue-400"
         });
       }
     }
 
-    const activeOrUpcoming = allEvents
+    return allEvents
       .filter(ev => ev.diff > -600) 
-      .sort((a, b) => a.diff - b.diff)
+      .sort((a, b) => Math.abs(a.diff) - Math.abs(b.diff))
       .slice(0, 3);
-
-    const sunriseMins = tToM(pData.sunrise);
-    const fajrMins = tToM(pData.fajr);
-    const asrMins = tToM(pData.asr);
-    const maghribMins = tToM(pData.maghrib);
-    
-    if (currentMins >= fajrMins && currentMins < sunriseMins + 30) {
-      activeOrUpcoming.unshift({ id: 'morning-dhikr', name: "أذكار الصباح", label: "تذكير نشط", value: "", icon: Sun, color: "text-orange-400" });
-    }
-    if (currentMins >= asrMins + 30 && currentMins < maghribMins) {
-      activeOrUpcoming.unshift({ id: 'evening-dhikr', name: "أذكار المساء", label: "تذكير نشط", value: "", icon: Moon, color: "text-blue-400" });
-    }
-
-    return activeOrUpcoming;
   }, [now, prayerTimes, reminders]);
 
   const islandQueue = useMemo(() => {
     const items: IslandItem[] = [];
     topMatches.forEach(m => {
       if (skippedMatchIds.includes(m.id)) return;
-      
       const isFav = favoriteTeams.some(t => t.id === m.homeTeamId || t.id === m.awayTeamId);
       const isBelled = belledMatchIds.includes(m.id);
       const isLive = m.status === 'live';
-      
-      const isEnglish = m.leagueId === 39;
-      const isItalian = m.leagueId === 135;
-      const isSpanish = m.leagueId === 140;
-
+      const isEng = m.leagueId === 39;
+      const isIta = m.leagueId === 135;
+      const isSpa = m.leagueId === 140;
       let priority = 0;
       if (isFav || isBelled) priority = isLive ? 100000 : 90000;
-      else if (isEnglish) priority = isLive ? 80000 : 75000;
-      else if (isItalian) priority = isLive ? 70000 : 65000;
-      else if (isSpanish) priority = isLive ? 60000 : 55000;
-
+      else if (isEng) priority = isLive ? 80000 : 75000;
+      else if (isIta) priority = isLive ? 70000 : 65000;
+      else if (isSpa) priority = isLive ? 60000 : 55000;
       if (priority > 0) items.push({ id: m.id, type: 'match', priority, data: m });
     });
-
     return items.sort((a, b) => b.priority - a.priority).slice(0, 4);
   }, [topMatches, skippedMatchIds, favoriteTeams, belledMatchIds]);
 
@@ -190,12 +159,6 @@ export function LiveMatchIsland() {
     e.stopPropagation();
     skipMatch(id);
     setActiveIndex(0);
-  };
-
-  const handleReminderClick = () => {
-    if (prayerIslandQueue.length > 1) {
-      setActiveReminderIndex((prev) => (prev + 1) % prayerIslandQueue.length);
-    }
   };
 
   if (!showIslands) return null;
@@ -242,7 +205,7 @@ export function LiveMatchIsland() {
   return (
     <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[10001] flex items-center gap-4 pointer-events-none gpu-smooth">
       {activeReminder && (
-        <div className="pointer-events-auto group relative cursor-pointer" onClick={handleReminderClick}>
+        <div className="pointer-events-auto group relative cursor-pointer" onClick={() => setActiveReminderIndex((p) => (p + 1) % prayerIslandQueue.length)}>
           <div className={cn(
             "liquid-glass backdrop-blur-[120px] rounded-[2.5rem] shadow-[0_40px_100px_rgba(0,0,0,1)] transition-all duration-700 overflow-hidden relative border border-white/10 w-64 h-14 px-6",
             activeReminder.value ? "ring-2 ring-accent/40 bg-accent/5" : ""
@@ -263,13 +226,6 @@ export function LiveMatchIsland() {
                 )}
               </div>
             </div>
-            {prayerIslandQueue.length > 1 && (
-              <div className="absolute bottom-1 left-1/2 -translate-x-1/2 flex gap-1">
-                {prayerIslandQueue.map((_, idx) => (
-                  <div key={idx} className={cn("w-1 h-1 rounded-full transition-all", idx === activeReminderIndex ? "bg-accent w-2" : "bg-white/20")} />
-                ))}
-              </div>
-            )}
           </div>
         </div>
       )}
@@ -312,14 +268,9 @@ export function LiveMatchIsland() {
                     <span className="text-[10px] font-black text-white/40 uppercase tracking-tighter truncate max-w-[180px] dir-rtl">{activeItem.data.league}</span>
                   </div>
                   <div className="flex items-center justify-between flex-1 px-10 gap-6">
-                    {/* NO SCALE IN LARGE VIEW PER PROMPT */}
                     <img src={activeItem.data.homeLogo} className="h-16 w-16 object-contain drop-shadow-2xl" alt="" />
                     <div className="w-48 h-20">
-                      <GradientText 
-                        text={activeItem.data.status === 'upcoming' ? 'VS' : `${activeItem.data.score.home}-${activeItem.data.score.away}`} 
-                        size="4rem" 
-                        id={`match-full-${activeItem.id}`} 
-                      />
+                      <GradientText text={activeItem.data.status === 'upcoming' ? 'VS' : `${activeItem.data.score.home}-${activeItem.data.score.away}`} size="4rem" id={`match-full-${activeItem.id}`} />
                     </div>
                     <img src={activeItem.data.awayLogo} className="h-16 w-16 object-contain drop-shadow-2xl" alt="" />
                   </div>
@@ -329,36 +280,6 @@ export function LiveMatchIsland() {
           </div>
         </div>
       ) : null}
-
-      {islandQueue.length > 1 && (
-        <div className="flex items-center gap-2">
-          {islandQueue.map((item, idx) => {
-            if (idx === activeIndex) return null;
-            return (
-              <div key={item.id} onClick={() => setActiveIndex(idx)} className="pointer-events-auto w-14 h-14 rounded-full liquid-glass backdrop-blur-[80px] border border-white/20 flex items-center justify-center shadow-2xl cursor-pointer overflow-hidden transition-all hover:scale-110 active:scale-90 p-0" style={{ background: 'linear-gradient(45deg, black, transparent)' }}>
-                <div className="relative w-full h-full flex flex-col items-center justify-center">
-                  <div className="absolute inset-0 flex items-center justify-center opacity-60 gap-0.5" style={{ transform: 'scale(0.5)' }}>
-                    <img src={item.data.homeLogo} className="w-10 h-10 object-contain scale-[1.5]" alt="" />
-                    <img src={item.data.awayLogo} className="w-10 h-10 object-contain scale-[1.5]" alt="" />
-                  </div>
-                  <div className="w-full h-8 absolute bottom-[-11px]">
-                    <GradientText 
-                      text={item.data.status === 'upcoming' ? item.data.startTime : `${item.data.score.away}-${item.data.score.home}`} 
-                      size="1rem" 
-                      id={`match-dot-${item.id}`} 
-                    />
-                  </div>
-                  {item.data.status === 'live' && (
-                    <div className={cn("absolute bottom-1 right-1/2 translate-x-1/2 px-1 py-0 rounded-full shadow-xl z-[10002] animate-pulse", getMinuteBadgeColor(item.data.minute || 0))}>
-                      <span className="font-black text-white text-[0.5rem]">{item.data.minute}'</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
     </div>
   );
 }

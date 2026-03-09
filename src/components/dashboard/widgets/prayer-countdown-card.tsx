@@ -67,64 +67,34 @@ export function PrayerCountdownCard() {
     const mins = diffInMinutes % 60;
     const secs = 59 - now.getSeconds();
 
-    const hStr = hours.toString().padStart(2, '0');
-    const mStr = mins.toString().padStart(2, '0');
-    const sStr = secs.toString().padStart(2, '0');
-
     return {
       type: "azan",
       name: next.name,
-      remaining: hours > 0 ? `${hStr}:${mStr}:${sStr}` : `${mStr}:${sStr}`,
+      remaining: hours > 0 ? `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}` : `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`,
       time: convertTo12Hour(next.time)
     };
   }, [now, prayerTimes]);
 
-  if (!mounted || !now || !prayerStatus) return (
-    <div className="h-full w-full glass-panel rounded-[2.5rem] flex items-center justify-center animate-pulse">
-      <Clock className="w-8 h-8 text-white/10" />
-    </div>
-  );
+  if (!mounted || !now || !prayerStatus) return null;
 
   const isIqamah = prayerStatus.type === "iqamah";
-  const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
 
   return (
     <div className={cn(
       "h-full w-full glass-panel rounded-[2.5rem] p-4 flex flex-col justify-center items-center text-center transition-all duration-1000 relative overflow-hidden shadow-2xl",
-      isIqamah 
-        ? "bg-accent/25 border-accent/90 shadow-[0_0_100px_rgba(65,184,131,0.7)] ring-8 ring-accent/30" 
-        : "bg-white/5 border-white/10"
+      isIqamah ? "bg-accent/25 border-accent/90" : "bg-white/5 border-white/10"
     )}>
-      {isIqamah && (
-        <>
-          <div className="absolute inset-0 bg-gradient-to-t from-accent/40 via-transparent to-transparent animate-pulse" />
-          <div className="absolute top-4 right-4 animate-spin-slow opacity-50">
-            <Sparkles className="w-8 h-8 text-accent drop-shadow-[0_0_25px_hsl(var(--accent))]" />
-          </div>
-        </>
-      )}
-
-      {/* Prominent Clock Layer */}
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 opacity-60 pointer-events-none">
-        <span className="text-[11rem] font-black text-white tracking-tighter tabular-nums leading-none">{timeString}</span>
-      </div>
-
-      <div className="flex items-center gap-2 mb-1 relative z-10 mt-2">
+      <div className="flex items-center gap-2 mb-1 relative z-10">
         <div className={cn(
-          "px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.15em] border-2 flex items-center gap-2 transition-all duration-700",
-          isIqamah 
-            ? "bg-accent text-black border-white/60 shadow-[0_0_40px_rgba(16,185,129,1)]" 
-            : "bg-primary/20 text-primary border-primary/40 shadow-glow"
+          "px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.15em] border-2 flex items-center gap-2",
+          isIqamah ? "bg-accent text-black border-white/60 shadow-glow" : "bg-primary/20 text-primary border-primary/40"
         )}>
           {isIqamah ? <BellRing className="w-3.5 h-3.5 animate-pulse" /> : <Clock className="w-2.5 h-2.5" />}
           {isIqamah ? `صلاة ${prayerStatus.name}` : `الصلاة القادمة: ${prayerStatus.name}`}
         </div>
       </div>
 
-      <div className={cn(
-        "relative z-10 w-full h-24 flex items-center justify-center transition-transform duration-1000",
-        isIqamah && "scale-110"
-      )}>
+      <div className="relative z-10 w-full h-24 flex items-center justify-center">
         <svg className="w-full h-full overflow-visible drop-shadow-[0_10px_40px_rgba(0,0,0,0.9)]" viewBox="0 0 300 80">
           <defs>
             <linearGradient id="timerFill" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -155,7 +125,7 @@ export function PrayerCountdownCard() {
       <div className="mt-2 flex flex-col items-center gap-2 relative z-10">
         <div className={cn(
           "flex items-center gap-2 font-black text-[9px] uppercase tracking-[0.2em]",
-          isIqamah ? "text-black bg-white px-3 py-1 rounded-full shadow-[0_0_40px_white]" : "text-white/40"
+          isIqamah ? "text-black bg-white px-3 py-1 rounded-full" : "text-white/40"
         )}>
           <Timer className={cn("w-3 h-3", isIqamah ? "text-accent animate-pulse" : "text-primary")} />
           {isIqamah ? "الإقامة جارية" : `الأذان: ${prayerStatus.time}`}

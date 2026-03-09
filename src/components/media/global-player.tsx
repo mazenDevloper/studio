@@ -2,17 +2,13 @@
 "use client";
 
 import { useMediaStore } from "@/lib/store";
-import { X, Minimize2, Bookmark, Monitor, ChevronDown, Play, Pause, Tv, List, ChevronRight, ChevronLeft, Youtube, Activity, Eye, EyeOff } from "lucide-react";
+import { X, Minimize2, Bookmark, Monitor, ChevronDown, Play, Pause, Tv, List, ChevronRight, ChevronLeft, Youtube, Activity, Eye, EyeOff, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { fetchChannelDetails } from "@/lib/youtube";
 
-/**
- * GlobalVideoPlayer - High Performance Edition
- * Optimized for "Direct Source" performance using Hardware Acceleration and Layer Isolation.
- */
 export function GlobalVideoPlayer() {
   const router = useRouter();
   const { 
@@ -23,7 +19,6 @@ export function GlobalVideoPlayer() {
     isFullScreen,
     videoProgress,
     nextTrack,
-    prevTrack,
     nextIptvChannel,
     prevIptvChannel,
     setActiveVideo, 
@@ -39,6 +34,7 @@ export function GlobalVideoPlayer() {
   } = useMediaStore();
   
   const [mounted, setMounted] = useState(false);
+  const [isControlsExpanded, setIsControlsExpanded] = useState(false);
   const playerRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -51,7 +47,7 @@ export function GlobalVideoPlayer() {
     }
   }, []);
 
-  // Media Session API - Core for Background Audio & System Controls
+  // Media Session API - Core for Background Audio
   useEffect(() => {
     if ('mediaSession' in navigator && (activeVideo || activeIptv)) {
       navigator.mediaSession.metadata = new MediaMetadata({
@@ -73,11 +69,10 @@ export function GlobalVideoPlayer() {
     }
   }, [activeVideo, activeIptv, setIsPlaying, nextTrack, nextIptvChannel, prevIptvChannel]);
 
-  // Optimized Keyboard Control: 1 for Prev, 3 for Next
+  // Key Binding: 1 for Prev, 3 for Next
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!activeVideo && !activeIptv) return;
-
       if (e.key === "3") {
         e.preventDefault();
         if (activeIptv) nextIptvChannel(); else nextTrack();
@@ -86,7 +81,6 @@ export function GlobalVideoPlayer() {
         if (activeIptv) prevIptvChannel(); else prevTrack();
       }
     };
-
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [activeVideo, activeIptv, nextTrack, nextIptvChannel, prevIptvChannel]);
@@ -102,7 +96,7 @@ export function GlobalVideoPlayer() {
         });
         return;
       } catch (e) {
-        console.warn("YouTube Load Failure, Re-initializing...");
+        console.warn("YouTube loadVideoById failed, falling back to clean init");
       }
     }
 
@@ -177,19 +171,17 @@ export function GlobalVideoPlayer() {
             : "bottom-8 right-4 w-[50vw] h-[55vh] glass-panel rounded-[3.5rem] bg-black/95"
       )}
       style={{
-        transform: 'translate3d(0,0,0)', // GPU Force Acceleration
+        transform: 'translate3d(0,0,0)', 
         willChange: 'transform',
-        contain: 'strict', // Maximum Isolation for Performance
-        backfaceVisibility: 'hidden'
+        contain: 'layout paint'
       }}
     >
-      {/* Isolation Layer for Video Playback - Guaranteed 120 FPS Isolation */}
       <div 
-        className={cn("absolute inset-0 transition-opacity duration-700 bg-black", isMinimized ? "opacity-0" : "opacity-100")}
-        style={{ transform: 'translateZ(0)', backfaceVisibility: 'hidden' }}
+        className={cn("absolute inset-0 transition-opacity duration-700", isMinimized ? "opacity-0" : "opacity-100")}
+        style={{ backfaceVisibility: 'hidden', transform: 'translateZ(0)' }}
       >
         {activeVideo ? (
-          <div key={activeVideo.id} ref={containerRef} className="w-full h-full" />
+          <div key={activeVideo.id} ref={containerRef} className="w-full h-full" style={{ background: '#000' }} />
         ) : (
           <iframe 
             key={activeIptv?.stream_id}
@@ -197,6 +189,7 @@ export function GlobalVideoPlayer() {
             className="w-full h-full border-none"
             allow="autoplay; fullscreen"
             sandbox="allow-forms allow-scripts allow-same-origin"
+            style={{ background: '#000' }}
           />
         )}
       </div>
@@ -254,33 +247,54 @@ export function GlobalVideoPlayer() {
 
       {!isMinimized && (
         <div className={cn(
-          "fixed z-[5200] flex items-center gap-4 transition-all duration-500",
+          "fixed z-[5200] flex items-center transition-all duration-500",
           isFullScreen ? "left-10 bottom-10 scale-150 origin-bottom-left" : "right-12 bottom-12 scale-90"
         )}>
-          <div className="flex items-center gap-2 liquid-glass p-3 rounded-full border border-white/20 shadow-2xl">
-            {activeIptv && (
+          <div className={cn(
+            "flex items-center transition-all duration-700 liquid-glass p-2 rounded-full border border-white/20 shadow-2xl overflow-hidden backdrop-blur-3xl",
+            isControlsExpanded ? "gap-2 px-3" : "w-16 h-16 justify-center"
+          )}>
+            {!isControlsExpanded ? (
+              <button 
+                onClick={() => setIsControlsExpanded(true)} 
+                className="w-12 h-12 rounded-full bg-primary shadow-glow text-white flex items-center justify-center focusable"
+              >
+                <Settings className="w-7 h-7 animate-spin-slow" />
+              </button>
+            ) : (
               <>
-                <button onClick={prevIptvChannel} title="Previous Channel" className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center focusable"><ChevronRight className="w-6 h-6" /></button>
-                <button onClick={nextIptvChannel} title="Next Channel" className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center focusable"><ChevronLeft className="w-6 h-6" /></button>
-                <div className="w-px h-8 bg-white/20 mx-1" />
-              </>
-            )}
-            
-            <button onClick={toggleShowIslands} title={showIslands ? "Hide Islands" : "Show Islands"} className={cn("w-12 h-12 rounded-full flex items-center justify-center focusable transition-all", showIslands ? "bg-accent/20 text-accent border-accent/20" : "bg-white/5 text-white/40 border-white/10")}>
-              {showIslands ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
-            </button>
+                <button 
+                  onClick={() => setIsControlsExpanded(false)} 
+                  className="w-12 h-12 rounded-full bg-white/10 text-white/40 flex items-center justify-center focusable"
+                >
+                  <ChevronRight className="w-6 h-6" />
+                </button>
+                
+                {activeIptv && (
+                  <>
+                    <button onClick={prevIptvChannel} title="Previous Channel" className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center focusable"><ChevronRight className="w-6 h-6" /></button>
+                    <button onClick={nextIptvChannel} title="Next Channel" className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center focusable"><ChevronLeft className="w-6 h-6" /></button>
+                    <div className="w-px h-8 bg-white/20 mx-1" />
+                  </>
+                )}
+                
+                <button onClick={toggleShowIslands} title={showIslands ? "Hide Islands" : "Show Islands"} className={cn("w-12 h-12 rounded-full flex items-center justify-center focusable transition-all", showIslands ? "bg-accent/20 text-accent border-accent/20" : "bg-white/5 text-white/40 border-white/10")}>
+                  {showIslands ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
+                </button>
 
-            <button onClick={() => setIsMinimized(true)} title="Minimize" className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center focusable"><ChevronDown className="w-5 h-5" /></button>
-            <button onClick={() => setIsFullScreen(!isFullScreen)} title="Cinema Mode" className={cn("w-12 h-12 rounded-full flex items-center justify-center focusable", isFullScreen && "bg-primary border-primary")}><Monitor className="w-5 h-5" /></button>
-            {activeVideo && (
-              <>
-                <button onClick={handleAddToIptv} title="Add to IPTV" className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center focusable"><Tv className="w-5 h-5 text-emerald-400" /></button>
-                <button onClick={() => toggleSaveVideo(activeVideo!)} title="Bookmark" className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center focusable"><Bookmark className={cn("w-5 h-5", savedVideos.some(v => v.id === activeVideo?.id) && "fill-current text-primary")} /></button>
+                <button onClick={() => setIsMinimized(true)} title="Minimize" className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center focusable"><ChevronDown className="w-5 h-5" /></button>
+                <button onClick={() => setIsFullScreen(!isFullScreen)} title="Cinema Mode" className={cn("w-12 h-12 rounded-full flex items-center justify-center focusable", isFullScreen && "bg-primary border-primary")}><Monitor className="w-5 h-5" /></button>
+                {activeVideo && (
+                  <>
+                    <button onClick={handleAddToIptv} title="Add to IPTV" className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center focusable"><Tv className="w-5 h-5 text-emerald-400" /></button>
+                    <button onClick={() => toggleSaveVideo(activeVideo!)} title="Bookmark" className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center focusable"><Bookmark className={cn("w-5 h-5", savedVideos.some(v => v.id === activeVideo?.id) && "fill-current text-primary")} /></button>
+                  </>
+                )}
+                <button onClick={() => router.push('/iptv')} title="IPTV Library" className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center focusable"><List className="w-5 h-5" /></button>
+                <div className="w-px h-8 bg-white/20 mx-1" />
+                <button onClick={() => { setActiveVideo(null); setActiveIptv(null); }} title="Close Player" className="w-12 h-12 rounded-full bg-red-600 text-white flex items-center justify-center focusable"><X className="w-5 h-5" /></button>
               </>
             )}
-            <button onClick={() => router.push('/iptv')} title="IPTV Library" className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center focusable"><List className="w-5 h-5" /></button>
-            <div className="w-px h-8 bg-white/20 mx-1" />
-            <button onClick={() => { setActiveVideo(null); setActiveIptv(null); }} title="Close Player" className="w-12 h-12 rounded-full bg-red-600 text-white flex items-center justify-center focusable"><X className="w-5 h-5" /></button>
           </div>
         </div>
       )}
