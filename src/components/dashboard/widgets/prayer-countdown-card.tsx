@@ -67,10 +67,14 @@ export function PrayerCountdownCard() {
     const mins = diffInMinutes % 60;
     const secs = 59 - now.getSeconds();
 
+    const hStr = hours.toString().padStart(2, '0');
+    const mStr = mins.toString().padStart(2, '0');
+    const sStr = secs.toString().padStart(2, '0');
+
     return {
       type: "azan",
       name: next.name,
-      remaining: `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`,
+      remaining: hours > 0 ? `${hStr}:${mStr}:${sStr}` : `${mStr}:${sStr}`,
       time: convertTo12Hour(next.time)
     };
   }, [now, prayerTimes]);
@@ -100,7 +104,7 @@ export function PrayerCountdownCard() {
         </>
       )}
 
-      {/* Prominent Clock Layer - High Opacity Background */}
+      {/* Prominent Clock Layer */}
       <div className="absolute top-4 left-1/2 -translate-x-1/2 opacity-60 pointer-events-none">
         <span className="text-[11rem] font-black text-white tracking-tighter tabular-nums leading-none">{timeString}</span>
       </div>
@@ -118,10 +122,34 @@ export function PrayerCountdownCard() {
       </div>
 
       <div className={cn(
-        "text-6xl font-black tracking-tighter drop-shadow-[0_10px_40px_rgba(0,0,0,0.9)] font-mono relative z-10 tabular-nums",
-        isIqamah ? "text-white scale-105 transition-transform duration-1000" : "text-white"
+        "relative z-10 w-full h-24 flex items-center justify-center transition-transform duration-1000",
+        isIqamah && "scale-110"
       )}>
-        {prayerStatus.remaining}
+        <svg className="w-full h-full overflow-visible drop-shadow-[0_10px_40px_rgba(0,0,0,0.9)]" viewBox="0 0 300 80">
+          <defs>
+            <linearGradient id="timerFill" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="rgba(255,255,255,0.8)" />
+              <stop offset="100%" stopColor="rgba(255,255,255,0.1)" />
+            </linearGradient>
+            <linearGradient id="timerStroke" x1="100%" y1="100%" x2="0%" y2="0%">
+              <stop offset="0%" stopColor="rgba(255,255,255,1)" />
+              <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+            </linearGradient>
+          </defs>
+          <text 
+            x="50%" 
+            y="50%" 
+            textAnchor="middle" 
+            dominantBaseline="central"
+            className="font-black tabular-nums tracking-tighter"
+            style={{ fontSize: '70px' }}
+            fill="url(#timerFill)"
+            stroke="url(#timerStroke)"
+            strokeWidth="0.8"
+          >
+            {prayerStatus.remaining}
+          </text>
+        </svg>
       </div>
 
       <div className="mt-2 flex flex-col items-center gap-2 relative z-10">

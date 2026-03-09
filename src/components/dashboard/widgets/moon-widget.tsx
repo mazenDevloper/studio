@@ -36,21 +36,16 @@ export function MoonWidget() {
       }
     }
 
-    // Dynamic Hijri Day Calculation - Corrected for Umm al-Qura with Adjustment (Day - 1)
     try {
       const today = new Date();
       const hijriFormatter = new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura-nu-latn', {day: 'numeric'});
       const dayNum = parseInt(hijriFormatter.format(today), 10);
-      
-      // APPLY ADJUSTMENT: HIJRI DAY - 1
       const adjustedDay = dayNum - 1;
-      
       const arabicDigits = ['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'];
       const formattedDay = adjustedDay.toString().split('').map(d => arabicDigits[parseInt(d)]).join('');
-      
       setHijriDay(formattedDay);
     } catch (e) {
-      setHijriDay("١٤"); // Fallback to 14 if system fails (assuming 15-1)
+      setHijriDay("١٤");
     }
 
     fetchMoonData();
@@ -61,6 +56,7 @@ export function MoonWidget() {
 
   const gregorianDay = new Date().getDate().toString();
   const temp = "28°";
+  const displayValue = cycleIndex === 0 ? hijriDay : cycleIndex === 1 ? gregorianDay : temp;
 
   return (
     <div className="h-full w-full bg-black/40 rounded-[2.5rem] overflow-hidden relative flex flex-col items-center justify-center p-4 shadow-2xl">
@@ -72,14 +68,34 @@ export function MoonWidget() {
             </div>
           ) : (
             <div className="relative w-32 h-32 mx-auto">
-              <div className="absolute inset-0 flex items-center justify-center z-20 font-black text-6xl pointer-events-none transition-all duration-1000"
-                style={{ 
-                  WebkitTextStroke: '0.7px rgba(255,255,255,0.6)', 
-                  background: 'linear-gradient(to bottom, rgba(255,255,255,0.8), rgba(255,255,255,0.1))',
-                  WebkitBackgroundClip: 'text', color: 'transparent', 
-                  transform: cycleIndex === 0 ? 'scale(3.5)' : 'scale(2.2)' 
-                }}>
-                {cycleIndex === 0 ? hijriDay : cycleIndex === 1 ? gregorianDay : temp}
+              {/* Dynamic SVG Number Style */}
+              <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none transition-all duration-1000"
+                   style={{ transform: cycleIndex === 0 ? 'scale(3.5)' : 'scale(2.2)' }}>
+                <svg className="w-full h-full overflow-visible" viewBox="0 0 100 100">
+                  <defs>
+                    <linearGradient id="moonFill" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="rgba(255,255,255,0.8)" />
+                      <stop offset="100%" stopColor="rgba(255,255,255,0.1)" />
+                    </linearGradient>
+                    <linearGradient id="moonStroke" x1="100%" y1="100%" x2="0%" y2="0%">
+                      <stop offset="0%" stopColor="rgba(255,255,255,1)" />
+                      <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+                    </linearGradient>
+                  </defs>
+                  <text 
+                    x="50%" 
+                    y="50%" 
+                    textAnchor="middle" 
+                    dominantBaseline="central"
+                    className="font-black"
+                    style={{ fontSize: '40px' }}
+                    fill="url(#moonFill)"
+                    stroke="url(#moonStroke)"
+                    strokeWidth="0.4"
+                  >
+                    {displayValue}
+                  </text>
+                </svg>
               </div>
               <div className="relative w-full h-full rounded-full overflow-hidden ring-[8px] ring-white/5 shadow-[0_0_60px_rgba(59,130,246,0.3)] bg-black">
                 {moonData?.image?.url && <Image src={moonData.image.url} alt="NASA" fill className="object-cover scale-[1.15]" style={{ transform: `rotate(${rotation}deg)` }} unoptimized />}

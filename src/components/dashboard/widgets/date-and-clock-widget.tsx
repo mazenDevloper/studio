@@ -14,7 +14,6 @@ export function DateAndClockWidget() {
 
   if (!now) return null;
 
-  // 12-hour format without the AM/PM suffix
   const timeString = now.toLocaleTimeString('en-US', { 
     hour: '2-digit', 
     minute: '2-digit', 
@@ -32,14 +31,13 @@ export function DateAndClockWidget() {
       
       <div className="flex items-center justify-center relative z-10 w-[95%] h-full">
         <div className="relative flex items-center justify-center w-full h-full">
-          {/* Fixed SVG with centered coordinates to prevent clipping */}
           <svg className="w-full h-full max-h-32 drop-shadow-[0_15px_35px_rgba(0,0,0,0.6)] overflow-visible" viewBox="0 0 300 120" preserveAspectRatio="xMidYMid meet">
             <defs>
-              <linearGradient id="textFill" x1="0%" y1="0%" x2="100%" y2="100%">
+              <linearGradient id="clockFill" x1="0%" y1="0%" x2="100%" y2="100%">
                 <stop offset="0%" stopColor="rgba(255,255,255,0.8)" />
                 <stop offset="100%" stopColor="rgba(255,255,255,0.1)" />
               </linearGradient>
-              <linearGradient id="textStroke" x1="100%" y1="100%" x2="0%" y2="0%">
+              <linearGradient id="clockStroke" x1="100%" y1="100%" x2="0%" y2="0%">
                 <stop offset="0%" stopColor="rgba(255,255,255,1)" />
                 <stop offset="100%" stopColor="rgba(255,255,255,0)" />
               </linearGradient>
@@ -50,8 +48,8 @@ export function DateAndClockWidget() {
               textAnchor="middle" 
               dominantBaseline="central"
               className="text-[120px] font-black tracking-tighter tabular-nums"
-              fill="url(#textFill)"
-              stroke="url(#textStroke)"
+              fill="url(#clockFill)"
+              stroke="url(#clockStroke)"
               strokeWidth="1.2"
             >
               {timeString}

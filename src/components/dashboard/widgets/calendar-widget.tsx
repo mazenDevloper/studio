@@ -29,8 +29,32 @@ export function CalendarWidget() {
 
       <div className="flex-1 flex flex-col justify-center items-center gap-2">
         <h3 className="text-2xl font-bold font-headline text-white/80">{dayName}</h3>
-        <div className="flex items-baseline gap-4">
-          <span className="text-8xl font-bold font-headline text-white tracking-tighter">{dayNum}</span>
+        <div className="flex items-center gap-4 h-32">
+          <svg className="w-48 h-full overflow-visible" viewBox="0 0 120 100">
+            <defs>
+              <linearGradient id="calFill" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="rgba(255,255,255,0.8)" />
+                <stop offset="100%" stopColor="rgba(255,255,255,0.1)" />
+              </linearGradient>
+              <linearGradient id="calStroke" x1="100%" y1="100%" x2="0%" y2="0%">
+                <stop offset="0%" stopColor="rgba(255,255,255,1)" />
+                <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+              </linearGradient>
+            </defs>
+            <text 
+              x="50%" 
+              y="50%" 
+              textAnchor="middle" 
+              dominantBaseline="central"
+              className="font-black tracking-tighter tabular-nums"
+              style={{ fontSize: '90px' }}
+              fill="url(#calFill)"
+              stroke="url(#calStroke)"
+              strokeWidth="1"
+            >
+              {dayNum}
+            </text>
+          </svg>
           <span className="text-3xl font-bold font-headline text-accent/80">{monthName}</span>
         </div>
         <p className="text-xl text-primary font-bold uppercase tracking-[0.3em] mt-2">{hijriDate}</p>

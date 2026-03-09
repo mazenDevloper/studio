@@ -204,6 +204,35 @@ export function LiveMatchIsland() {
   const activeItem = islandQueue[activeIndex];
   const isMatchExpanded = activeItem?.type === 'match' && isDetailedManually;
 
+  // Shared SVG Style Component
+  const GradientText = ({ text, size = '3rem', id }: { text: string, size?: string, id: string }) => (
+    <svg className="w-full h-full overflow-visible" viewBox="0 0 200 60">
+      <defs>
+        <linearGradient id={`fill-${id}`} x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="rgba(255,255,255,0.8)" />
+          <stop offset="100%" stopColor="rgba(255,255,255,0.1)" />
+        </linearGradient>
+        <linearGradient id={`stroke-${id}`} x1="100%" y1="100%" x2="0%" y2="0%">
+          <stop offset="0%" stopColor="rgba(255,255,255,1)" />
+          <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+        </linearGradient>
+      </defs>
+      <text 
+        x="50%" 
+        y="50%" 
+        textAnchor="middle" 
+        dominantBaseline="central"
+        className="font-black tabular-nums tracking-tighter"
+        style={{ fontSize: size }}
+        fill={`url(#fill-${id})`}
+        stroke={`url(#stroke-${id})`}
+        strokeWidth="0.5"
+      >
+        {text}
+      </text>
+    </svg>
+  );
+
   return (
     <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[10001] flex items-center gap-4 pointer-events-none gpu-smooth">
       {activeReminder && (
@@ -220,7 +249,9 @@ export function LiveMatchIsland() {
               <div className="flex flex-col text-right flex-1 min-w-0 justify-center">
                 {activeReminder.value ? (
                   <div className="relative flex items-center justify-end h-10">
-                    <span className="font-black text-white/80 tabular-nums leading-none absolute -right-2" style={{ fontSize: '3rem', bottom: '0px' }}>{activeReminder.value}</span>
+                    <div className="w-full h-full absolute -right-2 bottom-0">
+                      <GradientText text={activeReminder.value} size="3rem" id={`rem-${activeReminder.id}`} />
+                    </div>
                     <span className="font-black text-white/40 uppercase tracking-widest absolute right-0" style={{ fontSize: '1rem', bottom: '-11px' }}>{activeReminder.name}</span>
                   </div>
                 ) : (
@@ -258,9 +289,13 @@ export function LiveMatchIsland() {
                     <img src={activeItem.data.awayLogo} className="h-full w-auto object-contain scale-[1.5] -translate-x-4" alt="" />
                   </div>
                   <div className="relative w-full h-full flex flex-col items-center justify-center z-20" style={{ background: 'linear-gradient(-1deg, black, transparent)' }}>
-                    <span className="relative z-20 font-black text-white leading-none drop-shadow-lg tabular-nums" dir="ltr" style={{ fontSize: '3rem', bottom: '0px' }}>
-                      {activeItem.data.status === 'upcoming' ? activeItem.data.startTime : `${activeItem.data.score.away}-${activeItem.data.score.home}`}
-                    </span>
+                    <div className="w-full h-full absolute bottom-0">
+                      <GradientText 
+                        text={activeItem.data.status === 'upcoming' ? activeItem.data.startTime : `${activeItem.data.score.away}-${activeItem.data.score.home}`} 
+                        size="3rem" 
+                        id={`match-mini-${activeItem.id}`} 
+                      />
+                    </div>
                     {activeItem.data.status === 'live' && (
                       <div className={cn("absolute top-1 right-1/2 translate-x-1/2 px-2 py-0.5 rounded-full shadow-xl border border-white/20 z-[10002]", getMinuteBadgeColor(activeItem.data.minute || 0))}>
                         <span className="font-black text-white uppercase tracking-widest" style={{ fontSize: '0.7rem' }}>{activeItem.data.minute}'</span>
@@ -278,7 +313,13 @@ export function LiveMatchIsland() {
                   </div>
                   <div className="flex items-center justify-between flex-1 px-10 gap-6">
                     <img src={activeItem.data.homeLogo} className="h-28 w-28 object-contain drop-shadow-2xl" alt="" />
-                    <div className="text-5xl font-black text-white tabular-nums tracking-tighter drop-shadow-2xl" dir="ltr">{activeItem.data.status === 'upcoming' ? 'VS' : `${activeItem.data.score.home}-${activeItem.data.score.away}`}</div>
+                    <div className="w-48 h-20">
+                      <GradientText 
+                        text={activeItem.data.status === 'upcoming' ? 'VS' : `${activeItem.data.score.home}-${activeItem.data.score.away}`} 
+                        size="4rem" 
+                        id={`match-full-${activeItem.id}`} 
+                      />
+                    </div>
                     <img src={activeItem.data.awayLogo} className="h-28 w-28 object-contain drop-shadow-2xl" alt="" />
                   </div>
                 </div>
@@ -299,9 +340,13 @@ export function LiveMatchIsland() {
                     <img src={item.data.homeLogo} className="w-10 h-10 object-contain scale-[1.5]" alt="" />
                     <img src={item.data.awayLogo} className="w-10 h-10 object-contain scale-[1.5]" alt="" />
                   </div>
-                  <span className="relative z-20 font-black text-white leading-none drop-shadow-lg tabular-nums" dir="ltr" style={{ fontSize: '1rem', bottom: '-11px' }}>
-                    {item.data.status === 'upcoming' ? item.data.startTime : `${item.data.score.away}-${item.data.score.home}`}
-                  </span>
+                  <div className="w-full h-8 absolute bottom-[-11px]">
+                    <GradientText 
+                      text={item.data.status === 'upcoming' ? item.data.startTime : `${item.data.score.away}-${item.data.score.home}`} 
+                      size="1rem" 
+                      id={`match-dot-${item.id}`} 
+                    />
+                  </div>
                   {item.data.status === 'live' && (
                     <div className={cn("absolute bottom-1 right-1/2 translate-x-1/2 px-1 py-0 rounded-full shadow-xl z-[10002] animate-pulse", getMinuteBadgeColor(item.data.minute || 0))}>
                       <span className="font-black text-white" style={{ fontSize: '0.5rem' }}>{item.data.minute}'</span>
