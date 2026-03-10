@@ -199,7 +199,7 @@ export function SettingsView() {
                 <Card key={r.id} className="bg-zinc-900/50 border-white/5 rounded-[2.5rem] p-6 group relative overflow-hidden">
                   <div className="flex items-center justify-between relative z-10">
                     <div className="flex items-center gap-6">
-                      <div className={cn("w-16 h-16 rounded-3xl flex items-center justify-center border-2 transition-all", baseColor.replace('text-', 'bg-') + '/10', baseColor.replace('text-', 'border-') + '/20')}>
+                      <div className={cn("w-16 h-16 rounded-3xl flex items-center justify-center border-2 transition-all", baseColor.replace('text-', 'bg-').split(' ')[0] + '/10', baseColor.replace('text-', 'border-').split(' ')[0] + '/20')}>
                         <Bell className={cn("w-8 h-8", baseColor)} />
                       </div>
                       <div className="flex flex-col gap-1 text-right">
