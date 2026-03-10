@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -9,6 +10,7 @@ import { WeatherWidget } from "./widgets/weather-widget";
 import { PlayingNowWidget } from "./widgets/playing-now-widget";
 import { PrayerTimelineWidget } from "./widgets/prayer-timeline-widget";
 import { MapWidget } from "./widgets/map-widget";
+import { ReminderSummaryWidget } from "./widgets/reminder-summary-widget";
 import { useMediaStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { Carousel, CarouselContent, CarouselItem, CarouselApi } from "@/components/ui/carousel";
@@ -30,6 +32,14 @@ export function DashboardView() {
   const [api, setApi] = useState<CarouselApi>();
   const [current, setCurrent] = useState(0);
   const [count, setCount] = useState(0);
+  const [windowWidth, setWindowWidth] = useState(0);
+
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     if (!api) return;
@@ -39,6 +49,8 @@ export function DashboardView() {
       setCurrent(api.selectedScrollSnap());
     });
   }, [api, activeVideo]);
+
+  const showReminderInsteadOfCar = windowWidth > 1080;
 
   return (
     <div className="h-full w-full p-6 flex flex-col gap-6 relative overflow-y-auto pb-32 no-scrollbar">
@@ -62,18 +74,24 @@ export function DashboardView() {
           <MapWidget />
         </div>
 
-        {/* Middle: Vehicle Visualizer - Image Fill Card */}
+        {/* Middle: Vehicle Visualizer OR Reminder Summary (Width > 1080px) */}
         <div className="md:col-span-4 glass-panel rounded-[2.5rem] relative flex items-center justify-center overflow-hidden h-full shadow-2xl focusable" tabIndex={0} data-nav-id="car-visualizer-container">
-          <div className="absolute inset-0 w-full h-full">
-            <Image 
-              src="https://dmusera.netlify.app/es350gb.png" 
-              alt="Lexus ES" 
-              fill
-              priority
-              className="object-cover drop-shadow-[0_25px_60px_rgba(0,0,0,0.9)]"
-            />
-          </div>
-          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
+          {showReminderInsteadOfCar ? (
+            <ReminderSummaryWidget />
+          ) : (
+            <>
+              <div className="absolute inset-0 w-full h-full">
+                <Image 
+                  src="https://dmusera.netlify.app/es350gb.png" 
+                  alt="Lexus ES" 
+                  fill
+                  priority
+                  className="object-cover drop-shadow-[0_25px_60px_rgba(0,0,0,0.9)]"
+                />
+              </div>
+              <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
+            </>
+          )}
         </div>
 
         {/* Right: Dynamic Widget Carousel - LOADED FIRST */}
