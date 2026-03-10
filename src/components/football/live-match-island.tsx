@@ -188,13 +188,15 @@ export function LiveMatchIsland() {
 
   return (
     <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[10001] flex items-start gap-4 pointer-events-none gpu-smooth dir-rtl">
-      {/* 1. REMINDERS ISLAND (VERTICAL STACK) */}
+      {/* 1. REMINDERS ISLAND (VERTICAL STACK - DARK GLASS) */}
       {processedReminders.length > 0 && (
         <div 
           onClick={() => setManualReminderExpand(!manualReminderExpand)}
           className={cn(
-            "pointer-events-auto transition-all duration-700 liquid-glass backdrop-blur-[120px] shadow-[0_40px_100px_rgba(0,0,0,1)] border border-white/10 relative overflow-hidden cursor-pointer",
-            isReminderExpanded ? "w-[12rem] h-[12rem] rounded-[2.5rem]" : "w-[3.5rem] h-[3.5rem] flex items-center justify-center rounded-full"
+            "pointer-events-auto transition-all duration-700 liquid-glass shadow-[0_40px_100px_rgba(0,0,0,1)] border border-white/10 relative overflow-hidden cursor-pointer",
+            isReminderExpanded 
+              ? "w-[12rem] h-[12rem] rounded-[2.5rem] bg-zinc-950/80 backdrop-blur-[120px]" 
+              : "w-[3.5rem] h-[3.5rem] flex items-center justify-center rounded-full bg-black/40 backdrop-blur-3xl"
           )}
         >
           <FluidGlass />
@@ -215,9 +217,11 @@ export function LiveMatchIsland() {
 
                   return (
                     <div key={rem.id} className="flex flex-col items-center justify-center h-1/3 relative border-b border-white/5 last:border-0 py-1">
-                      <div className="flex items-center gap-1 opacity-40 mb-[-4px]">
-                        <RemIcon className={cn("w-2.5 h-2.5", rem.color)} />
-                        <span className="text-[0.6rem] font-black text-white/60 uppercase truncate max-w-[80px]">{rem.name}</span>
+                      <div className="flex items-center gap-1.5 mb-[-4px]">
+                        <RemIcon className={cn("w-3 h-3 shadow-glow", rem.color)} />
+                        <span className={cn("text-[0.7rem] font-bold uppercase truncate max-w-[100px]", rem.color)}>
+                          {rem.name}
+                        </span>
                       </div>
                       <div className="h-10 w-full">
                         <GlassNumber 
@@ -261,7 +265,7 @@ export function LiveMatchIsland() {
             </div>
           </div>
 
-          {/* Mini Matches Cluster */}
+          {/* Mini Matches Cluster - Swap enabled */}
           <div className="flex gap-2 mr-2">
             {miniMatches.map((m) => (
               <div 
@@ -271,6 +275,7 @@ export function LiveMatchIsland() {
               >
                 <FluidGlass />
                 
+                {/* Data TOP: Score or Time */}
                 <span className="absolute top-1 z-20 text-[0.55rem] font-black text-white/90 tabular-nums drop-shadow-md">
                   {m.status === 'upcoming' ? m.startTime : `${m.score?.home}-${m.score?.away}`}
                 </span>
@@ -280,6 +285,7 @@ export function LiveMatchIsland() {
                   <img src={m.awayLogo} className="absolute right-0 w-10 h-10 object-contain scale-[1.2] translate-x-[4px]" alt="" />
                 </div>
 
+                {/* Data BOTTOM: Minute if Live */}
                 {m.status === 'live' && (
                   <span className="absolute bottom-1 z-20 text-[0.55rem] font-black text-red-500 animate-pulse drop-shadow-md">
                     {m.minute}'
