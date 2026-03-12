@@ -27,7 +27,7 @@ const YouTubeSavedWidget = dynamic(() => import("./widgets/youtube-saved-widget"
 });
 
 export function DashboardView() {
-  const { favoriteChannels, activeVideo } = useMediaStore();
+  const { favoriteChannels, activeVideo, savedVideos } = useMediaStore();
   const starredChannels = favoriteChannels.filter(c => c.starred);
   const [api, setApi] = useState<CarouselApi>();
   const [current, setCurrent] = useState(0);
@@ -140,7 +140,7 @@ export function DashboardView() {
       </div>
 
       {/* DELAYED LOADING FOR BOTTOM SECTIONS */}
-      <div className="w-full space-y-8">
+      <div className="w-full space-y-8 pb-12">
         <LatestVideosWidget channels={starredChannels} />
         <YouTubeSavedWidget />
       </div>

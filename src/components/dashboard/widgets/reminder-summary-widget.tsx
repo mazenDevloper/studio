@@ -20,6 +20,7 @@ interface ReminderItem {
 /**
  * ReminderSummaryWidget - Displays the top 3 closest events in a vertical stack.
  * Used in Dashboard when screen width > 1080px.
+ * Features: Dark Glass, Vivid labels, and Glass Numbers.
  */
 export function ReminderSummaryWidget() {
   const { prayerTimes, reminders } = useMediaStore();
@@ -99,7 +100,7 @@ export function ReminderSummaryWidget() {
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  const GlassNumber = ({ text, size = '3rem', id }: { text: string, size?: string, id: string }) => (
+  const GlassNumber = ({ text, size = '3.5rem', id }: { text: string, size?: string, id: string }) => (
     <div className="relative w-full h-full flex flex-col items-center justify-center">
       <svg className="w-full h-full overflow-visible" viewBox="0 0 200 60">
         <defs>
@@ -143,15 +144,15 @@ export function ReminderSummaryWidget() {
           <div key={rem.id} className="flex flex-col items-center justify-center flex-1 relative border-b border-white/5 last:border-0 py-4">
             <div className="flex items-center gap-3 mb-[-4px]">
               <RemIcon className={cn("w-5 h-5 shadow-glow", rem.color)} />
-              <span className={cn("text-base font-black uppercase truncate max-w-[250px]", rem.color)}>
+              <span className={cn("text-lg font-black uppercase truncate max-w-[250px]", rem.color)}>
                 {rem.name}
               </span>
             </div>
-            <div className="h-20 w-full max-w-[300px]">
+            <div className="h-24 w-full max-w-[350px]">
               <GlassNumber 
                 text={displayVal} 
                 id={`sum-vert-${rem.id}`} 
-                size="4.2rem"
+                size="4.5rem"
               />
             </div>
           </div>

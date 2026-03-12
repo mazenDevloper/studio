@@ -23,9 +23,22 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
 const PRIORITY_LIVE_CHANNELS = [
-  { id: "UCos52azQNBgW63_9uDJoPDA", name: "قناة القرآن الكريم", type: "live" },
-  { id: "UCfiwzLy-8yKzIbsmZTzxDgw", name: "قناة الجزيرة الإخبارية", type: "live" },
-  { id: "UCJUCcJUeh0Cz2xyKwkw5Q1w", name: "beIN Sports", type: "live" },
+  { id: "UCos52azQNBgW63_9uDJoPDA", name: "القرآن الكريم مباشر", type: "live" },
+  { id: "UCAs_eyAm9_Ab9InAt9Z_ZZA", name: "السنة النبوية مباشر", type: "live" },
+  { id: "UCfiwzLy-8yKzIbsmZTzxDgw", name: "الجزيرة الإخبارية مباشر", type: "live" },
+  { id: "UC65idat_v8idIs_6vsz9pxQ", name: "العربية مباشر", type: "live" },
+  { id: "UC-FquLxQPeogshSrqyvTy6Q", name: "سكاي نيوز عربية مباشر", type: "live" },
+  { id: "UC_S7pReMTIn6InAxEq_v_vQ", name: "الحدث مباشر", type: "live" },
+  { id: "UCeylkpIn8ZnuZ_Z9_Id_vVQ", name: "الإخبارية السعودية مباشر", type: "live" },
+  { id: "UCZ_id_east_news", name: "الشرق للأخبار مباشر", type: "live" },
+  { id: "UCJUCcJUeh0Cz2xyKwkw5Q1w", name: "beIN Sports مباشر", type: "live" },
+  { id: "UC_mbc_group", name: "MBC مباشر", type: "live" },
+  { id: "UCX_me_almashhad", name: "المشهد مباشر", type: "live" },
+  { id: "UC_dubai_tv", name: "تلفزيون دبي مباشر", type: "live" },
+  { id: "UC_rotana_kh", name: "روتانا خليجية مباشر", type: "live" },
+  { id: "UC_bahrain_tv", name: "البحرين مباشر", type: "live" },
+  { id: "UC_kuwait_tv", name: "الكويت مباشر", type: "live" },
+  { id: "UC_oman_tv", name: "عمان مباشر", type: "live" },
 ];
 
 export function MediaView() {
@@ -431,7 +444,7 @@ export function MediaView() {
         <h2 className="text-2xl font-black text-white flex items-center gap-3">
           <Zap className="w-6 h-6 text-yellow-500 fill-current" /> قنوات مباشرة مقترحة
         </h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           {PRIORITY_LIVE_CHANNELS.map((ch, idx) => (
             <Button
               key={ch.id}

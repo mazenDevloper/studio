@@ -89,6 +89,10 @@ export function RemotePointer() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // STOP REMOTE COMMANDS IF FOCUSING INPUT
+      const isInputFocused = document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA';
+      if (isInputFocused) return;
+
       const standardMap: Record<string, string> = {
         "2": "ArrowUp", "4": "ArrowLeft", "6": "ArrowRight", "8": "ArrowDown",
         "ArrowUp": "ArrowUp", "ArrowDown": "ArrowDown", "ArrowLeft": "ArrowLeft", "ArrowRight": "ArrowRight"

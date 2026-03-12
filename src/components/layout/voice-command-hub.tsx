@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
@@ -73,6 +72,10 @@ export function VoiceCommandHub() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // STOP VOICE COMMAND IF FOCUSING INPUT
+      const isInputFocused = document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA';
+      if (isInputFocused) return;
+
       if (e.key === "0") { // '0' key for global voice activation
         e.preventDefault();
         toggleListening();

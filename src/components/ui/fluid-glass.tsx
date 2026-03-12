@@ -11,54 +11,54 @@ interface FluidGlassProps {
 }
 
 /**
- * محرك الزجاج السائل المتطور - يستخدم تقنية SVG Distortion لمحاكاة الانكسار الضوئي
- * بأسلوب يحاكي المكونات الثلاثية الأبعاد ولكن بأداء فائق واستقرار كامل مع React 19.
+ * Optimized FluidGlass - Reduced distortion scale and update frequency to save GPU.
  */
-export function FluidGlass({ mode = 'lens', scale = 1, className }: FluidGlassProps) {
+export function FluidGlass({ mode = 'lens', scale = 0.5, className }: FluidGlassProps) {
   const [seed, setSeed] = useState(1);
 
   useEffect(() => {
+    // Reduced update frequency to 500ms to save CPU/GPU cycles
     const interval = setInterval(() => {
-      setSeed(s => (s % 100) + 1);
-    }, 150);
+      setSeed(s => (s % 50) + 1);
+    }, 500);
     return () => clearInterval(interval);
   }, []);
 
   return (
     <div className={cn("absolute inset-0 pointer-events-none overflow-hidden rounded-[inherit]", className)}>
-      {/* فلتر التشويه السائل */}
+      {/* Reduced turbulence frequency for efficiency */}
       <svg className="hidden">
         <filter id="liquid-glass-distortion">
           <feTurbulence 
             type="fractalNoise" 
-            baseFrequency={0.01 + (seed * 0.0001)} 
-            numOctaves="3" 
+            baseFrequency={0.02} 
+            numOctaves="2" 
             seed={seed}
             result="noise" 
           />
           <feDisplacementMap 
             in="SourceGraphic" 
             in2="noise" 
-            scale={20 * scale} 
+            scale={10 * scale} 
             xChannelSelector="R" 
             yChannelSelector="G" 
           />
         </filter>
       </svg>
 
-      {/* طبقات الانعكاس والتمويه */}
+      {/* Reflection and blur layers */}
       <div 
-        className="absolute inset-0 opacity-60 mix-blend-overlay"
+        className="absolute inset-0 opacity-40 mix-blend-overlay"
         style={{ 
-          filter: 'url(#liquid-glass-distortion) blur(4px)',
+          filter: 'url(#liquid-glass-distortion) blur(2px)',
           background: mode === 'bar' 
-            ? 'linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent)'
-            : 'radial-gradient(circle at 50% 50%, rgba(255,255,255,0.15), transparent 70%)'
+            ? 'linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent)'
+            : 'radial-gradient(circle at 50% 50%, rgba(255,255,255,0.1), transparent 80%)'
         }}
       />
       
-      {/* الحواف اللامعة الداخلية */}
-      <div className="absolute inset-0 shadow-[inset_0_2px_15px_rgba(255,255,255,0.2),inset_0_-2px_15px_rgba(255,255,255,0.1)] rounded-[inherit]" />
+      {/* Interior shiny edges */}
+      <div className="absolute inset-0 shadow-[inset_0_1px_10px_rgba(255,255,255,0.15),inset_0_-1px_10px_rgba(255,255,255,0.05)] rounded-[inherit]" />
     </div>
   );
 }

@@ -8,7 +8,6 @@ import { useMediaStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { Bell, Timer, Clock, X } from "lucide-react";
 import { FluidGlass } from "@/components/ui/fluid-glass";
-import { convertTo12Hour } from "@/lib/constants";
 
 interface ReminderItem {
   id: string;
@@ -21,16 +20,27 @@ interface ReminderItem {
   targetTimeStr: string;
 }
 
+/**
+ * LiveMatchIsland - Optimized version with zero animations and fixed mini-island scores.
+ */
 export function LiveMatchIsland() {
   const { favoriteTeams, prayerTimes, belledMatchIds, showIslands, skippedMatchIds, reminders, skipMatch } = useMediaStore();
   const [topMatches, setTopMatches] = useState<Match[]>([]);
   const [now, setNow] = useState(new Date());
   const [manualReminderExpand, setManualReminderExpand] = useState(false);
   const [overrideMatchId, setOverrideMatchId] = useState<string | null>(null);
+  const [windowWidth, setWindowWidth] = useState(0);
+  const [lastAutoTriggeredId, setLastAutoTriggeredId] = useState<string | null>(null);
 
   useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    handleResize();
+    window.addEventListener('resize', handleResize);
     const timer = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(timer);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      clearInterval(timer);
+    };
   }, []);
 
   const fetchMatches = useCallback(async () => {
@@ -59,12 +69,6 @@ export function LiveMatchIsland() {
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  const getMinuteBadgeColor = (min: number) => {
-    if (min <= 30) return "bg-emerald-500 text-white";
-    if (min <= 70) return "bg-yellow-500 text-black";
-    return "bg-red-600 text-white";
-  };
-
   const processedReminders = useMemo(() => {
     const list: ReminderItem[] = [];
     const totalCurrentSecs = (now.getHours() * 3600) + (now.getMinutes() * 60) + now.getSeconds();
@@ -91,7 +95,7 @@ export function LiveMatchIsland() {
         if (p.id === 'sunrise') {
           const riseSecs = tToM(p.time) * 60;
           const diff = riseSecs - totalCurrentSecs;
-          if (diff > -600) list.push({ id: `azan-${p.id}`, name: p.name, label: "شروق الشمس", diff, icon: Clock, color: "text-orange-400", isWithinWindow: Math.abs(diff) < 600, targetTimeStr: p.time });
+          if (diff > -600) list.push({ id: `azan-${p.id}`, name: p.name, label: "شروق الشمس", diff, icon: Clock, color: "text-orange-400", isWithinWindow: Math.abs(diff) < 1200, targetTimeStr: p.time });
           continue;
         }
         const azanSecs = tToM(p.time) * 60;
@@ -99,7 +103,7 @@ export function LiveMatchIsland() {
         const aDiff = azanSecs - totalCurrentSecs;
         const iDiff = iqamahSecs - totalCurrentSecs;
         
-        if (aDiff > -600) list.push({ id: `azan-${p.id}`, name: p.name, label: "الأذان", diff: aDiff, icon: Clock, color: "text-accent", isWithinWindow: Math.abs(aDiff) < 600, targetTimeStr: p.time });
+        if (aDiff > -600) list.push({ id: `azan-${p.id}`, name: p.name, label: "الأذان", diff: aDiff, icon: Clock, color: "text-accent", isWithinWindow: Math.abs(aDiff) < 1200, targetTimeStr: p.time });
         if (iDiff > -600) list.push({ id: `iqamah-${p.id}`, name: `إقامة ${p.name}`, label: "الإقامة", diff: iDiff, icon: Timer, color: "text-emerald-400", isWithinWindow: Math.abs(iDiff) < 1200, targetTimeStr: formatTargetTime(iqamahSecs) });
       }
     }
@@ -119,8 +123,18 @@ export function LiveMatchIsland() {
       }
     }
 
-    return list.sort((a, b) => Math.abs(a.diff) - Math.abs(b.diff)).slice(0, 3);
+    return list.sort((a, b) => Math.abs(a.diff) - Math.abs(b.diff));
   }, [now, prayerTimes, reminders]);
+
+  useEffect(() => {
+    const activeAlert = processedReminders.find(r => r.isWithinWindow);
+    if (activeAlert && activeAlert.id !== lastAutoTriggeredId && windowWidth <= 1080) {
+      setManualReminderExpand(true);
+      setLastAutoTriggeredId(activeAlert.id);
+    } else if (!activeAlert) {
+      setLastAutoTriggeredId(null);
+    }
+  }, [processedReminders, windowWidth, lastAutoTriggeredId]);
 
   const processedMatches = useMemo(() => {
     let sorted = topMatches.filter(m => !skippedMatchIds.includes(m.id)).sort((a, b) => {
@@ -145,14 +159,10 @@ export function LiveMatchIsland() {
 
   const mainMatch = processedMatches[0];
   const miniMatches = processedMatches.slice(1, 4);
-  const isReminderAutoExpanded = processedReminders.some(r => r.isWithinWindow);
-  const isReminderExpanded = isReminderAutoExpanded || manualReminderExpand;
-  
-  const FirstRem = processedReminders[0];
-  const FirstReminderIcon = FirstRem?.icon;
+  const closestRem = processedReminders[0];
 
   const GlassNumber = ({ text, size = '3rem', id, subtext, colorClass }: { text: string, size?: string, id: string, subtext?: string, colorClass?: string }) => (
-    <div className={cn("relative w-full h-full flex flex-col items-center justify-center", colorClass)}>
+    <div className={cn("relative w-full h-full flex flex-col items-center justify-center", colorClass)} style={{ transform: 'translate3d(0,0,0)' }}>
       <svg className="w-full h-full overflow-visible" viewBox="0 0 200 60">
         <defs>
           <linearGradient id={`textFill-${id}`} x1="0%" y1="0%" x2="100%" y2="100%">
@@ -187,72 +197,66 @@ export function LiveMatchIsland() {
   );
 
   return (
-    <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[10001] flex items-start gap-4 pointer-events-none gpu-smooth dir-rtl">
-      {/* 1. REMINDERS ISLAND (VERTICAL STACK - DARK GLASS) */}
-      {processedReminders.length > 0 && (
+    <div 
+      className="fixed top-6 left-1/2 -translate-x-1/2 z-[10001] flex items-start gap-4 pointer-events-none scale-110 dir-rtl"
+      style={{ 
+        transform: 'translate3d(-50%, 0, 0)', 
+        backfaceVisibility: 'hidden',
+        contain: 'layout paint'
+      }}
+    >
+      {/* Reminder Island (Right) */}
+      {closestRem && (
         <div 
           onClick={() => setManualReminderExpand(!manualReminderExpand)}
           className={cn(
-            "pointer-events-auto transition-all duration-700 liquid-glass shadow-[0_40px_100px_rgba(0,0,0,1)] border border-white/10 relative overflow-hidden cursor-pointer",
-            isReminderExpanded 
-              ? "w-[12rem] h-[12rem] rounded-[2.5rem] bg-zinc-950/80 backdrop-blur-[120px]" 
+            "pointer-events-auto liquid-glass shadow-[0_40px_100px_rgba(0,0,0,1)] border border-white/10 relative overflow-hidden cursor-pointer",
+            (manualReminderExpand && windowWidth <= 1080) 
+              ? "w-[18rem] h-[3.5rem] rounded-[2.5rem] bg-zinc-950/80 backdrop-blur-[120px]" 
               : "w-[3.5rem] h-[3.5rem] flex items-center justify-center rounded-full bg-black/40 backdrop-blur-3xl"
           )}
+          style={{ transform: 'translate3d(0,0,0)' }}
         >
           <FluidGlass />
           <div className="relative z-10 h-full w-full flex flex-col items-center py-2 px-2">
-            {!isReminderExpanded ? (
-              <div className={cn("w-9 h-9 rounded-full flex items-center justify-center bg-white/10 my-auto", FirstRem.color)}>
-                {FirstReminderIcon && <FirstReminderIcon className="w-5 h-5" />}
+            {!manualReminderExpand || windowWidth > 1080 ? (
+              <div className={cn("w-9 h-9 rounded-full flex items-center justify-center bg-white/10 my-auto relative", closestRem.color)}>
+                {Math.abs(closestRem.diff) <= 1200 ? (
+                  <div className="scale-[0.45]">
+                    <GlassNumber text={`${closestRem.diff >= 0 ? "-" : "+"}${formatCountdown(closestRem.diff)}`} id="rem-mini-closest" size="3rem" />
+                  </div>
+                ) : (
+                  (() => {
+                    const RemIcon = closestRem.icon;
+                    return <RemIcon className="w-5 h-5" />;
+                  })()
+                )}
               </div>
             ) : (
-              <div className="flex flex-col w-full h-full justify-around">
-                {processedReminders.map((rem) => {
-                  const RemIcon = rem.icon;
-                  const showCountdown = Math.abs(rem.diff) <= 1200;
-                  const displayVal = showCountdown 
-                    ? `${rem.diff >= 0 ? "-" : "+"}${formatCountdown(rem.diff)}` 
-                    : rem.targetTimeStr;
-
-                  return (
-                    <div key={rem.id} className="flex flex-col items-center justify-center h-1/3 relative border-b border-white/5 last:border-0 py-1">
-                      <div className="flex items-center gap-1.5 mb-[-4px]">
-                        <RemIcon className={cn("w-3 h-3 shadow-glow", rem.color)} />
-                        <span className={cn("text-[0.7rem] font-bold uppercase truncate max-w-[100px]", rem.color)}>
-                          {rem.name}
-                        </span>
-                      </div>
-                      <div className="h-10 w-full">
-                        <GlassNumber 
-                          text={displayVal} 
-                          id={`rem-vert-${rem.id}`} 
-                          size="2.2rem"
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
+              <div className="flex flex-col items-center justify-center w-full h-full">
+                <div className="flex items-center gap-2 mb-[-2px]">
+                  <closestRem.icon className={cn("w-3.5 h-3.5 shadow-glow", closestRem.color)} />
+                  <span className={cn("text-[0.8rem] font-black uppercase truncate max-w-[150px]", closestRem.color)}>{closestRem.name}</span>
+                </div>
+                <div className="h-10 w-full">
+                  <GlassNumber 
+                    text={Math.abs(closestRem.diff) <= 1200 ? `${closestRem.diff >= 0 ? "-" : "+"}${formatCountdown(closestRem.diff)}` : closestRem.targetTimeStr} 
+                    id={`rem-single-${closestRem.id}`} 
+                    size="2.8rem" 
+                  />
+                </div>
               </div>
             )}
           </div>
         </div>
       )}
 
-      {/* 2. FOOTBALL MATCHES ISLAND */}
+      {/* Match Cluster (Left) */}
       {mainMatch && (
-        <div className="flex items-center gap-2">
-          {/* Main Match Capsule */}
+        <div className="flex items-center gap-2" style={{ transform: 'translate3d(0,0,0)' }}>
           <div className="pointer-events-auto liquid-glass backdrop-blur-[120px] rounded-[2.5rem] shadow-[0_40px_100px_rgba(0,0,0,1)] w-[18rem] h-[3.5rem] overflow-hidden relative border border-white/10 group">
             <FluidGlass />
-            
-            {/* Dismiss Button */}
-            <button 
-              onClick={(e) => { e.stopPropagation(); skipMatch(mainMatch.id); }}
-              className="absolute top-1 left-1 z-[100] w-6 h-6 rounded-full bg-black/40 text-white/40 hover:text-white flex items-center justify-center pointer-events-auto opacity-0 group-hover:opacity-100 transition-opacity"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-
+            <button onClick={(e) => { e.stopPropagation(); skipMatch(mainMatch.id); }} className="absolute top-1 left-1 z-[100] w-6 h-6 rounded-full bg-black/40 text-white/40 hover:text-white flex items-center justify-center opacity-0 group-hover:opacity-100"><X className="w-3.5 h-3.5" /></button>
             <div className="relative z-10 h-full w-full flex items-center justify-center relative overflow-hidden">
               <div className="absolute inset-0 flex items-center justify-between px-2" style={{ background: 'linear-gradient(0deg, black 5%, transparent)' }}>
                 <img src={mainMatch.homeLogo} className="h-full w-auto object-contain scale-[1.5] translate-x-4" alt="" />
@@ -260,52 +264,34 @@ export function LiveMatchIsland() {
               </div>
               <div className="relative w-full h-full z-20 flex flex-col items-center justify-center" style={{ background: 'linear-gradient(-1deg, black, transparent)' }}>
                 <GlassNumber 
-                  text={mainMatch.status === 'upcoming' ? mainMatch.startTime : `${mainMatch.score?.home}-${mainMatch.score?.away}`} 
+                  text={mainMatch.status === 'upcoming' ? mainMatch.startTime : `${mainMatch.score?.away}-${mainMatch.score?.home}`} 
                   id={`match-main-${mainMatch.id}`} 
-                  subtext={mainMatch.league}
+                  subtext={mainMatch.league} 
                 />
                 {mainMatch.status === 'live' && (
-                  <div className={cn("absolute top-1 right-1/2 translate-x-1/2 px-2 py-0.5 rounded-full shadow-xl border border-white/20 z-30", getMinuteBadgeColor(mainMatch.minute || 0))}>
-                    <span className="font-black text-white uppercase tracking-widest text-[0.7rem]">{mainMatch.minute}'</span>
+                  <div className="absolute top-1 right-1/2 translate-x-1/2 px-2 py-0.5 rounded-full shadow-xl border border-white/20 z-30 bg-red-600 text-white">
+                    <span className="font-black uppercase tracking-widest text-[0.7rem]">{mainMatch.minute}'</span>
                   </div>
                 )}
               </div>
             </div>
           </div>
 
-          {/* Mini Matches Cluster - Swap enabled */}
           <div className="flex gap-2 mr-2">
             {miniMatches.map((m) => (
-              <div 
-                key={m.id} 
-                onClick={() => setOverrideMatchId(m.id)}
-                className="pointer-events-auto group liquid-glass backdrop-blur-3xl rounded-full w-14 h-14 border border-white/10 flex flex-col items-center justify-center shadow-2xl relative overflow-hidden cursor-pointer active:scale-90 transition-transform"
-              >
+              <div key={m.id} onClick={() => setOverrideMatchId(m.id)} className="pointer-events-auto group liquid-glass backdrop-blur-3xl rounded-full w-14 h-14 border border-white/10 flex flex-col items-center justify-center shadow-2xl relative overflow-hidden cursor-pointer active:scale-95" style={{ transform: 'translate3d(0,0,0)' }}>
                 <FluidGlass />
-                
-                {/* Dismiss Button Mini */}
-                <button 
-                  onClick={(e) => { e.stopPropagation(); skipMatch(m.id); }}
-                  className="absolute -top-1 -left-1 z-[100] w-5 h-5 rounded-full bg-red-600/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-auto shadow-lg"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-
-                {/* Data TOP: Score or Time */}
-                <span className="absolute top-1 z-20 text-[0.55rem] font-black text-white/90 tabular-nums drop-shadow-md">
+                <button onClick={(e) => { e.stopPropagation(); skipMatch(m.id); }} className="absolute -top-1 -left-1 z-[100] w-5 h-5 rounded-full bg-red-600/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 shadow-lg"><X className="w-3.5 h-3.5" /></button>
+                <span className="absolute top-1 z-20 text-[0.5rem] font-black text-white/90 tabular-nums drop-shadow-md">
+                  {/* FIXED SCORE ORDER IN MINI-ISLAND: HOME-AWAY to fix inversion reported by user */}
                   {m.status === 'upcoming' ? m.startTime : `${m.score?.home}-${m.score?.away}`}
                 </span>
-
-                <div className="relative z-10 w-full h-full flex items-center justify-center scale-[0.45]">
-                  <img src={m.homeLogo} className="absolute left-0 w-10 h-10 object-contain scale-[1.2] translate-x-[-4px]" alt="" />
-                  <img src={m.awayLogo} className="absolute right-0 w-10 h-10 object-contain scale-[1.2] translate-x-[4px]" alt="" />
+                <div className="relative z-10 w-full h-full flex items-center justify-center scale-[0.35]">
+                  <img src={m.homeLogo} className="absolute left-0 w-10 h-10 object-contain scale-[1.2] translate-x-[-2px]" alt="" />
+                  <img src={m.awayLogo} className="absolute right-0 w-10 h-10 object-contain scale-[1.2] translate-x(2px)" alt="" />
                 </div>
-
-                {/* Data BOTTOM: Minute if Live */}
                 {m.status === 'live' && (
-                  <span className="absolute bottom-1 z-20 text-[0.55rem] font-black text-red-500 animate-pulse drop-shadow-md">
-                    {m.minute}'
-                  </span>
+                  <span className="absolute bottom-1 z-20 text-[0.55rem] font-black text-red-500 drop-shadow-md">{m.minute}'</span>
                 )}
               </div>
             ))}

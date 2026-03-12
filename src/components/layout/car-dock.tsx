@@ -1,7 +1,7 @@
 
 "use client";
 
-import { LayoutDashboard, Radio, Settings, GripVertical, ArrowLeft, Trophy, ArrowRightLeft, Tv } from "lucide-react";
+import { LayoutDashboard, Radio, Settings, GripVertical, ArrowLeft, Trophy, ArrowRightLeft, Tv, Eye, EyeOff } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,7 @@ import { useMediaStore } from "@/lib/store";
 export function CarDock() {
   const pathname = usePathname();
   const router = useRouter();
-  const { dockSide, toggleDockSide } = useMediaStore();
+  const { dockSide, toggleDockSide, showIslands, toggleShowIslands } = useMediaStore();
 
   const apps = [
     { name: "Home", href: "/", icon: LayoutDashboard, color: "bg-blue-600" },
@@ -21,7 +21,7 @@ export function CarDock() {
     { name: "Settings", href: "/settings", icon: Settings, color: "bg-zinc-700" },
   ];
 
-  // Smart Initial Focus
+  // Smart Initial Focus for Remote Pointer Navigation
   useEffect(() => {
     const timer = setTimeout(() => {
       const activeApp = apps.find(a => a.href === pathname);
@@ -71,6 +71,20 @@ export function CarDock() {
       </div>
 
       <div className="hidden md:flex mt-auto flex-col items-center gap-6">
+        {/* Global Island Visibility Toggle - Sovereign Control */}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={toggleShowIslands}
+          className={cn(
+            "w-12 h-12 rounded-full border transition-all focusable",
+            showIslands ? "bg-accent/20 text-accent border-accent/40 shadow-glow" : "bg-white/5 border-white/10 text-white/40"
+          )}
+          title="تبديل ظهور الجزر التفاعلية"
+        >
+          {showIslands ? <Eye className="w-6 h-6" /> : <EyeOff className="w-6 h-6" />}
+        </Button>
+
         <Button
           variant="ghost"
           size="icon"

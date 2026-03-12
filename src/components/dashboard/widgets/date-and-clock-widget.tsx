@@ -31,7 +31,7 @@ export function DateAndClockWidget() {
       
       <div className="flex items-center justify-center relative z-10 w-[95%] h-full">
         <div className="relative flex items-center justify-center w-full h-full">
-          <svg className="w-full h-full max-h-32 drop-shadow-[0_15px_35px_rgba(0,0,0,0.6)] overflow-visible" viewBox="0 0 300 120" preserveAspectRatio="xMidYMid meet">
+          <svg className="w-full h-full max-h-32 drop-shadow-[0_15px_35px_rgba(0,0,0,0.6)] overflow-visible" viewBox="0 0 300 130" preserveAspectRatio="xMidYMid meet">
             <defs>
               <linearGradient id="clockFill" x1="0%" y1="0%" x2="100%" y2="100%">
                 <stop offset="0%" stopColor="rgba(255,255,255,0.85)" />
@@ -47,7 +47,7 @@ export function DateAndClockWidget() {
               y="50%" 
               textAnchor="middle" 
               dominantBaseline="central"
-              className="text-[120px] font-black tracking-tighter tabular-nums"
+              className="text-[121.2px] font-black tracking-tighter tabular-nums"
               fill="url(#clockFill)"
               stroke="url(#clockStroke)"
               strokeWidth="1.2"

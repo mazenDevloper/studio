@@ -18,6 +18,7 @@ export function MoonWidget() {
   const [rotation, setRotation] = useState(0);
   const [cycleIndex, setCycleIndex] = useState(0); // 0: Hijri, 1: Gregorian, 2: Temp
   const [hijriDay, setHijriDay] = useState("");
+  const [temperature, setTemperature] = useState<string>("--");
 
   useEffect(() => {
     async function fetchMoonData() {
@@ -36,6 +37,21 @@ export function MoonWidget() {
       }
     }
 
+    async function fetchTemperature() {
+      try {
+        // Salalah: Lat 17.01, Lon 54.09
+        const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=17.01&longitude=54.09&current=temperature_2m&timezone=Asia%2FRiyadh`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.current) {
+            setTemperature(`${Math.round(data.current.temperature_2m)}°`);
+          }
+        }
+      } catch (e) {
+        console.error("Temp fetch error:", e);
+      }
+    }
+
     try {
       const today = new Date();
       const hijriFormatter = new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura-nu-latn', {day: 'numeric'});
@@ -49,14 +65,14 @@ export function MoonWidget() {
     }
 
     fetchMoonData();
+    fetchTemperature();
     const rotTimer = setInterval(() => setRotation(p => (p + 0.05) % 360), 100);
     const cycleTimer = setInterval(() => setCycleIndex(p => (p + 1) % 3), 5000);
     return () => { clearInterval(rotTimer); clearInterval(cycleTimer); };
   }, []);
 
   const gregorianDay = new Date().getDate().toString();
-  const temp = "28°";
-  const displayValue = cycleIndex === 0 ? hijriDay : cycleIndex === 1 ? gregorianDay : temp;
+  const displayValue = cycleIndex === 0 ? hijriDay : cycleIndex === 1 ? gregorianDay : temperature;
 
   return (
     <div className="h-full w-full bg-black/40 rounded-[2.5rem] overflow-hidden relative flex flex-col items-center justify-center p-4 shadow-2xl">
