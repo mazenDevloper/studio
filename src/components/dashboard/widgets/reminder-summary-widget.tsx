@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
@@ -15,10 +16,11 @@ interface ReminderItem {
   icon: any;
   color: string;
   targetTimeStr: string;
+  window: number;
 }
 
 export function ReminderSummaryWidget() {
-  const { prayerTimes, reminders } = useMediaStore();
+  const { prayerTimes, reminders, prayerSettings } = useMediaStore();
   const [now, setNow] = useState(new Date());
 
   useEffect(() => {
@@ -48,55 +50,104 @@ export function ReminderSummaryWidget() {
                     prayerTimes.find(p => p.date.endsWith(`-${now.getDate().toString().padStart(2, '0')}`)) || 
                     prayerTimes[0];
       
-      const prayers = [
-        { id: 'fajr', name: "الفجر", time: pData.fajr, iqamah: 25 },
-        { id: 'sunrise', name: "الشروق", time: pData.sunrise, iqamah: 0 },
-        { id: 'dhuhr', name: "الظهر", time: pData.dhuhr, iqamah: 20 },
-        { id: 'asr', name: "العصر", time: pData.asr, iqamah: 20 },
-        { id: 'maghrib', name: "المغرب", time: pData.maghrib, iqamah: 10 },
-        { id: 'isha', name: "العشاء", time: pData.isha, iqamah: 20 },
-      ];
+      for (const setting of prayerSettings) {
+        let refTime = pData[setting.id as keyof typeof pData];
+        let baseMinutesOffset = setting.offsetMinutes;
 
-      for (const p of prayers) {
-        if (p.id === 'sunrise') {
-          const riseSecs = tToM(p.time) * 60;
-          let diff = riseSecs - totalCurrentSecs;
-          if (diff < -43200) diff += 86400;
-          if (diff > -600) list.push({ id: `azan-${p.id}`, name: p.name, label: "شروق الشمس", diff, icon: Clock, color: "text-orange-400", targetTimeStr: convertTo12Hour(p.time) });
-          continue;
+        // Special Logic for Duha (Calculated 15m after Sunrise)
+        if (setting.id === 'duha') {
+          refTime = pData['sunrise'];
+          baseMinutesOffset += 15;
         }
-        const azanSecs = tToM(p.time) * 60;
-        const iqamahSecs = azanSecs + (p.iqamah * 60);
+
+        if (!refTime) continue;
+
+        const baseMinutes = tToM(refTime) + baseMinutesOffset;
+        const azanSecs = baseMinutes * 60;
         let aDiff = azanSecs - totalCurrentSecs;
-        let iDiff = iqamahSecs - totalCurrentSecs;
-        
         if (aDiff < -43200) aDiff += 86400;
-        if (iDiff < -43200) iDiff += 86400;
-        
-        if (aDiff > -600) list.push({ id: `azan-${p.id}`, name: p.name, label: "الأذان", diff: aDiff, icon: Clock, color: "text-accent", targetTimeStr: convertTo12Hour(p.time) });
-        if (iDiff > -600) list.push({ id: `iqamah-${p.id}`, name: `إقامة ${p.name}`, label: "الإقامة", diff: iDiff, icon: Timer, color: "text-emerald-400", targetTimeStr: formatTargetTime(iqamahSecs) });
+
+        // Azan / Duha Reminder
+        if (aDiff > -600) {
+          list.push({ 
+            id: `azan-${setting.id}`, 
+            name: setting.name, 
+            label: setting.id === 'sunrise' ? "شروق الشمس" : setting.id === 'duha' ? "صلاة الضحى" : "الأذان", 
+            diff: aDiff, 
+            icon: Clock, 
+            color: setting.id === 'sunrise' || setting.id === 'duha' ? "text-orange-400" : "text-accent", 
+            targetTimeStr: formatTargetTime(azanSecs),
+            window: setting.countdownWindow * 60
+          });
+        }
+
+        // Iqamah Reminder (if applicable)
+        if (setting.iqamahDuration > 0) {
+          const iqamahSecs = azanSecs + (setting.iqamahDuration * 60);
+          let iDiff = iqamahSecs - totalCurrentSecs;
+          if (iDiff < -43200) iDiff += 86400;
+
+          if (iDiff > -600) {
+            list.push({ 
+              id: `iqamah-${setting.id}`, 
+              name: `إقامة ${setting.name}`, 
+              label: "الإقامة", 
+              diff: iDiff, 
+              icon: Timer, 
+              color: "text-emerald-400", 
+              targetTimeStr: formatTargetTime(iqamahSecs),
+              window: setting.countupWindow * 60 
+            });
+          }
+        }
       }
     }
 
+    // Process Manual Reminders
     for (const rem of reminders) {
-      let targetSecs = rem.relativePrayer === 'manual' && rem.manualTime ? tToM(rem.manualTime) * 60 : 0;
-      if (rem.relativePrayer !== 'manual' && prayerTimes?.length) {
+      let targetSecs = 0;
+      if (rem.relativePrayer === 'manual' && rem.manualTime) {
+        targetSecs = tToM(rem.manualTime) * 60;
+      } else if (prayerTimes?.length) {
         const dateStr = now.toISOString().split('T')[0];
         const pData = prayerTimes.find(p => p.date === dateStr) || 
                       prayerTimes.find(p => p.date.endsWith(`-${now.getDate().toString().padStart(2, '0')}`)) || 
                       prayerTimes[0];
-        const refTime = pData[rem.relativePrayer as keyof typeof pData];
-        if (refTime) targetSecs = (tToM(refTime) + rem.offsetMinutes) * 60;
+        
+        let refTime = pData[rem.relativePrayer as keyof typeof pData];
+        let extraOffset = rem.offsetMinutes;
+
+        if (rem.relativePrayer === 'duha') {
+          refTime = pData['sunrise'];
+          extraOffset += 15;
+        }
+
+        if (refTime) targetSecs = (tToM(refTime) + extraOffset) * 60;
       }
+
       if (targetSecs > 0) {
         let diff = targetSecs - totalCurrentSecs;
         if (diff < -43200) diff += 86400;
-        if (diff > -600) list.push({ id: rem.id, name: rem.label, label: "تذكير", diff, icon: Bell, color: rem.color || "text-blue-400", targetTimeStr: formatTargetTime(targetSecs) });
+        if (diff > -600) {
+          list.push({ 
+            id: rem.id, 
+            name: rem.label || "تذكير مخصص", 
+            label: "تذكير", 
+            diff, 
+            icon: Bell, 
+            color: rem.color || "text-blue-400", 
+            targetTimeStr: formatTargetTime(targetSecs),
+            window: rem.countdownWindow * 60
+          });
+        }
       }
     }
 
-    return list.sort((a, b) => Math.abs(a.diff) - Math.abs(b.diff)).slice(0, 3);
-  }, [now, prayerTimes, reminders]);
+    const sorted = list.sort((a, b) => Math.abs(a.diff) - Math.abs(b.diff));
+    
+    // Now always show top 3 with hierarchy (no longer hiding when countdown is active)
+    return sorted.slice(0, 3);
+  }, [now, prayerTimes, reminders, prayerSettings]);
 
   const formatCountdown = (diffSeconds: number) => {
     const absSecs = Math.abs(diffSeconds);
@@ -138,28 +189,44 @@ export function ReminderSummaryWidget() {
   return (
     <div className="h-full w-full bg-zinc-950/80 backdrop-blur-[120px] rounded-[2.5rem] border border-white/10 relative overflow-hidden flex flex-col justify-around p-6">
       <FluidGlass />
-      {processedReminders.map((rem) => {
+      {processedReminders.map((rem, idx) => {
         const RemIcon = rem.icon;
-        const showCountdown = Math.abs(rem.diff) <= 1200;
+        const showCountdown = Math.abs(rem.diff) <= rem.window;
         const displayVal = showCountdown 
           ? `${rem.diff >= 0 ? "-" : "+"}${formatCountdown(rem.diff)}` 
           : rem.targetTimeStr;
 
         return (
-          <div key={rem.id} className="flex flex-col items-center justify-center flex-1 relative border-b border-white/5 last:border-0 py-4">
+          <div key={rem.id} className={cn(
+            "flex flex-col items-center justify-center relative py-4 transition-all duration-700",
+            processedReminders.length > 1 ? "flex-1 border-b border-white/5 last:border-0" : "flex-[0.8]",
+            // HIERARCHY OPACITY: 1st is solid, 2nd is faded, 3rd is very faded
+            idx === 0 ? "opacity-100" : idx === 1 ? "opacity-60" : "opacity-30"
+          )}>
             <div className="flex items-center gap-3 mb-[-4px]">
               <RemIcon className={cn("w-5 h-5 shadow-glow", rem.color)} />
               <span className={cn("text-lg font-black uppercase truncate max-w-[250px]", rem.color)}>
                 {rem.name}
               </span>
             </div>
-            <div className="h-24 w-full max-w-[350px]">
+            
+            <div className={cn(
+              "w-full max-w-[350px]",
+              // Make the prominent one bigger if it's the only one or top of the list
+              (idx === 0 && showCountdown) ? "h-32" : "h-24"
+            )}>
               <GlassNumber 
                 text={displayVal} 
                 id={`sum-vert-${rem.id}`} 
-                size="4.5rem"
+                size={(idx === 0 && showCountdown) ? "5.5rem" : "4.2rem"}
               />
             </div>
+            
+            {idx === 0 && showCountdown && (
+              <span className="text-white/30 font-black uppercase tracking-[0.4em] text-[10px] mt-2 animate-pulse">
+                Active Countdown
+              </span>
+            )}
           </div>
         );
       })}

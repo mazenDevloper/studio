@@ -19,8 +19,13 @@ export function MoonWidget() {
   const [cycleIndex, setCycleIndex] = useState(0); // 0: Hijri, 1: Gregorian, 2: Temp
   const [hijriDay, setHijriDay] = useState("");
   const [temperature, setTemperature] = useState<string>("--");
+  const [windowWidth, setWindowWidth] = useState(0);
 
   useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    
     async function fetchMoonData() {
       const now = new Date();
       const nasaDate = `${now.getFullYear()}-${(now.getMonth()+1).toString().padStart(2,'0')}-${now.getDate().toString().padStart(2,'0')}T18:00`;
@@ -68,33 +73,46 @@ export function MoonWidget() {
     fetchTemperature();
     const rotTimer = setInterval(() => setRotation(p => (p + 0.05) % 360), 100);
     const cycleTimer = setInterval(() => setCycleIndex(p => (p + 1) % 3), 5000);
-    return () => { clearInterval(rotTimer); clearInterval(cycleTimer); };
+    
+    return () => { 
+      clearInterval(rotTimer); 
+      clearInterval(cycleTimer); 
+      window.removeEventListener('resize', handleResize);
+    };
   }, []);
 
   const gregorianDay = new Date().getDate().toString();
   const displayValue = cycleIndex === 0 ? hijriDay : cycleIndex === 1 ? gregorianDay : temperature;
+  const isWide = windowWidth > 1080;
 
   return (
     <div className="h-full w-full bg-black/40 rounded-[2.5rem] overflow-hidden relative flex flex-col items-center justify-center p-4 shadow-2xl">
-      <CardContent className="p-0 h-full flex flex-col items-center justify-center gap-4 relative z-10 w-full text-center">
-        <div className="relative w-32 h-32 flex-shrink-0 mx-auto">
+      <CardContent className="p-0 h-full flex flex-col items-center justify-center gap-6 relative z-10 w-full text-center">
+        <div className={isWide ? "relative w-56 h-56 flex-shrink-0 mx-auto transition-all duration-1000" : "relative w-32 h-32 flex-shrink-0 mx-auto transition-all duration-1000"}>
           {loading ? (
             <div className="w-full h-full rounded-full bg-white/5 flex items-center justify-center border border-white/10">
               <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
             </div>
           ) : (
-            <div className="relative w-32 h-32 mx-auto">
+            <div className="relative w-full h-full mx-auto">
+              {/* Scaled Text - High Contrast Glass Effect */}
               <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none transition-all duration-1000"
-                   style={{ transform: cycleIndex === 0 ? 'scale(3.5)' : 'scale(2.2)' }}>
+                   style={{ 
+                     transform: isWide 
+                       ? (cycleIndex === 0 ? 'scale(3.5)' : 'scale(2.2)') 
+                       : 'scale(2.8)' // 95% of card height relative to w-32 base
+                   }}>
                 <svg className="w-full h-full overflow-visible" viewBox="0 0 100 100">
                   <defs>
-                    <linearGradient id="moonFill" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stopColor="rgba(255,255,255,0.85)" />
-                      <stop offset="100%" stopColor="rgba(255,255,255,0.15)" />
+                    {/* Fill Gradient: Top-Right to Bottom-Left (225 degrees) */}
+                    <linearGradient id="moonFill" x1="100%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" stopColor="rgba(255,255,255,0.95)" />
+                      <stop offset="100%" stopColor="rgba(255,255,255,0)" />
                     </linearGradient>
-                    <linearGradient id="moonStroke" x1="100%" y1="100%" x2="0%" y2="0%">
+                    {/* Stroke Gradient: Bottom-Left to Top-Right (Exactly 45 degrees) */}
+                    <linearGradient id="moonStroke" x1="0%" y1="100%" x2="100%" y2="0%">
                       <stop offset="0%" stopColor="rgba(255,255,255,1)" />
-                      <stop offset="100%" stopColor="rgba(255,255,255,0.1)" />
+                      <stop offset="100%" stopColor="rgba(255,255,255,0)" />
                     </linearGradient>
                   </defs>
                   <text 
@@ -103,27 +121,36 @@ export function MoonWidget() {
                     textAnchor="middle" 
                     dominantBaseline="central"
                     className="font-black"
-                    style={{ fontSize: '40px' }}
+                    style={{ fontSize: isWide ? '32px' : '40px' }} 
                     fill="url(#moonFill)"
                     stroke="url(#moonStroke)"
-                    strokeWidth="0.4"
+                    strokeWidth="0.5"
                   >
                     {displayValue}
                   </text>
                 </svg>
               </div>
-              <div className="relative w-full h-full rounded-full overflow-hidden ring-[8px] ring-white/5 shadow-[0_0_60px_rgba(59,130,246,0.3)] bg-black">
-                {moonData?.image?.url && <Image src={moonData.image.url} alt="NASA" fill className="object-cover scale-[1.15]" style={{ transform: `rotate(${rotation}deg)` }} unoptimized />}
+              <div className="relative w-full h-full rounded-full overflow-hidden ring-[10px] ring-white/5 shadow-[0_0_80px_rgba(59,130,246,0.4)] bg-black">
+                {moonData?.image?.url && (
+                  <Image 
+                    src={moonData.image.url} 
+                    alt="NASA Moon" 
+                    fill 
+                    className="object-cover scale-[1.15] transition-transform duration-700" 
+                    style={{ transform: `rotate(${rotation}deg) scale(1.15)` }} 
+                    unoptimized 
+                  />
+                )}
                 <div className="absolute inset-0 bg-gradient-to-tr from-black/60 via-transparent to-white/5 pointer-events-none" />
               </div>
             </div>
           )}
         </div>
         
-        <div className="flex flex-col items-center gap-1.5 w-full">
-          <div className="flex items-center gap-2 bg-white/5 px-4 py-1 rounded-full border border-white/10 backdrop-blur-md">
-            {cycleIndex === 0 ? <MoonIcon className="w-3 h-3 text-blue-400" /> : cycleIndex === 1 ? <Calendar className="w-3 h-3 text-emerald-400" /> : <Cloud className="w-3 h-3 text-orange-400" />}
-            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/60">
+        <div className="flex flex-col items-center gap-2 w-full">
+          <div className="flex items-center gap-2 bg-white/5 px-6 py-1.5 rounded-full border border-white/10 backdrop-blur-md shadow-lg">
+            {cycleIndex === 0 ? <MoonIcon className="w-4 h-4 text-blue-400" /> : cycleIndex === 1 ? <Calendar className="w-4 h-4 text-emerald-400" /> : <Cloud className="w-4 h-4 text-orange-400" />}
+            <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/60">
               {cycleIndex === 0 ? "Hijri Hub" : cycleIndex === 1 ? "Gregorian Hub" : "Weather Hub"}
             </span>
           </div>

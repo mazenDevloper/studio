@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Search, Plus, Radio, Loader2, Check, Mic, Users, Cloud, Star, X, Bookmark, Link as LinkIcon, BookOpen, ChevronDown, Trash2, Tv, Zap } from "lucide-react";
+import { Search, Plus, Radio, Loader2, Check, Mic, Users, Cloud, Star, X, Bookmark, Link as LinkIcon, BookOpen, ChevronDown, Trash2, Tv, Zap, ChevronUp } from "lucide-react";
 import { useMediaStore } from "@/lib/store";
 import { searchYouTubeChannels, searchYouTubeVideos, fetchChannelVideos, fetchVideoDetails, YouTubeChannel, YouTubeVideo } from "@/lib/youtube";
 import Image from "next/image";
@@ -46,6 +46,7 @@ export function MediaView() {
     favoriteChannels, 
     addChannel, 
     removeChannel, 
+    reorderFavoriteChannel,
     savedVideos, 
     toggleSaveVideo, 
     setActiveVideo,
@@ -80,11 +81,7 @@ export function MediaView() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const sortedChannels = useMemo(() => {
-    return [...favoriteChannels].sort((a, b) => {
-      if (a.starred && !b.starred) return -1;
-      if (!a.starred && b.starred) return 1;
-      return 0;
-    });
+    return [...favoriteChannels]; // No auto-sorting by star, respect manual order
   }, [favoriteChannels]);
 
   useEffect(() => {
@@ -122,22 +119,9 @@ export function MediaView() {
     setSelectedChannel(null);
     try {
       const results = await searchYouTubeVideos(finalQuery);
-      const sortedResults = results.sort((a, b) => {
-        const aTitle = a.title.toLowerCase();
-        const bTitle = b.title.toLowerCase();
-        const aIsLive = aTitle.includes('live') || aTitle.includes('مباشر');
-        const bIsLive = bTitle.includes('live') || bTitle.includes('مباشر');
-        if (aIsLive && !bIsLive) return -1;
-        if (!aIsLive && bIsLive) return 1;
-        return 0;
-      });
-      setVideoResults(sortedResults);
+      setVideoResults(results);
       setShowReciterGrid(false);
       setShowSurahGrid(false);
-      setTimeout(() => {
-        const firstResult = document.querySelector('.video-result-card') as HTMLElement;
-        if (firstResult) firstResult.focus();
-      }, 500);
     } catch (error) {
       console.error("Video search failed", error);
     } finally {
@@ -163,16 +147,7 @@ export function MediaView() {
     setIsLoadingVideos(true);
     try {
       const videos = await fetchChannelVideos(channel.channelid);
-      const sorted = videos.sort((a, b) => {
-        const aLive = a.title.toLowerCase().includes('live') || a.title.includes('مباشر');
-        const bLive = b.title.toLowerCase().includes('live') || b.title.includes('مباشر');
-        return aLive === bLive ? 0 : aLive ? -1 : 1;
-      });
-      setChannelVideos(sorted);
-      setTimeout(() => {
-        const firstVid = document.querySelector('.channel-video-card') as HTMLElement;
-        if (firstVid) firstVid.focus();
-      }, 500);
+      setChannelVideos(videos);
     } finally {
       setIsLoadingVideos(false);
     }
@@ -197,15 +172,8 @@ export function MediaView() {
           setActiveVideo(video);
           setIsUrlDialogOpen(false);
           setUrlInput("");
-          toast({ title: "تم جلب الفيديو", description: video.title });
-        } else {
-          toast({ variant: "destructive", title: "خطأ", description: "لم نتمكن من العثور على تفاصيل الفيديو." });
         }
-      } else {
-        toast({ variant: "destructive", title: "خطأ", description: "رابط يوتيوب غير صالح." });
       }
-    } catch (error) {
-      toast({ variant: "destructive", title: "خطأ", description: "حدث خطأ أثناء جلب الفيديو." });
     } finally {
       setIsAddingByUrl(false);
     }
@@ -229,13 +197,6 @@ export function MediaView() {
   const handleSurahClick = (surah: string) => {
     const query = `${surah} ${selectedReciter.name}`;
     handleVideoSearch(query);
-  };
-
-  const getJuzColor = (idx: number) => {
-    if (idx < 7) return "bg-emerald-500/10 border-emerald-500/20 text-emerald-500";
-    if (idx < 15) return "bg-blue-500/10 border-blue-500/20 text-blue-500";
-    if (idx < 25) return "bg-purple-500/10 border-purple-500/20 text-purple-500";
-    return "bg-amber-500/10 border-amber-500/20 text-amber-500";
   };
 
   if (isFullScreen) return null;
@@ -398,7 +359,7 @@ export function MediaView() {
                     onClick={() => handleSurahClick(surah)}
                     className={cn(
                       "h-24 rounded-[2rem] flex flex-col items-center justify-center border-2 transition-all hover:scale-[1.08] focusable px-4 shadow-xl",
-                      getJuzColor(idx)
+                      idx < 7 ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500" : "bg-blue-500/10 border-blue-500/20 text-blue-500"
                     )}
                     tabIndex={0}
                   >
@@ -414,7 +375,6 @@ export function MediaView() {
         )}
       </header>
 
-      {/* SEARCH RESULTS (ABOVE FAV CHANNELS) */}
       {videoResults.length > 0 && (
         <section className="space-y-8 animate-in fade-in duration-500 text-right">
           <div className="flex items-center justify-between border-b border-white/10 pb-6">
@@ -427,9 +387,6 @@ export function MediaView() {
                 <div className="aspect-video relative overflow-hidden">
                   <Image src={video.thumbnail} alt={video.title} fill className="object-cover" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                  {(video.title.toLowerCase().includes('live') || video.title.includes('مباشر')) && (
-                    <div className="absolute top-4 right-4 bg-red-600 text-white px-3 py-1 rounded-full text-[10px] font-black animate-pulse shadow-lg">LIVE</div>
-                  )}
                 </div>
                 <div className="p-5 text-right">
                   <h3 className="font-bold text-sm line-clamp-2 text-white font-headline h-10">{video.title}</h3>
@@ -439,29 +396,6 @@ export function MediaView() {
           </div>
         </section>
       )}
-
-      <section className="space-y-6">
-        <h2 className="text-2xl font-black text-white flex items-center gap-3">
-          <Zap className="w-6 h-6 text-yellow-500 fill-current" /> قنوات مباشرة مقترحة
-        </h2>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          {PRIORITY_LIVE_CHANNELS.map((ch, idx) => (
-            <Button
-              key={ch.id}
-              variant="outline"
-              className="h-16 rounded-2xl bg-white/5 border-white/10 hover:bg-white/10 text-white font-black text-sm justify-start px-6 gap-4 focusable"
-              onClick={() => handleVideoSearch(ch.name)}
-              tabIndex={0}
-              data-nav-id={`live-priority-${idx}`}
-            >
-              <div className="w-8 h-8 rounded-full bg-red-600 flex items-center justify-center animate-pulse">
-                <Radio className="w-4 h-4 text-white" />
-              </div>
-              {ch.name}
-            </Button>
-          ))}
-        </div>
-      </section>
 
       {selectedChannel ? (
         <div className="space-y-8 animate-in fade-in slide-in-from-left-6 duration-500 pb-24 text-right">
@@ -573,15 +507,28 @@ export function MediaView() {
                   <Image src={channel.image} alt={channel.name} fill className="object-cover group-hover:scale-115 transition-transform duration-700" />
                   <div className="absolute inset-0 bg-black/30 group-hover:bg-transparent transition-all" />
                   
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); toggleStarChannel(channel.channelid); }}
-                    className={cn(
-                      "absolute top-2 right-2 w-10 h-10 rounded-full backdrop-blur-xl border border-white/10 flex items-center justify-center transition-all z-30",
-                      channel.starred ? "bg-yellow-500 text-black opacity-100 shadow-glow" : "bg-black/60 text-white/40 hover:text-white opacity-0 group-hover:opacity-100 group-focus:opacity-100"
+                  {/* Reorder and Star Controls */}
+                  <div className="absolute top-2 right-2 flex flex-col gap-2 z-30 transition-all">
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); toggleStarChannel(channel.channelid); }}
+                      className={cn(
+                        "w-10 h-10 rounded-full backdrop-blur-xl border border-white/10 flex items-center justify-center transition-all",
+                        channel.starred ? "bg-yellow-500 text-black opacity-100 shadow-glow" : "bg-black/60 text-white/40 hover:text-white opacity-0 group-hover:opacity-100 group-focus:opacity-100"
+                      )}
+                    >
+                      <Star className={cn("w-5 h-5", channel.starred && "fill-current")} />
+                    </button>
+                    
+                    {idx > 0 && (
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); reorderFavoriteChannel(channel.channelid, 'up'); }}
+                        className="w-10 h-10 rounded-full bg-blue-600/80 backdrop-blur-xl border border-white/10 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 focusable shadow-lg"
+                        title="تحريك للأعلى"
+                      >
+                        <ChevronUp className="w-5 h-5" />
+                      </button>
                     )}
-                  >
-                    <Star className={cn("w-5 h-5", channel.starred && "fill-current")} />
-                  </button>
+                  </div>
 
                   <button 
                     onClick={(e) => { e.stopPropagation(); removeChannel(channel.channelid); }}

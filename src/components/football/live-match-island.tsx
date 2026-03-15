@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
@@ -29,6 +30,7 @@ interface GoalEvent {
 export function LiveMatchIsland() {
   const favoriteTeams = useMediaStore(state => state.favoriteTeams);
   const prayerTimes = useMediaStore(state => state.prayerTimes);
+  const prayerSettings = useMediaStore(state => state.prayerSettings);
   const belledMatchIds = useMediaStore(state => state.belledMatchIds);
   const showIslands = useMediaStore(state => state.showIslands);
   const skippedMatchIds = useMediaStore(state => state.skippedMatchIds);
@@ -119,55 +121,100 @@ export function LiveMatchIsland() {
     if (prayerTimes?.length) {
       const day = now.getDate().toString().padStart(2, '0');
       const pData = prayerTimes.find(p => p.date.endsWith(`-${day}`)) || prayerTimes[0];
-      const prayers = [
-        { id: 'fajr', name: "الفجر", time: pData.fajr, iqamah: 25 },
-        { id: 'sunrise', name: "الشروق", time: pData.sunrise, iqamah: 0 },
-        { id: 'dhuhr', name: "الظهر", time: pData.dhuhr, iqamah: 20 },
-        { id: 'asr', name: "العصر", time: pData.asr, iqamah: 20 },
-        { id: 'maghrib', name: "المغرب", time: pData.maghrib, iqamah: 10 },
-        { id: 'isha', name: "العشاء", time: pData.isha, iqamah: 20 },
-      ];
+      
+      for (const setting of prayerSettings) {
+        let refTime = pData[setting.id as keyof typeof pData];
+        let baseMinutesOffset = setting.offsetMinutes;
 
-      for (const p of prayers) {
-        if (p.id === 'sunrise') {
-          const riseSecs = tToM(p.time) * 60;
-          let diff = riseSecs - totalCurrentSecs;
-          if (diff < -43200) diff += 86400; 
-          if (diff > -600) list.push({ id: `azan-${p.id}`, name: p.name, label: "شروق الشمس", diff, icon: Clock, color: "text-orange-400", isWithinWindow: Math.abs(diff) < 1200, targetTimeStr: convertTo12Hour(p.time) });
-          continue;
+        if (setting.id === 'duha') {
+          refTime = pData['sunrise'];
+          baseMinutesOffset += 15;
         }
-        const azanSecs = tToM(p.time) * 60;
-        const iqamahSecs = azanSecs + (p.iqamah * 60);
+
+        if (!refTime) continue;
+
+        const baseMinutes = tToM(refTime) + baseMinutesOffset;
+        const azanSecs = baseMinutes * 60;
         let aDiff = azanSecs - totalCurrentSecs;
-        let iDiff = iqamahSecs - totalCurrentSecs;
-        
         if (aDiff < -43200) aDiff += 86400;
-        if (iDiff < -43200) iDiff += 86400;
-        
-        if (aDiff > -600) list.push({ id: `azan-${p.id}`, name: p.name, label: "الأذان", diff: aDiff, icon: Clock, color: "text-accent", isWithinWindow: Math.abs(aDiff) < 1200, targetTimeStr: convertTo12Hour(p.time) });
-        if (iDiff > -600) list.push({ id: `iqamah-${p.id}`, name: `إقامة ${p.name}`, label: "الإقامة", diff: iDiff, icon: Timer, color: "text-emerald-400", isWithinWindow: Math.abs(iDiff) < 1200, targetTimeStr: formatTargetTime(iqamahSecs) });
+
+        if (aDiff > -600) {
+          const isWithin = Math.abs(aDiff) < (setting.countdownWindow * 60);
+          list.push({ 
+            id: `azan-${setting.id}`, 
+            name: setting.name, 
+            label: setting.id === 'sunrise' ? "شروق الشمس" : setting.id === 'duha' ? "صلاة الضحى" : "الأذان", 
+            diff: aDiff, 
+            icon: Clock, 
+            color: setting.id === 'sunrise' || setting.id === 'duha' ? "text-orange-400" : "text-accent", 
+            isWithinWindow: isWithin, 
+            targetTimeStr: formatTargetTime(azanSecs) 
+          });
+        }
+
+        if (setting.iqamahDuration > 0) {
+          const iqamahSecs = azanSecs + (setting.iqamahDuration * 60);
+          let iDiff = iqamahSecs - totalCurrentSecs;
+          if (iDiff < -43200) iDiff += 86400;
+
+          if (iDiff > -600) {
+            const isWithin = Math.abs(iDiff) < (setting.countupWindow * 60);
+            list.push({ 
+              id: `iqamah-${setting.id}`, 
+              name: `إقامة ${setting.name}`, 
+              label: "الإقامة", 
+              diff: iDiff, 
+              icon: Timer, 
+              color: "text-emerald-400", 
+              isWithinWindow: isWithin, 
+              targetTimeStr: formatTargetTime(iqamahSecs) 
+            });
+          }
+        }
       }
     }
 
     for (const rem of reminders) {
-      let targetSecs = rem.relativePrayer === 'manual' && rem.manualTime ? tToM(rem.manualTime) * 60 : 0;
-      if (rem.relativePrayer !== 'manual' && prayerTimes?.length) {
+      let targetSecs = 0;
+      if (rem.relativePrayer === 'manual' && rem.manualTime) {
+        targetSecs = tToM(rem.manualTime) * 60;
+      } else if (prayerTimes?.length) {
         const day = now.getDate().toString().padStart(2, '0');
         const pData = prayerTimes.find(p => p.date.endsWith(`-${day}`)) || prayerTimes[0];
-        const refTime = pData[rem.relativePrayer as keyof typeof pData];
-        if (refTime) targetSecs = (tToM(refTime) + rem.offsetMinutes) * 60;
+        
+        let refTime = pData[rem.relativePrayer as keyof typeof pData];
+        let extraOffset = rem.offsetMinutes;
+
+        if (rem.relativePrayer === 'duha') {
+          refTime = pData['sunrise'];
+          extraOffset += 15;
+        }
+
+        if (refTime) targetSecs = (tToM(refTime) + extraOffset) * 60;
       }
+
       if (targetSecs > 0) {
         let diff = targetSecs - totalCurrentSecs;
         if (diff < -43200) diff += 86400; 
         
         const window = diff >= 0 ? rem.countdownWindow * 60 : rem.countupWindow * 60;
-        if (diff > -600) list.push({ id: rem.id, name: rem.label, label: "تذكير", diff, icon: Bell, color: rem.color || "text-blue-400", isWithinWindow: Math.abs(diff) < window, targetTimeStr: formatTargetTime(targetSecs) });
+        if (diff > -600) {
+          list.push({ 
+            id: rem.id, 
+            name: rem.label, 
+            label: "تذكير", 
+            diff, 
+            icon: Bell, 
+            color: rem.color || "text-blue-400", 
+            isWithinWindow: Math.abs(diff) < window, 
+            targetTimeStr: formatTargetTime(targetSecs) 
+          });
+        }
       }
     }
 
     return list.sort((a, b) => Math.abs(a.diff) - Math.abs(b.diff));
-  }, [now, prayerTimes, reminders]);
+  }, [now, prayerTimes, reminders, prayerSettings]);
 
   useEffect(() => {
     const activeAlert = processedReminders.find(r => r.isWithinWindow);
@@ -180,13 +227,36 @@ export function LiveMatchIsland() {
   }, [processedReminders, windowWidth, lastAutoTriggeredId]);
 
   const processedMatches = useMemo(() => {
-    let sorted = topMatches.filter(m => !skippedMatchIds.includes(m.id)).sort((a, b) => {
-      const isFavA = favoriteTeams.some(t => t.id === a.homeTeamId || t.id === a.awayTeamId) || belledMatchIds.includes(a.id);
-      const isFavB = favoriteTeams.some(t => t.id === b.homeTeamId || t.id === b.awayTeamId) || belledMatchIds.includes(b.id);
-      if (isFavA && !isFavB) return -1;
-      if (!isFavA && isFavB) return 1;
-      return 0;
-    });
+    const getMatchPriority = (m: Match) => {
+      const isFav = favoriteTeams.some(t => t.id === m.homeTeamId || t.id === m.awayTeamId);
+      const isBelled = belledMatchIds.includes(m.id);
+      const status = m.status;
+
+      if (status === 'live') {
+        if (isBelled && isFav) return 1;
+        if (isFav) return 2;
+        if (isBelled) return 3;
+      }
+      if (status === 'upcoming') {
+        if (isBelled && isFav) return 4;
+        if (isFav) return 5;
+        if (isBelled) return 6;
+      }
+      if (status === 'finished') {
+        if (isBelled && isFav) return 7;
+        if (isFav) return 8;
+        if (isBelled) return 9;
+      }
+      if (status === 'live') {
+        if (!isBelled) return 10;
+        if (!isFav) return 11;
+      }
+      return 100;
+    };
+
+    let sorted = topMatches
+      .filter(m => !skippedMatchIds.includes(m.id))
+      .sort((a, b) => getMatchPriority(a) - getMatchPriority(b));
 
     if (overrideMatchId) {
       const idx = sorted.findIndex(m => m.id === overrideMatchId);
@@ -262,7 +332,7 @@ export function LiveMatchIsland() {
           <div className="relative z-10 h-full w-full flex flex-col items-center py-2 px-2">
             {!manualReminderExpand || windowWidth > 1080 ? (
               <div className={cn("w-9 h-9 rounded-full flex items-center justify-center bg-white/10 my-auto relative", closestRem.color)}>
-                {Math.abs(closestRem.diff) <= 1200 ? (
+                {closestRem.isWithinWindow ? (
                   <div className="scale-[0.45]">
                     <GlassNumber text={`${closestRem.diff >= 0 ? "-" : "+"}${formatCountdown(closestRem.diff)}`} id="rem-mini-closest" size="3rem" />
                   </div>
@@ -281,7 +351,7 @@ export function LiveMatchIsland() {
                 </div>
                 <div className="h-10 w-full">
                   <GlassNumber 
-                    text={Math.abs(closestRem.diff) <= 1200 ? `${closestRem.diff >= 0 ? "-" : "+"}${formatCountdown(closestRem.diff)}` : closestRem.targetTimeStr} 
+                    text={closestRem.isWithinWindow ? `${closestRem.diff >= 0 ? "-" : "+"}${formatCountdown(closestRem.diff)}` : closestRem.targetTimeStr} 
                     id={`rem-single-${closestRem.id}`} 
                     size="2.8rem" 
                   />
@@ -315,13 +385,11 @@ export function LiveMatchIsland() {
             <button onClick={(e) => { e.stopPropagation(); skipMatch(mainMatch.id); }} className="absolute top-1 left-1 z-[100] w-6 h-6 rounded-full bg-black/40 text-white/40 hover:text-white flex items-center justify-center opacity-0 group-hover:opacity-100"><X className="w-3.5 h-3.5" /></button>
             <div className="relative z-10 h-full w-full flex items-center justify-center relative overflow-hidden">
               <div className="absolute inset-0 flex items-center justify-between px-2" style={{ background: 'linear-gradient(0deg, black 5%, transparent)' }}>
-                {/* Home on Right, Away on Left for RTL */}
                 <img src={mainMatch.homeLogo} className="h-full w-auto object-contain scale-[1.5] translate-x-4" alt="" />
                 <img src={mainMatch.awayLogo} className="h-full w-auto object-contain scale-[1.5] -translate-x-4" alt="" />
               </div>
               <div className="relative w-full h-full z-20 flex flex-col items-center justify-center" style={{ background: 'linear-gradient(-1deg, black, transparent)' }}>
                 <GlassNumber 
-                  /* RTL FIX: Flip score display to match logo positions (Home Score on Right, Away Score on Left) */
                   text={mainMatch.status === 'upcoming' ? convertTo12Hour(mainMatch.startTime) : `${mainMatch.score?.away}-${mainMatch.score?.home}`} 
                   id={`match-main-${mainMatch.id}`} 
                   subtext={mainMatch.league} 
@@ -340,7 +408,6 @@ export function LiveMatchIsland() {
               <div key={m.id} onClick={() => setOverrideMatchId(m.id)} className="pointer-events-auto group rounded-full w-14 h-14 flex flex-col items-center justify-center shadow-2xl relative overflow-hidden cursor-pointer active:scale-95 premium-glass" style={{ transform: 'translate3d(0,0,0)' }}>
                 <button onClick={(e) => { e.stopPropagation(); skipMatch(m.id); }} className="absolute -top-1 -left-1 z-[100] w-5 h-5 rounded-full bg-red-600/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 shadow-lg"><X className="w-3.5 h-3.5" /></button>
                 <span className="absolute top-1 z-20 text-[0.5rem] font-black text-white/90 tabular-nums drop-shadow-md">
-                  {/* RTL FIX: Flip score display for consistency */}
                   {m.status === 'upcoming' ? convertTo12Hour(m.startTime) : `${m.score?.away}-${m.score?.home}`}
                 </span>
                 <div className="relative z-10 w-full h-full flex items-center justify-center scale-[0.35]">

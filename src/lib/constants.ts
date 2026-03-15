@@ -21,6 +21,7 @@ export const JSONBIN_PRAYER_TIMES_BIN_ID = '69a00f6eae596e708f4b7291';
 export const JSONBIN_RECITERS_BIN_ID = '6909c1cd43b1c97be997b522';
 export const JSONBIN_IPTV_FAVS_BIN_ID = '69a87b8bd0ea881f40eeec0c';
 export const JSONBIN_REMINDERS_BIN_ID = '6909c1cd43b1c97be997b522';
+export const JSONBIN_MANUSCRIPTS_BIN_ID = '69b63c5cc3097a1dd5278b25';
 export const JSONBIN_ACCESS_KEY_CHANNELS = '$2a$10$J8o3WrPtnqmKAd///uDw6.BOWnGIBekHFOImbeEZZwsJ/h/XPbVUy';
 
 export const SURAHS_LIST = [

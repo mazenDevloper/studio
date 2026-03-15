@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -95,4 +96,8 @@
 
 .fixed {
   position: fixed !important;
+}
+
+.font-calligraphy {
+  font-family: 'Aref Ruqaa', serif;
 }

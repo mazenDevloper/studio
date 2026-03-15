@@ -11,7 +11,7 @@ export function RemotePointer() {
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const [isVisible, setIsVisible] = useState(false);
   const pathname = usePathname();
-  const { activeIptv, nextIptvChannel, prevIptvChannel } = useMediaStore();
+  const { activeIptv, isFullScreen, nextIptvChannel, prevIptvChannel } = useMediaStore();
 
   const navigate = useCallback((direction: string) => {
     const focusables = Array.from(document.querySelectorAll(".focusable")) as HTMLElement[];
@@ -84,10 +84,52 @@ export function RemotePointer() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // CRITICAL: Stop remote commands if focusing input
-      const isInputFocused = document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA';
+      const activeEl = document.activeElement;
+      const isInputFocused = 
+        activeEl?.tagName === 'INPUT' || 
+        activeEl?.tagName === 'TEXTAREA' || 
+        activeEl?.hasAttribute('contenteditable') ||
+        activeEl?.getAttribute('role') === 'textbox';
+
       if (isInputFocused) return;
 
+      // CH+ / CH- Support (Mapped to PageUp/PageDown)
+      // Switch channels only in full-screen cinema mode, otherwise scroll
+      if (e.key === "PageUp" || e.key === "ChannelUp") {
+        if (activeIptv && isFullScreen) {
+          e.preventDefault(); // Stop default scroll in cinema
+          nextIptvChannel();
+          return;
+        }
+      } else if (e.key === "PageDown" || e.key === "ChannelDown") {
+        if (activeIptv && isFullScreen) {
+          e.preventDefault(); // Stop default scroll in cinema
+          prevIptvChannel();
+          return;
+        }
+      }
+
+      // Channel Switching with 1 and 3 (Prev/Next)
+      if (e.key === "1") {
+        if (activeIptv) {
+          prevIptvChannel();
+          setActiveKey("1"); 
+          setIsVisible(true);
+          setTimeout(() => setIsVisible(false), 500);
+        }
+        return;
+      }
+      if (e.key === "3") {
+        if (activeIptv) {
+          nextIptvChannel();
+          setActiveKey("3");
+          setIsVisible(true);
+          setTimeout(() => setIsVisible(false), 500);
+        }
+        return;
+      }
+
+      // 4 and 6 are directional focus navigation ONLY
       const standardMap: Record<string, string> = {
         "2": "ArrowUp", "4": "ArrowLeft", "6": "ArrowRight", "8": "ArrowDown",
         "ArrowUp": "ArrowUp", "ArrowDown": "ArrowDown", "ArrowLeft": "ArrowLeft", "ArrowRight": "ArrowRight"
@@ -96,23 +138,6 @@ export function RemotePointer() {
       if (standardMap[e.key]) {
         e.preventDefault();
         const dir = standardMap[e.key];
-        
-        // SMART IPTV MAPPING: Flip channels if IPTV active
-        if (activeIptv && (dir === "ArrowLeft" || dir === "ArrowRight")) {
-          const current = document.activeElement as HTMLElement;
-          const isNavigatingGrid = current?.classList.contains('iptv-channel-item') || current?.classList.contains('iptv-cat-item');
-          
-          if (!isNavigatingGrid) {
-            if (dir === "ArrowLeft") prevIptvChannel();
-            else nextIptvChannel();
-            
-            setActiveKey(e.key === "ArrowLeft" ? "4" : "6");
-            setIsVisible(true);
-            setTimeout(() => setIsVisible(false), 500);
-            return;
-          }
-        }
-
         navigate(dir);
         
         let visualKey = e.key;
@@ -136,7 +161,7 @@ export function RemotePointer() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [navigate, activeIptv, nextIptvChannel, prevIptvChannel]);
+  }, [navigate, activeIptv, isFullScreen, nextIptvChannel, prevIptvChannel]);
 
   return (
     <div className={cn(
@@ -159,6 +184,16 @@ export function RemotePointer() {
       </div>
       <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center border-2", activeKey === "8" ? "bg-primary border-primary shadow-glow" : "bg-black/60 border-white/10 backdrop-blur-xl")}>
         <ChevronDown className="w-8 h-8 text-white" />
+      </div>
+      
+      {/* 1 and 3 indicators for visual feedback */}
+      <div className="flex gap-12 mt-2">
+        <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center border transition-all", activeKey === "1" ? "bg-primary border-primary shadow-glow scale-125" : "bg-white/5 border-white/10")}>
+          <span className="text-white text-[10px] font-black">1</span>
+        </div>
+        <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center border transition-all", activeKey === "3" ? "bg-primary border-primary shadow-glow scale-125" : "bg-white/5 border-white/10")}>
+          <span className="text-white text-[10px] font-black">3</span>
+        </div>
       </div>
     </div>
   );

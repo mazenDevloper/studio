@@ -12,13 +12,14 @@ import {
   JSONBIN_PRAYER_TIMES_BIN_ID,
   JSONBIN_IPTV_FAVS_BIN_ID,
   JSONBIN_REMINDERS_BIN_ID,
+  JSONBIN_MANUSCRIPTS_BIN_ID,
   prayerTimesData
 } from "./constants";
 
 export interface Reminder {
   id: string;
   label: string;
-  relativePrayer: 'fajr' | 'sunrise' | 'dhuhr' | 'asr' | 'maghrib' | 'isha' | 'manual';
+  relativePrayer: 'fajr' | 'sunrise' | 'duha' | 'dhuhr' | 'asr' | 'maghrib' | 'isha' | 'manual';
   manualTime?: string; 
   offsetMinutes: number; 
   showCountdown: boolean;
@@ -30,11 +31,28 @@ export interface Reminder {
   iconType: 'play' | 'bell' | 'circle';
 }
 
+export interface PrayerSetting {
+  id: string;
+  name: string;
+  offsetMinutes: number;
+  showCountdown: boolean;
+  countdownWindow: number;
+  showCountup: boolean;
+  countupWindow: number;
+  iqamahDuration: number;
+}
+
 export interface MapSettings {
   zoom: number;
   tilt: number;
   carScale: number;
   backgroundIndex: number;
+}
+
+export interface Manuscript {
+  id: string;
+  type: 'text' | 'image';
+  content: string;
 }
 
 export interface IptvChannel {
@@ -67,7 +85,9 @@ interface MediaState {
   iptvPlaylist: IptvChannel[];
   iptvPlaylistIndex: number;
   prayerTimes: any[];
+  prayerSettings: PrayerSetting[];
   reminders: Reminder[];
+  customManuscripts: Manuscript[];
   mapSettings: MapSettings;
   aiSuggestions: any[];
   activeVideo: YouTubeVideo | null;
@@ -81,6 +101,7 @@ interface MediaState {
   showIslands: boolean;
   addChannel: (channel: YouTubeChannel) => void;
   removeChannel: (channelid: string) => void;
+  reorderFavoriteChannel: (channelid: string, direction: 'up' | 'down') => void;
   toggleSaveVideo: (video: YouTubeVideo) => void;
   removeVideo: (id: string) => void;
   toggleStarChannel: (channelid: string) => void;
@@ -88,11 +109,15 @@ interface MediaState {
   updateReminder: (id: string, reminder: Partial<Reminder>) => void;
   removeReminder: (id: string) => void;
   toggleReminder: (id: string) => void;
+  addManuscript: (manuscript: Manuscript) => void;
+  removeManuscript: (id: string) => void;
+  updatePrayerSetting: (id: string, setting: Partial<PrayerSetting>) => void;
   toggleFavoriteTeam: (team: FavoriteTeam) => void;
   toggleFavoriteLeague: (leagueId: number) => void;
   toggleBelledMatch: (matchId: string) => void;
   skipMatch: (matchId: string) => void;
   toggleFavoriteIptvChannel: (channel: IptvChannel) => void;
+  reorderFavoriteIptv: (index: number, direction: 'up' | 'down') => void;
   setIptvPlaylist: (channels: IptvChannel[], index: number) => void;
   nextIptvChannel: () => void;
   prevIptvChannel: () => void;
@@ -120,12 +145,30 @@ const updateBin = async (binId: string, data: any) => {
         'Content-Type': 'application/json',
         'X-Master-Key': JSONBIN_MASTER_KEY
       },
-      body: JSON.stringify(data)
+      body: JSON.stringify({ record: data })
     });
   } catch (e) {
     console.error(`JSONBin Sync Error [${binId}]:`, e);
   }
 };
+
+const DEFAULT_PRAYER_SETTINGS: PrayerSetting[] = [
+  { id: 'fajr', name: 'الفجر', offsetMinutes: 0, showCountdown: true, countdownWindow: 20, showCountup: true, countupWindow: 25, iqamahDuration: 25 },
+  { id: 'sunrise', name: 'الشروق', offsetMinutes: 0, showCountdown: true, countdownWindow: 20, showCountup: true, countupWindow: 5, iqamahDuration: 0 },
+  { id: 'duha', name: 'الضحى', offsetMinutes: 15, showCountdown: true, countdownWindow: 15, showCountup: false, countupWindow: 0, iqamahDuration: 0 },
+  { id: 'dhuhr', name: 'الظهر', offsetMinutes: 0, showCountdown: true, countdownWindow: 20, showCountup: true, countupWindow: 20, iqamahDuration: 20 },
+  { id: 'asr', name: 'العصر', offsetMinutes: 0, showCountdown: true, countdownWindow: 20, showCountup: true, countupWindow: 20, iqamahDuration: 20 },
+  { id: 'maghrib', name: 'المغرب', offsetMinutes: 0, showCountdown: true, countdownWindow: 20, showCountup: true, countupWindow: 10, iqamahDuration: 10 },
+  { id: 'isha', name: 'العشاء', offsetMinutes: 0, showCountdown: true, countdownWindow: 20, showCountup: true, countupWindow: 20, iqamahDuration: 20 },
+];
+
+const DEFAULT_MANUSCRIPTS: Manuscript[] = [
+  { id: '1', type: 'text', content: 'سبحان الله وبحمده' },
+  { id: '2', type: 'text', content: 'سبحان الله العظيم' },
+  { id: '3', type: 'text', content: 'أستغفر الله وأتوب إليه' },
+  { id: '4', type: 'text', content: 'لا حول ولا قوة إلا بالله' },
+  { id: '5', type: 'text', content: 'اللهم صلِ وسلم على نبينا محمد' }
+];
 
 export const useMediaStore = create<MediaState>()(
   persist(
@@ -142,7 +185,9 @@ export const useMediaStore = create<MediaState>()(
       iptvPlaylist: [],
       iptvPlaylistIndex: 0,
       prayerTimes: prayerTimesData,
+      prayerSettings: DEFAULT_PRAYER_SETTINGS,
       reminders: [],
+      customManuscripts: DEFAULT_MANUSCRIPTS,
       mapSettings: { zoom: 20.0, tilt: 65, carScale: 1.02, backgroundIndex: 0 },
       aiSuggestions: [],
       activeVideo: null,
@@ -182,6 +227,19 @@ export const useMediaStore = create<MediaState>()(
       removeChannel: (channelid) => {
         set((state) => {
           const newList = state.favoriteChannels.filter(c => c.channelid !== channelid);
+          updateBin(JSONBIN_CHANNELS_BIN_ID, newList);
+          return { favoriteChannels: newList };
+        });
+      },
+
+      reorderFavoriteChannel: (channelid, direction) => {
+        set((state) => {
+          const idx = state.favoriteChannels.findIndex(c => c.channelid === channelid);
+          if (idx === -1) return {};
+          const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+          if (targetIdx < 0 || targetIdx >= state.favoriteChannels.length) return {};
+          const newList = [...state.favoriteChannels];
+          [newList[idx], newList[targetIdx]] = [newList[targetIdx], newList[idx]];
           updateBin(JSONBIN_CHANNELS_BIN_ID, newList);
           return { favoriteChannels: newList };
         });
@@ -272,6 +330,29 @@ export const useMediaStore = create<MediaState>()(
         });
       },
 
+      reorderFavoriteIptv: (index, direction) => {
+        set((state) => {
+          const targetIndex = direction === 'up' ? index - 1 : index + 1;
+          if (targetIndex < 0 || targetIndex >= state.favoriteIptvChannels.length) return {};
+          const newList = [...state.favoriteIptvChannels];
+          [newList[index], newList[targetIndex]] = [newList[targetIndex], newList[index]];
+          updateBin(JSONBIN_IPTV_FAVS_BIN_ID, newList);
+          return { favoriteIptvChannels: newList };
+        });
+      },
+
+      addManuscript: (manuscript) => set((state) => {
+        const newList = [...state.customManuscripts, manuscript];
+        updateBin(JSONBIN_MANUSCRIPTS_BIN_ID, newList);
+        return { customManuscripts: newList };
+      }),
+
+      removeManuscript: (id) => set((state) => {
+        const newList = state.customManuscripts.filter(m => m.id !== id);
+        updateBin(JSONBIN_MANUSCRIPTS_BIN_ID, newList);
+        return { customManuscripts: newList };
+      }),
+
       setIptvPlaylist: (channels, index) => set({ iptvPlaylist: channels, iptvPlaylistIndex: index }),
       nextIptvChannel: () => {
         const state = get();
@@ -290,24 +371,28 @@ export const useMediaStore = create<MediaState>()(
       
       addReminder: (reminder) => set((state) => {
         const newList = [...state.reminders, reminder];
-        updateBin(JSONBIN_REMINDERS_BIN_ID, newList);
+        updateBin(JSONBIN_REMINDERS_BIN_ID, { reminders: newList });
         return { reminders: newList };
       }),
       updateReminder: (id, update) => set((state) => {
         const newList = state.reminders.map(r => r.id === id ? { ...r, ...update } : r);
-        updateBin(JSONBIN_REMINDERS_BIN_ID, newList);
+        updateBin(JSONBIN_REMINDERS_BIN_ID, { reminders: newList });
         return { reminders: newList };
       }),
       removeReminder: (id) => set((state) => {
         const newList = state.reminders.filter(r => r.id !== id);
-        updateBin(JSONBIN_REMINDERS_BIN_ID, newList);
+        updateBin(JSONBIN_REMINDERS_BIN_ID, { reminders: newList });
         return { reminders: newList };
       }),
       toggleReminder: (id) => set((state) => {
         const newList = state.reminders.map(r => r.id === id ? { ...r, completed: !r.completed } : r);
-        updateBin(JSONBIN_REMINDERS_BIN_ID, newList);
+        updateBin(JSONBIN_REMINDERS_BIN_ID, { reminders: newList });
         return { reminders: newList };
       }),
+
+      updatePrayerSetting: (id, update) => set((state) => ({
+        prayerSettings: state.prayerSettings.map(s => s.id === id ? { ...s, ...update } : s)
+      })),
 
       setAiSuggestions: (suggestions) => set({ aiSuggestions: suggestions }),
       setActiveVideo: (video) => set({ activeVideo: video, activeIptv: null, isPlaying: !!video, isMinimized: false, isFullScreen: !!video }),
@@ -361,7 +446,9 @@ export const useMediaStore = create<MediaState>()(
         favoriteIptvChannels: state.favoriteIptvChannels,
         mapSettings: state.mapSettings,
         reminders: state.reminders,
+        customManuscripts: state.customManuscripts,
         prayerTimes: state.prayerTimes,
+        prayerSettings: state.prayerSettings,
         dockSide: state.dockSide,
         showIslands: state.showIslands
       }),
@@ -373,12 +460,13 @@ if (typeof window !== "undefined") {
   const syncWithBins = async () => {
     try {
       const state = useMediaStore.getState();
+      const nocache = `?nocache=${Date.now()}`;
       await state.fetchPrayerTimes();
 
-      const chRes = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_CHANNELS_BIN_ID}/latest`, { headers: { 'X-Master-Key': JSONBIN_MASTER_KEY } });
-      if (chRes.ok) { const data = await chRes.json(); useMediaStore.setState({ favoriteChannels: data.record }); }
+      const chRes = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_CHANNELS_BIN_ID}/latest${nocache}`, { headers: { 'X-Master-Key': JSONBIN_MASTER_KEY } });
+      if (chRes.ok) { const data = await chRes.ok ? await chRes.json() : { record: [] }; useMediaStore.setState({ favoriteChannels: data.record }); }
 
-      const clRes = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_CLUBS_BIN_ID}/latest`, { headers: { 'X-Master-Key': JSONBIN_MASTER_KEY } });
+      const clRes = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_CLUBS_BIN_ID}/latest${nocache}`, { headers: { 'X-Master-Key': JSONBIN_MASTER_KEY } });
       if (clRes.ok) { 
         const data = await clRes.json();
         if (data.record.teams) useMediaStore.setState({ favoriteTeams: data.record.teams });
@@ -387,21 +475,29 @@ if (typeof window !== "undefined") {
         if (data.record.skipped) useMediaStore.setState({ skippedMatchIds: data.record.skipped });
       }
 
-      const remRes = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_REMINDERS_BIN_ID}/latest`, { headers: { 'X-Master-Key': JSONBIN_MASTER_KEY } });
+      const remRes = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_REMINDERS_BIN_ID}/latest${nocache}`, { headers: { 'X-Master-Key': JSONBIN_MASTER_KEY } });
       if (remRes.ok) { 
         const data = await remRes.json();
-        if (Array.isArray(data.record)) useMediaStore.setState({ reminders: data.record });
+        if (data.record && Array.isArray(data.record.reminders)) {
+          useMediaStore.setState({ reminders: data.record.reminders });
+        }
       }
 
-      const savedRes = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_SAVED_VIDEOS_BIN_ID}/latest`, { headers: { 'X-Master-Key': JSONBIN_MASTER_KEY } });
+      const msRes = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_MANUSCRIPTS_BIN_ID}/latest${nocache}`, { headers: { 'X-Master-Key': JSONBIN_MASTER_KEY } });
+      if (msRes.ok) { 
+        const data = await msRes.json(); 
+        if (Array.isArray(data.record)) useMediaStore.setState({ customManuscripts: data.record }); 
+      }
+
+      const savedRes = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_SAVED_VIDEOS_BIN_ID}/latest${nocache}`, { headers: { 'X-Master-Key': JSONBIN_MASTER_KEY } });
       if (savedRes.ok) { 
         const data = await savedRes.json(); 
         if (data.record && Array.isArray(data.record)) useMediaStore.setState({ savedVideos: data.record }); 
       }
 
-      const iptvRes = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_IPTV_FAVS_BIN_ID}/latest`, { headers: { 'X-Master-Key': JSONBIN_MASTER_KEY } });
+      const iptvRes = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_IPTV_FAVS_BIN_ID}/latest${nocache}`, { headers: { 'X-Master-Key': JSONBIN_MASTER_KEY } });
       if (iptvRes.ok) { 
-        const data = await iptvRes.json(); 
+        const data = await iptvRes.ok ? await iptvRes.json() : { record: [] }; 
         const migrated = (data.record || []).map((ch: any) => ({
           ...ch,
           type: 'web',

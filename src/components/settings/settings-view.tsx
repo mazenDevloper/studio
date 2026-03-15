@@ -1,8 +1,7 @@
-
 "use client";
 
 import { useState, useCallback } from "react";
-import { useMediaStore, Reminder } from "@/lib/store";
+import { useMediaStore, Reminder, Manuscript } from "@/lib/store";
 import { 
   Settings, 
   Bell, 
@@ -15,11 +14,17 @@ import {
   Plus,
   Globe,
   Zap,
-  Shield
+  Shield,
+  Timer,
+  Clock,
+  ChevronDown,
+  ChevronUp,
+  Image as ImageIcon,
+  Type as TypeIcon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardTitle } from "@/components/ui/card";
+import { Card, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
@@ -34,7 +39,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import Image from "next/image";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const BACKGROUNDS = [
   "https://images.unsplash.com/photo-1534067783941-51c9c23ecefd",
@@ -43,9 +48,10 @@ const BACKGROUNDS = [
   "https://images.unsplash.com/photo-1478760329108-5c3ed9d495a0"
 ];
 
-const PRAYERS = [
+const RELATIVE_PRAYER_OPTIONS = [
   { id: 'fajr', name: 'الفجر' },
   { id: 'sunrise', name: 'الشروق' },
+  { id: 'duha', name: 'الضحى' },
   { id: 'dhuhr', name: 'الظهر' },
   { id: 'asr', name: 'العصر' },
   { id: 'maghrib', name: 'المغرب' },
@@ -59,6 +65,11 @@ export function SettingsView() {
     addReminder, 
     removeReminder, 
     updateReminder,
+    prayerSettings,
+    updatePrayerSetting,
+    customManuscripts,
+    addManuscript,
+    removeManuscript,
     favoriteTeams, 
     toggleFavoriteTeam,
     favoriteLeagueIds,
@@ -81,6 +92,9 @@ export function SettingsView() {
     color: "text-blue-400",
     iconType: "bell"
   });
+
+  const [manuscriptInput, setManuscriptInput] = useState("");
+  const [manuscriptType, setManuscriptType] = useState<'text' | 'image'>('text');
 
   const [clubSearch, setClubSearch] = useState("");
   const [isSearching, setIsSearching] = useState(false);
@@ -124,6 +138,17 @@ export function SettingsView() {
     setForm({ label: "", relativePrayer: "manual", manualTime: "08:00", offsetMinutes: 0, showCountdown: true, countdownWindow: 10, showCountup: true, countupWindow: 10, color: "text-blue-400", iconType: "bell" });
   };
 
+  const handleAddManuscript = () => {
+    if (!manuscriptInput.trim()) return;
+    addManuscript({
+      id: Math.random().toString(36).substr(2, 9),
+      type: manuscriptType,
+      content: manuscriptInput
+    });
+    setManuscriptInput("");
+    toast({ title: "تمت الإضافة", description: manuscriptType === 'text' ? "تمت إضافة النص للمخطوطات" : "تمت إضافة الصورة للمخطوطات" });
+  };
+
   const handleEdit = (r: Reminder) => {
     setEditingId(r.id);
     setForm(r);
@@ -141,38 +166,174 @@ export function SettingsView() {
       <Tabs defaultValue="appearance" className="w-full">
         <TabsList className="bg-white/5 p-1 rounded-full border border-white/10 h-16 mb-12 flex justify-start w-fit">
           <TabsTrigger value="appearance" className="rounded-full px-10 h-full data-[state=active]:bg-primary font-bold text-lg focusable">المظهر</TabsTrigger>
+          <TabsTrigger value="prayers" className="rounded-full px-10 h-full data-[state=active]:bg-primary font-bold text-lg focusable">الصلوات</TabsTrigger>
           <TabsTrigger value="reminders" className="rounded-full px-10 h-full data-[state=active]:bg-primary font-bold text-lg focusable">التذكيرات</TabsTrigger>
           <TabsTrigger value="football" className="rounded-full px-10 h-full data-[state=active]:bg-primary font-bold text-lg focusable">الرياضة</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="appearance" className="grid grid-cols-1 lg:grid-cols-2 gap-8 outline-none">
+        <TabsContent value="appearance" className="space-y-12 outline-none">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <Card className="premium-glass p-10 space-y-8">
+              <CardTitle className="text-2xl font-black text-white">زوم الخريطة</CardTitle>
+              <Slider value={[mapSettings.zoom]} min={15} max={21} step={0.1} onValueChange={([v]) => updateMapSettings({ zoom: v })} />
+            </Card>
+            <Card className="premium-glass p-10">
+              <CardTitle className="text-2xl font-black text-white mb-6">الخلفية</CardTitle>
+              <div className="grid grid-cols-2 gap-4 h-64">
+                {BACKGROUNDS.map((bg, idx) => (
+                  <button key={idx} onClick={() => updateMapSettings({ backgroundIndex: idx })} className={cn("relative rounded-2xl overflow-hidden border-4 focusable", mapSettings.backgroundIndex === idx ? "border-primary" : "border-transparent opacity-40")}>
+                    <img src={`${bg}?auto=format&fit=crop&q=40&w=300`} className="w-full h-full object-cover" alt="" />
+                  </button>
+                ))}
+              </div>
+            </Card>
+          </div>
+
           <Card className="premium-glass p-10 space-y-8">
-            <CardTitle className="text-2xl font-black text-white">زوم الخريطة</CardTitle>
-            <Slider value={[mapSettings.zoom]} min={15} max={21} step={0.1} onValueChange={([v]) => updateMapSettings({ zoom: v })} />
-          </Card>
-          <Card className="premium-glass p-10">
-            <CardTitle className="text-2xl font-black text-white mb-6">الخلفية</CardTitle>
-            <div className="grid grid-cols-2 gap-4 h-64">
-              {BACKGROUNDS.map((bg, idx) => (
-                <button key={idx} onClick={() => updateMapSettings({ backgroundIndex: idx })} className={cn("relative rounded-2xl overflow-hidden border-4 focusable", mapSettings.backgroundIndex === idx ? "border-primary" : "border-transparent opacity-40")}>
-                  <img src={`${bg}?auto=format&fit=crop&q=40&w=300`} className="w-full h-full object-cover" alt="" />
-                </button>
-              ))}
+            <div className="flex flex-col gap-2">
+              <CardTitle className="text-2xl font-black text-white flex items-center gap-3">
+                <ImageIcon className="w-6 h-6 text-accent" />
+                تخصيص المخطوطات والأذكار
+              </CardTitle>
+              <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest">Custom Calligraphy & Texts</p>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+              <div className="lg:col-span-5 space-y-6">
+                <div className="flex bg-white/5 p-1 rounded-2xl border border-white/5 h-14">
+                  <button onClick={() => setManuscriptType('text')} className={cn("flex-1 rounded-xl flex items-center justify-center gap-2 font-black text-xs transition-all", manuscriptType === 'text' ? "bg-white/10 text-white" : "text-white/40")}>
+                    <TypeIcon className="w-4 h-4" /> نص ديواني
+                  </button>
+                  <button onClick={() => setManuscriptType('image')} className={cn("flex-1 rounded-xl flex items-center justify-center gap-2 font-black text-xs transition-all", manuscriptType === 'image' ? "bg-white/10 text-white" : "text-white/40")}>
+                    <ImageIcon className="w-4 h-4" /> صورة مفرغة
+                  </button>
+                </div>
+                <Input 
+                  placeholder={manuscriptType === 'text' ? "اكتب التسبيح أو الذكر..." : "رابط صورة المخطوطة (URL)..."}
+                  value={manuscriptInput}
+                  onChange={(e) => setManuscriptInput(e.target.value)}
+                  className="h-16 bg-white/5 border-white/10 rounded-2xl px-6 text-right text-lg focusable"
+                />
+                <Button onClick={handleAddManuscript} className="w-full h-16 bg-accent text-black font-black text-xl rounded-2xl shadow-xl focusable">
+                  فقط هنا اربطة ب jsonbin 69b63c5cc3097a1dd5278b25
+                </Button>
+              </div>
+
+              <div className="lg:col-span-7 space-y-4">
+                <span className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2 px-2">المخطوطات النشطة</span>
+                <ScrollArea className="h-[280px] pr-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-10">
+                    {customManuscripts.map((item) => (
+                      <div key={item.id} className="p-4 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-between group transition-all hover:border-white/20">
+                        <div className="flex-1 min-w-0 mr-2">
+                          {item.type === 'text' ? (
+                            <span className="font-calligraphy text-lg text-white truncate block">{item.content}</span>
+                          ) : (
+                            <img src={item.content} className="h-10 w-auto object-contain brightness-0 invert opacity-60" alt="" />
+                          )}
+                        </div>
+                        <Button variant="ghost" size="icon" onClick={() => removeManuscript(item.id)} className="w-10 h-10 rounded-full bg-red-600/10 text-red-500 opacity-0 group-hover:opacity-100 transition-all focusable">
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </div>
             </div>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="prayers" className="outline-none">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {prayerSettings.map((prayer) => (
+              <Card key={prayer.id} className="premium-glass p-6 space-y-6">
+                <div className="flex items-center justify-between border-b border-white/5 pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-accent/20 flex items-center justify-center">
+                      <Clock className="w-5 h-5 text-accent" />
+                    </div>
+                    <h3 className="text-xl font-black text-white">{prayer.name}</h3>
+                  </div>
+                  {prayer.id !== 'sunrise' && prayer.id !== 'duha' && (
+                    <div className="flex flex-col items-end">
+                      <span className="text-[10px] text-white/40 uppercase font-black">مدة الإقامة</span>
+                      <div className="flex items-center gap-3">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="w-6 h-6 rounded-lg bg-white/5"
+                          onClick={() => updatePrayerSetting(prayer.id, { iqamahDuration: Math.max(0, prayer.iqamahDuration - 1) })}
+                        >
+                          <ChevronDown className="w-3 h-3" />
+                        </Button>
+                        <span className="text-lg font-black text-accent tabular-nums">{prayer.iqamahDuration}</span>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="w-6 h-6 rounded-lg bg-white/5"
+                          onClick={() => updatePrayerSetting(prayer.id, { iqamahDuration: prayer.iqamahDuration + 1 })}
+                        >
+                          <ChevronUp className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-white/60">الإزاحة (بالدقائق)</span>
+                    <div className="flex items-center gap-3 bg-black/20 p-1 rounded-xl border border-white/5">
+                      <Button variant="ghost" size="icon" className="w-8 h-8" onClick={() => updatePrayerSetting(prayer.id, { offsetMinutes: prayer.offsetMinutes - 1 })}><ChevronDown className="w-4 h-4" /></Button>
+                      <span className="w-8 text-center font-black text-white tabular-nums">{prayer.offsetMinutes}</span>
+                      <Button variant="ghost" size="icon" className="w-8 h-8" onClick={() => updatePrayerSetting(prayer.id, { offsetMinutes: prayer.offsetMinutes + 1 })}><ChevronUp className="w-4 h-4" /></Button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 pt-2">
+                    <div className="flex flex-col gap-2 p-3 bg-white/5 rounded-2xl border border-white/5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[9px] font-black text-white/40 uppercase">نافذة التنازلي</span>
+                        <Switch checked={prayer.showCountdown} onCheckedChange={(v) => updatePrayerSetting(prayer.id, { showCountdown: v })} />
+                      </div>
+                      <Input 
+                        type="number" 
+                        value={prayer.countdownWindow} 
+                        onChange={(e) => updatePrayerSetting(prayer.id, { countdownWindow: parseInt(e.target.value) || 0 })}
+                        className="h-8 bg-black/40 border-none text-center font-black text-sm rounded-lg"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-2 p-3 bg-white/5 rounded-2xl border border-white/5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[9px] font-black text-white/40 uppercase">نافذة التصاعدي</span>
+                        <Switch checked={prayer.showCountup} onCheckedChange={(v) => updatePrayerSetting(prayer.id, { showCountup: v })} />
+                      </div>
+                      <Input 
+                        type="number" 
+                        value={prayer.countupWindow} 
+                        onChange={(e) => updatePrayerSetting(prayer.id, { countupWindow: parseInt(e.target.value) || 0 })}
+                        className="h-8 bg-black/40 border-none text-center font-black text-sm rounded-lg"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
         </TabsContent>
 
         <TabsContent value="reminders" className="grid grid-cols-1 lg:grid-cols-12 gap-8 outline-none">
           <div className="lg:col-span-6 space-y-8">
             <Card className="premium-glass p-10 space-y-6">
-              <CardTitle className="text-2xl font-black text-white">{editingId ? "تعديل التذكير" : "إضافة تذكير ذكي"}</CardTitle>
+              <CardTitle className="text-2xl font-black text-white">{editingId ? "تعديل التذكير" : "إضافة تذكير يدوي"}</CardTitle>
               <div className="space-y-6">
                 <Input placeholder="اسم التذكير..." className="bg-white/5 border-white/10 h-14 rounded-2xl px-6 text-right text-xl focusable" value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} />
                 <div className="grid grid-cols-2 gap-6">
                   <Select value={form.relativePrayer} onValueChange={(v) => setForm({ ...form, relativePrayer: v as any })}>
                     <SelectTrigger className="bg-white/5 border-white/10 h-14 rounded-2xl focusable"><SelectValue /></SelectTrigger>
                     <SelectContent className="bg-zinc-900 border-white/10 text-white">
-                      {PRAYERS.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                      {RELATIVE_PRAYER_OPTIONS.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
                   {form.relativePrayer === 'manual' ? (
@@ -207,7 +368,7 @@ export function SettingsView() {
                       </div>
                       <div className="flex flex-col gap-1 text-right">
                         <h3 className="font-black text-2xl text-white">{r.label}</h3>
-                        <span className="text-[10px] font-black text-white/40 uppercase">{r.relativePrayer === 'manual' ? r.manualTime : `${PRAYERS.find(p => p.id === r.relativePrayer)?.name} (${r.offsetMinutes >= 0 ? '+' : ''}${r.offsetMinutes})`}</span>
+                        <span className="text-[10px] font-black text-white/40 uppercase">{r.relativePrayer === 'manual' ? r.manualTime : `${RELATIVE_PRAYER_OPTIONS.find(p => p.id === r.relativePrayer)?.name} (${r.offsetMinutes >= 0 ? '+' : ''}${r.offsetMinutes})`}</span>
                       </div>
                     </div>
                     <div className="flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-all">
@@ -224,7 +385,6 @@ export function SettingsView() {
         <TabsContent value="football" className="outline-none space-y-12">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             <div className="lg:col-span-7 space-y-8">
-              {/* League Tracking */}
               <Card className="premium-glass p-8 space-y-6">
                 <div className="flex flex-col gap-2">
                   <CardTitle className="text-2xl font-black text-white flex items-center gap-3">
@@ -254,7 +414,6 @@ export function SettingsView() {
                 </div>
               </Card>
 
-              {/* Club Search */}
               <Card className="premium-glass p-8 space-y-6">
                 <div className="flex flex-col gap-2">
                   <CardTitle className="text-2xl font-black text-white flex items-center gap-3">
@@ -284,7 +443,7 @@ export function SettingsView() {
                         onClick={() => toggleFavoriteTeam({ id: team.team.id, name: team.team.name, logo: team.team.logo })}
                         className={cn(
                           "p-4 rounded-[2rem] border transition-all cursor-pointer flex flex-col items-center gap-3 focusable",
-                          isFav ? "bg-primary/20 border-primary shadow-glow" : "bg-white/5 border-white/5 hover:bg-white/10"
+                          isFav ? "bg-primary/20 border-primary shadow-glow" : "bg-white/5 border-white/10 hover:bg-white/10"
                         )}
                       >
                         <div className="relative w-16 h-16">
@@ -299,7 +458,6 @@ export function SettingsView() {
               </Card>
             </div>
 
-            {/* Favorite List */}
             <div className="lg:col-span-5 space-y-6">
               <Card className="premium-glass p-8 space-y-6 h-full">
                 <div className="flex justify-between items-center">

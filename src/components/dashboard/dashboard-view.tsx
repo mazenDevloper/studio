@@ -10,6 +10,7 @@ import { PlayingNowWidget } from "./widgets/playing-now-widget";
 import { PrayerTimelineWidget } from "./widgets/prayer-timeline-widget";
 import { MapWidget } from "./widgets/map-widget";
 import { ReminderSummaryWidget } from "./widgets/reminder-summary-widget";
+import { ActiveAzkarWidget } from "./widgets/active-azkar-widget";
 import { useMediaStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { Carousel, CarouselContent, CarouselItem, CarouselApi } from "@/components/ui/carousel";
@@ -49,7 +50,7 @@ export function DashboardView() {
     });
   }, [api, activeVideo]);
 
-  const showReminderInsteadOfCar = windowWidth > 1080;
+  const isWideScreen = windowWidth > 1080;
 
   return (
     <div className="h-full w-full p-6 flex flex-col gap-6 relative overflow-y-auto pb-32 no-scrollbar">
@@ -68,14 +69,14 @@ export function DashboardView() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6 min-h-[380px]">
-        {/* Left: Interactive Map - LOADED FIRST */}
-        <div className="md:col-span-4 rounded-[2.5rem] overflow-hidden relative shadow-2xl h-full focusable" tabIndex={0} data-nav-id="map-widget-container">
-          <MapWidget />
+        {/* Left: Interactive Map OR Active Azkar (Width > 1080px) */}
+        <div className="md:col-span-4 rounded-[2.5rem] overflow-hidden relative shadow-2xl h-full focusable" tabIndex={0} data-nav-id="left-widget-container">
+          {isWideScreen ? <ActiveAzkarWidget /> : <MapWidget />}
         </div>
 
         {/* Middle: Vehicle Visualizer OR Reminder Summary (Width > 1080px) */}
         <div className="md:col-span-4 rounded-[2.5rem] relative flex items-center justify-center overflow-hidden h-full shadow-2xl focusable" tabIndex={0} data-nav-id="car-visualizer-container">
-          {showReminderInsteadOfCar ? (
+          {isWideScreen ? (
             <ReminderSummaryWidget />
           ) : (
             <>

@@ -5,7 +5,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useMediaStore, IptvChannel } from "@/lib/store";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Tv, List, ChevronRight, Loader2, Play, Search, X, Star, Zap, Link as LinkIcon, Plus } from "lucide-react";
+import { Tv, List, ChevronRight, Loader2, Play, Search, X, Star, Zap, Link as LinkIcon, Plus, ChevronUp } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { getIptvCategories, getIptvChannels } from "@/app/actions/iptv";
 import { cn } from "@/lib/utils";
@@ -19,7 +19,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 
 export function IptvView() {
-  const { setActiveIptv, favoriteIptvChannels, toggleFavoriteIptvChannel, setIptvPlaylist } = useMediaStore();
+  const { setActiveIptv, favoriteIptvChannels, toggleFavoriteIptvChannel, setIptvPlaylist, reorderFavoriteIptv } = useMediaStore();
   const { toast } = useToast();
   const [categories, setCategories] = useState<any[]>([]);
   const [channels, setChannels] = useState<IptvChannel[]>([]);
@@ -68,8 +68,6 @@ export function IptvView() {
     try {
       const data = await getIptvChannels(catId);
       if (Array.isArray(data)) {
-        // RADICAL FIX: Force all fetched channels to type:web and .m3u8 format
-        // If stream_type is live, we explicitly use the .m3u8 format to handle redirects
         const transformed = data.map((ch: any) => ({
           ...ch,
           type: 'web',
@@ -85,6 +83,8 @@ export function IptvView() {
   const isStarred = (id: string) => favoriteIptvChannels.some(c => c.stream_id === id);
 
   const sortedAndFilteredChannels = useMemo(() => {
+    if (selectedCat === 'direct') return channels.filter(c => c.name?.toLowerCase().includes(search.toLowerCase()));
+    
     return [...channels]
       .sort((a, b) => {
         const aStarred = isStarred(a.stream_id);
@@ -96,7 +96,7 @@ export function IptvView() {
       .filter(c => 
         c.name && typeof c.name === 'string' && c.name.toLowerCase().includes(search.toLowerCase())
       );
-  }, [channels, search, favoriteIptvChannels]);
+  }, [channels, search, favoriteIptvChannels, selectedCat]);
 
   const handleChannelSelect = (ch: IptvChannel, idx: number) => {
     setActiveIptv(ch);
@@ -114,7 +114,7 @@ export function IptvView() {
       category_id: "direct",
       starred: true,
       type: 'web',
-      stream_type: manualUrl.includes('.m3u8') ? 'live' : 'live' // Default custom added to live type
+      stream_type: 'live'
     };
 
     toggleFavoriteIptvChannel(newChannel);
@@ -201,9 +201,30 @@ export function IptvView() {
                   <div className="absolute inset-0 bg-black/40 group-hover:bg-transparent transition-all" />
                   <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all"><div className="w-16 h-16 rounded-full bg-emerald-500 flex items-center justify-center shadow-2xl scale-75 group-hover:scale-100 transition-all"><Play className="w-8 h-8 text-white fill-current ml-1" /></div></div>
                 </div>
-                <button onClick={(e) => { e.stopPropagation(); toggleFavoriteIptvChannel(ch); }} className={cn("absolute top-2 right-2 w-11 h-11 rounded-full backdrop-blur-xl border border-white/10 flex items-center justify-center transition-all z-30 focusable", isStarred(ch.stream_id) ? "bg-yellow-500 text-black opacity-100 shadow-glow" : "bg-black/60 text-white/40 opacity-0 group-hover:opacity-100")}>
-                  <Star className={cn("w-6 h-6", isStarred(ch.stream_id) && "fill-current")} />
-                </button>
+                
+                {/* Reorder and Star Controls */}
+                <div className="absolute top-2 right-2 flex flex-col gap-2 z-30 transition-all">
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); toggleFavoriteIptvChannel(ch); }} 
+                    className={cn(
+                      "w-11 h-11 rounded-full backdrop-blur-xl border border-white/10 flex items-center justify-center transition-all focusable", 
+                      isStarred(ch.stream_id) ? "bg-yellow-500 text-black opacity-100 shadow-glow" : "bg-black/60 text-white/40 opacity-0 group-hover:opacity-100"
+                    )}
+                  >
+                    <Star className={cn("w-6 h-6", isStarred(ch.stream_id) && "fill-current")} />
+                  </button>
+                  
+                  {selectedCat === 'direct' && idx > 0 && (
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); reorderFavoriteIptv(idx, 'up'); }}
+                      className="w-11 h-11 rounded-full bg-blue-600/80 backdrop-blur-xl text-white flex items-center justify-center opacity-0 group-hover:opacity-100 focusable border border-white/10 shadow-lg"
+                      title="تحريك للأعلى"
+                    >
+                      <ChevronUp className="w-6 h-6" />
+                    </button>
+                  )}
+                </div>
+
                 <span className={cn("font-black text-base text-center truncate w-full px-2 transition-colors", isStarred(ch.stream_id) ? "text-yellow-500" : "text-white/70 group-hover:text-white")}>{ch.name}</span>
               </div>
             ))}
