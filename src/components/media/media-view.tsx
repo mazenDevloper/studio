@@ -53,6 +53,35 @@ export function MediaView() {
   const [isSearchingChannels, setIsSearchingChannels] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
+  // Focus Management Hook - Handles automatic focus transitions when internal data changes
+  useEffect(() => {
+    if (videoResults.length > 0) {
+      setTimeout(() => {
+        const firstResult = document.querySelector('[data-nav-id="search-result-0"]') as HTMLElement;
+        if (firstResult) firstResult.focus();
+      }, 300);
+    }
+  }, [videoResults]);
+
+  useEffect(() => {
+    if (channelVideos.length > 0) {
+      setTimeout(() => {
+        const firstVideo = document.querySelector('[data-nav-id="channel-video-0"]') as HTMLElement;
+        if (firstVideo) firstVideo.focus();
+      }, 300);
+    }
+  }, [channelVideos]);
+
+  useEffect(() => {
+    // Priority: Select channel if one is chosen, otherwise first fav channel
+    if (favoriteChannels.length > 0 && !selectedChannel && videoResults.length === 0) {
+      setTimeout(() => {
+        const firstFav = document.querySelector('[data-nav-id="fav-channel-0"]') as HTMLElement;
+        if (firstFav) firstFav.focus();
+      }, 300);
+    }
+  }, [favoriteChannels, selectedChannel, videoResults]);
+
   const handleVideoSearch = useCallback(async (queryOverride?: string) => {
     const finalQuery = queryOverride || searchQuery;
     if (!finalQuery.trim()) return;

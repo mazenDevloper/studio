@@ -137,7 +137,7 @@ export function MoonWidget() {
                     textAnchor="middle" 
                     dominantBaseline="central"
                     className="font-black"
-                    style={{ fontSize: isWide ? (cycleIndex === 2 ? '24px' : '32px') : '40px' }} 
+                    style={{ fontSize: isWide ? (cycleIndex === 2 ? '16px' : '28px') : '30px' }} 
                     fill="url(#moonFill)"
                     stroke="url(#moonStroke)"
                     strokeWidth="0.5"

@@ -21,14 +21,37 @@ export function CarDock() {
     { name: "Settings", href: "/settings", icon: Settings, color: "bg-zinc-700" },
   ];
 
-  // Smart Initial Focus for Remote Pointer Navigation
+  // Smart Focus Transition Logic
   useEffect(() => {
     const timer = setTimeout(() => {
-      const activeApp = apps.find(a => a.href === pathname);
-      const targetId = activeApp ? `dock-${activeApp.name}` : 'dock-Home';
-      const target = document.querySelector(`[data-nav-id="${targetId}"]`) as HTMLElement;
-      if (target) target.focus();
-    }, 1000);
+      let target: HTMLElement | null = null;
+      
+      if (pathname === '/') {
+        target = document.querySelector('[data-nav-id="moon-widget-container"]') as HTMLElement;
+      } else if (pathname === '/media') {
+        // ALWAYS PRIORITIZE FIRST FAVORITE CHANNEL
+        target = document.querySelector('[data-nav-id="fav-channel-0"]') as HTMLElement || 
+                 document.querySelector('[data-nav-id="add-channel-btn"]') as HTMLElement;
+      } else if (pathname === '/iptv') {
+        // ALWAYS PRIORITIZE FIRST IPTV CHANNEL
+        target = document.querySelector('[data-nav-id="iptv-channel-0"]') as HTMLElement || 
+                 document.querySelector('[data-nav-id="iptv-cat-0"]') as HTMLElement;
+      } else if (pathname === '/football') {
+        target = document.querySelector('.focusable[data-nav-id^="match-"]') as HTMLElement || 
+                 document.querySelector('[role="tablist"] [role="tab"]:nth-child(2)') as HTMLElement;
+      } else if (pathname === '/settings') {
+        target = document.querySelector('[role="tablist"] [role="tab"]:first-child') as HTMLElement;
+      }
+
+      if (!target) {
+        target = document.querySelector('main .focusable:not([data-nav-id^="dock-"])') as HTMLElement;
+      }
+
+      if (target) {
+        target.focus();
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 600);
     return () => clearTimeout(timer);
   }, [pathname]);
 
@@ -71,7 +94,6 @@ export function CarDock() {
       </div>
 
       <div className="hidden md:flex mt-auto flex-col items-center gap-6">
-        {/* Global Island Visibility Toggle - Sovereign Control */}
         <Button
           variant="ghost"
           size="icon"

@@ -45,6 +45,16 @@ export function IptvView() {
     }
   }, [favoriteIptvChannels, selectedCat]);
 
+  // Smart Focus Logic
+  useEffect(() => {
+    if (sortedAndFilteredChannels.length > 0) {
+      setTimeout(() => {
+        const firstCh = document.querySelector('[data-nav-id="iptv-channel-0"]') as HTMLElement;
+        if (firstCh) firstCh.focus();
+      }, 300);
+    }
+  }, [selectedCat, search]);
+
   const fetchCategories = async () => {
     setLoading(true);
     try {

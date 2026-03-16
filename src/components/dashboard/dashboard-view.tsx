@@ -87,23 +87,23 @@ export function DashboardView() {
               </div>
             )}
             {wallPlateType === 'manuscript' && (
-              <div className="relative w-full h-full animate-in zoom-in-95 duration-1000 flex items-center justify-center px-10 bg-black">
+              <div className="relative w-full h-full animate-in zoom-in-95 duration-1000 flex items-center justify-center px-10">
                 {mapSettings.showManuscriptBg && (
                   <div className="absolute inset-0 z-0">
                     <Image 
                       src={mapSettings.manuscriptBgUrl} 
                       alt="Wall Background" 
                       fill 
-                      className="object-cover opacity-90"
+                      className="object-cover"
                       priority
                     />
-                    <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/20" />
+                    {/* Natural colors - No black overlay, No Blur */}
                   </div>
                 )}
                 
                 <div className="relative z-10 w-full flex items-center justify-center">
                   {wallPlateData.type === 'text' ? (
-                    <p className="w-full text-2xl md:text-4xl lg:text-5xl font-calligraphy text-white leading-relaxed drop-shadow-[0_0_60px_rgba(255,255,255,1)] text-center px-10">
+                    <p className="w-full text-base md:text-xl lg:text-2xl font-calligraphy text-white leading-relaxed drop-shadow-[0_0_30px_rgba(255,255,255,0.8)] text-center px-10">
                       {wallPlateData.content}
                     </p>
                   ) : (

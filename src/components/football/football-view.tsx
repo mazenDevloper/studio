@@ -49,6 +49,16 @@ export function FootballView() {
     return () => clearInterval(interval);
   }, [activeTab]);
 
+  // Smart Focus logic for matches
+  useEffect(() => {
+    if (matches.length > 0 && !loading) {
+      setTimeout(() => {
+        const firstMatch = document.querySelector('[data-nav-id^="match-"]') as HTMLElement;
+        if (firstMatch) firstMatch.focus();
+      }, 500);
+    }
+  }, [matches, loading]);
+
   const filteredAndSortedMatches = useMemo(() => {
     if (!matches || !Array.isArray(matches)) return [];
     
@@ -85,7 +95,7 @@ export function FootballView() {
     });
   }, [matches, activeTab, filterType, favoriteTeams, belledMatchIds]);
 
-  const renderMatchCard = (match: any) => {
+  const renderMatchCard = (match: any, idx: number) => {
     const isFavMatch = isFavTeam(match.homeTeamId) || isFavTeam(match.awayTeamId);
     const isBelledMatch = isBelled(match.id);
     const isLive = match.status === 'live';
@@ -98,6 +108,7 @@ export function FootballView() {
     return (
       <Card 
         key={match.id} 
+        data-nav-id={`match-${idx}`}
         className={cn(
           "relative overflow-hidden transition-all duration-500 border-white/5 group focusable premium-glass h-36",
           isBelledMatch ? "ring-2 ring-accent bg-accent/5" : isFavMatch ? "ring-2 ring-primary bg-primary/10" : "bg-card/40"
@@ -125,11 +136,11 @@ export function FootballView() {
                 <button 
                   onClick={(e) => handleToggleFav(e, match.homeTeamId, match.homeTeam, match.homeLogo)}
                   className={cn(
-                    "absolute -top-3 -right-3 w-6 h-6 rounded-full flex items-center justify-center shadow-xl transition-all active:scale-75 z-30",
+                    "absolute top-0 right-0 w-5 h-5 rounded-full flex items-center justify-center shadow-xl transition-all active:scale-75 z-30",
                     isFavTeam(match.homeTeamId) ? "bg-yellow-500 text-black opacity-100" : "bg-black/80 text-white/40 opacity-0 group-hover/team:opacity-100"
                   )}
                 >
-                  <Star className={cn("w-3.5 h-3.5", isFavTeam(match.homeTeamId) && "fill-current")} />
+                  <Star className={cn("w-3 h-3", isFavTeam(match.homeTeamId) && "fill-current")} />
                 </button>
               </div>
               <span className={cn("text-[9px] font-black text-center line-clamp-1 uppercase tracking-tighter", isFavTeam(match.homeTeamId) ? "text-primary" : "text-white/80")}>
@@ -166,11 +177,11 @@ export function FootballView() {
                 <button 
                   onClick={(e) => handleToggleFav(e, match.awayTeamId, match.awayTeam, match.awayLogo)}
                   className={cn(
-                    "absolute -top-3 -left-3 w-6 h-6 rounded-full flex items-center justify-center shadow-xl transition-all active:scale-75 z-30",
+                    "absolute top-0 left-0 w-5 h-5 rounded-full flex items-center justify-center shadow-xl transition-all active:scale-75 z-30",
                     isFavTeam(match.awayTeamId) ? "bg-yellow-500 text-black opacity-100" : "bg-black/80 text-white/40 opacity-0 group-hover/team:opacity-100"
                   )}
                 >
-                  <Star className={cn("w-3.5 h-3.5", isFavTeam(match.awayTeamId) && "fill-current")} />
+                  <Star className={cn("w-3 h-3", isFavTeam(match.awayTeamId) && "fill-current")} />
                 </button>
               </div>
               <span className={cn("text-[9px] font-black text-center line-clamp-1 uppercase tracking-tighter", isFavTeam(match.awayTeamId) ? "text-primary" : "text-white/80")}>
@@ -235,7 +246,7 @@ export function FootballView() {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredAndSortedMatches.map((m) => renderMatchCard(m))}
+                {filteredAndSortedMatches.map((m, idx) => renderMatchCard(m, idx))}
               </div>
             )}
           </TabsContent>

@@ -24,7 +24,8 @@ import {
   AlertTriangle,
   Palette,
   Upload,
-  Eye
+  Eye,
+  X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -81,6 +82,9 @@ export function SettingsView() {
     customManuscripts,
     addManuscript,
     removeManuscript,
+    customWallBackgrounds,
+    addCustomWallBackground,
+    removeCustomWallBackground,
     favoriteTeams, 
     toggleFavoriteTeam,
     favoriteLeagueIds,
@@ -119,13 +123,18 @@ export function SettingsView() {
     setLocalBgUrl(mapSettings.manuscriptBgUrl);
   }, [mapSettings.manuscriptBgUrl]);
 
-  const dynamicWallBackgrounds = useMemo(() => {
-    const list = [...STATIC_WALL_BACKGROUNDS];
-    if (mapSettings.manuscriptBgUrl && !list.some(b => b.url === mapSettings.manuscriptBgUrl)) {
-      list.push({ id: 'custom-uploaded', name: 'صورة مرفوعة', url: mapSettings.manuscriptBgUrl });
+  const allAvailableWallBackgrounds = useMemo(() => {
+    const list = [...STATIC_WALL_BACKGROUNDS.map(b => ({ ...b, isCustom: false }))];
+    // Map custom backgrounds from the store
+    if (Array.isArray(customWallBackgrounds)) {
+      customWallBackgrounds.forEach((url, i) => {
+        if (!STATIC_WALL_BACKGROUNDS.some(s => s.url === url)) {
+          list.push({ id: `custom-${i}`, name: `مرفوعة ${i + 1}`, url, isCustom: true });
+        }
+      });
     }
     return list;
-  }, [mapSettings.manuscriptBgUrl]);
+  }, [customWallBackgrounds]);
 
   const handleGlobalSearch = useCallback(async () => {
     if (!clubSearch.trim() && searchLeagueId === "all") return;
@@ -148,7 +157,8 @@ export function SettingsView() {
   const handleApplyBackground = () => {
     if (!localBgUrl.trim()) return;
     updateMapSettings({ manuscriptBgUrl: localBgUrl });
-    toast({ title: "تم الحفظ سحابياً", description: "تم تحديث خلفية حائط المخطوطة بنجاح." });
+    addCustomWallBackground(localBgUrl);
+    toast({ title: "تم الحفظ سحابياً", description: "تم تحديث خلفية حائط المخطوطة ومزامنتها بنجاح." });
   };
 
   const handleSubmitReminder = () => {
@@ -281,26 +291,39 @@ export function SettingsView() {
                 </div>
               </div>
               
-              <div className="lg:col-span-8 grid grid-cols-2 md:grid-cols-4 gap-4">
-                {dynamicWallBackgrounds.map((bg) => (
-                  <button 
-                    key={bg.id} 
-                    onClick={() => {
-                      setLocalBgUrl(bg.url);
-                      updateMapSettings({ manuscriptBgUrl: bg.url });
-                      toast({ title: "تم الاختيار", description: `تم تفعيل خلفية ${bg.name}` });
-                    }}
-                    className={cn(
-                      "relative aspect-video rounded-xl overflow-hidden border-2 transition-all focusable",
-                      mapSettings.manuscriptBgUrl === bg.url ? "border-primary scale-105 shadow-glow" : "border-transparent opacity-40 hover:opacity-100"
-                    )}
-                  >
-                    <img src={bg.url} className="w-full h-full object-cover" alt={bg.name} />
-                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                      <span className="text-[10px] font-black text-white uppercase">{bg.name}</span>
-                    </div>
-                  </button>
-                ))}
+              <div className="lg:col-span-8">
+                <ScrollArea className="h-[400px]">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pb-8 pr-4">
+                    {allAvailableWallBackgrounds.map((bg) => (
+                      <div key={bg.id} className="relative group">
+                        <button 
+                          onClick={() => {
+                            setLocalBgUrl(bg.url);
+                            updateMapSettings({ manuscriptBgUrl: bg.url });
+                            toast({ title: "تم الاختيار", description: `تم تفعيل خلفية ${bg.name}` });
+                          }}
+                          className={cn(
+                            "relative aspect-video w-full rounded-xl overflow-hidden border-2 transition-all focusable",
+                            mapSettings.manuscriptBgUrl === bg.url ? "border-primary scale-105 shadow-glow" : "border-transparent opacity-40 hover:opacity-100"
+                          )}
+                        >
+                          <img src={bg.url} className="w-full h-full object-cover" alt={bg.name} />
+                          <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                            <span className="text-[10px] font-black text-white uppercase">{bg.name}</span>
+                          </div>
+                        </button>
+                        {bg.isCustom && (
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); removeCustomWallBackground(bg.url); }}
+                            className="absolute -top-2 -left-2 w-6 h-6 rounded-full bg-red-600 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all shadow-xl z-20"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
               </div>
             </div>
           </Card>

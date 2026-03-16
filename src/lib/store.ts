@@ -89,6 +89,7 @@ interface MediaState {
   prayerSettings: PrayerSetting[];
   reminders: Reminder[];
   customManuscripts: Manuscript[];
+  customWallBackgrounds: string[];
   mapSettings: MapSettings;
   aiSuggestions: any[];
   activeVideo: YouTubeVideo | null;
@@ -115,6 +116,8 @@ interface MediaState {
   toggleReminder: (id: string) => void;
   addManuscript: (manuscript: Manuscript) => void;
   removeManuscript: (id: string) => void;
+  addCustomWallBackground: (url: string) => void;
+  removeCustomWallBackground: (url: string) => void;
   updatePrayerSetting: (id: string, setting: Partial<PrayerSetting>) => void;
   toggleFavoriteTeam: (team: FavoriteTeam) => void;
   toggleFavoriteLeague: (leagueId: number) => void;
@@ -188,6 +191,7 @@ export const useMediaStore = create<MediaState>()(
       prayerSettings: DEFAULT_PRAYER_SETTINGS,
       reminders: [],
       customManuscripts: [],
+      customWallBackgrounds: [],
       mapSettings: { 
         zoom: 20.0, 
         tilt: 65, 
@@ -221,7 +225,8 @@ export const useMediaStore = create<MediaState>()(
           mapSettings: state.mapSettings,
           dockSide: state.dockSide,
           showIslands: state.showIslands,
-          videoProgress: state.videoProgress
+          videoProgress: state.videoProgress,
+          customWallBackgrounds: state.customWallBackgrounds // CRITICAL FIX: Ensure backgrounds are saved
         };
         await updateBin(JSONBIN_MASTER_BIN_ID, data);
       },
@@ -385,51 +390,29 @@ export const useMediaStore = create<MediaState>()(
         return { customManuscripts: newList };
       }),
 
-      setIptvPlaylist: (channels, index) => set({ iptvPlaylist: channels, iptvPlaylistIndex: index }),
-      nextIptvChannel: () => {
-        const state = get();
-        if (state.iptvPlaylist.length === 0) return;
-        const nextIdx = (state.iptvPlaylistIndex + 1) % state.iptvPlaylist.length;
-        state.setActiveIptv(state.iptvPlaylist[nextIdx]);
-      },
-      prevIptvChannel: () => {
-        const state = get();
-        if (state.iptvPlaylist.length === 0) return;
-        const prevIdx = (state.iptvPlaylistIndex - 1 + state.iptvPlaylist.length) % state.iptvPlaylist.length;
-        state.setActiveIptv(state.iptvPlaylist[prevIdx]);
-      },
+      addCustomWallBackground: (url) => set((state) => {
+        if (state.customWallBackgrounds.includes(url)) return state;
+        const newList = [...state.customWallBackgrounds, url];
+        setTimeout(() => get().syncMasterBin(), 100);
+        return { customWallBackgrounds: newList };
+      }),
 
-      updateMapSettings: (settings) => set((state) => {
-        const newState = { mapSettings: { ...state.mapSettings, ...settings } };
+      removeCustomWallBackground: (url) => set((state) => {
+        const newList = state.customWallBackgrounds.filter(u => u !== url);
         setTimeout(() => get().syncMasterBin(), 100);
-        return newState;
-      }),
-      
-      addReminder: (reminder) => set((state) => {
-        const newList = [...state.reminders, reminder];
-        setTimeout(() => get().syncMasterBin(), 100);
-        return { reminders: newList };
-      }),
-      updateReminder: (id, update) => set((state) => {
-        const newList = state.reminders.map(r => r.id === id ? { ...r, ...update } : r);
-        setTimeout(() => get().syncMasterBin(), 100);
-        return { reminders: newList };
-      }),
-      removeReminder: (id) => set((state) => {
-        const newList = state.reminders.filter(r => r.id !== id);
-        setTimeout(() => get().syncMasterBin(), 100);
-        return { reminders: newList };
-      }),
-      toggleReminder: (id) => set((state) => {
-        const newList = state.reminders.map(r => r.id === id ? { ...r, completed: !r.completed } : r);
-        setTimeout(() => get().syncMasterBin(), 100);
-        return { reminders: newList };
+        return { customWallBackgrounds: newList };
       }),
 
       updatePrayerSetting: (id, update) => set((state) => {
         const newList = state.prayerSettings.map(s => s.id === id ? { ...s, ...update } : s);
         setTimeout(() => get().syncMasterBin(), 100);
         return { prayerSettings: newList };
+      }),
+
+      updateMapSettings: (settings) => set((state) => {
+        const newSettings = { ...state.mapSettings, ...settings };
+        setTimeout(() => get().syncMasterBin(), 100);
+        return { mapSettings: newSettings };
       }),
 
       setAiSuggestions: (suggestions) => set({ aiSuggestions: suggestions }),
@@ -482,7 +465,7 @@ export const useMediaStore = create<MediaState>()(
       }),
     }),
     {
-      name: "drivecast-master-v6",
+      name: "drivecast-master-v7",
       partialize: (state) => ({ 
         videoProgress: state.videoProgress,
         dockSide: state.dockSide,
@@ -519,7 +502,8 @@ if (typeof window !== "undefined") {
           mapSettings: masterData.mapSettings || useMediaStore.getState().mapSettings,
           dockSide: masterData.dockSide || 'left',
           showIslands: masterData.showIslands !== undefined ? masterData.showIslands : true,
-          videoProgress: masterData.videoProgress || {}
+          videoProgress: masterData.videoProgress || {},
+          customWallBackgrounds: Array.isArray(masterData.customWallBackgrounds) ? masterData.customWallBackgrounds : []
         });
       }
 

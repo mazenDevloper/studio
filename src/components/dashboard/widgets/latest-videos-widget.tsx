@@ -27,8 +27,14 @@ export function LatestVideosWidget({ channels }: Props) {
     try {
       const videoPromises = channels.map(c => fetchChannelVideos(c.channelid));
       const results = await Promise.all(videoPromises);
-      const allVideos = results.flatMap(channelVideos => channelVideos.slice(0, 2));
-      const sorted = allVideos.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+      // Flatten all videos
+      const allVideos = results.flatMap(channelVideos => channelVideos.slice(0, 3));
+      // Sort globally by newest publication date first
+      const sorted = allVideos.sort((a, b) => {
+        const dateA = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
+        const dateB = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
+        return dateB - dateA;
+      });
       setVideos(sorted);
     } catch (error) {
       console.error("Failed to fetch videos", error);
@@ -77,7 +83,7 @@ export function LatestVideosWidget({ channels }: Props) {
             <div className="flex w-max gap-6 pb-4">
               {videos.map((video, idx) => (
                 <div 
-                  key={video.id} 
+                  key={video.id + idx} 
                   className="w-80 group relative overflow-hidden bg-zinc-900/80 border-none rounded-[2rem] transition-all hover:scale-[1.02] cursor-pointer shadow-xl focusable" 
                   onClick={() => setActiveVideo(video)} 
                   tabIndex={0}
