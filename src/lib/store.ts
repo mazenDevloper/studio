@@ -6,12 +6,11 @@ import { persist } from "zustand/middleware";
 import { YouTubeChannel, YouTubeVideo } from "./youtube";
 import { 
   JSONBIN_MASTER_KEY, 
-  JSONBIN_CHANNELS_BIN_ID, 
-  JSONBIN_CLUBS_BIN_ID, 
+  JSONBIN_MASTER_BIN_ID,
+  JSONBIN_CHANNELS_BIN_ID,
   JSONBIN_SAVED_VIDEOS_BIN_ID,
-  JSONBIN_PRAYER_TIMES_BIN_ID,
   JSONBIN_IPTV_FAVS_BIN_ID,
-  JSONBIN_REMINDERS_BIN_ID,
+  JSONBIN_PRAYER_TIMES_BIN_ID,
   JSONBIN_MANUSCRIPTS_BIN_ID,
   prayerTimesData
 } from "./constants";
@@ -99,9 +98,10 @@ interface MediaState {
   isFullScreen: boolean;
   dockSide: 'left' | 'right';
   showIslands: boolean;
+  setFavoriteChannels: (channels: YouTubeChannel[]) => void;
+  setFavoriteIptvChannels: (channels: IptvChannel[]) => void;
   addChannel: (channel: YouTubeChannel) => void;
   removeChannel: (channelid: string) => void;
-  reorderFavoriteChannel: (channelid: string, direction: 'up' | 'down') => void;
   toggleSaveVideo: (video: YouTubeVideo) => void;
   removeVideo: (id: string) => void;
   toggleStarChannel: (channelid: string) => void;
@@ -117,7 +117,6 @@ interface MediaState {
   toggleBelledMatch: (matchId: string) => void;
   skipMatch: (matchId: string) => void;
   toggleFavoriteIptvChannel: (channel: IptvChannel) => void;
-  reorderFavoriteIptv: (index: number, direction: 'up' | 'down') => void;
   setIptvPlaylist: (channels: IptvChannel[], index: number) => void;
   nextIptvChannel: () => void;
   prevIptvChannel: () => void;
@@ -135,6 +134,10 @@ interface MediaState {
   toggleDockSide: () => void;
   toggleShowIslands: () => void;
   fetchPrayerTimes: () => Promise<void>;
+  fetchManuscripts: () => Promise<void>;
+  syncMasterBin: () => Promise<void>;
+  saveIptvReorder: () => Promise<void>;
+  saveChannelsReorder: () => Promise<void>;
 }
 
 const updateBin = async (binId: string, data: any) => {
@@ -145,7 +148,7 @@ const updateBin = async (binId: string, data: any) => {
         'Content-Type': 'application/json',
         'X-Master-Key': JSONBIN_MASTER_KEY
       },
-      body: JSON.stringify({ record: data })
+      body: JSON.stringify(data)
     });
   } catch (e) {
     console.error(`JSONBin Sync Error [${binId}]:`, e);
@@ -160,14 +163,6 @@ const DEFAULT_PRAYER_SETTINGS: PrayerSetting[] = [
   { id: 'asr', name: 'العصر', offsetMinutes: 0, showCountdown: true, countdownWindow: 20, showCountup: true, countupWindow: 20, iqamahDuration: 20 },
   { id: 'maghrib', name: 'المغرب', offsetMinutes: 0, showCountdown: true, countdownWindow: 20, showCountup: true, countupWindow: 10, iqamahDuration: 10 },
   { id: 'isha', name: 'العشاء', offsetMinutes: 0, showCountdown: true, countdownWindow: 20, showCountup: true, countupWindow: 20, iqamahDuration: 20 },
-];
-
-const DEFAULT_MANUSCRIPTS: Manuscript[] = [
-  { id: '1', type: 'text', content: 'سبحان الله وبحمده' },
-  { id: '2', type: 'text', content: 'سبحان الله العظيم' },
-  { id: '3', type: 'text', content: 'أستغفر الله وأتوب إليه' },
-  { id: '4', type: 'text', content: 'لا حول ولا قوة إلا بالله' },
-  { id: '5', type: 'text', content: 'اللهم صلِ وسلم على نبينا محمد' }
 ];
 
 export const useMediaStore = create<MediaState>()(
@@ -187,7 +182,7 @@ export const useMediaStore = create<MediaState>()(
       prayerTimes: prayerTimesData,
       prayerSettings: DEFAULT_PRAYER_SETTINGS,
       reminders: [],
-      customManuscripts: DEFAULT_MANUSCRIPTS,
+      customManuscripts: [],
       mapSettings: { zoom: 20.0, tilt: 65, carScale: 1.02, backgroundIndex: 0 },
       aiSuggestions: [],
       activeVideo: null,
@@ -200,26 +195,72 @@ export const useMediaStore = create<MediaState>()(
       dockSide: 'left',
       showIslands: true,
 
+      syncMasterBin: async () => {
+        const state = get();
+        const data = {
+          favoriteTeams: state.favoriteTeams,
+          favoriteLeagueIds: state.favoriteLeagueIds,
+          belledMatchIds: state.belledMatchIds,
+          skippedMatchIds: state.skippedMatchIds,
+          prayerSettings: state.prayerSettings,
+          reminders: state.reminders,
+          mapSettings: state.mapSettings,
+          dockSide: state.dockSide,
+          showIslands: state.showIslands,
+          videoProgress: state.videoProgress
+        };
+        await updateBin(JSONBIN_MASTER_BIN_ID, data);
+      },
+
+      saveIptvReorder: async () => {
+        const state = get();
+        await updateBin(JSONBIN_IPTV_FAVS_BIN_ID, state.favoriteIptvChannels);
+      },
+
+      saveChannelsReorder: async () => {
+        const state = get();
+        await updateBin(JSONBIN_CHANNELS_BIN_ID, state.favoriteChannels);
+      },
+
       fetchPrayerTimes: async () => {
         try {
-          const res = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_PRAYER_TIMES_BIN_ID}/latest`, {
+          const res = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_PRAYER_TIMES_BIN_ID}/latest?nocache=${Date.now()}`, {
             headers: { 'X-Master-Key': JSONBIN_MASTER_KEY }
           });
           if (res.ok) {
             const data = await res.json();
-            if (Array.isArray(data.record)) {
-              set({ prayerTimes: data.record });
+            const record = Array.isArray(data) ? data : (data.record || []);
+            if (Array.isArray(record)) {
+              set({ prayerTimes: record });
             }
           }
         } catch (e) {
-          console.error("Failed to fetch prayer times from JSONBin:", e);
+          console.error("Failed to fetch prayer times:", e);
         }
       },
+
+      fetchManuscripts: async () => {
+        try {
+          const res = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_MANUSCRIPTS_BIN_ID}/latest?nocache=${Date.now()}`, {
+            headers: { 'X-Master-Key': JSONBIN_MASTER_KEY }
+          });
+          if (res.ok) {
+            const data = await res.json();
+            const list = Array.isArray(data.record) ? data.record : (data.record?.manuscripts || []);
+            set({ customManuscripts: list });
+          }
+        } catch (e) {
+          console.error("Failed to fetch manuscripts:", e);
+        }
+      },
+
+      setFavoriteChannels: (channels) => set({ favoriteChannels: channels }),
+      setFavoriteIptvChannels: (channels) => set({ favoriteIptvChannels: channels }),
 
       addChannel: (channel) => {
         set((state) => {
           const newList = [...state.favoriteChannels.filter(c => c.channelid !== channel.channelid), { ...channel, starred: false }];
-          updateBin(JSONBIN_CHANNELS_BIN_ID, newList);
+          setTimeout(() => updateBin(JSONBIN_CHANNELS_BIN_ID, newList), 100);
           return { favoriteChannels: newList };
         });
       },
@@ -227,20 +268,7 @@ export const useMediaStore = create<MediaState>()(
       removeChannel: (channelid) => {
         set((state) => {
           const newList = state.favoriteChannels.filter(c => c.channelid !== channelid);
-          updateBin(JSONBIN_CHANNELS_BIN_ID, newList);
-          return { favoriteChannels: newList };
-        });
-      },
-
-      reorderFavoriteChannel: (channelid, direction) => {
-        set((state) => {
-          const idx = state.favoriteChannels.findIndex(c => c.channelid === channelid);
-          if (idx === -1) return {};
-          const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
-          if (targetIdx < 0 || targetIdx >= state.favoriteChannels.length) return {};
-          const newList = [...state.favoriteChannels];
-          [newList[idx], newList[targetIdx]] = [newList[targetIdx], newList[idx]];
-          updateBin(JSONBIN_CHANNELS_BIN_ID, newList);
+          setTimeout(() => updateBin(JSONBIN_CHANNELS_BIN_ID, newList), 100);
           return { favoriteChannels: newList };
         });
       },
@@ -249,7 +277,7 @@ export const useMediaStore = create<MediaState>()(
         set((state) => {
           const exists = state.savedVideos.some(v => v.id === video.id);
           const newList = exists ? state.savedVideos.filter(v => v.id !== video.id) : [{ ...video, progress: 0 }, ...state.savedVideos];
-          updateBin(JSONBIN_SAVED_VIDEOS_BIN_ID, newList);
+          setTimeout(() => updateBin(JSONBIN_SAVED_VIDEOS_BIN_ID, newList), 100);
           return { savedVideos: newList };
         });
       },
@@ -257,27 +285,28 @@ export const useMediaStore = create<MediaState>()(
       removeVideo: (id) => {
         set((state) => {
           const newList = state.savedVideos.filter(v => v.id !== id);
-          updateBin(JSONBIN_SAVED_VIDEOS_BIN_ID, newList);
+          setTimeout(() => updateBin(JSONBIN_SAVED_VIDEOS_BIN_ID, newList), 100);
           return { savedVideos: newList };
         });
       },
 
       updateVideoProgress: (videoId, progress) => {
         set((state) => {
+          const updatedProgress = { ...state.videoProgress, [videoId]: progress };
           const isSaved = state.savedVideos.some(v => v.id === videoId);
           let updatedSaved = state.savedVideos;
           if (isSaved) {
             updatedSaved = state.savedVideos.map(v => v.id === videoId ? { ...v, progress } : v);
             updateBin(JSONBIN_SAVED_VIDEOS_BIN_ID, updatedSaved);
           }
-          return { savedVideos: updatedSaved, videoProgress: { ...state.videoProgress, [videoId]: progress } };
+          return { savedVideos: updatedSaved, videoProgress: updatedProgress };
         });
       },
 
       toggleStarChannel: (channelid) => {
         set((state) => {
           const newList = state.favoriteChannels.map(c => c.channelid === channelid ? { ...c, starred: !c.starred } : c);
-          updateBin(JSONBIN_CHANNELS_BIN_ID, newList);
+          setTimeout(() => updateBin(JSONBIN_CHANNELS_BIN_ID, newList), 100);
           return { favoriteChannels: newList };
         });
       },
@@ -286,7 +315,7 @@ export const useMediaStore = create<MediaState>()(
         set((state) => {
           const exists = state.favoriteTeams.some(t => t.id === team.id);
           const newTeams = exists ? state.favoriteTeams.filter(t => t.id !== team.id) : [...state.favoriteTeams, team];
-          updateBin(JSONBIN_CLUBS_BIN_ID, { teams: newTeams, leagues: state.favoriteLeagueIds, matches: state.belledMatchIds, skipped: state.skippedMatchIds });
+          setTimeout(() => get().syncMasterBin(), 100);
           return { favoriteTeams: newTeams };
         });
       },
@@ -294,7 +323,7 @@ export const useMediaStore = create<MediaState>()(
       toggleFavoriteLeague: (leagueId) => {
         set((state) => {
           const newLeagues = state.favoriteLeagueIds.includes(leagueId) ? state.favoriteLeagueIds.filter(id => id !== leagueId) : [...state.favoriteLeagueIds, leagueId];
-          updateBin(JSONBIN_CLUBS_BIN_ID, { teams: state.favoriteTeams, leagues: newLeagues, matches: state.belledMatchIds, skipped: state.skippedMatchIds });
+          setTimeout(() => get().syncMasterBin(), 100);
           return { favoriteLeagueIds: newLeagues };
         });
       },
@@ -302,7 +331,7 @@ export const useMediaStore = create<MediaState>()(
       toggleBelledMatch: (matchId) => {
         set((state) => {
           const newMatches = state.belledMatchIds.includes(matchId) ? state.belledMatchIds.filter(id => id !== matchId) : [...state.belledMatchIds, matchId];
-          updateBin(JSONBIN_CLUBS_BIN_ID, { teams: state.favoriteTeams, leagues: state.favoriteLeagueIds, matches: newMatches, skipped: state.skippedMatchIds });
+          setTimeout(() => get().syncMasterBin(), 100);
           return { belledMatchIds: newMatches };
         });
       },
@@ -310,7 +339,7 @@ export const useMediaStore = create<MediaState>()(
       skipMatch: (matchId) => {
         set((state) => {
           const newSkipped = Array.from(new Set([...state.skippedMatchIds, matchId]));
-          updateBin(JSONBIN_CLUBS_BIN_ID, { teams: state.favoriteTeams, leagues: state.favoriteLeagueIds, matches: state.belledMatchIds, skipped: newSkipped });
+          setTimeout(() => get().syncMasterBin(), 100);
           return { skippedMatchIds: newSkipped };
         });
       },
@@ -325,18 +354,7 @@ export const useMediaStore = create<MediaState>()(
             starred: true
           };
           const newList = exists ? state.favoriteIptvChannels.filter(c => c.stream_id !== channel.stream_id) : [...state.favoriteIptvChannels, processedChannel];
-          updateBin(JSONBIN_IPTV_FAVS_BIN_ID, newList);
-          return { favoriteIptvChannels: newList };
-        });
-      },
-
-      reorderFavoriteIptv: (index, direction) => {
-        set((state) => {
-          const targetIndex = direction === 'up' ? index - 1 : index + 1;
-          if (targetIndex < 0 || targetIndex >= state.favoriteIptvChannels.length) return {};
-          const newList = [...state.favoriteIptvChannels];
-          [newList[index], newList[targetIndex]] = [newList[targetIndex], newList[index]];
-          updateBin(JSONBIN_IPTV_FAVS_BIN_ID, newList);
+          setTimeout(() => updateBin(JSONBIN_IPTV_FAVS_BIN_ID, newList), 100);
           return { favoriteIptvChannels: newList };
         });
       },
@@ -367,32 +385,37 @@ export const useMediaStore = create<MediaState>()(
         state.setActiveIptv(state.iptvPlaylist[prevIdx]);
       },
 
-      updateMapSettings: (settings) => set((state) => ({ mapSettings: { ...state.mapSettings, ...settings } })),
+      updateMapSettings: (settings) => set((state) => {
+        setTimeout(() => get().syncMasterBin(), 100);
+        return { mapSettings: { ...state.mapSettings, ...settings } };
+      }),
       
       addReminder: (reminder) => set((state) => {
         const newList = [...state.reminders, reminder];
-        updateBin(JSONBIN_REMINDERS_BIN_ID, { reminders: newList });
+        setTimeout(() => get().syncMasterBin(), 100);
         return { reminders: newList };
       }),
       updateReminder: (id, update) => set((state) => {
         const newList = state.reminders.map(r => r.id === id ? { ...r, ...update } : r);
-        updateBin(JSONBIN_REMINDERS_BIN_ID, { reminders: newList });
+        setTimeout(() => get().syncMasterBin(), 100);
         return { reminders: newList };
       }),
       removeReminder: (id) => set((state) => {
         const newList = state.reminders.filter(r => r.id !== id);
-        updateBin(JSONBIN_REMINDERS_BIN_ID, { reminders: newList });
+        setTimeout(() => get().syncMasterBin(), 100);
         return { reminders: newList };
       }),
       toggleReminder: (id) => set((state) => {
         const newList = state.reminders.map(r => r.id === id ? { ...r, completed: !r.completed } : r);
-        updateBin(JSONBIN_REMINDERS_BIN_ID, { reminders: newList });
+        setTimeout(() => get().syncMasterBin(), 100);
         return { reminders: newList };
       }),
 
-      updatePrayerSetting: (id, update) => set((state) => ({
-        prayerSettings: state.prayerSettings.map(s => s.id === id ? { ...s, ...update } : s)
-      })),
+      updatePrayerSetting: (id, update) => set((state) => {
+        const newList = state.prayerSettings.map(s => s.id === id ? { ...s, ...update } : s);
+        setTimeout(() => get().syncMasterBin(), 100);
+        return { prayerSettings: newList };
+      }),
 
       setAiSuggestions: (suggestions) => set({ aiSuggestions: suggestions }),
       setActiveVideo: (video) => set({ activeVideo: video, activeIptv: null, isPlaying: !!video, isMinimized: false, isFullScreen: !!video }),
@@ -431,24 +454,19 @@ export const useMediaStore = create<MediaState>()(
       setIsPlaying: (playing) => set({ isPlaying: playing }),
       setIsMinimized: (minimized) => set({ isMinimized: minimized, isFullScreen: false }),
       setIsFullScreen: (fullScreen) => set({ isFullScreen: fullScreen, isMinimized: false }),
-      toggleDockSide: () => set((state) => ({ dockSide: state.dockSide === 'left' ? 'right' : 'left' })),
-      toggleShowIslands: () => set((state) => ({ showIslands: !state.showIslands })),
+      toggleDockSide: () => set((state) => {
+        setTimeout(() => get().syncMasterBin(), 100);
+        return { dockSide: state.dockSide === 'left' ? 'right' : 'left' };
+      }),
+      toggleShowIslands: () => set((state) => {
+        setTimeout(() => get().syncMasterBin(), 100);
+        return { showIslands: !state.showIslands };
+      }),
     }),
     {
-      name: "drivecast-jsonbin-v3",
+      name: "drivecast-master-v5",
       partialize: (state) => ({ 
-        favoriteChannels: state.favoriteChannels,
-        savedVideos: state.savedVideos,
-        favoriteTeams: state.favoriteTeams,
-        favoriteLeagueIds: state.favoriteLeagueIds,
-        belledMatchIds: state.belledMatchIds,
-        skippedMatchIds: state.skippedMatchIds,
-        favoriteIptvChannels: state.favoriteIptvChannels,
-        mapSettings: state.mapSettings,
-        reminders: state.reminders,
-        customManuscripts: state.customManuscripts,
-        prayerTimes: state.prayerTimes,
-        prayerSettings: state.prayerSettings,
+        videoProgress: state.videoProgress,
         dockSide: state.dockSide,
         showIslands: state.showIslands
       }),
@@ -460,52 +478,67 @@ if (typeof window !== "undefined") {
   const syncWithBins = async () => {
     try {
       const state = useMediaStore.getState();
-      const nocache = `?nocache=${Date.now()}`;
       await state.fetchPrayerTimes();
+      await state.fetchManuscripts();
 
-      const chRes = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_CHANNELS_BIN_ID}/latest${nocache}`, { headers: { 'X-Master-Key': JSONBIN_MASTER_KEY } });
-      if (chRes.ok) { const data = await chRes.ok ? await chRes.json() : { record: [] }; useMediaStore.setState({ favoriteChannels: data.record }); }
-
-      const clRes = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_CLUBS_BIN_ID}/latest${nocache}`, { headers: { 'X-Master-Key': JSONBIN_MASTER_KEY } });
-      if (clRes.ok) { 
-        const data = await clRes.json();
-        if (data.record.teams) useMediaStore.setState({ favoriteTeams: data.record.teams });
-        if (data.record.leagues) useMediaStore.setState({ favoriteLeagueIds: data.record.leagues });
-        if (data.record.matches) useMediaStore.setState({ belledMatchIds: data.record.matches });
-        if (data.record.skipped) useMediaStore.setState({ skippedMatchIds: data.record.skipped });
+      // Sync Master Bin (Settings, Football)
+      const masterRes = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_MASTER_BIN_ID}/latest?nocache=${Date.now()}`, {
+        headers: { 'X-Master-Key': JSONBIN_MASTER_KEY }
+      });
+      if (masterRes.ok) {
+        const data = await masterRes.json();
+        const record = data.record || {};
+        useMediaStore.setState({
+          favoriteTeams: Array.isArray(record.favoriteTeams) ? record.favoriteTeams : [],
+          favoriteLeagueIds: Array.isArray(record.favoriteLeagueIds) ? record.favoriteLeagueIds : [307, 39, 2, 140, 135],
+          belledMatchIds: Array.isArray(record.belledMatchIds) ? record.belledMatchIds : [],
+          skippedMatchIds: Array.isArray(record.skippedMatchIds) ? record.skippedMatchIds : [],
+          prayerSettings: Array.isArray(record.prayerSettings) ? record.prayerSettings : DEFAULT_PRAYER_SETTINGS,
+          reminders: Array.isArray(record.reminders) ? record.reminders : [],
+          mapSettings: record.mapSettings || state.mapSettings,
+          dockSide: record.dockSide || 'left',
+          showIslands: record.showIslands !== undefined ? record.showIslands : true
+        });
       }
 
-      const remRes = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_REMINDERS_BIN_ID}/latest${nocache}`, { headers: { 'X-Master-Key': JSONBIN_MASTER_KEY } });
-      if (remRes.ok) { 
-        const data = await remRes.json();
-        if (data.record && Array.isArray(data.record.reminders)) {
-          useMediaStore.setState({ reminders: data.record.reminders });
-        }
+      // Sync YouTube Channels Bin
+      const chRes = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_CHANNELS_BIN_ID}/latest?nocache=${Date.now()}`, {
+        headers: { 'X-Master-Key': JSONBIN_MASTER_KEY }
+      });
+      if (chRes.ok) {
+        const data = await chRes.json();
+        const record = Array.isArray(data.record) ? data.record : (data.record || []);
+        if (Array.isArray(record)) useMediaStore.setState({ favoriteChannels: record });
       }
 
-      const msRes = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_MANUSCRIPTS_BIN_ID}/latest${nocache}`, { headers: { 'X-Master-Key': JSONBIN_MASTER_KEY } });
-      if (msRes.ok) { 
-        const data = await msRes.json(); 
-        if (Array.isArray(data.record)) useMediaStore.setState({ customManuscripts: data.record }); 
+      // Sync Saved Videos Bin
+      const savedRes = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_SAVED_VIDEOS_BIN_ID}/latest?nocache=${Date.now()}`, {
+        headers: { 'X-Master-Key': JSONBIN_MASTER_KEY }
+      });
+      if (savedRes.ok) {
+        const data = await savedRes.json();
+        const record = Array.isArray(data.record) ? data.record : (data.record || []);
+        if (Array.isArray(record)) useMediaStore.setState({ savedVideos: record });
       }
 
-      const savedRes = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_SAVED_VIDEOS_BIN_ID}/latest${nocache}`, { headers: { 'X-Master-Key': JSONBIN_MASTER_KEY } });
-      if (savedRes.ok) { 
-        const data = await savedRes.json(); 
-        if (data.record && Array.isArray(data.record)) useMediaStore.setState({ savedVideos: data.record }); 
-      }
-
-      const iptvRes = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_IPTV_FAVS_BIN_ID}/latest${nocache}`, { headers: { 'X-Master-Key': JSONBIN_MASTER_KEY } });
-      if (iptvRes.ok) { 
-        const data = await iptvRes.ok ? await iptvRes.json() : { record: [] }; 
-        const migrated = (data.record || []).map((ch: any) => ({
+      // Sync IPTV Bin
+      const iptvRes = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_IPTV_FAVS_BIN_ID}/latest?nocache=${Date.now()}`, {
+        headers: { 'X-Master-Key': JSONBIN_MASTER_KEY }
+      });
+      if (iptvRes.ok) {
+        const data = await iptvRes.json();
+        const rawData = Array.isArray(data.record) ? data.record : (data.record || []);
+        const migrated = rawData.map((ch: any) => ({
           ...ch,
           type: 'web',
           url: ch.url || `http://playstop.watch:2095/live/W87d737/Pd37qj34/${ch.stream_id}.m3u8`
         }));
-        useMediaStore.setState({ favoriteIptvChannels: migrated }); 
+        useMediaStore.setState({ favoriteIptvChannels: migrated });
       }
-    } catch (e) { console.error("Bin Sync Error:", e); }
+    } catch (e) {
+      console.error("Bin Sync Error:", e);
+    }
   };
-  syncWithBins();
+  
+  setTimeout(syncWithBins, 1000);
 }

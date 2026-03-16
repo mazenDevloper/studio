@@ -12,61 +12,17 @@ export const YT_KEYS_POOL = [
     "AIzaSyBYThRM6tVnzgFgdHOUAN6DN8jQd54OKeg"
 ];
 
-// JSONBin.io Configuration
+// JSONBin.io Configuration - Multi-Bin Architecture
 export const JSONBIN_MASTER_KEY = '$2a$10$SYrYv.ct8hiMU9YeUxEQ.ecRkOrTqs.TDchJRV3wW.aKJnDXy2oVy';
-export const JSONBIN_CHANNELS_BIN_ID = '68ef1b3dd0ea881f40a38bd1';
-export const JSONBIN_CLUBS_BIN_ID = '699d8c2aae596e708f452936';
-export const JSONBIN_SAVED_VIDEOS_BIN_ID = '68e4ac2e43b1c97be95d24af';
-export const JSONBIN_PRAYER_TIMES_BIN_ID = '69a00f6eae596e708f4b7291';
-export const JSONBIN_RECITERS_BIN_ID = '6909c1cd43b1c97be997b522';
-export const JSONBIN_IPTV_FAVS_BIN_ID = '69a87b8bd0ea881f40eeec0c';
-export const JSONBIN_REMINDERS_BIN_ID = '6909c1cd43b1c97be997b522';
-export const JSONBIN_MANUSCRIPTS_BIN_ID = '69b63c5cc3097a1dd5278b25';
-export const JSONBIN_ACCESS_KEY_CHANNELS = '$2a$10$J8o3WrPtnqmKAd///uDw6.BOWnGIBekHFOImbeEZZwsJ/h/XPbVUy';
-
-export const SURAHS_LIST = [
-  "الفاتحة", "البقرة", "آل عمران", "النساء", "المائدة", "الأنعام", "الأعراف", "الأنفال", "التوبة", "يونس",
-  "هود", "يوسف", "الرعد", "إبراهيم", "الحجر", "النحل", "الإسراء", "الكهف", "مريم", "طه",
-  "الأنبياء", "الحج", "المؤمنون", "النور", "الفرقان", "الشعراء", "النمل", "القصص", "العنكبوت", "الروم",
-  "لقمان", "السجدة", "الأحزاب", "سبأ", "فاطر", "يس", "الصافات", "ص", "الزمر", "غافر",
-  "فصلت", "الشورى", "الزخرف", "الدخان", "الجاثية", "الأحقاف", "محمد", "الفتح", "الحجرات", "ق",
-  "الذاريات", "الطور", "النجم", "القمر", "الرحمن", "الواقعة", "الحديد", "المجادلة", "الحشر", "الممتحنة",
-  "الصف", "الجمعة", "المنافقون", "التغابن", "الطلاق", "التحريم", "الملك", "القلم", "الحاقة", "المعارج",
-  "نوح", "الجن", "المزمل", "المدثر", "القيامة", "الإنسان", "المرسلات", "النبأ", "النازعات", "عبس",
-  "التكوير", "الانفطار", "النشقاق", "المطففين", "البروج", "الطارق", "الأعلى", "الغاشية", "الفجر", "البلد",
-  "الشمس", "الليل", "الضحى", "الشرح", "التين", "العلق", "القدر", "البينة", "الزلزلة", "العاديات",
-  "القارعة", "التكاثر", "العصر", "الهمزة", "الفيل", "قريش", "الماعون", "الكوثر", "الكافرون", "النصر",
-  "المسد", "الإخلاص", "الفلق", "الناس"
-];
+export const JSONBIN_MASTER_BIN_ID = '69b63cb1c3097a1dd5278bf4'; // Settings, Teams, Leagues
+export const JSONBIN_CHANNELS_BIN_ID = '68ef1b3dd0ea881f40a38bd1'; // YouTube Channels
+export const JSONBIN_SAVED_VIDEOS_BIN_ID = '68e4ac20d0ea881f4098138c'; // Saved Videos Library
+export const JSONBIN_IPTV_FAVS_BIN_ID = '69a87b8bd0ea881f40eeec0c'; // IPTV Favorites
+export const JSONBIN_PRAYER_TIMES_BIN_ID = '69a00f6eae596e708f4b7291'; // Global Prayer Times
+export const JSONBIN_MANUSCRIPTS_BIN_ID = '69b63c5cc3097a1dd5278b25'; // Manuscripts & Azkar
 
 export const prayerTimesData = [
-    {"date":"2026-02-01","day":"الأحد","fajr":"05:41","sunrise":"06:55","dhuhr":"12:42","asr":"15:59","maghrib":"18:24","isha":"19:34"},
-    {"date":"2026-02-02","day":"الاثنين","fajr":"05:41","sunrise":"06:55","dhuhr":"12:42","asr":"15:59","maghrib":"18:25","isha":"19:34"},
-    {"date":"2026-02-03","day":"الثلاثاء","fajr":"05:40","sunrise":"06:55","dhuhr":"12:42","asr":"15:59","maghrib":"18:25","isha":"19:34"},
-    {"date":"2026-02-04","day":"الأربعاء","fajr":"05:40","sunrise":"06:54","dhuhr":"12:43","asr":"16:00","maghrib":"18:26","isha":"19:35"},
-    {"date":"2026-02-05","day":"الخميس","fajr":"05:40","sunrise":"06:54","dhuhr":"12:43","asr":"16:00","maghrib":"18:26","isha":"19:35"},
-    {"date":"2026-02-06","day":"الجمعة","fajr":"05:40","sunrise":"06:54","dhuhr":"12:43","asr":"16:00","maghrib":"18:27","isha":"19:36"},
-    {"date":"2026-02-07","day":"السبت","fajr":"05:40","sunrise":"06:53","dhuhr":"12:43","asr":"16:01","maghrib":"18:27","isha":"19:36"},
-    {"date":"2026-02-08","day":"الأحد","fajr":"05:39","sunrise":"06:53","dhuhr":"12:43","asr":"16:01","maghrib":"18:28","isha":"19:36"},
-    {"date":"2026-02-09","day":"الاثنين","fajr":"05:39","sunrise":"06:53","dhuhr":"12:43","asr":"16:01","maghrib":"18:28","isha":"19:37"},
-    {"date":"2026-02-10","day":"الثلاثاء","fajr":"05:39","sunrise":"06:52","dhuhr":"12:43","asr":"16:01","maghrib":"18:28","isha":"19:37"},
-    {"date":"2026-02-11","day":"الأربعاء","fajr":"05:38","sunrise":"06:52","dhuhr":"12:43","asr":"16:01","maghrib":"18:29","isha":"19:37"},
-    {"date":"2026-02-12","day":"الخميس","fajr":"05:38","sunrise":"06:51","dhuhr":"12:43","asr":"16:02","maghrib":"18:29","isha":"19:38"},
-    {"date":"2026-02-13","day":"الجمعة","fajr":"05:38","sunrise":"06:51","dhuhr":"12:43","asr":"16:02","maghrib":"18:30","isha":"19:38"},
-    {"date":"2026-02-14","day":"السبت","fajr":"05:37","sunrise":"06:51","dhuhr":"12:43","asr":"16:02","maghrib":"18:30","isha":"19:38"},
-    {"date":"2026-02-15","day":"الأحد","fajr":"05:37","sunrise":"06:50","dhuhr":"12:43","asr":"16:02","maghrib":"18:30","isha":"19:39"},
-    {"date":"2026-02-16","day":"الاثنين","fajr":"05:37","sunrise":"06:50","dhuhr":"12:43","asr":"16:02","maghrib":"18:31","isha":"19:39"},
-    {"date":"2026-02-17","day":"الثلاثاء","fajr":"05:36","sunrise":"06:49","dhuhr":"12:43","asr":"16:02","maghrib":"18:31","isha":"19:39"},
-    {"date":"2026-02-18","day":"الأربعاء","fajr":"05:36","sunrise":"06:49","dhuhr":"12:43","asr":"16:03","maghrib":"18:32","isha":"19:40"},
-    {"date":"2026-02-19","day":"الخميس","fajr":"05:35","sunrise":"06:48","dhuhr":"12:43","asr":"16:03","maghrib":"18:32","isha":"19:40"},
-    {"date":"2026-02-20","day":"الجمعة","fajr":"05:35","sunrise":"06:48","dhuhr":"12:42","asr":"16:03","maghrib":"18:32","isha":"19:40"},
-    {"date":"2026-02-21","day":"السبت","fajr":"05:34","sunrise":"06:47","dhuhr":"12:42","asr":"16:03","maghrib":"18:33","isha":"19:40"},
-    {"date":"2026-02-22","day":"الأحد","fajr":"05:34","sunrise":"06:46","dhuhr":"12:42","asr":"16:03","maghrib":"18:33","isha":"19:41"},
-    {"date":"2026-02-23","day":"الاثنين","fajr":"05:33","sunrise":"06:46","dhuhr":"12:42","asr":"16:03","maghrib":"18:33","isha":"19:41"},
-    {"date":"2026-02-24","day":"الثلاثاء","fajr":"05:33","sunrise":"06:45","dhuhr":"12:42","asr":"16:03","maghrib":"18:34","isha":"19:41"},
-    {"date":"2026-02-25","day":"الأربعاء","fajr":"05:32","sunrise":"06:45","dhuhr":"12:42","asr":"16:03","maghrib":"18:34","isha":"19:41"},
-    {"date":"2026-02-26","day":"الخميس","fajr":"05:32","sunrise":"06:44","dhuhr":"12:42","asr":"16:03","maghrib":"18:34","isha":"19:42"},
-    {"date":"2026-02-27","day":"الجمعة","fajr":"05:31","sunrise":"06:43","dhuhr":"12:41","asr":"16:03","maghrib":"18:35","isha":"19:42"}
+    {"date":"2026-03-05","day":"الخميس","fajr":"05:27","sunrise":"06:39","dhuhr":"12:40","asr":"16:02","maghrib":"18:36","isha":"19:43"}
 ];
 
 export function convertTo12Hour(time24h: string | undefined): string {

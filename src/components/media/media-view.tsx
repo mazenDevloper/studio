@@ -1,17 +1,15 @@
 
 "use client";
 
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Search, Plus, Radio, Loader2, Check, Mic, Users, Cloud, Star, X, Bookmark, Link as LinkIcon, BookOpen, ChevronDown, Trash2, Tv, Zap, ChevronUp } from "lucide-react";
+import { Search, Plus, Radio, Loader2, Mic, Star, X, Link as LinkIcon, Trash2, Save, GripVertical } from "lucide-react";
 import { useMediaStore } from "@/lib/store";
 import { searchYouTubeChannels, searchYouTubeVideos, fetchChannelVideos, fetchVideoDetails, YouTubeChannel, YouTubeVideo } from "@/lib/youtube";
 import Image from "next/image";
-import { useSearchParams } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
-import { JSONBIN_RECITERS_BIN_ID, JSONBIN_ACCESS_KEY_CHANNELS, SURAHS_LIST } from "@/lib/constants";
 import {
   Dialog,
   DialogContent,
@@ -22,39 +20,18 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
-const PRIORITY_LIVE_CHANNELS = [
-  { id: "UCos52azQNBgW63_9uDJoPDA", name: "القرآن الكريم مباشر", type: "live" },
-  { id: "UCAs_eyAm9_Ab9InAt9Z_ZZA", name: "السنة النبوية مباشر", type: "live" },
-  { id: "UCfiwzLy-8yKzIbsmZTzxDgw", name: "الجزيرة الإخبارية مباشر", type: "live" },
-  { id: "UC65idat_v8idIs_6vsz9pxQ", name: "العربية مباشر", type: "live" },
-  { id: "UC-FquLxQPeogshSrqyvTy6Q", name: "سكاي نيوز عربية مباشر", type: "live" },
-  { id: "UC_S7pReMTIn6InAxEq_v_vQ", name: "الحدث مباشر", type: "live" },
-  { id: "UCeylkpIn8ZnuZ_Z9_Id_vVQ", name: "الإخبارية السعودية مباشر", type: "live" },
-  { id: "UCZ_id_east_news", name: "الشرق للأخبار مباشر", type: "live" },
-  { id: "UCJUCcJUeh0Cz2xyKwkw5Q1w", name: "beIN Sports مباشر", type: "live" },
-  { id: "UC_abu_dhabi_tv", name: "أبوظبي مباشر", type: "live" },
-  { id: "UCX_me_almashhad", name: "المشهد مباشر", type: "live" },
-  { id: "UC_dubai_tv", name: "تلفزيون دبي مباشر", type: "live" },
-  { id: "UC_rotana_kh", name: "روتانا خليجية مباشر", type: "live" },
-  { id: "UC_bahrain_tv", name: "البحرين مباشر", type: "live" },
-  { id: "UC_kuwait_tv", name: "الكويت مباشر", type: "live" },
-  { id: "UC_oman_tv", name: "عمان مباشر", type: "live" },
-];
-
 export function MediaView() {
   const { 
     favoriteChannels, 
     addChannel, 
     removeChannel, 
-    reorderFavoriteChannel,
-    savedVideos, 
-    toggleSaveVideo, 
     setActiveVideo,
     toggleStarChannel,
-    isFullScreen
+    isFullScreen,
+    setFavoriteChannels,
+    saveChannelsReorder
   } = useMediaStore();
 
-  const searchParams = useSearchParams();
   const { toast } = useToast();
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -64,12 +41,8 @@ export function MediaView() {
   const [channelVideos, setChannelVideos] = useState<YouTubeVideo[]>([]);
   const [isLoadingVideos, setIsLoadingVideos] = useState(false);
   const [isListening, setIsListening] = useState(false);
-
-  const [reciters, setReciters] = useState<any[]>([]);
-  const [selectedReciter, setSelectedReciter] = useState<any>(null);
-  const [isLoadingReciters, setIsLoadingReciters] = useState(false);
-  const [showReciterGrid, setShowReciterGrid] = useState(false);
-  const [showSurahGrid, setShowSurahGrid] = useState(false);
+  const [isReordering, setIsReordering] = useState(false);
+  const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
 
   const [urlInput, setUrlInput] = useState("");
   const [isUrlDialogOpen, setIsUrlDialogOpen] = useState(false);
@@ -80,38 +53,6 @@ export function MediaView() {
   const [isSearchingChannels, setIsSearchingChannels] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  const sortedChannels = useMemo(() => {
-    return [...favoriteChannels]; // No auto-sorting by star, respect manual order
-  }, [favoriteChannels]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      const firstChannel = document.querySelector('[data-nav-id^="fav-channel-"]') as HTMLElement;
-      if (firstChannel) firstChannel.focus();
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, []);
-
-  useEffect(() => {
-    async function fetchReciters() {
-      setIsLoadingReciters(true);
-      try {
-        const res = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_RECITERS_BIN_ID}/latest`, {
-          headers: { 'X-Access-Key': JSONBIN_ACCESS_KEY_CHANNELS }
-        });
-        const data = await res.json();
-        if (data.record && Array.isArray(data.record)) {
-          setReciters(data.record);
-        }
-      } catch (error) {
-        console.error("Failed to fetch reciters", error);
-      } finally {
-        setIsLoadingReciters(false);
-      }
-    }
-    fetchReciters();
-  }, []);
-
   const handleVideoSearch = useCallback(async (queryOverride?: string) => {
     const finalQuery = queryOverride || searchQuery;
     if (!finalQuery.trim()) return;
@@ -120,8 +61,6 @@ export function MediaView() {
     try {
       const results = await searchYouTubeVideos(finalQuery);
       setVideoResults(results);
-      setShowReciterGrid(false);
-      setShowSurahGrid(false);
     } catch (error) {
       console.error("Video search failed", error);
     } finally {
@@ -143,6 +82,7 @@ export function MediaView() {
   };
 
   const handleSelectChannel = async (channel: YouTubeChannel) => {
+    if (isReordering) return;
     setSelectedChannel(channel);
     setIsLoadingVideos(true);
     try {
@@ -150,6 +90,44 @@ export function MediaView() {
       setChannelVideos(videos);
     } finally {
       setIsLoadingVideos(false);
+    }
+  };
+
+  const handleDragStart = (idx: number) => {
+    if (!isReordering) return;
+    setDraggedIdx(idx);
+  };
+
+  const handleDragOver = (e: React.DragEvent, idx: number) => {
+    if (!isReordering || draggedIdx === null || draggedIdx === idx) return;
+    e.preventDefault();
+    const newList = [...favoriteChannels];
+    const item = newList.splice(draggedIdx, 1)[0];
+    newList.splice(idx, 0, item);
+    setFavoriteChannels(newList);
+    setDraggedIdx(idx);
+  };
+
+  const handleOrderChange = (channelId: string, newOrder: string) => {
+    const targetIdx = parseInt(newOrder) - 1;
+    if (isNaN(targetIdx) || targetIdx < 0 || targetIdx >= favoriteChannels.length) return;
+    
+    const currentIdx = favoriteChannels.findIndex(c => c.channelid === channelId);
+    if (currentIdx === -1 || currentIdx === targetIdx) return;
+
+    const newList = [...favoriteChannels];
+    const [movedChannel] = newList.splice(currentIdx, 1);
+    newList.splice(targetIdx, 0, movedChannel);
+    setFavoriteChannels(newList);
+  };
+
+  const handleSaveReorder = async () => {
+    try {
+      await saveChannelsReorder();
+      setIsReordering(false);
+      toast({ title: "تم الحفظ", description: "تم تحديث ترتيب القنوات سحابياً" });
+    } catch (e) {
+      toast({ variant: "destructive", title: "خطأ", description: "فشل حفظ الترتيب" });
     }
   };
 
@@ -194,11 +172,6 @@ export function MediaView() {
     recognition.start();
   };
 
-  const handleSurahClick = (surah: string) => {
-    const query = `${surah} ${selectedReciter.name}`;
-    handleVideoSearch(query);
-  };
-
   if (isFullScreen) return null;
 
   return (
@@ -210,9 +183,21 @@ export function MediaView() {
             <p className="text-muted-foreground text-xs font-medium uppercase tracking-widest opacity-60">Professional Video Center</p>
           </div>
           <div className="flex items-center gap-4">
+            <Button
+              variant="outline"
+              onClick={() => setIsReordering(!isReordering)}
+              className={cn("h-12 px-6 rounded-full focusable", isReordering ? "bg-accent text-black" : "bg-white/5 text-white")}
+            >
+              {isReordering ? "إلغاء الترتيب" : "تغيير الترتيب"}
+            </Button>
+            {isReordering && (
+              <Button onClick={handleSaveReorder} className="h-12 px-6 rounded-full bg-primary text-white shadow-glow">
+                <Save className="w-4 h-4 ml-2" /> حفظ الترتيب السحابي
+              </Button>
+            )}
             <Dialog open={isUrlDialogOpen} onOpenChange={setIsUrlDialogOpen}>
               <DialogTrigger asChild>
-                <Button variant="ghost" className="h-12 px-6 rounded-full bg-white/5 border border-white/10 text-white hover:bg-white/10 focusable flex items-center gap-2" tabIndex={0} data-nav-id="btn-add-url">
+                <Button variant="ghost" className="h-12 px-6 rounded-full bg-white/5 border border-white/10 text-white hover:bg-white/10 focusable flex items-center gap-2">
                   <LinkIcon className="w-4 h-4 text-primary" />
                   <span className="text-[10px] font-black uppercase tracking-widest">إضافة بالرابط</span>
                 </Button>
@@ -240,67 +225,7 @@ export function MediaView() {
         </div>
 
         <div className="flex flex-col md:flex-row gap-8 items-stretch">
-          <div className="w-full md:w-1/2 flex flex-col gap-3 order-1">
-            <div className="flex items-center gap-2 px-2">
-              <Users className="w-4 h-4 text-primary" />
-              <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block">اختيار القارئ</label>
-            </div>
-            
-            {!showReciterGrid ? (
-              <Button
-                onClick={() => setShowReciterGrid(true)}
-                className="h-20 w-full rounded-[2rem] bg-white/5 border-2 border-white/10 text-white font-black text-xl hover:bg-white/10 transition-all shadow-xl focusable flex items-center justify-between px-8 text-right"
-                tabIndex={0}
-                data-nav-id="btn-select-reciter"
-              >
-                <div className="flex items-center gap-4">
-                   <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-                     <Users className="w-6 h-6 text-primary" />
-                   </div>
-                   <span>{selectedReciter ? selectedReciter.name : "اختر القارئ المفضل"}</span>
-                </div>
-                <ChevronDown className="w-6 h-6 opacity-40" />
-              </Button>
-            ) : (
-              <div className="bg-zinc-900 border-2 border-primary/40 rounded-[2.5rem] p-6 relative animate-in zoom-in-95 duration-300 shadow-2xl">
-                <div className="flex items-center justify-between mb-6 px-2">
-                  <span className="text-xs font-black text-primary uppercase tracking-[0.2em]">قائمة القراء المتاحة</span>
-                  <Button variant="ghost" size="icon" onClick={() => setShowReciterGrid(false)} className="rounded-full w-10 h-10 text-white/40 hover:text-white hover:bg-white/10 focusable" tabIndex={0}>
-                    <X className="w-5 h-5" />
-                  </Button>
-                </div>
-                {isLoadingReciters ? (
-                  <div className="h-60 flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-primary" /></div>
-                ) : (
-                  <ScrollArea className="h-80 pr-2">
-                    <div className="grid grid-cols-2 gap-4 pb-6">
-                      {reciters.map((reciter, idx) => (
-                        <Button
-                          key={idx}
-                          variant="ghost"
-                          data-nav-id={`reciter-${idx}`}
-                          onClick={() => {
-                            setSelectedReciter(reciter);
-                            setShowSurahGrid(true);
-                            setShowReciterGrid(false);
-                          }}
-                          className={cn(
-                            "h-18 rounded-2xl border-2 transition-all font-black text-lg text-right px-6 justify-start focusable",
-                            selectedReciter?.name === reciter.name ? "bg-primary text-white border-primary shadow-glow" : "bg-white/5 border-transparent text-white/70 hover:bg-white/10"
-                          )}
-                          tabIndex={0}
-                        >
-                          {reciter.name}
-                        </Button>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                )}
-              </div>
-            )}
-          </div>
-
-          <div className="w-full md:w-1/2 flex flex-col justify-end gap-6 order-2">
+          <div className="w-full flex flex-col justify-end gap-6 order-2">
             <div className="space-y-3">
               <div className="flex items-center gap-2 px-2">
                 <Search className="w-4 h-4 text-primary" />
@@ -319,60 +244,18 @@ export function MediaView() {
                   data-nav-id="media-search-input"
                 />
                 <div className="absolute left-6 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                  <button onClick={handleVoiceSearch} className={cn("p-3 rounded-full transition-all focusable", isListening ? "text-red-500 animate-pulse bg-red-500/10" : "text-muted-foreground")} tabIndex={0} data-nav-id="btn-voice-search">
+                  <button onClick={handleVoiceSearch} className={cn("p-3 rounded-full transition-all focusable", isListening ? "text-red-500 animate-pulse bg-red-500/10" : "text-muted-foreground")} tabIndex={0}>
                     <Mic className="h-7 w-7" />
                   </button>
                 </div>
               </div>
             </div>
-            <Button onClick={() => handleVideoSearch()} disabled={isSearching} className="h-20 w-full rounded-[2rem] bg-primary text-white font-black text-xl hover:scale-[1.02] shadow-2xl focusable flex items-center justify-center gap-4" tabIndex={0} data-nav-id="btn-execute-search">
+            <Button onClick={() => handleVideoSearch()} disabled={isSearching} className="h-20 w-full rounded-[2rem] bg-primary text-white font-black text-xl hover:scale-[1.02] shadow-2xl focusable flex items-center justify-center gap-4" tabIndex={0}>
               {isSearching ? <Loader2 className="w-8 h-8 animate-spin" /> : <Search className="w-8 h-8" />}
               <span>تنفيذ البحث</span>
             </Button>
           </div>
         </div>
-
-        {showSurahGrid && selectedReciter && (
-          <div className="bg-zinc-950 p-8 rounded-[3rem] border border-primary/20 animate-in fade-in slide-in-from-top-4 duration-500 shadow-2xl relative overflow-hidden">
-            <div className="absolute top-8 left-8 z-20">
-              <Button variant="ghost" onClick={() => setShowSurahGrid(false)} className="rounded-full w-12 h-12 bg-white/5 border border-white/10 text-white focusable" tabIndex={0}>
-                <X className="w-6 h-6" />
-              </Button>
-            </div>
-            
-            <div className="flex items-center justify-between mb-8 border-b border-white/5 pb-6">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-full bg-accent/20 flex items-center justify-center"><BookOpen className="w-8 h-8 text-accent" /></div>
-                <div className="flex flex-col text-right">
-                  <h2 className="text-3xl font-black text-white">فهرس السور</h2>
-                  <span className="text-sm font-black text-accent">{selectedReciter.name}</span>
-                </div>
-              </div>
-            </div>
-            <ScrollArea className="h-[400px] w-full">
-              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4 p-2 pb-12">
-                {SURAHS_LIST.map((surah, idx) => (
-                  <Button
-                    key={idx}
-                    variant="ghost"
-                    data-nav-id={`surah-${idx}`}
-                    onClick={() => handleSurahClick(surah)}
-                    className={cn(
-                      "h-24 rounded-[2rem] flex flex-col items-center justify-center border-2 transition-all hover:scale-[1.08] focusable px-4 shadow-xl",
-                      idx < 7 ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500" : "bg-blue-500/10 border-blue-500/20 text-blue-500"
-                    )}
-                    tabIndex={0}
-                  >
-                    <span className="text-xl font-black tracking-tight mb-1">{surah}</span>
-                    <div className="bg-black/30 px-3 py-1 rounded-full text-[10px] font-black opacity-90 border border-white/5">
-                      سورة {idx + 1}
-                    </div>
-                  </Button>
-                ))}
-              </div>
-            </ScrollArea>
-          </div>
-        )}
       </header>
 
       {videoResults.length > 0 && (
@@ -413,7 +296,6 @@ export function MediaView() {
                       favoriteChannels.some(c => c.channelid === selectedChannel!.channelid) ? "bg-accent text-black" : "bg-white text-black"
                     )}
                     tabIndex={0}
-                    data-nav-id="btn-subscribe-toggle"
                   >
                     {favoriteChannels.some(c => c.channelid === selectedChannel!.channelid) ? 'مشترك' : 'إشتراك'}
                   </Button>
@@ -481,7 +363,7 @@ export function MediaView() {
                 <ScrollArea className="max-h-[65vh]">
                   <div className="p-10 space-y-6">
                     {channelResults.map((channel, idx) => {
-                      const isSubscribed = favoriteChannels.some(c => c.channelid === channel.channelid);
+                      const isSubscribed = Array.isArray(favoriteChannels) && favoriteChannels.some(c => c.channelid === channel.channelid);
                       return (
                         <div key={channel.channelid} data-nav-id={`channel-search-result-${idx}`} className="flex items-center gap-6 p-6 rounded-[2rem] bg-white/5 border border-white/5 hover:bg-white/10 transition-all group focusable" tabIndex={0} onClick={() => isSubscribed ? removeChannel(channel.channelid) : addChannel(channel)}>
                           <div className="relative w-24 h-24 rounded-full overflow-hidden border-2 border-white/10 flex-shrink-0">
@@ -501,13 +383,41 @@ export function MediaView() {
               </DialogContent>
             </Dialog>
 
-            {sortedChannels.map((channel, idx) => (
-              <div key={channel.channelid} data-nav-id={`fav-channel-${idx}`} className="flex flex-col items-center gap-4 group relative focusable" tabIndex={0} onClick={() => handleSelectChannel(channel)}>
+            {Array.isArray(favoriteChannels) && favoriteChannels.map((channel, idx) => (
+              <div 
+                key={channel.channelid} 
+                data-nav-id={`fav-channel-${idx}`} 
+                className={cn(
+                  "flex flex-col items-center gap-4 group relative focusable",
+                  isReordering && "cursor-move",
+                  draggedIdx === idx && "opacity-50 border-primary"
+                )} 
+                draggable={isReordering}
+                onDragStart={() => handleDragStart(idx)}
+                onDragOver={(e) => handleDragOver(e, idx)}
+                onDragEnd={() => setDraggedIdx(null)}
+                tabIndex={0} 
+                onClick={() => handleSelectChannel(channel)}
+              >
                 <div className="w-32 h-32 sm:w-40 sm:h-40 rounded-full overflow-hidden border-4 border-white/10 group-hover:border-primary transition-all duration-500 cursor-pointer shadow-2xl relative">
                   <Image src={channel.image} alt={channel.name} fill className="object-cover group-hover:scale-115 transition-transform duration-700" />
                   <div className="absolute inset-0 bg-black/30 group-hover:bg-transparent transition-all" />
                   
-                  {/* Reorder and Star Controls */}
+                  {isReordering && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/60 group">
+                      <div className="flex flex-col items-center gap-2">
+                        <GripVertical className="w-10 h-10 text-white animate-pulse" />
+                        <Input 
+                          type="number"
+                          value={idx + 1}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) => handleOrderChange(channel.channelid, e.target.value)}
+                          className="w-16 h-10 bg-white text-black text-center font-black rounded-lg text-lg focus:ring-4 focus:ring-primary shadow-2xl border-none"
+                        />
+                      </div>
+                    </div>
+                  )}
+
                   <div className="absolute top-2 right-2 flex flex-col gap-2 z-30 transition-all">
                     <button 
                       onClick={(e) => { e.stopPropagation(); toggleStarChannel(channel.channelid); }}
@@ -518,24 +428,16 @@ export function MediaView() {
                     >
                       <Star className={cn("w-5 h-5", channel.starred && "fill-current")} />
                     </button>
-                    
-                    {idx > 0 && (
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); reorderFavoriteChannel(channel.channelid, 'up'); }}
-                        className="w-10 h-10 rounded-full bg-blue-600/80 backdrop-blur-xl border border-white/10 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 focusable shadow-lg"
-                        title="تحريك للأعلى"
-                      >
-                        <ChevronUp className="w-5 h-5" />
-                      </button>
-                    )}
                   </div>
 
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); removeChannel(channel.channelid); }}
-                    className="absolute top-2 left-2 w-10 h-10 rounded-full bg-red-600/80 backdrop-blur-xl border border-white/10 text-white flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 group-focus:opacity-100 z-30 hover:bg-red-600"
-                  >
-                    <Trash2 className="w-5 h-5" />
-                  </button>
+                  {!isReordering && (
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); removeChannel(channel.channelid); }}
+                      className="absolute top-2 left-2 w-10 h-10 rounded-full bg-red-600/80 backdrop-blur-xl border border-white/10 text-white flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 group-focus:opacity-100 z-30 hover:bg-red-600"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  )}
                 </div>
                 <div className="flex flex-col items-center">
                   <span className={cn("font-black text-sm text-center truncate w-full px-4", channel.starred ? "text-yellow-500" : "text-white/70 group-hover:text-white")}>

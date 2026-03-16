@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
@@ -62,7 +63,8 @@ export function MapWidget() {
       light2.position.set(-25, 5, 15); scene.add(light2);
 
       const loader = new GLTFLoader();
-      loader.load('https://dmusera.netlify.app/ES350E.gltf', (gltf) => {
+      // Using local path as primary, fallback to netlify if needed
+      loader.load('/ES350E/ES350E.gltf', (gltf) => {
         const model = gltf.scene;
         model.traverse(node => {
           if ((node as THREE.Mesh).isMesh) {
@@ -99,7 +101,13 @@ export function MapWidget() {
         scene.add(model);
         carModelRef.current = model;
       }, undefined, (err) => {
-        console.error("Failed to fetch GLTF model:", err);
+        console.warn("Local GLTF not found, trying remote fallback...", err);
+        loader.load('https://dmusera.netlify.app/ES350E.gltf', (gltf) => {
+          const model = gltf.scene;
+          model.rotation.x = Math.PI / 2;
+          scene.add(model);
+          carModelRef.current = model;
+        });
       });
       (overlay as any).scene = scene;
       (overlay as any).camera = camera;

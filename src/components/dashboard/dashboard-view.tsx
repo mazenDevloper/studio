@@ -15,7 +15,6 @@ import { useMediaStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { Carousel, CarouselContent, CarouselItem, CarouselApi } from "@/components/ui/carousel";
 
-// LAZY LOAD HEAVY BOTTOM WIDGETS FOR PERFORMANCE
 const LatestVideosWidget = dynamic(() => import("./widgets/latest-videos-widget").then(m => m.LatestVideosWidget), { 
   ssr: false,
   loading: () => <div className="h-64 w-full bg-zinc-900/20 animate-pulse rounded-[2.5rem]" />
@@ -26,9 +25,18 @@ const YouTubeSavedWidget = dynamic(() => import("./widgets/youtube-saved-widget"
   loading: () => <div className="h-64 w-full bg-zinc-900/20 animate-pulse rounded-[2.5rem]" />
 });
 
+const YouTubeSuggestionsWidget = dynamic(() => import("./widgets/youtube-suggestions-widget").then(m => m.YouTubeSuggestionsWidget), { 
+  ssr: false
+});
+
 export function DashboardView() {
   const { favoriteChannels, activeVideo } = useMediaStore();
-  const starredChannels = favoriteChannels.filter(c => c.starred);
+  
+  // FIX: Safety check for array to prevent filter is not a function
+  const starredChannels = Array.isArray(favoriteChannels) 
+    ? favoriteChannels.filter(c => c?.starred) 
+    : [];
+
   const [api, setApi] = useState<CarouselApi>();
   const [current, setCurrent] = useState(0);
   const [count, setCount] = useState(0);
@@ -54,10 +62,8 @@ export function DashboardView() {
 
   return (
     <div className="h-full w-full p-6 flex flex-col gap-6 relative overflow-y-auto pb-32 no-scrollbar">
-      {/* Safe Area for Floating Island - Prevent overlap */}
       <div className="h-24 shrink-0 w-full" />
 
-      {/* Brand Header */}
       <div className="absolute top-2 left-1/2 -translate-x-1/2 z-[50] opacity-80 pointer-events-none">
         <Image 
           src="https://dmusera.netlify.app/Lexus-Logo.wine.svg" 
@@ -69,12 +75,10 @@ export function DashboardView() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6 min-h-[380px]">
-        {/* Left: Interactive Map OR Active Azkar (Width > 1080px) */}
         <div className="md:col-span-4 rounded-[2.5rem] overflow-hidden relative shadow-2xl h-full focusable" tabIndex={0} data-nav-id="left-widget-container">
           {isWideScreen ? <ActiveAzkarWidget /> : <MapWidget />}
         </div>
 
-        {/* Middle: Vehicle Visualizer OR Reminder Summary (Width > 1080px) */}
         <div className="md:col-span-4 rounded-[2.5rem] relative flex items-center justify-center overflow-hidden h-full shadow-2xl focusable" tabIndex={0} data-nav-id="car-visualizer-container">
           {isWideScreen ? (
             <ReminderSummaryWidget />
@@ -94,7 +98,6 @@ export function DashboardView() {
           )}
         </div>
 
-        {/* Right: Dynamic Widget Carousel - LOADED FIRST */}
         <div className="md:col-span-4 flex flex-col gap-6 h-full relative">
           <div className="flex-[1.8] relative overflow-hidden focusable group bg-black/20 rounded-[2.5rem] shadow-2xl" tabIndex={0} data-nav-id="moon-widget-container">
             <Carousel setApi={setApi} opts={{ loop: true }} className="w-full h-full">
@@ -113,7 +116,6 @@ export function DashboardView() {
               </CarouselContent>
             </Carousel>
 
-            {/* Scrolled Dots - Capsule Style */}
             <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 z-20">
               {Array.from({ length: count }).map((_, i) => (
                 <div 
@@ -139,9 +141,9 @@ export function DashboardView() {
         <PrayerTimelineWidget />
       </div>
 
-      {/* DELAYED LOADING FOR BOTTOM SECTIONS */}
       <div className="w-full space-y-8 pb-12">
         <LatestVideosWidget channels={starredChannels} />
+        <YouTubeSuggestionsWidget />
         <YouTubeSavedWidget />
       </div>
     </div>

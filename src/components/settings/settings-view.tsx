@@ -1,7 +1,8 @@
+
 "use client";
 
 import { useState, useCallback } from "react";
-import { useMediaStore, Reminder, Manuscript } from "@/lib/store";
+import { useMediaStore, Reminder, FavoriteTeam } from "@/lib/store";
 import { 
   Settings, 
   Bell, 
@@ -15,16 +16,16 @@ import {
   Globe,
   Zap,
   Shield,
-  Timer,
   Clock,
   ChevronDown,
   ChevronUp,
   Image as ImageIcon,
-  Type as TypeIcon
+  Type as TypeIcon,
+  AlertTriangle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
@@ -75,11 +76,13 @@ export function SettingsView() {
     favoriteLeagueIds,
     toggleFavoriteLeague,
     mapSettings, 
-    updateMapSettings 
+    updateMapSettings,
+    fetchManuscripts
   } = useMediaStore();
   const { toast } = useToast();
   
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [isRefreshingManuscripts, setIsRefreshingManuscripts] = useState(false);
   const [form, setForm] = useState<Partial<Reminder>>({
     label: "",
     relativePrayer: "manual",
@@ -97,19 +100,27 @@ export function SettingsView() {
   const [manuscriptType, setManuscriptType] = useState<'text' | 'image'>('text');
 
   const [clubSearch, setClubSearch] = useState("");
+  const [searchLeagueId, setSearchLeagueId] = useState<string>("all");
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<any[]>([]);
 
   const handleGlobalSearch = useCallback(async () => {
-    if (!clubSearch.trim()) return;
+    if (!clubSearch.trim() && searchLeagueId === "all") return;
     setIsSearching(true);
     try {
-      const results = await searchFootballTeams(clubSearch);
+      const results = await searchFootballTeams(clubSearch, searchLeagueId === "all" ? undefined : searchLeagueId);
       setSearchResults(results);
     } finally {
       setIsSearching(false);
     }
-  }, [clubSearch]);
+  }, [clubSearch, searchLeagueId]);
+
+  const handleRefreshManuscripts = async () => {
+    setIsRefreshingManuscripts(true);
+    await fetchManuscripts();
+    setIsRefreshingManuscripts(false);
+    toast({ title: "تم التحديث", description: "تم جلب أحدث المخطوطات من السحابة بنجاح." });
+  };
 
   const handleSubmitReminder = () => {
     if (!form.label?.trim()) return;
@@ -154,6 +165,8 @@ export function SettingsView() {
     setForm(r);
   };
 
+  const isFavTeam = (id: number) => favoriteTeams.some(t => t.id === id);
+
   return (
     <div className="p-12 space-y-12 max-w-7xl mx-auto pb-40 animate-in fade-in duration-700 text-right dir-rtl">
       <header className="flex flex-col gap-4">
@@ -191,11 +204,22 @@ export function SettingsView() {
 
           <Card className="premium-glass p-10 space-y-8">
             <div className="flex flex-col gap-2">
-              <CardTitle className="text-2xl font-black text-white flex items-center gap-3">
-                <ImageIcon className="w-6 h-6 text-accent" />
-                تخصيص المخطوطات والأذكار
-              </CardTitle>
-              <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest">Custom Calligraphy & Texts</p>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-2xl font-black text-white flex items-center gap-3">
+                  <ImageIcon className="w-6 h-6 text-accent" />
+                  تخصيص المخطوطات والأذكار
+                </CardTitle>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={handleRefreshManuscripts} 
+                  disabled={isRefreshingManuscripts}
+                  className="rounded-full bg-white/5 border border-white/10 hover:bg-white/10 focusable"
+                >
+                  <RefreshCw className={cn("w-5 h-5", isRefreshingManuscripts && "animate-spin")} />
+                </Button>
+              </div>
+              <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest">Cloud Sync Mode: Anywhere & Everywhere</p>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
@@ -209,34 +233,41 @@ export function SettingsView() {
                   </button>
                 </div>
                 <Input 
-                  placeholder={manuscriptType === 'text' ? "اكتب التسبيح أو الذكر..." : "رابط صورة المخطوطة (URL)..."}
+                  placeholder="اكتب التسبيح أو الذكر..."
                   value={manuscriptInput}
                   onChange={(e) => setManuscriptInput(e.target.value)}
                   className="h-16 bg-white/5 border-white/10 rounded-2xl px-6 text-right text-lg focusable"
                 />
                 <Button onClick={handleAddManuscript} className="w-full h-16 bg-accent text-black font-black text-xl rounded-2xl shadow-xl focusable">
-                  فقط هنا اربطة ب jsonbin 69b63c5cc3097a1dd5278b25
+                  إضافة للمخطوطات السحابية
                 </Button>
               </div>
 
               <div className="lg:col-span-7 space-y-4">
-                <span className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2 px-2">المخطوطات النشطة</span>
                 <ScrollArea className="h-[280px] pr-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-10">
-                    {customManuscripts.map((item) => (
-                      <div key={item.id} className="p-4 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-between group transition-all hover:border-white/20">
-                        <div className="flex-1 min-w-0 mr-2">
-                          {item.type === 'text' ? (
-                            <span className="font-calligraphy text-lg text-white truncate block">{item.content}</span>
-                          ) : (
-                            <img src={item.content} className="h-10 w-auto object-contain brightness-0 invert opacity-60" alt="" />
-                          )}
-                        </div>
-                        <Button variant="ghost" size="icon" onClick={() => removeManuscript(item.id)} className="w-10 h-10 rounded-full bg-red-600/10 text-red-500 opacity-0 group-hover:opacity-100 transition-all focusable">
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                    {customManuscripts.length === 0 ? (
+                      <div className="col-span-full py-16 flex flex-col items-center justify-center gap-4 bg-red-500/5 border border-dashed border-red-500/20 rounded-[2rem]">
+                        <AlertTriangle className="w-12 h-12 text-red-500/40" />
+                        <p className="text-white/60 text-center font-bold px-8 leading-relaxed">المخطوطات لم تجلب بعد. يرجى المحاولة لاحقاً.</p>
+                        <Button onClick={handleRefreshManuscripts} variant="outline" className="rounded-full border-red-500/20 text-red-400 hover:bg-red-500/10">إعادة محاولة الجلب</Button>
                       </div>
-                    ))}
+                    ) : (
+                      customManuscripts.map((item) => (
+                        <div key={item.id} className="p-4 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-between group transition-all hover:border-white/20">
+                          <div className="flex-1 min-w-0 mr-2">
+                            {item.type === 'text' ? (
+                              <span className="font-calligraphy text-lg text-white truncate block">{item.content}</span>
+                            ) : (
+                              <img src={item.content} className="h-10 w-auto object-contain brightness-0 invert opacity-60" alt="" />
+                            )}
+                          </div>
+                          <Button variant="ghost" size="icon" onClick={() => removeManuscript(item.id)} className="w-10 h-10 rounded-full bg-red-600/10 text-red-500 opacity-0 group-hover:opacity-100 transition-all focusable">
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </ScrollArea>
               </div>
@@ -339,7 +370,7 @@ export function SettingsView() {
                   {form.relativePrayer === 'manual' ? (
                     <Input type="time" className="bg-white/5 border-white/10 h-14 rounded-2xl px-6 text-center text-xl focusable" value={form.manualTime} onChange={(e) => setForm({ ...form, manualTime: e.target.value })} />
                   ) : (
-                    <Input type="number" placeholder="الإزاحة..." className="bg-white/5 border-white/10 h-14 rounded-2xl px-6 text-center text-xl focusable" value={form.offsetMinutes} onChange={(e) => setForm({ ...form, offsetMinutes: parseInt(e.target.value) || 0 })} />
+                    <Input type="number" placeholder="إزاحة..." className="bg-white/5 border-white/10 h-14 rounded-2xl px-6 text-center text-xl focusable" value={form.offsetMinutes} onChange={(e) => setForm({ ...form, offsetMinutes: parseInt(e.target.value) || 0 })} />
                   )}
                 </div>
                 <div className="grid grid-cols-2 gap-8 py-4 border-y border-white/5">
@@ -389,9 +420,9 @@ export function SettingsView() {
                 <div className="flex flex-col gap-2">
                   <CardTitle className="text-2xl font-black text-white flex items-center gap-3">
                     <Globe className="w-6 h-6 text-accent" />
-                    تتبع الدوريات الكبرى
+                    تتبع الدوريات الكبرى (Starred)
                   </CardTitle>
-                  <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest">Master League Tracking</p>
+                  <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest">Master League Watchlist</p>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   {MAJOR_LEAGUES.map(league => {
@@ -403,11 +434,11 @@ export function SettingsView() {
                         onClick={() => toggleFavoriteLeague(league.id)}
                         className={cn(
                           "h-14 rounded-2xl border transition-all font-black text-xs justify-between px-6 focusable",
-                          isFav ? "bg-accent/20 border-accent text-accent" : "bg-white/5 border-white/5 text-white/40 hover:bg-white/10"
+                          isFav ? "bg-accent/20 border-accent text-accent" : "bg-white/5 border-white/10 text-white/40 hover:bg-white/10"
                         )}
                       >
                         {league.name}
-                        {isFav ? <Zap className="w-4 h-4 fill-current" /> : <Plus className="w-4 h-4" />}
+                        {isFav ? <Star className="w-4 h-4 fill-current" /> : <Plus className="w-4 h-4" />}
                       </Button>
                     );
                   })}
@@ -418,39 +449,54 @@ export function SettingsView() {
                 <div className="flex flex-col gap-2">
                   <CardTitle className="text-2xl font-black text-white flex items-center gap-3">
                     <Search className="w-6 h-6 text-primary" />
-                    البحث عن أندية عالمية
+                    البحث عن أندية عالمية (فلترة الدوري)
                   </CardTitle>
                   <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest">Global Club Database</p>
                 </div>
-                <div className="relative flex gap-3">
-                  <Input 
-                    placeholder="مثال: الهلال، ريال مدريد، ليفربول..." 
-                    value={clubSearch} 
-                    onChange={(e) => setClubSearch(e.target.value)} 
-                    onKeyDown={(e) => e.key === 'Enter' && handleGlobalSearch()} 
-                    className="h-16 bg-white/5 border-white/10 rounded-2xl px-8 text-right text-xl flex-1 focusable shadow-2xl" 
-                  />
-                  <Button onClick={handleGlobalSearch} disabled={isSearching} className="h-16 w-16 bg-primary rounded-2xl shadow-xl focusable">
-                    {isSearching ? <RefreshCw className="w-6 h-6 animate-spin" /> : <Plus className="w-8 h-8" />}
-                  </Button>
+                
+                <div className="flex flex-col gap-4">
+                  <div className="flex gap-3">
+                    <Select value={searchLeagueId} onValueChange={setSearchLeagueId}>
+                      <SelectTrigger className="w-48 bg-white/5 border-white/10 h-16 rounded-2xl text-right focusable">
+                        <SelectValue placeholder="الدوري..." />
+                      </SelectTrigger>
+                      <SelectContent className="bg-zinc-900 border-white/10 text-white">
+                        <SelectItem value="all">كل الدوريات</SelectItem>
+                        {MAJOR_LEAGUES.map(l => (
+                          <SelectItem key={l.id} value={l.id.toString()}>{l.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Input 
+                      placeholder="اسم النادي..." 
+                      value={clubSearch} 
+                      onChange={(e) => setClubSearch(e.target.value)} 
+                      onKeyDown={(e) => e.key === 'Enter' && handleGlobalSearch()} 
+                      className="h-16 bg-white/5 border-white/10 rounded-2xl px-8 text-right text-xl flex-1 focusable" 
+                    />
+                    <Button onClick={handleGlobalSearch} disabled={isSearching} className="h-16 w-16 bg-primary rounded-2xl shadow-xl focusable">
+                      {isSearching ? <RefreshCw className="w-6 h-6 animate-spin" /> : <Search className="w-8 h-8" />}
+                    </Button>
+                  </div>
                 </div>
+
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 max-h-[300px] overflow-y-auto pr-2 no-scrollbar">
                   {searchResults.map((team: any) => {
-                    const isFav = favoriteTeams.some(t => t.id === team.team.id);
+                    const fav = isFavTeam(team.team.id);
                     return (
                       <div 
                         key={team.team.id} 
                         onClick={() => toggleFavoriteTeam({ id: team.team.id, name: team.team.name, logo: team.team.logo })}
                         className={cn(
                           "p-4 rounded-[2rem] border transition-all cursor-pointer flex flex-col items-center gap-3 focusable",
-                          isFav ? "bg-primary/20 border-primary shadow-glow" : "bg-white/5 border-white/10 hover:bg-white/10"
+                          fav ? "bg-primary/20 border-primary shadow-glow" : "bg-white/5 border-white/10 hover:bg-white/10"
                         )}
                       >
                         <div className="relative w-16 h-16">
                           <img src={team.team.logo} alt="" className="w-full h-full object-contain" />
                         </div>
                         <span className="text-[10px] font-black text-center line-clamp-1">{team.team.name}</span>
-                        {isFav ? <Star className="w-4 h-4 text-yellow-500 fill-current" /> : <Plus className="w-4 h-4 text-white/40" />}
+                        {fav ? <Star className="w-4 h-4 text-yellow-500 fill-current" /> : <Plus className="w-4 h-4 text-white/40" />}
                       </div>
                     );
                   })}
@@ -464,7 +510,7 @@ export function SettingsView() {
                   <div className="flex flex-col gap-1">
                     <CardTitle className="text-2xl font-black text-white flex items-center gap-3">
                       <Trophy className="w-6 h-6 text-yellow-500" />
-                      قائمة التتبع
+                      قائمة التتبع (Starred)
                     </CardTitle>
                     <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest">Active Watchlist</p>
                   </div>
