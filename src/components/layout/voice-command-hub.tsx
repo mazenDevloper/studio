@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
@@ -72,18 +73,15 @@ export function VoiceCommandHub() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // STOP VOICE COMMAND IF FOCUSING INPUT
-      const isInputFocused = document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA';
+      const activeEl = document.activeElement as HTMLElement;
+      const isInputFocused = activeEl?.tagName === 'INPUT' || activeEl?.tagName === 'TEXTAREA';
       if (isInputFocused) return;
 
-      if (e.key === "0") { // '0' key for global voice activation
-        e.preventDefault();
-        toggleListening();
-      }
+      // Key 0 is now dedicated to Wall Plate in RemotePointer
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [toggleListening]);
+  }, []);
 
   return (
     <div className={cn(

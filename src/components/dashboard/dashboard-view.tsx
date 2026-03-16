@@ -12,6 +12,7 @@ import { PrayerTimelineWidget } from "./widgets/prayer-timeline-widget";
 import { MapWidget } from "./widgets/map-widget";
 import { ReminderSummaryWidget } from "./widgets/reminder-summary-widget";
 import { ActiveAzkarWidget } from "./widgets/active-azkar-widget";
+import { PrayerCountdownCard } from "./widgets/prayer-countdown-card";
 import { useMediaStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { Carousel, CarouselContent, CarouselItem, CarouselApi } from "@/components/ui/carousel";
@@ -25,10 +26,6 @@ const LatestVideosWidget = dynamic(() => import("./widgets/latest-videos-widget"
 const YouTubeSavedWidget = dynamic(() => import("./widgets/youtube-saved-widget").then(m => m.YouTubeSavedWidget), { 
   ssr: false,
   loading: () => <div className="h-64 w-full bg-zinc-900/20 animate-pulse rounded-[2.5rem]" />
-});
-
-const YouTubeSuggestionsWidget = dynamic(() => import("./widgets/youtube-suggestions-widget").then(m => m.YouTubeSuggestionsWidget), { 
-  ssr: false
 });
 
 export function DashboardView() {
@@ -65,7 +62,7 @@ export function DashboardView() {
     <div className="h-full w-full p-6 flex flex-col gap-6 relative overflow-y-auto pb-32 no-scrollbar bg-black">
       <div className="h-24 shrink-0 w-full" />
 
-      {/* Wall Plate Overlay - Pure Black Pure Immersion */}
+      {/* Wall Plate Overlay */}
       {wallPlateType && (
         <div 
           className="fixed inset-0 z-[20000] bg-black flex items-center justify-center animate-in fade-in duration-700 cursor-pointer"
@@ -91,24 +88,22 @@ export function DashboardView() {
             )}
             {wallPlateType === 'manuscript' && (
               <div className="relative w-full h-full animate-in zoom-in-95 duration-1000 flex items-center justify-center px-10 bg-black">
-                {/* Artistic Background Layer */}
                 {mapSettings.showManuscriptBg && (
                   <div className="absolute inset-0 z-0">
                     <Image 
                       src={mapSettings.manuscriptBgUrl} 
                       alt="Wall Background" 
                       fill 
-                      className="object-cover opacity-40 mix-blend-luminosity grayscale contrast-125"
+                      className="object-cover opacity-90"
                       priority
                     />
-                    <div className="absolute inset-0 bg-gradient-to-b from-black via-transparent to-black" />
-                    <div className="absolute inset-0 bg-black/40" />
+                    <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/20" />
                   </div>
                 )}
                 
                 <div className="relative z-10 w-full flex items-center justify-center">
                   {wallPlateData.type === 'text' ? (
-                    <p className="w-full text-[18rem] md:text-[28rem] font-calligraphy text-white leading-none drop-shadow-[0_0_120px_rgba(255,255,255,1)] text-center whitespace-nowrap">
+                    <p className="w-full text-2xl md:text-4xl lg:text-5xl font-calligraphy text-white leading-relaxed drop-shadow-[0_0_60px_rgba(255,255,255,1)] text-center px-10">
                       {wallPlateData.content}
                     </p>
                   ) : (
@@ -132,7 +127,7 @@ export function DashboardView() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6 min-h-[380px]">
-        <div className="md:col-span-4 rounded-[2.5rem] overflow-hidden relative shadow-2xl h-full focusable bg-black" tabIndex={0} data-nav-id="left-widget-container">
+        <div className="md:col-span-4 rounded-[2.5rem] overflow-hidden relative shadow-2xl h-full bg-black">
           {isWideScreen ? <ActiveAzkarWidget /> : <MapWidget />}
         </div>
 
@@ -156,15 +151,13 @@ export function DashboardView() {
         </div>
 
         <div className="md:col-span-4 flex flex-col gap-6 h-full relative">
-          <div className="flex-[1.8] relative overflow-hidden focusable group bg-black rounded-[2.5rem] shadow-2xl" tabIndex={0} data-nav-id="moon-widget-container">
+          <div className="flex-[1.8] relative overflow-hidden group bg-black rounded-[2.5rem] shadow-2xl">
             <Carousel setApi={setApi} opts={{ loop: true }} className="w-full h-full">
               <CarouselContent className="h-full ml-0 overflow-hidden no-scrollbar">
                 <CarouselItem className="pl-0 h-full flex items-center justify-center bg-black">
                   <MoonWidget />
                 </CarouselItem>
-                <CarouselItem className="pl-0 h-full flex items-center justify-center bg-black">
-                  <WeatherWidget />
-                </CarouselItem>
+                {/* Moon is the primary widget here */}
                 {activeVideo && (
                   <CarouselItem className="pl-0 h-full flex items-center justify-center bg-black">
                     <PlayingNowWidget />
@@ -173,19 +166,21 @@ export function DashboardView() {
               </CarouselContent>
             </Carousel>
 
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 z-20">
-              {Array.from({ length: count }).map((_, i) => (
-                <div 
-                  key={i} 
-                  className={cn(
-                    "h-1.5 rounded-full transition-all duration-500",
-                    current === i 
-                      ? "bg-primary w-6 shadow-[0_0_10px_#0088ff]" 
-                      : "bg-white/20 w-1.5"
-                  )} 
-                />
-              ))}
-            </div>
+            {count > 1 && (
+              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 z-20">
+                {Array.from({ length: count }).map((_, i) => (
+                  <div 
+                    key={i} 
+                    className={cn(
+                      "h-1.5 rounded-full transition-all duration-500",
+                      current === i 
+                        ? "bg-primary w-6 shadow-[0_0_10px_#0088ff]" 
+                        : "bg-white/20 w-1.5"
+                    )} 
+                  />
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="flex-1 rounded-[2.5rem] relative overflow-hidden shadow-2xl focusable max-h-[160px] bg-black" tabIndex={0} data-nav-id="clock-widget-container">
@@ -200,7 +195,6 @@ export function DashboardView() {
 
       <div className="w-full space-y-8 pb-12 bg-black">
         <LatestVideosWidget channels={starredChannels} />
-        <YouTubeSuggestionsWidget />
         <YouTubeSavedWidget />
       </div>
     </div>

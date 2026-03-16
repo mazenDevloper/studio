@@ -11,11 +11,18 @@ export function RemotePointer() {
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const [isVisible, setIsVisible] = useState(false);
   const pathname = usePathname();
-  const { activeIptv, isFullScreen, nextIptvChannel, prevIptvChannel } = useMediaStore();
+  const { activeIptv, isFullScreen, nextIptvChannel, prevIptvChannel, setWallPlate, wallPlateType } = useMediaStore();
 
   const navigate = useCallback((direction: string) => {
+    // Collect all focusable elements
     const focusables = Array.from(document.querySelectorAll(".focusable")) as HTMLElement[];
     if (focusables.length === 0) return;
+
+    // Filter elements that are currently visible vertically (allowing horizontal scroll navigation)
+    const visibleFocusables = focusables.filter(el => {
+      const rect = el.getBoundingClientRect();
+      return rect.top >= 0 && rect.bottom <= (window.innerHeight || document.documentElement.clientHeight);
+    });
 
     const current = document.activeElement as HTMLElement;
     const isCurrentFocusable = current && current.classList.contains("focusable");
@@ -51,13 +58,15 @@ export function RemotePointer() {
       const dx = p2.x - p1.x;
       const dy = p2.y - p1.y;
 
+      // Directional constraints with threshold
       if (dir === "ArrowRight" && dx <= 5) return Infinity;
       if (dir === "ArrowLeft" && dx >= -5) return Infinity;
       if (dir === "ArrowDown" && dy <= 5) return Infinity;
       if (dir === "ArrowUp" && dy >= -5) return Infinity;
 
-      const primaryAxisWeight = 0.5;
-      const secondaryAxisWeight = 1.5;
+      // Heavy bias towards elements in the primary direction
+      const primaryAxisWeight = 0.3; // Low weight = higher priority
+      const secondaryAxisWeight = 2.0; // High weight = lower priority
       
       if (dir === "ArrowRight" || dir === "ArrowLeft") {
         return Math.sqrt(Math.pow(dx * primaryAxisWeight, 2) + Math.pow(dy * secondaryAxisWeight, 2));
@@ -66,9 +75,15 @@ export function RemotePointer() {
       }
     };
 
+    // Use all focusables for calculation to support horizontal scrolling items
     for (const el of focusables) {
       if (el === current) continue;
+      
+      // If we are moving left/right, ignore elements that are too far away vertically
       const rect = el.getBoundingClientRect();
+      const dy = Math.abs((rect.top + rect.height/2) - (currentRect.top + currentRect.height/2));
+      if ((direction === "ArrowLeft" || direction === "ArrowRight") && dy > 150) continue;
+
       const dist = getDistance(currentRect, rect, direction);
       if (dist < minDistance) {
         minDistance = dist;
@@ -78,13 +93,13 @@ export function RemotePointer() {
 
     if (next) {
       next.focus();
-      next.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      next.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
     }
   }, [pathname]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      const activeEl = document.activeElement;
+      const activeEl = document.activeElement as HTMLElement;
       const isInputFocused = 
         activeEl?.tagName === 'INPUT' || 
         activeEl?.tagName === 'TEXTAREA' || 
@@ -93,43 +108,40 @@ export function RemotePointer() {
 
       if (isInputFocused) return;
 
-      // CH+ / CH- Support (Mapped to PageUp/PageDown)
-      // Switch channels only in full-screen cinema mode, otherwise scroll
-      if (e.key === "PageUp" || e.key === "ChannelUp") {
-        if (activeIptv && isFullScreen) {
-          e.preventDefault(); // Stop default scroll in cinema
-          nextIptvChannel();
-          return;
-        }
-      } else if (e.key === "PageDown" || e.key === "ChannelDown") {
-        if (activeIptv && isFullScreen) {
-          e.preventDefault(); // Stop default scroll in cinema
-          prevIptvChannel();
+      // Dedicated Key 0 for Wall Plate Mode
+      if (e.key === "0") {
+        if (activeEl?.dataset?.supportsWallplate === "true") {
+          e.preventDefault();
+          e.stopPropagation();
+          if (wallPlateType) setWallPlate(null);
+          else {
+            // Find specific trigger button or just click the element
+            const trigger = activeEl.querySelector('[data-wallplate-trigger="true"]') as HTMLElement;
+            if (trigger) trigger.click();
+            else activeEl.click();
+          }
+          setActiveKey("0");
+          setIsVisible(true);
+          setTimeout(() => setIsVisible(false), 500);
           return;
         }
       }
 
-      // Channel Switching with 1 and 3 (Prev/Next)
+      if (e.key === "PageUp" || e.key === "ChannelUp") {
+        if (activeIptv && isFullScreen) { e.preventDefault(); nextIptvChannel(); return; }
+      } else if (e.key === "PageDown" || e.key === "ChannelDown") {
+        if (activeIptv && isFullScreen) { e.preventDefault(); prevIptvChannel(); return; }
+      }
+
       if (e.key === "1") {
-        if (activeIptv) {
-          prevIptvChannel();
-          setActiveKey("1"); 
-          setIsVisible(true);
-          setTimeout(() => setIsVisible(false), 500);
-        }
+        if (activeIptv) { prevIptvChannel(); setActiveKey("1"); setIsVisible(true); setTimeout(() => setIsVisible(false), 500); }
         return;
       }
       if (e.key === "3") {
-        if (activeIptv) {
-          nextIptvChannel();
-          setActiveKey("3");
-          setIsVisible(true);
-          setTimeout(() => setIsVisible(false), 500);
-        }
+        if (activeIptv) { nextIptvChannel(); setActiveKey("3"); setIsVisible(true); setTimeout(() => setIsVisible(false), 500); }
         return;
       }
 
-      // 4 and 6 are directional focus navigation ONLY
       const standardMap: Record<string, string> = {
         "2": "ArrowUp", "4": "ArrowLeft", "6": "ArrowRight", "8": "ArrowDown",
         "ArrowUp": "ArrowUp", "ArrowDown": "ArrowDown", "ArrowLeft": "ArrowLeft", "ArrowRight": "ArrowRight"
@@ -139,7 +151,6 @@ export function RemotePointer() {
         e.preventDefault();
         const dir = standardMap[e.key];
         navigate(dir);
-        
         let visualKey = e.key;
         if (e.key === "ArrowUp") visualKey = "2";
         if (e.key === "ArrowDown") visualKey = "8";
@@ -159,9 +170,9 @@ export function RemotePointer() {
       }
     };
 
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [navigate, activeIptv, isFullScreen, nextIptvChannel, prevIptvChannel]);
+    window.addEventListener("keydown", handleKeyDown, true);
+    return () => window.removeEventListener("keydown", handleKeyDown, true);
+  }, [navigate, activeIptv, isFullScreen, nextIptvChannel, prevIptvChannel, wallPlateType, setWallPlate]);
 
   return (
     <div className={cn(
@@ -186,7 +197,6 @@ export function RemotePointer() {
         <ChevronDown className="w-8 h-8 text-white" />
       </div>
       
-      {/* 1 and 3 indicators for visual feedback */}
       <div className="flex gap-12 mt-2">
         <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center border transition-all", activeKey === "1" ? "bg-primary border-primary shadow-glow scale-125" : "bg-white/5 border-white/10")}>
           <span className="text-white text-[10px] font-black">1</span>

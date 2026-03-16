@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { useMediaStore, Reminder, FavoriteTeam } from "@/lib/store";
 import { 
   Settings, 
@@ -23,7 +23,8 @@ import {
   Type as TypeIcon,
   AlertTriangle,
   Palette,
-  Upload
+  Upload,
+  Eye
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,7 +52,7 @@ const BACKGROUNDS = [
   "https://images.unsplash.com/photo-1478760329108-5c3ed9d495a0"
 ];
 
-const WALL_BACKGROUNDS = [
+const STATIC_WALL_BACKGROUNDS = [
   { id: 'art-1', name: 'زيتي تجريدي', url: 'https://images.unsplash.com/photo-1578301978693-85fa9c0320b9?q=80&w=2000' },
   { id: 'art-2', name: 'ألوان مائية', url: 'https://images.unsplash.com/photo-1541701494587-cb58502866ab?q=80&w=2000' },
   { id: 'art-3', name: 'نسيج قماشي', url: 'https://images.unsplash.com/photo-1561214115-f2f134cc4912?q=80&w=2000' },
@@ -92,6 +93,7 @@ export function SettingsView() {
   
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isRefreshingManuscripts, setIsRefreshingManuscripts] = useState(false);
+  const [localBgUrl, setLocalBgUrl] = useState(mapSettings.manuscriptBgUrl || "");
   const [form, setForm] = useState<Partial<Reminder>>({
     label: "",
     relativePrayer: "manual",
@@ -113,6 +115,18 @@ export function SettingsView() {
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<any[]>([]);
 
+  useEffect(() => {
+    setLocalBgUrl(mapSettings.manuscriptBgUrl);
+  }, [mapSettings.manuscriptBgUrl]);
+
+  const dynamicWallBackgrounds = useMemo(() => {
+    const list = [...STATIC_WALL_BACKGROUNDS];
+    if (mapSettings.manuscriptBgUrl && !list.some(b => b.url === mapSettings.manuscriptBgUrl)) {
+      list.push({ id: 'custom-uploaded', name: 'صورة مرفوعة', url: mapSettings.manuscriptBgUrl });
+    }
+    return list;
+  }, [mapSettings.manuscriptBgUrl]);
+
   const handleGlobalSearch = useCallback(async () => {
     if (!clubSearch.trim() && searchLeagueId === "all") return;
     setIsSearching(true);
@@ -129,6 +143,12 @@ export function SettingsView() {
     await fetchManuscripts();
     setIsRefreshingManuscripts(false);
     toast({ title: "تم التحديث", description: "تم جلب أحدث المخطوطات من السحابة بنجاح." });
+  };
+
+  const handleApplyBackground = () => {
+    if (!localBgUrl.trim()) return;
+    updateMapSettings({ manuscriptBgUrl: localBgUrl });
+    toast({ title: "تم الحفظ سحابياً", description: "تم تحديث خلفية حائط المخطوطة بنجاح." });
   };
 
   const handleSubmitReminder = () => {
@@ -222,9 +242,9 @@ export function SettingsView() {
             
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
               <div className="lg:col-span-4 flex flex-col gap-6">
-                <div className="flex items-center justify-between bg-white/5 p-6 rounded-2xl border border-white/5">
+                <div className="flex items-center justify-between bg-white/5 p-6 rounded-2xl border border-white/5 shadow-inner">
                   <div className="flex flex-col">
-                    <span className="text-white font-bold">تفعيل الخلفية الفنية</span>
+                    <span className="text-white font-black text-sm uppercase">تفعيل الخلفية الفنية</span>
                     <span className="text-[10px] text-white/40">تظهر خلف المخطوطات في وضع الحائط</span>
                   </div>
                   <Switch 
@@ -233,30 +253,43 @@ export function SettingsView() {
                   />
                 </div>
 
-                <div className="space-y-3">
-                  <span className="text-xs font-black text-white/60 uppercase">رابط خلفية مخصص (Cloud URL)</span>
-                  <div className="flex gap-2">
+                <div className="space-y-3 bg-white/5 p-6 rounded-2xl border border-white/5">
+                  <span className="text-xs font-black text-white/60 uppercase tracking-widest block mb-2">رابط خلفية مخصص (Cloud URL)</span>
+                  <div className="flex flex-col gap-3">
                     <Input 
                       placeholder="https://..."
-                      value={mapSettings.manuscriptBgUrl}
-                      onChange={(e) => updateMapSettings({ manuscriptBgUrl: e.target.value })}
-                      className="bg-white/5 border-white/10 h-14 rounded-xl focusable flex-1 text-right"
+                      value={localBgUrl}
+                      onChange={(e) => setLocalBgUrl(e.target.value)}
+                      className="bg-black/40 border-white/10 h-14 rounded-xl focusable text-right text-sm"
                     />
-                    <Button 
-                      onClick={() => updateMapSettings({ manuscriptBgUrl: mapSettings.manuscriptBgUrl })} 
-                      className="h-14 w-14 bg-primary rounded-xl"
-                    >
-                      <Upload className="w-5 h-5" />
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button 
+                        onClick={handleApplyBackground} 
+                        className="flex-1 h-14 bg-primary text-white font-black rounded-xl shadow-glow focusable"
+                      >
+                        <Upload className="w-5 h-5 ml-2" /> حفظ وتثبيت سحابي
+                      </Button>
+                      <Button 
+                        variant="outline"
+                        onClick={() => window.open(localBgUrl, '_blank')}
+                        className="h-14 w-14 bg-white/5 rounded-xl border-white/10"
+                      >
+                        <Eye className="w-5 h-5" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>
               
               <div className="lg:col-span-8 grid grid-cols-2 md:grid-cols-4 gap-4">
-                {WALL_BACKGROUNDS.map((bg) => (
+                {dynamicWallBackgrounds.map((bg) => (
                   <button 
                     key={bg.id} 
-                    onClick={() => updateMapSettings({ manuscriptBgUrl: bg.url })}
+                    onClick={() => {
+                      setLocalBgUrl(bg.url);
+                      updateMapSettings({ manuscriptBgUrl: bg.url });
+                      toast({ title: "تم الاختيار", description: `تم تفعيل خلفية ${bg.name}` });
+                    }}
                     className={cn(
                       "relative aspect-video rounded-xl overflow-hidden border-2 transition-all focusable",
                       mapSettings.manuscriptBgUrl === bg.url ? "border-primary scale-105 shadow-glow" : "border-transparent opacity-40 hover:opacity-100"

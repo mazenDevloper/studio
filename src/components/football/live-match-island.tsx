@@ -6,7 +6,7 @@ import { Match } from "@/lib/football-data";
 import { fetchFootballData } from "@/lib/football-api";
 import { useMediaStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { Bell, Timer, Clock, X } from "lucide-react";
+import { Bell, Timer, Clock, X, Eye, EyeOff } from "lucide-react";
 import { convertTo12Hour } from "@/lib/constants";
 
 interface ReminderItem {
@@ -33,6 +33,7 @@ export function LiveMatchIsland() {
   const prayerSettings = useMediaStore(state => state.prayerSettings);
   const belledMatchIds = useMediaStore(state => state.belledMatchIds);
   const showIslands = useMediaStore(state => state.showIslands);
+  const toggleShowIslands = useMediaStore(state => state.toggleShowIslands);
   const skippedMatchIds = useMediaStore(state => state.skippedMatchIds);
   const reminders = useMediaStore(state => state.reminders);
   const skipMatch = useMediaStore(state => state.skipMatch);
@@ -218,13 +219,13 @@ export function LiveMatchIsland() {
 
   useEffect(() => {
     const activeAlert = processedReminders.find(r => r.isWithinWindow);
-    if (activeAlert && activeAlert.id !== lastAutoTriggeredId && windowWidth <= 1080) {
+    if (activeAlert && activeAlert.id !== lastAutoTriggeredId) {
       setManualReminderExpand(true);
       setLastAutoTriggeredId(activeAlert.id);
     } else if (!activeAlert) {
       setLastAutoTriggeredId(null);
     }
-  }, [processedReminders, windowWidth, lastAutoTriggeredId]);
+  }, [processedReminders, lastAutoTriggeredId]);
 
   const processedMatches = useMemo(() => {
     const getMatchPriority = (m: Match) => {
@@ -247,10 +248,6 @@ export function LiveMatchIsland() {
         if (isFav) return 8;
         if (isBelled) return 9;
       }
-      if (status === 'live') {
-        if (!isBelled) return 10;
-        if (!isFav) return 11;
-      }
       return 100;
     };
 
@@ -267,8 +264,6 @@ export function LiveMatchIsland() {
     }
     return sorted;
   }, [topMatches, skippedMatchIds, favoriteTeams, belledMatchIds, overrideMatchId]);
-
-  if (!showIslands || (processedMatches.length === 0 && processedReminders.length === 0)) return null;
 
   const mainMatch = processedMatches[0];
   const miniMatches = processedMatches.slice(1, 4);
@@ -318,109 +313,121 @@ export function LiveMatchIsland() {
         contain: 'layout paint'
       }}
     >
-      {closestRem && !activeGoal && (
-        <div 
-          onClick={() => setManualReminderExpand(!manualReminderExpand)}
-          className={cn(
-            "pointer-events-auto shadow-[0_40px_100px_rgba(0,0,0,1)] relative overflow-hidden cursor-pointer premium-glass",
-            (manualReminderExpand && windowWidth <= 1080) 
-              ? "w-[18rem] h-[3.5rem] rounded-[2.5rem]" 
-              : "w-[3.5rem] h-[3.5rem] flex items-center justify-center rounded-full"
-          )}
-          style={{ transform: 'translate3d(0,0,0)' }}
-        >
-          <div className="relative z-10 h-full w-full flex flex-col items-center py-2 px-2">
-            {!manualReminderExpand || windowWidth > 1080 ? (
-              <div className={cn("w-9 h-9 rounded-full flex items-center justify-center bg-white/10 my-auto relative", closestRem.color)}>
-                {closestRem.isWithinWindow ? (
-                  <div className="scale-[0.45]">
-                    <GlassNumber text={`${closestRem.diff >= 0 ? "-" : "+"}${formatCountdown(closestRem.diff)}`} id="rem-mini-closest" size="3rem" />
+      {/* Island Toggle Hub */}
+      <div 
+        onClick={toggleShowIslands}
+        className="pointer-events-auto shadow-[0_40px_100px_rgba(0,0,0,1)] w-[3.5rem] h-[3.5rem] rounded-full flex items-center justify-center premium-glass cursor-pointer active:scale-90 transition-all border border-white/10"
+      >
+        {showIslands ? <Eye className="w-5 h-5 text-accent animate-pulse" /> : <EyeOff className="w-5 h-5 text-white/20" />}
+      </div>
+
+      {showIslands && (
+        <>
+          {closestRem && !activeGoal && (
+            <div 
+              onClick={() => setManualReminderExpand(!manualReminderExpand)}
+              className={cn(
+                "pointer-events-auto shadow-[0_40px_100px_rgba(0,0,0,1)] relative overflow-hidden cursor-pointer premium-glass transition-all duration-500 ease-in-out",
+                manualReminderExpand 
+                  ? "w-[18rem] h-[3.5rem] rounded-[2.5rem]" 
+                  : "w-[3.5rem] h-[3.5rem] flex items-center justify-center rounded-full"
+              )}
+              style={{ transform: 'translate3d(0,0,0)' }}
+            >
+              <div className="relative z-10 h-full w-full flex flex-col items-center py-2 px-2">
+                {!manualReminderExpand ? (
+                  <div className={cn("w-9 h-9 rounded-full flex items-center justify-center bg-white/10 my-auto relative", closestRem.color)}>
+                    {closestRem.isWithinWindow ? (
+                      <div className="scale-[0.45]">
+                        <GlassNumber text={`${closestRem.diff >= 0 ? "-" : "+"}${formatCountdown(closestRem.diff)}`} id="rem-mini-closest" size="3rem" />
+                      </div>
+                    ) : (
+                      (() => {
+                        const RemIcon = closestRem.icon;
+                        return <RemIcon className="w-5 h-5" />;
+                      })()
+                    )}
                   </div>
                 ) : (
-                  (() => {
-                    const RemIcon = closestRem.icon;
-                    return <RemIcon className="w-5 h-5" />;
-                  })()
-                )}
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center w-full h-full">
-                <div className="flex items-center gap-2 mb-[-2px]">
-                  <closestRem.icon className={cn("w-3.5 h-3.5 shadow-glow", closestRem.color)} />
-                  <span className={cn("text-[0.8rem] font-black uppercase truncate max-w-[150px]", closestRem.color)}>{closestRem.name}</span>
-                </div>
-                <div className="h-10 w-full">
-                  <GlassNumber 
-                    text={closestRem.isWithinWindow ? `${closestRem.diff >= 0 ? "-" : "+"}${formatCountdown(closestRem.diff)}` : closestRem.targetTimeStr} 
-                    id={`rem-single-${closestRem.id}`} 
-                    size="2.8rem" 
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {activeGoal && (
-        <div className="pointer-events-auto bg-zinc-950/90 rounded-[2.5rem] shadow-[0_0_100px_rgba(0,136,255,0.5)] w-[38rem] h-[3.5rem] overflow-hidden relative border border-primary/40 flex items-center px-6 gap-6 animate-in fade-in zoom-in-95 duration-500 premium-glass">
-          <div className="flex items-center gap-4 flex-shrink-0">
-            <img src={activeGoal.teamLogo} className="w-10 h-10 object-contain animate-goal-logo" alt="" />
-            <span className="text-xl font-black text-white uppercase tracking-tighter">{activeGoal.teamName}</span>
-          </div>
-          <div className="flex-1 h-full flex items-center justify-center overflow-hidden">
-            <span className="text-4xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-primary via-white to-primary animate-goal-text uppercase">
-              GOAAALLLLLLLL!
-            </span>
-          </div>
-          <div className="bg-primary/20 px-4 py-1 rounded-full border border-primary/40">
-            <span className="text-xs font-black text-primary uppercase tracking-[0.2em]">Goal Alert</span>
-          </div>
-        </div>
-      )}
-
-      {!activeGoal && mainMatch && (
-        <div className="flex items-center gap-2" style={{ transform: 'translate3d(0,0,0)' }}>
-          <div className="pointer-events-auto rounded-[2.5rem] shadow-[0_40px_100px_rgba(0,0,0,1)] w-[18rem] h-[3.5rem] overflow-hidden relative group premium-glass" style={{ transform: 'translate3d(0,0,0)' }}>
-            <button onClick={(e) => { e.stopPropagation(); skipMatch(mainMatch.id); }} className="absolute top-1 left-1 z-[100] w-6 h-6 rounded-full bg-black/40 text-white/40 hover:text-white flex items-center justify-center opacity-0 group-hover:opacity-100"><X className="w-3.5 h-3.5" /></button>
-            <div className="relative z-10 h-full w-full flex items-center justify-center relative overflow-hidden">
-              <div className="absolute inset-0 flex items-center justify-between px-2" style={{ background: 'linear-gradient(0deg, black 5%, transparent)' }}>
-                <img src={mainMatch.homeLogo} className="h-full w-auto object-contain scale-[1.5] translate-x-4" alt="" />
-                <img src={mainMatch.awayLogo} className="h-full w-auto object-contain scale-[1.5] -translate-x-4" alt="" />
-              </div>
-              <div className="relative w-full h-full z-20 flex flex-col items-center justify-center" style={{ background: 'linear-gradient(-1deg, black, transparent)' }}>
-                <GlassNumber 
-                  text={mainMatch.status === 'upcoming' ? convertTo12Hour(mainMatch.startTime) : `${mainMatch.score?.away}-${mainMatch.score?.home}`} 
-                  id={`match-main-${mainMatch.id}`} 
-                  subtext={mainMatch.league} 
-                />
-                {mainMatch.status === 'live' && (
-                  <div className="absolute top-1 right-1/2 translate-x-1/2 px-2 py-0.5 rounded-full shadow-xl border border-white/20 z-30 bg-red-600 text-white">
-                    <span className="font-black uppercase tracking-widest text-[0.7rem]">{mainMatch.minute}'</span>
+                  <div className="flex flex-col items-center justify-center w-full h-full">
+                    <div className="flex items-center gap-2 mb-[-2px]">
+                      <closestRem.icon className={cn("w-3.5 h-3.5 shadow-glow", closestRem.color)} />
+                      <span className={cn("text-[0.8rem] font-black uppercase truncate max-w-[150px]", closestRem.color)}>{closestRem.name}</span>
+                    </div>
+                    <div className="h-10 w-full">
+                      <GlassNumber 
+                        text={closestRem.isWithinWindow ? `${closestRem.diff >= 0 ? "-" : "+"}${formatCountdown(closestRem.diff)}` : closestRem.targetTimeStr} 
+                        id={`rem-single-${closestRem.id}`} 
+                        size="2.8rem" 
+                      />
+                    </div>
                   </div>
                 )}
               </div>
             </div>
-          </div>
+          )}
 
-          <div className="flex gap-2 mr-2">
-            {miniMatches.map((m) => (
-              <div key={m.id} onClick={() => setOverrideMatchId(m.id)} className="pointer-events-auto group rounded-full w-14 h-14 flex flex-col items-center justify-center shadow-2xl relative overflow-hidden cursor-pointer active:scale-95 premium-glass" style={{ transform: 'translate3d(0,0,0)' }}>
-                <button onClick={(e) => { e.stopPropagation(); skipMatch(m.id); }} className="absolute -top-1 -left-1 z-[100] w-5 h-5 rounded-full bg-red-600/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 shadow-lg"><X className="w-3.5 h-3.5" /></button>
-                <span className="absolute top-1 z-20 text-[0.5rem] font-black text-white/90 tabular-nums drop-shadow-md">
-                  {m.status === 'upcoming' ? convertTo12Hour(m.startTime) : `${m.score?.away}-${m.score?.home}`}
-                </span>
-                <div className="relative z-10 w-full h-full flex items-center justify-center scale-[0.35]">
-                  <img src={m.homeLogo} className="absolute right-0 w-10 h-10 object-contain scale-[1.2] translate-x[2px]" alt="" />
-                  <img src={m.awayLogo} className="absolute left-0 w-10 h-10 object-contain scale-[1.2] translate-x-[-2px]" alt="" />
-                </div>
-                {m.status === 'live' && (
-                  <span className="absolute bottom-1 z-20 text-[0.55rem] font-black text-red-500 drop-shadow-md">{m.minute}'</span>
-                )}
+          {activeGoal && (
+            <div className="pointer-events-auto bg-zinc-950/90 rounded-[2.5rem] shadow-[0_0_100px_rgba(0,136,255,0.5)] w-[38rem] h-[3.5rem] overflow-hidden relative border border-primary/40 flex items-center px-6 gap-6 animate-in fade-in zoom-in-95 duration-500 premium-glass">
+              <div className="flex items-center gap-4 flex-shrink-0">
+                <img src={activeGoal.teamLogo} className="w-10 h-10 object-contain animate-goal-logo" alt="" />
+                <span className="text-xl font-black text-white uppercase tracking-tighter">{activeGoal.teamName}</span>
               </div>
-            ))}
-          </div>
-        </div>
+              <div className="flex-1 h-full flex items-center justify-center overflow-hidden">
+                <span className="text-4xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-primary via-white to-primary animate-goal-text uppercase">
+                  GOAAALLLLLLLL!
+                </span>
+              </div>
+              <div className="bg-primary/20 px-4 py-1 rounded-full border border-primary/40">
+                <span className="text-xs font-black text-primary uppercase tracking-[0.2em]">Goal Alert</span>
+              </div>
+            </div>
+          )}
+
+          {!activeGoal && mainMatch && (
+            <div className="flex items-center gap-2" style={{ transform: 'translate3d(0,0,0)' }}>
+              <div className="pointer-events-auto rounded-[2.5rem] shadow-[0_40px_100px_rgba(0,0,0,1)] w-[18rem] h-[3.5rem] overflow-hidden relative group premium-glass" style={{ transform: 'translate3d(0,0,0)' }}>
+                <button onClick={(e) => { e.stopPropagation(); skipMatch(mainMatch.id); }} className="absolute top-1 left-1 z-[100] w-6 h-6 rounded-full bg-black/40 text-white/40 hover:text-white flex items-center justify-center opacity-0 group-hover:opacity-100"><X className="w-3.5 h-3.5" /></button>
+                <div className="relative z-10 h-full w-full flex items-center justify-center relative overflow-hidden">
+                  <div className="absolute inset-0 flex items-center justify-between px-2" style={{ background: 'linear-gradient(0deg, black 5%, transparent)' }}>
+                    <img src={mainMatch.homeLogo} className="h-full w-auto object-contain scale-[1.5] translate-x-4" alt="" />
+                    <img src={mainMatch.awayLogo} className="h-full w-auto object-contain scale-[1.5] -translate-x-4" alt="" />
+                  </div>
+                  <div className="relative w-full h-full z-20 flex flex-col items-center justify-center" style={{ background: 'linear-gradient(-1deg, black, transparent)' }}>
+                    <GlassNumber 
+                      text={mainMatch.status === 'upcoming' ? convertTo12Hour(mainMatch.startTime) : `${mainMatch.score?.away}-${mainMatch.score?.home}`} 
+                      id={`match-main-${mainMatch.id}`} 
+                      subtext={mainMatch.league} 
+                    />
+                    {mainMatch.status === 'live' && (
+                      <div className="absolute top-1 right-1/2 translate-x-1/2 px-2 py-0.5 rounded-full shadow-xl border border-white/20 z-30 bg-red-600 text-white">
+                        <span className="font-black uppercase tracking-widest text-[0.7rem]">{mainMatch.minute}'</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-2 mr-2">
+                {miniMatches.map((m) => (
+                  <div key={m.id} onClick={() => setOverrideMatchId(m.id)} className="pointer-events-auto group rounded-full w-14 h-14 flex flex-col items-center justify-center shadow-2xl relative overflow-hidden cursor-pointer active:scale-95 premium-glass" style={{ transform: 'translate3d(0,0,0)' }}>
+                    <button onClick={(e) => { e.stopPropagation(); skipMatch(m.id); }} className="absolute -top-1 -left-1 z-[100] w-5 h-5 rounded-full bg-red-600/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 shadow-lg"><X className="w-3.5 h-3.5" /></button>
+                    <span className="absolute top-1 z-20 text-[0.5rem] font-black text-white/90 tabular-nums drop-shadow-md">
+                      {m.status === 'upcoming' ? convertTo12Hour(m.startTime) : `${m.score?.away}-${m.score?.home}`}
+                    </span>
+                    <div className="relative z-10 w-full h-full flex items-center justify-center scale-[0.35]">
+                      <img src={m.homeLogo} className="absolute right-0 w-10 h-10 object-contain scale-[1.2] translate-x[2px]" alt="" />
+                      <img src={m.awayLogo} className="absolute left-0 w-10 h-10 object-contain scale-[1.2] translate-x-[-2px]" alt="" />
+                    </div>
+                    {m.status === 'live' && (
+                      <span className="absolute bottom-1 z-20 text-[0.55rem] font-black text-red-500 drop-shadow-md">{m.minute}'</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

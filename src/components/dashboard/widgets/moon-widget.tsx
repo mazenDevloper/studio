@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { CardContent } from "@/components/ui/card";
-import { Moon as MoonIcon, Loader2, Cloud, Calendar } from "lucide-react";
+import { Moon as MoonIcon, Loader2, Cloud, Calendar, Maximize2 } from "lucide-react";
 import Image from "next/image";
 import { useMediaStore } from "@/lib/store";
 
@@ -89,9 +89,23 @@ export function MoonWidget() {
 
   return (
     <div 
-      className="h-full w-full bg-black rounded-[2.5rem] overflow-hidden relative flex flex-col items-center justify-center p-1 shadow-2xl cursor-pointer"
+      className="h-full w-full bg-black rounded-[2.5rem] overflow-hidden relative flex flex-col items-center justify-center p-1 shadow-2xl cursor-pointer focusable outline-none"
       onClick={() => moonData && setWallPlate('moon', { image: moonData.image.url, day: displayValue, label })}
+      tabIndex={0}
+      data-supports-wallplate="true"
+      data-nav-id="moon-widget-container"
     >
+      <button 
+        className="absolute top-6 left-6 w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/20 transition-all z-50 focusable opacity-0 group-hover:opacity-100 group-focus:opacity-100"
+        onClick={(e) => {
+          e.stopPropagation();
+          if (moonData) setWallPlate('moon', { image: moonData.image.url, day: displayValue, label });
+        }}
+        data-wallplate-trigger="true"
+      >
+        <Maximize2 className="w-6 h-6" />
+      </button>
+
       <CardContent className="p-0 h-full flex flex-col items-center justify-center gap-4 relative z-10 w-full text-center">
         <div className={isWide ? "relative w-64 h-64 flex-shrink-0 mx-auto transition-all duration-1000" : "relative w-36 h-36 flex-shrink-0 mx-auto transition-all duration-1000"}>
           {loading ? (
@@ -103,7 +117,7 @@ export function MoonWidget() {
               <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none transition-all duration-1000"
                    style={{ 
                      transform: isWide 
-                       ? (cycleIndex === 0 ? 'scale(4)' : 'scale(2.5)') 
+                       ? (cycleIndex === 0 ? 'scale(4)' : 'scale(2.2)') 
                        : 'scale(3.2)' 
                    }}>
                 <svg className="w-full h-full overflow-visible" viewBox="0 0 100 100">
@@ -123,7 +137,7 @@ export function MoonWidget() {
                     textAnchor="middle" 
                     dominantBaseline="central"
                     className="font-black"
-                    style={{ fontSize: isWide ? '32px' : '40px' }} 
+                    style={{ fontSize: isWide ? (cycleIndex === 2 ? '24px' : '32px') : '40px' }} 
                     fill="url(#moonFill)"
                     stroke="url(#moonStroke)"
                     strokeWidth="0.5"

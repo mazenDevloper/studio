@@ -95,7 +95,7 @@ export function PrayerCountdownCard() {
         </div>
       </div>
 
-      <div className="relative z-10 w-full h-24 flex items-center justify-center">
+      <div className="relative z-10 w-full h-20 flex items-center justify-center">
         <svg className="w-full h-full overflow-visible drop-shadow-[0_10px_40px_rgba(0,0,0,0.9)]" viewBox="0 0 300 80">
           <defs>
             <linearGradient id="timerFill" x1="0%" x2="100%" y1="0%" y2="100%">
@@ -113,7 +113,7 @@ export function PrayerCountdownCard() {
             textAnchor="middle" 
             dominantBaseline="central"
             className="font-black tabular-nums tracking-tighter"
-            style={{ fontSize: '70px' }}
+            style={{ fontSize: '50px' }}
             fill="url(#timerFill)"
             stroke="url(#timerStroke)"
             strokeWidth="0.8"

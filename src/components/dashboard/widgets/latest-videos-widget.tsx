@@ -76,7 +76,13 @@ export function LatestVideosWidget({ channels }: Props) {
           <ScrollArea className="w-full whitespace-nowrap">
             <div className="flex w-max gap-6 pb-4">
               {videos.map((video, idx) => (
-                <div key={video.id} className="w-80 group relative overflow-hidden bg-zinc-900/80 border-none rounded-[2rem] transition-all hover:scale-[1.02] cursor-pointer shadow-xl focusable" onClick={() => setActiveVideo(video)} tabIndex={0}>
+                <div 
+                  key={video.id} 
+                  className="w-80 group relative overflow-hidden bg-zinc-900/80 border-none rounded-[2rem] transition-all hover:scale-[1.02] cursor-pointer shadow-xl focusable" 
+                  onClick={() => setActiveVideo(video)} 
+                  tabIndex={0}
+                  data-nav-id={`latest-video-${idx}`}
+                >
                   <div className="aspect-video relative overflow-hidden">
                     <Image src={video.thumbnail} alt={video.title} fill className="object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
                     <div className="absolute inset-0 flex items-center justify-center"><div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-3xl flex items-center justify-center border border-white/20 opacity-0 group-hover:opacity-100 transition-all scale-75 group-hover:scale-100 shadow-2xl"><Play className="w-8 h-8 text-white fill-white ml-1" /></div></div>

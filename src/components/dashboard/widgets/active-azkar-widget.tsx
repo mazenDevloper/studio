@@ -4,7 +4,7 @@
 import { useMediaStore, Manuscript } from "@/lib/store";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { cn } from "@/lib/utils";
-import { Sun, Moon, Stars, BookOpen, Sparkles } from "lucide-react";
+import { Sun, Moon, Stars, BookOpen, Sparkles, Maximize2 } from "lucide-react";
 import useEmblaCarousel from "embla-carousel-react";
 import Autoplay from "embla-carousel-autoplay";
 
@@ -86,7 +86,12 @@ export function ActiveAzkarWidget() {
   }, [now, prayerTimes]);
 
   return (
-    <div className="h-full w-full bg-black rounded-[2.5rem] border border-white/10 p-1 flex flex-col justify-between relative overflow-hidden group">
+    <div 
+      className="h-full w-full bg-black rounded-[2.5rem] border border-white/10 p-1 flex flex-col justify-between relative overflow-hidden group focusable outline-none"
+      tabIndex={0}
+      data-supports-wallplate="true"
+      data-nav-id="active-azkar-container"
+    >
       <div className="absolute top-[-20%] right-[-20%] w-64 h-64 bg-primary/10 blur-[100px] rounded-full pointer-events-none" />
       
       <div className="relative z-10 flex-1 flex flex-col items-center justify-center overflow-hidden no-scrollbar">
@@ -97,17 +102,22 @@ export function ActiveAzkarWidget() {
                 <div 
                   key={i} 
                   className="flex-[0_0_100%] min-w-0 h-full flex items-center justify-center cursor-pointer relative"
-                  onClick={(e) => {
-                    if (e.detail === 2) {
-                      setWallPlate('manuscript', item);
-                    } else {
-                      togglePause();
-                    }
-                  }}
+                  onClick={() => togglePause()}
                 >
-                  <div className="animate-in fade-in zoom-in-95 duration-1000 w-full flex justify-center px-0">
+                  <button 
+                    className="absolute top-6 left-6 w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/20 transition-all z-50 focusable opacity-0 group-hover:opacity-100 group-focus:opacity-100"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setWallPlate('manuscript', item);
+                    }}
+                    data-wallplate-trigger="true"
+                  >
+                    <Maximize2 className="w-6 h-6" />
+                  </button>
+
+                  <div className="animate-in fade-in zoom-in-95 duration-1000 w-full flex justify-center px-4">
                     {item.type === 'text' ? (
-                      <p className="w-full text-8xl md:text-9xl lg:text-[11.5rem] font-calligraphy text-white leading-none drop-shadow-[0_0_75px_rgba(255,255,255,0.9)] text-center tracking-wide whitespace-nowrap">
+                      <p className="w-full text-xl md:text-2xl lg:text-3xl font-calligraphy text-white leading-relaxed drop-shadow-[0_0_40px_rgba(255,255,255,0.9)] text-center tracking-wide">
                         {item.content}
                       </p>
                     ) : (

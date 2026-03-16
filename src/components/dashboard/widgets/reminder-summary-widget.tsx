@@ -158,7 +158,7 @@ export function ReminderSummaryWidget() {
 
   const GlassNumber = ({ text, size = '3.5rem', id }: { text: string, size?: string, id: string }) => (
     <div className="relative w-full h-full flex flex-col items-center justify-center">
-      <svg className="w-full h-full overflow-visible" viewBox="0 0 200 60">
+      <svg className="w-full h-full overflow-visible" viewBox="0 0 300 80">
         <defs>
           <linearGradient id={`textFill-sum-${id}`} x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor="rgba(255,255,255,0.85)" />
@@ -178,7 +178,7 @@ export function ReminderSummaryWidget() {
           style={{ fontSize: size }}
           fill={`url(#textFill-sum-${id})`}
           stroke={`url(#textStroke-sum-${id})`}
-          strokeWidth="0.6"
+          strokeWidth="0.8"
         >
           {text}
         </text>
@@ -198,7 +198,7 @@ export function ReminderSummaryWidget() {
 
         return (
           <div key={rem.id} className={cn(
-            "flex flex-col items-center justify-center relative py-4 transition-all duration-700",
+            "flex flex-col items-center justify-center relative py-4 transition-all duration-700 w-full",
             processedReminders.length > 1 ? "flex-1 border-b border-white/5 last:border-0" : "flex-[0.8]",
             // HIERARCHY OPACITY: 1st is solid, 2nd is faded, 3rd is very faded
             idx === 0 ? "opacity-100" : idx === 1 ? "opacity-60" : "opacity-30"
@@ -211,14 +211,14 @@ export function ReminderSummaryWidget() {
             </div>
             
             <div className={cn(
-              "w-full max-w-[350px]",
+              "w-full px-2",
               // Make the prominent one bigger if it's the only one or top of the list
-              (idx === 0 && showCountdown) ? "h-32" : "h-24"
+              (idx === 0 && showCountdown) ? "h-28" : "h-20"
             )}>
               <GlassNumber 
                 text={displayVal} 
                 id={`sum-vert-${rem.id}`} 
-                size={(idx === 0 && showCountdown) ? "5.5rem" : "4.2rem"}
+                size={(idx === 0 && showCountdown) ? "4.5rem" : "3.5rem"}
               />
             </div>
             
