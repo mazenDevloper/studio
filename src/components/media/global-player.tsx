@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useMediaStore } from "@/lib/store";
@@ -24,6 +25,7 @@ export function GlobalVideoPlayer() {
     isFullScreen,
     videoProgress,
     nextTrack,
+    prevTrack,
     nextIptvChannel,
     prevIptvChannel,
     setActiveVideo, 
@@ -294,6 +296,9 @@ export function GlobalVideoPlayer() {
                   <>
                     <button onClick={() => toggleSaveVideo(activeVideo)} className={cn("w-12 h-12 rounded-full flex items-center justify-center focusable", isYouTubeSaved ? "bg-primary text-white shadow-glow" : "bg-white/5 text-white/40")} title="حفظ في الفيديوهات المحفوظة"><Bookmark className={cn("w-5 h-5", isYouTubeSaved && "fill-current")} /></button>
                     <button onClick={handleAddToIptv} className="w-12 h-12 rounded-full bg-white/5 text-emerald-400 flex items-center justify-center focusable" title="حفظ كقناة IPTV"><Tv className="w-5 h-5" /></button>
+                    <div className="w-px h-8 bg-white/20 mx-1" />
+                    <button onClick={prevTrack} className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center focusable"><ChevronRight className="w-6 h-6" /></button>
+                    <button onClick={nextTrack} className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center focusable"><ChevronLeft className="w-6 h-6" /></button>
                   </>
                 )}
                 {activeIptv && (
@@ -302,9 +307,9 @@ export function GlobalVideoPlayer() {
                     <div className="w-px h-8 bg-white/20 mx-1" />
                     <button onClick={prevIptvChannel} className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center focusable"><ChevronRight className="w-6 h-6" /></button>
                     <button onClick={nextIptvChannel} className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center focusable"><ChevronLeft className="w-6 h-6" /></button>
-                    <div className="w-px h-8 bg-white/20 mx-1" />
                   </>
                 )}
+                <div className="w-px h-8 bg-white/20 mx-1" />
                 <button onClick={() => setIsMinimized(true)} className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center focusable"><ChevronDown className="w-5 h-5" /></button>
                 <button onClick={() => setIsFullScreen(!isFullScreen)} className={cn("w-12 h-12 rounded-full flex items-center justify-center focusable", isFullScreen && "bg-primary shadow-glow")}><Monitor className="w-5 h-5" /></button>
                 <button onClick={() => { setActiveVideo(null); setActiveIptv(null); }} className="w-12 h-12 rounded-full bg-red-600 text-white flex items-center justify-center focusable"><X className="w-5 h-5" /></button>

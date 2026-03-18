@@ -27,15 +27,28 @@ export function LatestVideosWidget({ channels }: Props) {
     try {
       const videoPromises = channels.map(c => fetchChannelVideos(c.channelid));
       const results = await Promise.all(videoPromises);
-      // Flatten all videos
-      const allVideos = results.flatMap(channelVideos => channelVideos.slice(0, 3));
-      // Sort globally by newest publication date first
-      const sorted = allVideos.sort((a, b) => {
+      
+      // Smart Sorting Algorithm: 
+      // 1. Get the latest video from each channel first (one from Ch1, one from Ch2, etc.)
+      const firstVideos: YouTubeVideo[] = [];
+      const remainingVideos: YouTubeVideo[] = [];
+
+      results.forEach(channelVideos => {
+        if (channelVideos.length > 0) {
+          firstVideos.push(channelVideos[0]);
+          remainingVideos.push(...channelVideos.slice(1, 5));
+        }
+      });
+
+      // 2. Sort the remaining videos globally by date descending
+      const sortedRemaining = remainingVideos.sort((a, b) => {
         const dateA = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
         const dateB = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
         return dateB - dateA;
       });
-      setVideos(sorted);
+
+      // 3. Combine: [First from each] + [Sorted Remaining]
+      setVideos([...firstVideos, ...sortedRemaining]);
     } catch (error) {
       console.error("Failed to fetch videos", error);
     } finally {
@@ -96,7 +109,7 @@ export function LatestVideosWidget({ channels }: Props) {
                   <div className="p-5 space-y-2 text-right">
                     <h3 className="font-bold text-base truncate text-white font-headline">{video.title}</h3>
                     <div className="flex items-center justify-end gap-3 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                       <span>Live Center</span>
+                       <span className="text-white/40">{video.channelTitle}</span>
                        <span className="opacity-30">•</span>
                        <span className="flex items-center gap-1 text-accent"><Clock className="w-3 h-3" /> Latest</span>
                     </div>

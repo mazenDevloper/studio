@@ -180,7 +180,7 @@ export function ReminderSummaryWidget() {
   );
 
   return (
-    <div className="h-full w-full bg-zinc-950/80 backdrop-blur-[120px] rounded-[2.5rem] border border-white/10 relative overflow-hidden flex flex-col justify-around p-6">
+    <div className="h-full w-full bg-zinc-950/80 backdrop-blur-[120px] rounded-[2.5rem] border border-white/10 relative overflow-hidden flex flex-col justify-center gap-2 p-6">
       <FluidGlass />
       {processedReminders.map((rem, idx) => {
         const RemIcon = rem.icon;
@@ -191,30 +191,30 @@ export function ReminderSummaryWidget() {
 
         return (
           <div key={rem.id} className={cn(
-            "flex flex-col items-center justify-center relative py-4 transition-all duration-700 w-full",
-            processedReminders.length > 1 ? "flex-1 border-b border-white/5 last:border-0" : "flex-[0.8]",
-            idx === 0 ? "opacity-100" : idx === 1 ? "opacity-60" : "opacity-30"
+            "flex flex-col items-center justify-center relative py-1 transition-all duration-700 w-full",
+            processedReminders.length > 1 && idx < processedReminders.length - 1 ? "border-b border-white/5" : "",
+            idx === 0 ? "opacity-100" : idx === 1 ? "opacity-70" : "opacity-40"
           )}>
-            <div className="flex items-center gap-3 mb-[-2px]">
-              <RemIcon className={cn("w-5 h-5 shadow-glow", rem.color)} />
-              <span className={cn("text-lg font-black uppercase truncate max-w-[300px]", rem.color)}>
+            <div className="flex items-center gap-3 mb-[-4px]">
+              <RemIcon className={cn("w-6 h-6 shadow-glow", rem.color)} />
+              <span className={cn("text-2xl font-black uppercase truncate max-w-[320px]", rem.color)}>
                 {rem.name}
               </span>
             </div>
             
             <div className={cn(
               "w-[95%] px-2",
-              (idx === 0 && showCountdown) ? "h-28" : "h-20"
+              (idx === 0 && showCountdown) ? "h-24" : "h-16"
             )}>
               <GlassNumber 
                 text={displayVal} 
                 id={`sum-vert-${rem.id}`} 
-                size={(idx === 0 && showCountdown) ? "5rem" : "3.8rem"}
+                size={(idx === 0 && showCountdown) ? "5.5rem" : "4.5rem"}
               />
             </div>
             
             {idx === 0 && showCountdown && (
-              <span className="text-white/30 font-black uppercase tracking-[0.4em] text-[10px] mt-2 animate-pulse">
+              <span className="text-white/30 font-black uppercase tracking-[0.4em] text-[10px] mt-1 animate-pulse">
                 Active Countdown
               </span>
             )}

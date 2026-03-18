@@ -178,7 +178,7 @@ export function DashboardView() {
                 <div className="relative z-10 w-full h-full flex items-center justify-center px-10">
                   {activeM?.type === 'text' ? (
                     <p 
-                      className="w-full text-7xl md:text-9xl lg:text-[22rem] font-calligraphy leading-relaxed text-center px-10 transition-all duration-500 text-white"
+                      className="w-full text-7xl md:text-9xl lg:text-[11rem] font-calligraphy leading-relaxed text-center px-10 transition-all duration-500 text-white"
                       style={{ textShadow: '0 0 50px rgba(0,0,0,0.5)' }}
                     >
                       {activeM.content}
@@ -188,7 +188,7 @@ export function DashboardView() {
                       <img 
                         alt="Manuscript" 
                         src={activeM.content}
-                        className="max-h-[90vh] w-auto object-contain transition-all duration-300"
+                        className="max-h-[95vh] w-auto object-contain transition-all duration-300"
                         style={{
                           filter: `sepia(1) saturate(2) hue-rotate(${hue}deg) brightness(${brightness})`,
                         }}
@@ -206,12 +206,14 @@ export function DashboardView() {
         <Image src="https://dmusera.netlify.app/Lexus-Logo.wine.svg" alt="Lexus" width={140} height={30} className="invert brightness-200" />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-6 min-h-[380px]">
-        <div className="md:col-span-4 rounded-[2.5rem] overflow-hidden relative shadow-2xl h-full bg-black">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-6 min-h-[480px]">
+        {/* Left Column: Azkar Widget */}
+        <div className="md:col-span-4 rounded-[2.5rem] overflow-hidden relative shadow-2xl h-[480px] bg-black self-start">
           {isWideScreen ? <ActiveAzkarWidget /> : <MapWidget />}
         </div>
 
-        <div className="md:col-span-4 rounded-[2.5rem] relative flex items-center justify-center overflow-hidden h-full shadow-2xl focusable bg-black" tabIndex={0} data-nav-id="car-visualizer-container">
+        {/* Middle Column: Reminder Summary Widget */}
+        <div className="md:col-span-4 rounded-[2.5rem] relative flex items-center justify-center overflow-hidden h-[480px] shadow-2xl focusable bg-black" tabIndex={0} data-nav-id="car-visualizer-container">
           {isWideScreen ? <ReminderSummaryWidget /> : (
             <>
               <div className="absolute inset-0 w-full h-full">
@@ -222,8 +224,9 @@ export function DashboardView() {
           )}
         </div>
 
-        <div className="md:col-span-4 flex flex-col gap-6 h-full relative">
-          <div className="flex-[1.8] relative overflow-hidden group bg-black rounded-[2.5rem] shadow-2xl">
+        {/* Right Column: Moon + Clock */}
+        <div className="md:col-span-4 flex flex-col gap-4 h-[480px] relative">
+          <div className="flex-1 relative overflow-hidden group bg-black rounded-[2.5rem] shadow-2xl">
             <Carousel setApi={setApi} opts={{ loop: true }} className="w-full h-full">
               <CarouselContent className="h-full ml-0 overflow-hidden no-scrollbar">
                 <CarouselItem className="pl-0 h-full flex items-center justify-center bg-black">
@@ -244,7 +247,7 @@ export function DashboardView() {
               </div>
             )}
           </div>
-          <div className="flex-1 rounded-[2.5rem] relative overflow-hidden shadow-2xl focusable max-h-[160px] bg-black" tabIndex={0} data-nav-id="clock-widget-container">
+          <div className="flex-[0.35] rounded-[2.5rem] relative overflow-hidden shadow-2xl focusable bg-black" tabIndex={0} data-nav-id="clock-widget-container">
             <DateAndClockWidget />
           </div>
         </div>

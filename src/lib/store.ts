@@ -227,8 +227,6 @@ export const useMediaStore = create<MediaState>()(
           prayerSettings: state.prayerSettings,
           reminders: state.reminders,
           mapSettings: state.mapSettings,
-          dockSide: state.dockSide,
-          showIslands: state.showIslands,
           videoProgress: state.videoProgress,
           customWallBackgrounds: state.customWallBackgrounds,
           customManuscriptColors: state.customManuscriptColors
@@ -452,8 +450,7 @@ export const useMediaStore = create<MediaState>()(
         set({ activeIptv: finalChannel, activeVideo: null, isPlaying: true, isMinimized: false, isFullScreen: true });
       },
       setPlaylist: (videos) => {
-        const shuffled = [...videos].sort(() => Math.random() - 0.5);
-        set({ playlist: shuffled, playlistIndex: 0, activeVideo: shuffled[0], activeIptv: null, isPlaying: true, isMinimized: false, isFullScreen: true });
+        set({ playlist: videos, playlistIndex: 0, activeVideo: videos[0], activeIptv: null, isPlaying: true, isMinimized: false, isFullScreen: true });
       },
       nextTrack: () => {
         const state = get();
@@ -467,20 +464,26 @@ export const useMediaStore = create<MediaState>()(
         const prevIdx = (state.playlistIndex - 1 + state.playlist.length) % state.playlist.length;
         set({ playlistIndex: prevIdx, activeVideo: state.playlist[prevIdx] });
       },
+      nextIptvChannel: () => {
+        const state = get();
+        if (state.iptvPlaylist.length === 0) return;
+        const nextIdx = (state.iptvPlaylistIndex + 1) % state.iptvPlaylist.length;
+        const channel = state.iptvPlaylist[nextIdx];
+        set({ iptvPlaylistIndex: nextIdx, activeIptv: { ...channel, url: channel.url || `http://playstop.watch:2095/live/W87d737/Pd37qj34/${channel.stream_id}.m3u8`, type: 'web' } });
+      },
+      prevIptvChannel: () => {
+        const state = get();
+        if (state.iptvPlaylist.length === 0) return;
+        const prevIdx = (state.iptvPlaylistIndex - 1 + state.iptvPlaylist.length) % state.iptvPlaylist.length;
+        const channel = state.iptvPlaylist[prevIdx];
+        set({ iptvPlaylistIndex: prevIdx, activeIptv: { ...channel, url: channel.url || `http://playstop.watch:2095/live/W87d737/Pd37qj34/${channel.stream_id}.m3u8`, type: 'web' } });
+      },
       setIsPlaying: (playing) => set({ isPlaying: playing }),
       setIsMinimized: (minimized) => set({ isMinimized: minimized, isFullScreen: false }),
       setIsFullScreen: (fullScreen) => set({ isFullScreen: fullScreen, isMinimized: false }),
       setWallPlate: (type, data) => set({ wallPlateType: type, wallPlateData: data }),
-      toggleDockSide: () => set((state) => {
-        const newSide = state.dockSide === 'left' ? 'right' : 'left';
-        setTimeout(() => get().syncMasterBin(), 100);
-        return { dockSide: newSide };
-      }),
-      toggleShowIslands: () => set((state) => {
-        const newVal = !state.showIslands;
-        setTimeout(() => get().syncMasterBin(), 100);
-        return { showIslands: newVal };
-      }),
+      toggleDockSide: () => set((state) => ({ dockSide: state.dockSide === 'left' ? 'right' : 'left' })),
+      toggleShowIslands: () => set((state) => ({ showIslands: !state.showIslands })),
     }),
     {
       name: "drivecast-master-v7",
@@ -518,8 +521,6 @@ if (typeof window !== "undefined") {
           prayerSettings: Array.isArray(masterData.prayerSettings) ? masterData.prayerSettings : DEFAULT_PRAYER_SETTINGS,
           reminders: Array.isArray(masterData.reminders) ? masterData.reminders : [],
           mapSettings: masterData.mapSettings || useMediaStore.getState().mapSettings,
-          dockSide: masterData.dockSide || 'left',
-          showIslands: masterData.showIslands !== undefined ? masterData.showIslands : true,
           videoProgress: masterData.videoProgress || {},
           customWallBackgrounds: Array.isArray(masterData.customWallBackgrounds) ? masterData.customWallBackgrounds : [],
           customManuscriptColors: Array.isArray(masterData.customManuscriptColors) ? masterData.customManuscriptColors : ['#ffffff', '#FFD700', '#C0C0C0']

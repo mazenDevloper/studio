@@ -106,14 +106,14 @@ export function ActiveAzkarWidget() {
 
                   <div className="animate-in fade-in zoom-in-95 duration-1000 w-full flex justify-center px-4">
                     {item.type === 'text' ? (
-                      <p className="w-full text-6xl md:text-8xl lg:text-[10rem] font-calligraphy text-white leading-relaxed drop-shadow-[0_0_20px_rgba(255,255,255,0.8)] text-center tracking-wide">
+                      <p className="w-full text-4xl md:text-6xl lg:text-[7rem] font-calligraphy text-white leading-relaxed drop-shadow-[0_0_20px_rgba(255,255,255,0.8)] text-center tracking-wide">
                         {item.content}
                       </p>
                     ) : (
                       <img 
                         src={item.content} 
                         alt="Manuscript"
-                        className="h-72 md:h-96 w-full object-contain brightness-0 invert drop-shadow-[0_0_70px_rgba(255,255,255,1)]"
+                        className="h-80 md:h-[28rem] w-full object-contain brightness-0 invert drop-shadow-[0_0_70px_rgba(255,255,255,1)]"
                       />
                     )}
                   </div>
