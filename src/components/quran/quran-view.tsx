@@ -72,15 +72,15 @@ export function QuranView() {
           <DialogTrigger asChild>
             <button
               data-nav-id="quran-selector-trigger"
-              className="pointer-events-auto flex items-center gap-4 bg-blue-900/60 backdrop-blur-3xl border border-white/10 px-8 py-4 rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.8)] hover:scale-105 transition-all focusable group"
+              className="pointer-events-auto flex items-center gap-3 bg-blue-900/60 backdrop-blur-3xl border border-white/10 px-6 py-2.5 rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.8)] hover:scale-105 transition-all focusable group"
             >
-              <div className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center shadow-lg group-hover:rotate-12 transition-transform">
-                <Book className="w-6 h-6 text-white" />
+              <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center shadow-lg group-hover:rotate-12 transition-transform">
+                <Book className="w-5 h-5 text-white" />
               </div>
               <div className="flex flex-col text-right">
-                <span className="text-white font-black text-lg uppercase tracking-widest">تصفح المصحف الشريف</span>
+                <span className="text-white font-black text-base uppercase tracking-widest">المصحف الشريف</span>
               </div>
-              <List className="w-6 h-6 text-white/40 mr-4" />
+              <List className="w-5 h-5 text-white/40 mr-2" />
             </button>
           </DialogTrigger>
           <DialogContent className="max-w-[95%] md:max-w-4xl bg-zinc-950 border-white/10 rounded-[3rem] p-0 overflow-hidden shadow-2xl dir-rtl">
@@ -139,7 +139,7 @@ export function QuranView() {
         {/* Fixed Return to Radio Button */}
         <button 
           onClick={handleBackToRadio}
-          className="pointer-events-auto flex items-center gap-3 bg-blue-600/80 backdrop-blur-3xl border border-white/20 px-6 py-4 rounded-[2.5rem] shadow-2xl hover:bg-blue-600 transition-all focusable group"
+          className="pointer-events-auto flex items-center gap-3 bg-blue-600/80 backdrop-blur-3xl border border-white/20 px-6 py-3 rounded-[2.5rem] shadow-2xl hover:bg-blue-600 transition-all focusable group"
         >
           <Radio className="w-6 h-6 text-white animate-pulse" />
           <span className="text-white font-black text-sm uppercase tracking-widest">العودة لإذاعة القرآن</span>
