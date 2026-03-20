@@ -22,18 +22,6 @@ export function CarDock() {
     { name: "Settings", href: "/settings", icon: Settings, color: "bg-zinc-700" },
   ];
 
-  // Auto-Right side if width < 1080
-  useEffect(() => {
-    const checkWidth = () => {
-      if (window.innerWidth < 1080) {
-        setDockSide('right');
-      }
-    };
-    checkWidth();
-    window.addEventListener('resize', checkWidth);
-    return () => window.removeEventListener('resize', checkWidth);
-  }, [setDockSide]);
-
   const handleAppClick = (app: any) => {
     // If clicking "Media" while already on Media page, reset the view
     if (pathname === '/media' && app.href === '/media') {

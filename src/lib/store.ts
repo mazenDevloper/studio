@@ -139,7 +139,7 @@ interface MediaState {
   prevIptvChannel: () => void;
   updateMapSettings: (settings: Partial<MapSettings>) => void;
   setAiSuggestions: (suggestions: any[]) => void;
-  setActiveVideo: (video: YouTubeVideo | null) => void;
+  setActiveVideo: (video: YouTubeVideo | null, context?: YouTubeVideo[]) => void;
   setActiveIptv: (channel: IptvChannel | null) => void;
   setActiveQuranUrl: (url: string | null) => void;
   setPlaylist: (videos: YouTubeVideo[]) => void;
@@ -454,7 +454,34 @@ export const useMediaStore = create<MediaState>()(
       }),
 
       setAiSuggestions: (suggestions) => set({ aiSuggestions: suggestions }),
-      setActiveVideo: (video) => set({ activeVideo: video, activeIptv: null, isPlaying: !!video, isMinimized: false, isFullScreen: !!video }),
+      setActiveVideo: (video, context) => {
+        const state = get();
+        if (video) {
+          // If a context (list of surrounding videos) is provided, use it as the playlist
+          if (context && context.length > 0) {
+            const idx = context.findIndex(v => v.id === video.id);
+            set({ 
+              playlist: context, 
+              playlistIndex: idx > -1 ? idx : 0,
+              activeVideo: video, 
+              activeIptv: null, 
+              isPlaying: true, 
+              isMinimized: false, 
+              isFullScreen: true 
+            });
+          } else {
+            set({ 
+              activeVideo: video, 
+              activeIptv: null, 
+              isPlaying: true, 
+              isMinimized: false, 
+              isFullScreen: true 
+            });
+          }
+        } else {
+          set({ activeVideo: null, isPlaying: false, isMinimized: false, isFullScreen: false });
+        }
+      },
       setActiveIptv: (channel) => {
         const state = get();
         if (!channel) {
@@ -505,8 +532,19 @@ export const useMediaStore = create<MediaState>()(
       setIsMinimized: (minimized) => set({ isMinimized: minimized, isFullScreen: false }),
       setIsFullScreen: (fullScreen) => set({ isFullScreen: fullScreen, isMinimized: false }),
       setWallPlate: (type, data) => set({ wallPlateType: type, wallPlateData: data }),
-      toggleDockSide: () => set((state) => ({ dockSide: state.dockSide === 'left' ? 'right' : 'left' })),
-      setDockSide: (side) => set({ dockSide: side }),
+      toggleDockSide: () => set((state) => {
+        const nextSide = state.dockSide === 'left' ? 'right' : 'left';
+        if (typeof document !== 'undefined') {
+          document.cookie = `dockSide=${nextSide}; path=/; max-age=31536000`;
+        }
+        return { dockSide: nextSide };
+      }),
+      setDockSide: (side) => {
+        if (typeof document !== 'undefined') {
+          document.cookie = `dockSide=${side}; path=/; max-age=31536000`;
+        }
+        set({ dockSide: side });
+      },
       toggleShowIslands: () => set((state) => ({ showIslands: !state.showIslands })),
       
       // Media Actions
@@ -544,6 +582,14 @@ if (typeof window !== "undefined") {
           return data.record;
         } catch (e) { return null; }
       };
+
+      // Priority: Check for dockSide cookie
+      const cookies = document.cookie.split('; ');
+      const sideCookie = cookies.find(row => row.startsWith('dockSide='));
+      if (sideCookie) {
+        const side = sideCookie.split('=')[1] as 'left' | 'right';
+        useMediaStore.setState({ dockSide: side });
+      }
 
       const masterData = await fetchBin(JSONBIN_MASTER_BIN_ID);
       if (masterData) {
