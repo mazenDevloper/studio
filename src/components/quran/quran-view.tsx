@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -80,7 +79,6 @@ export function QuranView() {
               </div>
               <div className="flex flex-col text-right">
                 <span className="text-white font-black text-lg uppercase tracking-widest">تصفح المصحف الشريف</span>
-                <span className="text-blue-400 text-[10px] font-bold uppercase tracking-[0.3em]">Surah Selection Hub</span>
               </div>
               <List className="w-6 h-6 text-white/40 mr-4" />
             </button>
