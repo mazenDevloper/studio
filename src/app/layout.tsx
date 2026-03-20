@@ -1,7 +1,9 @@
+
 import type {Metadata, Viewport} from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { GlobalVideoPlayer } from "@/components/media/global-player";
+import { GlobalQuranPlayer } from "@/components/quran/global-quran-player";
 import { FirebaseClientProvider } from "@/firebase";
 import { LiveMatchIsland } from "@/components/football/live-match-island";
 import { RemotePointer } from "@/components/layout/remote-pointer";
@@ -51,6 +53,7 @@ export default function RootLayout({
             {children}
           </MainLayoutShell>
           <GlobalVideoPlayer />
+          <GlobalQuranPlayer />
           <Toaster />
         </FirebaseClientProvider>
       </body>

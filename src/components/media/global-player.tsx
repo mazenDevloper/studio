@@ -9,12 +9,8 @@ import Image from "next/image";
 import { fetchChannelDetails } from "@/lib/youtube";
 
 /**
- * GlobalVideoPlayer - Adaptive Quality Engine v6.0
- * Strategy: 
- * - Minimized (Capsule): 144p (tiny)
- * - Windowed (Popup): 240p (small)
- * - Cinema (Full Screen): 360p (medium)
- * Explicitly forces quality and disables 'auto'.
+ * GlobalVideoPlayer - يعمل في الخلفية لضمان استمرار الصوت عند التنقل
+ * يعتمد على iframe ثابت يتم إخفاؤه بدلاً من حذفه لضمان عدم انقطاع الصوت
  */
 export function GlobalVideoPlayer() {
   const { 
@@ -188,15 +184,40 @@ export function GlobalVideoPlayer() {
       const YT = (window as any).YT;
       if (YT && YT.Player) initPlayer(currentYouTubeId);
       else (window as any).onYouTubeIframeAPIReady = () => initPlayer(currentYouTubeId);
-    } else {
-      if (playerRef.current) {
-        try { playerRef.current.destroy(); } catch(e) {}
-        playerRef.current = null;
-        lastIdRef.current = null;
-      }
     }
     return () => { if (progressInterval.current) clearInterval(progressInterval.current); };
   }, [currentYouTubeId, mounted, initPlayer]);
+
+  // Media Session API for Background Playback Control
+  useEffect(() => {
+    if (!activeVideo || !window.navigator.mediaSession) return;
+
+    window.navigator.mediaSession.metadata = new MediaMetadata({
+      title: activeVideo.title,
+      artist: activeVideo.channelTitle || "DriveCast",
+      artwork: [
+        { src: activeVideo.thumbnail, sizes: '512x512', type: 'image/jpeg' }
+      ]
+    });
+
+    window.navigator.mediaSession.setActionHandler('play', () => {
+      if (playerRef.current) playerRef.current.playVideo();
+      setIsPlaying(true);
+    });
+    window.navigator.mediaSession.setActionHandler('pause', () => {
+      if (playerRef.current) playerRef.current.pauseVideo();
+      setIsPlaying(false);
+    });
+    window.navigator.mediaSession.setActionHandler('nexttrack', nextTrack);
+    window.navigator.mediaSession.setActionHandler('previoustrack', prevTrack);
+
+    return () => {
+      window.navigator.mediaSession.setActionHandler('play', null);
+      window.navigator.mediaSession.setActionHandler('pause', null);
+      window.navigator.mediaSession.setActionHandler('nexttrack', null);
+      window.navigator.mediaSession.setActionHandler('previoustrack', null);
+    };
+  }, [activeVideo, nextTrack, prevTrack, setIsPlaying]);
 
   const handleAddToIptv = async () => {
     if (!activeVideo) return;
@@ -212,19 +233,21 @@ export function GlobalVideoPlayer() {
     });
   };
 
-  if (!mounted || (!activeVideo && !activeIptv)) return null;
+  if (!mounted) return null;
 
+  const isActive = activeVideo || activeIptv;
   const displayImage = activeIptv ? activeIptv.stream_icon : (channelIcon || activeVideo?.thumbnail || "");
 
   return (
     <div 
       className={cn(
         "fixed z-[9999] shadow-2xl overflow-hidden transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)]",
+        !isActive ? "top-[-9999px] left-[-9999px] opacity-0" :
         isMinimized ? "bottom-12 left-1/2 -translate-x-1/2 w-[500px] h-28 rounded-[2.5rem] premium-glass" : 
         isFullScreen ? "inset-0 w-full h-full bg-black rounded-0" : "bottom-8 right-4 w-[50vw] h-[55vh] premium-glass rounded-[3.5rem] bg-black/95"
       )} 
       style={{ 
-        transform: 'translate3d(0,0,0)', 
+        transform: isActive && !isMinimized && !isFullScreen ? 'translate3d(0,0,0)' : 'none', 
         contain: 'layout paint',
         backfaceVisibility: 'hidden',
         willChange: 'transform, width, height'
@@ -236,7 +259,7 @@ export function GlobalVideoPlayer() {
         ) : (
           <iframe 
             key={activeIptv?.stream_id}
-            src={`${activeIptv?.url}${activeIptv?.url?.includes('?') ? '&' : '?'}autoplay=1&mute=0`} 
+            src={activeIptv ? `${activeIptv.url}${activeIptv.url?.includes('?') ? '&' : '?'}autoplay=1&mute=0` : ''} 
             className="w-full h-full border-none" 
             allow="autoplay; encrypted-media; picture-in-picture; fullscreen" 
             referrerPolicy="no-referrer"
@@ -246,7 +269,7 @@ export function GlobalVideoPlayer() {
         )}
       </div>
 
-      {isMinimized && (
+      {isMinimized && isActive && (
         <div className="h-full flex items-center justify-between px-8 relative z-10 cursor-pointer" onClick={() => setIsFullScreen(true)}>
           <div className="flex items-center gap-4 flex-1 min-w-0 text-right">
             <div className="relative w-16 h-16 rounded-full overflow-hidden border border-white/10 bg-zinc-900 shadow-xl">
@@ -255,7 +278,7 @@ export function GlobalVideoPlayer() {
             <div className="flex flex-col">
               <h4 className="text-base font-black text-white truncate max-w-[200px]">{activeVideo?.title || activeIptv?.name}</h4>
               <div className="flex items-center gap-2">
-                <span className="text-[9px] text-accent font-black uppercase tracking-widest">144p Optimized</span>
+                <span className="text-[9px] text-accent font-black uppercase tracking-widest">Background Transmission</span>
                 <div className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
               </div>
             </div>
@@ -276,7 +299,7 @@ export function GlobalVideoPlayer() {
         </div>
       )}
 
-      {!isMinimized && (
+      {!isMinimized && isActive && (
         <div className={cn(
           "fixed z-[5200] flex items-center transition-all duration-500",
           isFullScreen ? "left-10 bottom-10 scale-150 origin-bottom-left" : "right-12 bottom-12 scale-90"

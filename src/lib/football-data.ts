@@ -12,6 +12,8 @@ export interface Match {
   awayTeam: string;
   homeLogo: string;
   awayLogo: string;
+  homeRank?: number; // Added for league position
+  awayRank?: number; // Added for league position
   startTime: string;
   status: 'upcoming' | 'live' | 'finished';
   score?: { home: number; away: number };

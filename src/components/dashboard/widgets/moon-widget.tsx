@@ -46,10 +46,11 @@ export function MoonWidget() {
 
     async function fetchTemperature() {
       try {
-        const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=17.01&longitude=54.09&current=temperature_2m&timezone=Asia%2FRiyadh`);
+        // Precise Salalah Coordinates: 17.0151, 54.0924
+        const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=17.0151&longitude=54.0924&current=temperature_2m&timezone=Asia%2FRiyadh`);
         if (res.ok) {
           const data = await res.json();
-          if (data.current) {
+          if (data && data.current && typeof data.current.temperature_2m === 'number') {
             setTemperature(`${Math.round(data.current.temperature_2m)}°`);
           }
         }
@@ -60,14 +61,16 @@ export function MoonWidget() {
 
     try {
       const today = new Date();
+      // Use UmAlQura calendar for correct Hijri dates with Latin digits for parsing
       const hijriFormatter = new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura-nu-latn', {day: 'numeric'});
       const dayNum = parseInt(hijriFormatter.format(today), 10);
-      const adjustedDay = dayNum - 1;
+      
+      // Removed the "- 1" logic which caused 0 on the first day of the month
       const arabicDigits = ['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'];
-      const formattedDay = adjustedDay.toString().split('').map(d => arabicDigits[parseInt(d)]).join('');
+      const formattedDay = dayNum.toString().split('').map(d => arabicDigits[parseInt(d)]).join('');
       setHijriDay(formattedDay);
     } catch (e) {
-      setHijriDay("١٤");
+      setHijriDay("١"); // Fallback to 1
     }
 
     fetchMoonData();

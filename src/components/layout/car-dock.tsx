@@ -1,7 +1,7 @@
 
 "use client";
 
-import { LayoutDashboard, Radio, Settings, GripVertical, ArrowLeft, Trophy, ArrowRightLeft, Tv, Eye, EyeOff } from "lucide-react";
+import { LayoutDashboard, Radio, Settings, GripVertical, ArrowLeft, Trophy, ArrowRightLeft, Tv, BookOpen } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -11,15 +11,36 @@ import { useMediaStore } from "@/lib/store";
 export function CarDock() {
   const pathname = usePathname();
   const router = useRouter();
-  const { dockSide, toggleDockSide, showIslands, toggleShowIslands } = useMediaStore();
+  const { dockSide, toggleDockSide, setDockSide, resetMediaView } = useMediaStore();
 
   const apps = [
     { name: "Home", href: "/", icon: LayoutDashboard, color: "bg-blue-600" },
     { name: "Media", href: "/media", icon: Radio, color: "bg-red-500" },
+    { name: "Quran", href: "/quran", icon: BookOpen, color: "bg-blue-900" },
     { name: "IPTV", href: "/iptv", icon: Tv, color: "bg-emerald-600" },
     { name: "Football", href: "/football", icon: Trophy, color: "bg-orange-600" },
     { name: "Settings", href: "/settings", icon: Settings, color: "bg-zinc-700" },
   ];
+
+  // Auto-Right side if width < 1080
+  useEffect(() => {
+    const checkWidth = () => {
+      if (window.innerWidth < 1080) {
+        setDockSide('right');
+      }
+    };
+    checkWidth();
+    window.addEventListener('resize', checkWidth);
+    return () => window.removeEventListener('resize', checkWidth);
+  }, [setDockSide]);
+
+  const handleAppClick = (app: any) => {
+    // If clicking "Media" while already on Media page, reset the view
+    if (pathname === '/media' && app.href === '/media') {
+      resetMediaView();
+    }
+    router.push(app.href);
+  };
 
   // Smart Focus Transition Logic
   useEffect(() => {
@@ -29,11 +50,11 @@ export function CarDock() {
       if (pathname === '/') {
         target = document.querySelector('[data-nav-id="moon-widget-container"]') as HTMLElement;
       } else if (pathname === '/media') {
-        // ALWAYS PRIORITIZE FIRST FAVORITE CHANNEL
         target = document.querySelector('[data-nav-id="fav-channel-0"]') as HTMLElement || 
                  document.querySelector('[data-nav-id="add-channel-btn"]') as HTMLElement;
+      } else if (pathname === '/quran') {
+        target = document.querySelector('[data-nav-id="quran-selector-trigger"]') as HTMLElement;
       } else if (pathname === '/iptv') {
-        // ALWAYS PRIORITIZE FIRST IPTV CHANNEL
         target = document.querySelector('[data-nav-id="iptv-channel-0"]') as HTMLElement || 
                  document.querySelector('[data-nav-id="iptv-cat-0"]') as HTMLElement;
       } else if (pathname === '/football') {
@@ -71,7 +92,7 @@ export function CarDock() {
         {apps.map((app) => (
           <button
             key={app.name}
-            onClick={() => router.push(app.href)}
+            onClick={() => handleAppClick(app)}
             data-nav-id={`dock-${app.name}`}
             className={cn(
               "w-12 h-12 md:w-14 md:h-14 rounded-[1.2rem] flex items-center justify-center transition-all duration-500 relative group focusable outline-none",
@@ -94,19 +115,6 @@ export function CarDock() {
       </div>
 
       <div className="hidden md:flex mt-auto flex-col items-center gap-6">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={toggleShowIslands}
-          className={cn(
-            "w-12 h-12 rounded-full border transition-all focusable",
-            showIslands ? "bg-accent/20 text-accent border-accent/40 shadow-glow" : "bg-white/5 border-white/10 text-white/40"
-          )}
-          title="تبديل ظهور الجزر التفاعلية"
-        >
-          {showIslands ? <Eye className="w-6 h-6" /> : <EyeOff className="w-6 h-6" />}
-        </Button>
-
         <Button
           variant="ghost"
           size="icon"

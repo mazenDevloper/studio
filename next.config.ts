@@ -102,6 +102,12 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'quran.com',
+        port: '',
+        pathname: '/**',
+      },
     ],
   },
 };

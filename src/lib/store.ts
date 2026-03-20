@@ -95,6 +95,7 @@ interface MediaState {
   aiSuggestions: any[];
   activeVideo: YouTubeVideo | null;
   activeIptv: IptvChannel | null;
+  activeQuranUrl: string | null;
   playlist: YouTubeVideo[];
   playlistIndex: number;
   isPlaying: boolean;
@@ -104,6 +105,12 @@ interface MediaState {
   showIslands: boolean;
   wallPlateType: 'moon' | 'manuscript' | null;
   wallPlateData: any | null;
+  
+  // Media UI State
+  videoResults: YouTubeVideo[];
+  selectedChannel: YouTubeChannel | null;
+  channelVideos: YouTubeVideo[];
+  
   setFavoriteChannels: (channels: YouTubeChannel[]) => void;
   setFavoriteIptvChannels: (channels: IptvChannel[]) => void;
   addChannel: (channel: YouTubeChannel) => void;
@@ -134,6 +141,7 @@ interface MediaState {
   setAiSuggestions: (suggestions: any[]) => void;
   setActiveVideo: (video: YouTubeVideo | null) => void;
   setActiveIptv: (channel: IptvChannel | null) => void;
+  setActiveQuranUrl: (url: string | null) => void;
   setPlaylist: (videos: YouTubeVideo[]) => void;
   nextTrack: () => void;
   prevTrack: () => void;
@@ -143,7 +151,15 @@ interface MediaState {
   setIsFullScreen: (fullScreen: boolean) => void;
   setWallPlate: (type: 'moon' | 'manuscript' | null, data?: any) => void;
   toggleDockSide: () => void;
+  setDockSide: (side: 'left' | 'right') => void;
   toggleShowIslands: () => void;
+  
+  // Media Actions
+  setVideoResults: (results: YouTubeVideo[]) => void;
+  setSelectedChannel: (channel: YouTubeChannel | null) => void;
+  setChannelVideos: (videos: YouTubeVideo[]) => void;
+  resetMediaView: () => void;
+
   fetchPrayerTimes: () => Promise<void>;
   fetchManuscripts: () => Promise<void>;
   syncMasterBin: () => Promise<void>;
@@ -207,6 +223,7 @@ export const useMediaStore = create<MediaState>()(
       aiSuggestions: [],
       activeVideo: null,
       activeIptv: null,
+      activeQuranUrl: "https://quran.com/ar/radio",
       playlist: [],
       playlistIndex: 0,
       isPlaying: false,
@@ -216,6 +233,11 @@ export const useMediaStore = create<MediaState>()(
       showIslands: true,
       wallPlateType: null,
       wallPlateData: null,
+      
+      // Media UI State
+      videoResults: [],
+      selectedChannel: null,
+      channelVideos: [],
 
       syncMasterBin: async () => {
         const state = get();
@@ -449,6 +471,7 @@ export const useMediaStore = create<MediaState>()(
         }
         set({ activeIptv: finalChannel, activeVideo: null, isPlaying: true, isMinimized: false, isFullScreen: true });
       },
+      setActiveQuranUrl: (url) => set({ activeQuranUrl: url }),
       setPlaylist: (videos) => {
         set({ playlist: videos, playlistIndex: 0, activeVideo: videos[0], activeIptv: null, isPlaying: true, isMinimized: false, isFullScreen: true });
       },
@@ -483,7 +506,18 @@ export const useMediaStore = create<MediaState>()(
       setIsFullScreen: (fullScreen) => set({ isFullScreen: fullScreen, isMinimized: false }),
       setWallPlate: (type, data) => set({ wallPlateType: type, wallPlateData: data }),
       toggleDockSide: () => set((state) => ({ dockSide: state.dockSide === 'left' ? 'right' : 'left' })),
+      setDockSide: (side) => set({ dockSide: side }),
       toggleShowIslands: () => set((state) => ({ showIslands: !state.showIslands })),
+      
+      // Media Actions
+      setVideoResults: (results) => set({ videoResults: results }),
+      setSelectedChannel: (channel) => set({ selectedChannel: channel }),
+      setChannelVideos: (videos) => set({ channelVideos: videos }),
+      resetMediaView: () => set({ 
+        videoResults: [], 
+        selectedChannel: null, 
+        channelVideos: [] 
+      }),
     }),
     {
       name: "drivecast-master-v7",

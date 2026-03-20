@@ -5,22 +5,26 @@ import { useEffect, useState } from "react";
 import { Loader2, Cloud, Wind, Droplets } from "lucide-react";
 
 /**
- * WeatherWidget - Switched to Open-Meteo for more reliable, keyless data.
- * Focused on Salalah coordinates.
+ * WeatherWidget - Using precise coordinates for Salalah and strict data validation.
  */
 export function WeatherWidget() {
   const [weather, setWeather] = useState<any>(null);
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    // Salalah: Lat 17.01, Lon 54.09
-    fetch(`https://api.open-meteo.com/v1/forecast?latitude=17.01&longitude=54.09&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&timezone=Asia%2FRiyadh`)
+    // Salalah: Lat 17.0151, Lon 54.0924
+    fetch(`https://api.open-meteo.com/v1/forecast?latitude=17.0151&longitude=54.0924&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&timezone=Asia%2FRiyadh`)
       .then(res => {
         if (!res.ok) throw new Error("Weather API failed");
         return res.json();
       })
       .then(data => {
-        if (data && data.current) setWeather(data);
+        // Ensure the temperature value exists and is a number before setting state
+        if (data && data.current && typeof data.current.temperature_2m === 'number') {
+          setWeather(data);
+        } else {
+          throw new Error("Invalid weather data");
+        }
       })
       .catch(err => {
         console.error("Weather error:", err);

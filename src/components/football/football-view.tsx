@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Loader2, Calendar, Star, Trophy, Activity, RefreshCw, Bell, BellRing, Globe, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useMediaStore } from "@/lib/store";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { fetchFootballData } from "@/lib/football-api";
 import { cn } from "@/lib/utils";
 import { convertTo12Hour } from "@/lib/constants";
@@ -29,7 +29,8 @@ export function FootballView() {
   const loadMatches = async (view: string) => {
     setLoading(true);
     try {
-      const result = await fetchFootballData(view === 'live' ? 'live' : view === 'yesterday' ? 'yesterday' : view === 'tomorrow' ? 'tomorrow' : 'today');
+      const typeParam = view === 'live' ? 'live' : view === 'yesterday' ? 'yesterday' : view === 'tomorrow' ? 'tomorrow' : 'today';
+      const result = await fetchFootballData(typeParam);
       setMatches(result);
       setError(null);
     } catch (err: any) {
@@ -49,7 +50,6 @@ export function FootballView() {
     return () => clearInterval(interval);
   }, [activeTab]);
 
-  // Smart Focus logic for matches
   useEffect(() => {
     if (matches.length > 0 && !loading) {
       setTimeout(() => {
@@ -120,7 +120,7 @@ export function FootballView() {
             onClick={(e) => { e.stopPropagation(); toggleBelledMatch(match.id); }}
             className={cn(
               "w-9 h-9 rounded-full border border-white/10 backdrop-blur-3xl flex items-center justify-center transition-all active:scale-90",
-              isBelledMatch ? "bg-accent text-black shadow-glow" : "bg-black/60 text-white/20 hover:text-white"
+              isBelledMatch ? "bg-accent text-black" : "bg-black/60 text-white/20 hover:text-white"
             )}
           >
             {isBelledMatch ? <BellRing className="w-4.5 h-4.5 animate-pulse" /> : <Bell className="w-4.5 h-4.5" />}
@@ -129,10 +129,15 @@ export function FootballView() {
 
         <CardContent className="p-4 h-full flex flex-col justify-center">
           <div className="flex items-center justify-between gap-4">
-            {/* Home Team */}
             <div className="flex flex-col items-center flex-1 gap-2 relative group/team">
               <div className={cn("h-18 w-18 rounded-2xl p-2 flex items-center justify-center border transition-all relative overflow-visible shadow-2xl", isFavTeam(match.homeTeamId) ? "bg-primary/20 border-primary" : "bg-white/5 border-white/5")}>
                 <img src={match.homeLogo} alt="" className="h-full w-full object-contain" />
+                
+                {/* Rank Badge - Top Left */}
+                <div className="absolute -top-2 -left-2 w-6 h-6 rounded-full bg-white text-black text-[10px] font-black flex items-center justify-center shadow-lg border border-black/10 z-40">
+                  {match.homeRank || "1"}
+                </div>
+
                 <button 
                   onClick={(e) => handleToggleFav(e, match.homeTeamId, match.homeTeam, match.homeLogo)}
                   className={cn(
@@ -148,7 +153,6 @@ export function FootballView() {
               </span>
             </div>
 
-            {/* Center Area */}
             <div className="flex flex-col items-center justify-center min-w-[120px] gap-1">
               <div className="text-4xl font-black text-white tabular-nums tracking-tighter drop-shadow-lg">
                 {isLive ? (
@@ -170,10 +174,15 @@ export function FootballView() {
               </span>
             </div>
 
-            {/* Away Team */}
             <div className="flex flex-col items-center flex-1 gap-2 relative group/team">
               <div className={cn("h-18 w-18 rounded-2xl p-2 flex items-center justify-center border transition-all relative overflow-visible shadow-2xl", isFavTeam(match.awayTeamId) ? "bg-primary/20 border-primary" : "bg-white/5 border-white/5")}>
                 <img src={match.awayLogo} alt="" className="h-full w-full object-contain" />
+                
+                {/* Rank Badge - Top Left */}
+                <div className="absolute -top-2 -left-2 w-6 h-6 rounded-full bg-white text-black text-[10px] font-black flex items-center justify-center shadow-lg border border-black/10 z-40">
+                  {match.awayRank || "2"}
+                </div>
+
                 <button 
                   onClick={(e) => handleToggleFav(e, match.awayTeamId, match.awayTeam, match.awayLogo)}
                   className={cn(
@@ -209,7 +218,7 @@ export function FootballView() {
       </header>
 
       <div className="flex flex-col gap-6">
-        <Tabs defaultValue="today" onValueChange={setActiveTab} className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6 dir-rtl">
             <TabsList className="bg-white/5 border border-white/10 p-1.5 rounded-[2rem] h-16 w-full max-w-xl shadow-2xl backdrop-blur-3xl">
               <TabsTrigger value="yesterday" className="flex-1 rounded-[1.5rem] font-black text-xs">أمس</TabsTrigger>
@@ -232,25 +241,25 @@ export function FootballView() {
               </div>
             )}
           </div>
-
-          <TabsContent value="today" className="mt-8">
-            {loading ? (
-              <div className="flex flex-col items-center justify-center py-32 gap-6">
-                <Loader2 className="h-12 w-12 animate-spin text-primary" />
-                <p className="text-muted-foreground font-black animate-pulse uppercase tracking-[0.3em]">جاري التحميل...</p>
-              </div>
-            ) : filteredAndSortedMatches.length === 0 ? (
-              <div className="text-center py-24 flex flex-col items-center gap-6 bg-white/5 rounded-[3rem] border border-dashed border-white/10">
-                <Calendar className="h-20 w-20 text-white/5" />
-                <h3 className="text-2xl font-black text-white/40 uppercase tracking-widest">لا توجد مباريات</h3>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredAndSortedMatches.map((m, idx) => renderMatchCard(m, idx))}
-              </div>
-            )}
-          </TabsContent>
         </Tabs>
+
+        <div className="mt-8">
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-32 gap-6">
+              <Loader2 className="h-12 w-12 animate-spin text-primary" />
+              <p className="text-muted-foreground font-black animate-pulse uppercase tracking-[0.3em]">جاري التحميل...</p>
+            </div>
+          ) : filteredAndSortedMatches.length === 0 ? (
+            <div className="text-center py-24 flex flex-col items-center gap-6 bg-white/5 rounded-[3rem] border border-dashed border-white/10">
+              <Calendar className="h-20 w-20 text-white/5" />
+              <h3 className="text-2xl font-black text-white/40 uppercase tracking-widest">لا توجد مباريات</h3>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredAndSortedMatches.map((m, idx) => renderMatchCard(m, idx))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
