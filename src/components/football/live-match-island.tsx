@@ -60,9 +60,59 @@ export function LiveMatchIsland() {
     };
   }, []);
 
+  const adjustKoraTime = (time: string) => {
+    if (!time || !time.includes(':')) return "00:00";
+    try {
+      const cleanTime = time.replace(/[^\d:]/g, '');
+      let [h, m] = cleanTime.split(':').map(Number);
+      if (isNaN(h) || isNaN(m)) return "00:00";
+      
+      // Shift by +4 hours total (+1 original offset + 3 additional hours)
+      h = (h + 4) % 24;
+      
+      return `${h}:${m.toString().padStart(2, '0')}`;
+    } catch (e) {
+      return "00:00";
+    }
+  };
+
   const fetchMatches = useCallback(async () => {
     try {
-      const matches = await fetchFootballData('today');
+      let matches = await fetchFootballData('today');
+      
+      // Fallback to KORA LIVE (Apify) if no matches found in primary API
+      if (!matches || matches.length === 0) {
+        const API_URL = "https://api.apify.com/v2/datasets/gSh7YtgpfVc6Djc58/items?token=apify_api_LZ79CLZo893xCqB2lRnUagUf6mcj2f18MfZr&format=json&clean=true";
+        const response = await fetch(API_URL);
+        if (response.ok) {
+          const rawData = await response.json();
+          if (Array.isArray(rawData)) {
+            matches = rawData
+              .filter((m: any) => m.day_category === "اليوم")
+              .map((m: any, idx: number) => {
+                const scoreParts = m.info?.result?.split('-') || [];
+                return {
+                  id: `bein-island-${idx}`,
+                  homeTeam: m.home_team?.name || "فريق",
+                  homeLogo: m.home_team?.logo || "",
+                  awayTeam: m.away_team?.name || "فريق",
+                  awayLogo: m.away_team?.logo || "",
+                  league: m.info?.tournament || "بطولة",
+                  startTime: adjustKoraTime(m.info?.time || "00:00"), 
+                  status: m.info?.status?.includes('جارية') ? 'live' : (m.info?.status?.includes('انتهت') ? 'finished' : 'upcoming'),
+                  score: {
+                    home: parseInt(scoreParts[0]?.trim()) || 0,
+                    away: parseInt(scoreParts[1]?.trim()) || 0
+                  },
+                  minute: parseInt(m.info?.status?.replace(/\D/g, '')) || undefined,
+                  channel: m.info?.channel || "SSC / beIN",
+                  commentator: m.info?.commentator || "يحدد لاحقاً",
+                  broadcasts: []
+                } as Match;
+              });
+          }
+        }
+      }
       
       if (matches && matches.length > 0) {
         for (const match of matches) {
@@ -83,7 +133,9 @@ export function LiveMatchIsland() {
       }
       
       setTopMatches(matches || []);
-    } catch (e) {}
+    } catch (e) {
+      console.error("Island Fetch Error:", e);
+    }
   }, [favoriteTeams, belledMatchIds]);
 
   const triggerGoal = (event: GoalEvent) => {
@@ -270,7 +322,6 @@ export function LiveMatchIsland() {
   const miniMatches = processedMatches.slice(1, 4);
   const closestRem = processedReminders[0];
 
-  // Auto-hide island if YouTube video is playing from Media
   if (activeVideo) return null;
 
   const GlassNumber = ({ text, size = '3rem', id, subtext, colorClass }: { text: string, size?: string, id: string, subtext?: string, colorClass?: string }) => (
@@ -317,7 +368,6 @@ export function LiveMatchIsland() {
         contain: 'layout paint'
       }}
     >
-      {/* Island Toggle Hub */}
       <div 
         onClick={toggleShowIslands}
         className="pointer-events-auto shadow-[0_40px_100px_rgba(0,0,0,1)] w-[3.5rem] h-[3.5rem] rounded-full flex items-center justify-center premium-glass cursor-pointer active:scale-90 transition-all border border-white/10"
@@ -399,7 +449,7 @@ export function LiveMatchIsland() {
                   </div>
                   <div className="relative w-full h-full z-20 flex flex-col items-center justify-center" style={{ background: 'linear-gradient(-1deg, black, transparent)' }}>
                     <GlassNumber 
-                      text={mainMatch.status === 'upcoming' ? convertTo12Hour(mainMatch.startTime) : `${mainMatch.score?.away}-${mainMatch.score?.home}`} 
+                      text={mainMatch.status === 'upcoming' ? mainMatch.startTime : `${mainMatch.score?.away}-${mainMatch.score?.home}`} 
                       id={`match-main-${mainMatch.id}`} 
                       subtext={mainMatch.league} 
                     />
@@ -417,7 +467,7 @@ export function LiveMatchIsland() {
                   <div key={m.id} onClick={() => setOverrideMatchId(m.id)} className="pointer-events-auto group rounded-full w-14 h-14 flex flex-col items-center justify-center shadow-2xl relative overflow-hidden cursor-pointer active:scale-95 premium-glass" style={{ transform: 'translate3d(0,0,0)' }}>
                     <button onClick={(e) => { e.stopPropagation(); skipMatch(m.id); }} className="absolute -top-1 -left-1 z-[100] w-5 h-5 rounded-full bg-red-600/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 shadow-lg"><X className="w-3.5 h-3.5" /></button>
                     <span className="absolute top-1 z-20 text-[0.5rem] font-black text-white/90 tabular-nums drop-shadow-md">
-                      {m.status === 'upcoming' ? convertTo12Hour(m.startTime) : `${m.score?.away}-${m.score?.home}`}
+                      {m.status === 'upcoming' ? m.startTime : `${m.score?.away}-${m.score?.home}`}
                     </span>
                     <div className="relative z-10 w-full h-full flex items-center justify-center scale-[0.35]">
                       <img src={m.homeLogo} className="absolute right-0 w-10 h-10 object-contain scale-[1.2] translate-x[2px]" alt="" />
