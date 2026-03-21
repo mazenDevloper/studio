@@ -54,9 +54,10 @@ export async function fetchFootballData(type: 'today' | 'live' | 'yesterday' | '
     'x-rapidapi-host': 'v3.football.api-sports.io'
   };
 
+  // Set timezone to Asia/Muscat for GMT+4 as requested
   const url = type === 'live' 
-    ? `${FOOTBALL_API_BASE_URL}/fixtures?live=all&timezone=Asia/Riyadh`
-    : `${FOOTBALL_API_BASE_URL}/fixtures?date=${date}&timezone=Asia/Riyadh`;
+    ? `${FOOTBALL_API_BASE_URL}/fixtures?live=all&timezone=Asia/Muscat`
+    : `${FOOTBALL_API_BASE_URL}/fixtures?date=${date}&timezone=Asia/Muscat`;
 
   try {
     const response = await fetch(url, { method: 'GET', headers: headers, cache: 'no-store' });
@@ -66,12 +67,8 @@ export async function fetchFootballData(type: 'today' | 'live' | 'yesterday' | '
 
     const fixtures = data.response;
     
-    // Extract unique major leagues to fetch standings for
+    // Fetch standings for top unique leagues to display ranking info
     const uniqueLeagues = Array.from(new Set(fixtures.map((f: any) => f.league.id))) as number[];
-    
-    // We only fetch standings for relevant leagues to save API hits
-    // Ideally we would do this in parallel but limited to 10 leagues per request in free tier?
-    // Let's just fetch for the top 5 leagues encountered
     await Promise.all(uniqueLeagues.slice(0, 8).map(lid => fetchLeagueStandings(lid)));
 
     return fixtures.map((item: any) => {

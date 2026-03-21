@@ -25,10 +25,49 @@ export interface YouTubeVideo {
   duration?: string;
   progress?: number;
   isLive?: boolean;
+  viewCount?: number;
 }
 
 const youtubeCache: Record<string, { data: any, timestamp: number }> = {};
-const CACHE_TTL = 1000 * 60 * 10;
+const CACHE_TTL = 1000 * 60 * 30; // 30 minutes to preserve quota
+
+// Smart Persistent Blacklist Logic
+const BLACKLIST_KEY = 'yt_smart_blacklist';
+const ROTATION_INDEX_KEY = 'yt_active_key_index';
+
+function getSmartBlacklist(): Record<string, number> {
+  if (typeof window === 'undefined') return {};
+  try {
+    const data = localStorage.getItem(BLACKLIST_KEY);
+    const parsed = data ? JSON.parse(data) : {};
+    
+    // Auto-clean expired entries
+    const now = Date.now();
+    const cleaned: Record<string, number> = {};
+    let changed = false;
+    
+    Object.entries(parsed).forEach(([idx, expiry]) => {
+      if (now < (expiry as number)) {
+        cleaned[idx] = expiry as number;
+      } else {
+        changed = true;
+      }
+    });
+    
+    if (changed) localStorage.setItem(BLACKLIST_KEY, JSON.stringify(cleaned));
+    return cleaned;
+  } catch (e) {
+    return {};
+  }
+}
+
+function addToBlacklist(index: number) {
+  if (typeof window === 'undefined') return;
+  const blacklist = getSmartBlacklist();
+  // Blacklist for 24 hours (YouTube quota resets daily)
+  blacklist[index.toString()] = Date.now() + (24 * 60 * 60 * 1000);
+  localStorage.setItem(BLACKLIST_KEY, JSON.stringify(blacklist));
+}
 
 function formatSubscriberCount(count: string): string {
   const num = parseInt(count, 10);
@@ -58,8 +97,25 @@ async function fetchWithRotation(endpoint: string, params: Record<string, string
     return youtubeCache[cacheKey].data;
   }
   
-  for (let i = 0; i < YT_KEYS_POOL.length; i++) {
-    const key = YT_KEYS_POOL[i];
+  const totalKeys = YT_KEYS_POOL.length;
+  let currentKeyIndex = 0;
+  if (typeof window !== 'undefined') {
+    currentKeyIndex = parseInt(localStorage.getItem(ROTATION_INDEX_KEY) || '0', 10);
+  }
+
+  const blacklist = getSmartBlacklist();
+  let attempts = 0;
+
+  while (attempts < totalKeys) {
+    const activeIndex = (currentKeyIndex + attempts) % totalKeys;
+    
+    // Skip if this key is in the smart blacklist
+    if (blacklist[activeIndex.toString()]) {
+      attempts++;
+      continue;
+    }
+
+    const key = YT_KEYS_POOL[activeIndex];
     const url = `https://www.googleapis.com/youtube/v3/${endpoint}?${queryParams.toString()}&key=${key}`;
     
     try {
@@ -67,21 +123,31 @@ async function fetchWithRotation(endpoint: string, params: Record<string, string
       const data = await response.json();
 
       if (response.ok) {
+        // Save working index
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(ROTATION_INDEX_KEY, activeIndex.toString());
+        }
         youtubeCache[cacheKey] = { data, timestamp: Date.now() };
         return data;
       }
       
+      // Quota limit hit or Forbidden (403 is usually quota, 429 is rate limit)
       if (response.status === 403 || response.status === 429) {
-        console.warn(`YouTube API Key ${i} exhausted. Rotating...`);
-        continue;
+        console.warn(`Smart Rotation: Key ${activeIndex} exhausted. Blacklisting for 24h.`);
+        addToBlacklist(activeIndex);
+        attempts++;
+        continue; 
       }
       
+      console.error("YouTube API Error:", data.error?.message || "Unknown error");
       return null;
     } catch (error) {
-      continue;
+      console.error("Network error during YouTube fetch:", error);
+      attempts++;
     }
   }
   
+  console.error("CRITICAL: All YouTube API Keys are currently blacklisted or exhausted.");
   return null;
 }
 
@@ -181,11 +247,7 @@ export async function fetchVideoDetails(videoId: string): Promise<YouTubeVideo |
   };
 }
 
-/**
- * جلب فيديوهات القناة مع إعطاء الأولوية للبث المباشر
- */
 export async function fetchChannelVideos(channelId: string): Promise<YouTubeVideo[]> {
-  // 1. تحقق أولاً من وجود بث مباشر نشط
   const liveSearch = await fetchWithRotation('search', {
     part: 'snippet',
     channelId: channelId,
@@ -208,7 +270,6 @@ export async function fetchChannelVideos(channelId: string): Promise<YouTubeVide
     });
   }
 
-  // 2. جلب أحدث الفيديوهات العادية (Uploads)
   const uploadsPlaylistId = channelId.startsWith('UC') 
     ? channelId.replace('UC', 'UU') 
     : channelId;
@@ -251,6 +312,5 @@ export async function fetchChannelVideos(channelId: string): Promise<YouTubeVide
     }));
   }
 
-  // دمج المباشر مع العادي (المباشر أولاً)
   return [...liveVideos, ...uploadedVideos.filter(v => !liveVideos.some(lv => lv.id === v.id))];
 }

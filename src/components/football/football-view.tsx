@@ -20,21 +20,84 @@ export function FootballView() {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("today");
   const [filterType, setFilterType] = useState<"all" | "major" | "arab" | "euro">("major");
+  const [koraDay, setKoraDay] = useState<"اليوم" | "الأمس" | "الغد">("اليوم");
   
-  const { favoriteTeams, belledMatchIds, toggleBelledMatch, toggleFavoriteTeam } = useMediaStore();
+  const { favoriteTeams, belledMatchIds, toggleBelledMatch, toggleFavoriteTeam, setActiveIptv } = useMediaStore();
 
   const isFavTeam = (id: number) => favoriteTeams.some(t => t.id === id);
   const isBelled = (id: string) => belledMatchIds.includes(id);
 
+  // Helper to adjust Kora Live time to the desired timezone (+4 hours from source)
+  const adjustKoraTime = (time: string) => {
+    if (!time || !time.includes(':')) return "00:00";
+    try {
+      // Clean string from any PM/AM or extra spaces
+      const cleanTime = time.replace(/[^\d:]/g, '');
+      let [h, m] = cleanTime.split(':').map(Number);
+      
+      if (isNaN(h) || isNaN(m)) return "00:00";
+      
+      // Shift by +4 hours total as requested (Original +1 then adding +3 additional)
+      h = (h + 4) % 24;
+      
+      return `${h}:${m.toString().padStart(2, '0')}`;
+    } catch (e) {
+      return "00:00";
+    }
+  };
+
   const loadMatches = async (view: string) => {
     setLoading(true);
+    setError(null);
+    
     try {
-      const typeParam = view === 'live' ? 'live' : view === 'yesterday' ? 'yesterday' : view === 'tomorrow' ? 'tomorrow' : 'today';
-      const result = await fetchFootballData(typeParam);
+      let result = [];
+      
+      if (view === 'beinlive') {
+        const API_URL = "https://api.apify.com/v2/datasets/gSh7YtgpfVc6Djc58/items?token=process.env.NEXT_PUBLIC_APIFY_TOKEN&format=json&clean=true";
+        
+        const response = await fetch(API_URL);
+        if (!response.ok) throw new Error(`Apify Error: ${response.status}`);
+        
+        const rawData = await response.json();
+
+        if (Array.isArray(rawData)) {
+          result = rawData.map((m: any, idx: number) => {
+            const scoreParts = m.info?.result?.split('-') || [];
+            return {
+              id: `bein-${idx}`,
+              homeTeam: m.home_team?.name || "فريق",
+              homeLogo: m.home_team?.logo || "",
+              awayTeam: m.away_team?.name || "فريق",
+              awayLogo: m.away_team?.logo || "",
+              league: m.info?.tournament || "بطولة",
+              startTime: adjustKoraTime(m.info?.time || "00:00"), 
+              status: m.info?.status?.includes('جارية') ? 'live' : (m.info?.status?.includes('انتهت') ? 'finished' : 'scheduled'),
+              score: {
+                home: scoreParts[0]?.trim() || "0",
+                away: scoreParts[1]?.trim() || "0"
+              },
+              minute: parseInt(m.info?.status?.replace(/\D/g, '')) || undefined,
+              channel: m.info?.channel || "غير معروفة",
+              commentator: m.info?.commentator || "غير مدرج",
+              dayCategory: m.day_category,
+              matchLink: m.link
+            };
+          });
+        }
+      } 
+      else {
+        const typeParam = view === 'live' ? 'live' : 
+                          view === 'yesterday' ? 'yesterday' : 
+                          view === 'tomorrow' ? 'tomorrow' : 'today';
+        result = await fetchFootballData(typeParam);
+      }
+      
       setMatches(result);
-      setError(null);
     } catch (err: any) {
-      setError("فشل الاتصال بمزود البيانات.");
+      console.error("Match Loading Error:", err);
+      setError("فشل الاتصال بمزود البيانات. يرجى التأكد من توفر البيانات.");
+      setMatches([]);
     } finally {
       setLoading(false);
     }
@@ -50,15 +113,6 @@ export function FootballView() {
     return () => clearInterval(interval);
   }, [activeTab]);
 
-  useEffect(() => {
-    if (matches.length > 0 && !loading) {
-      setTimeout(() => {
-        const firstMatch = document.querySelector('[data-nav-id^="match-"]') as HTMLElement;
-        if (firstMatch) firstMatch.focus();
-      }, 500);
-    }
-  }, [matches, loading]);
-
   const filteredAndSortedMatches = useMemo(() => {
     if (!matches || !Array.isArray(matches)) return [];
     
@@ -68,9 +122,11 @@ export function FootballView() {
       result = result.filter(m => m.status === 'live');
     } else if (activeTab === "favorites") {
       result = result.filter(m => isFavTeam(m.homeTeamId) || isFavTeam(m.awayTeamId));
+    } else if (activeTab === "beinlive") {
+      result = result.filter(m => m.dayCategory === koraDay);
     }
 
-    if (activeTab !== "favorites") {
+    if (activeTab !== "favorites" && activeTab !== "beinlive") {
       if (filterType === "major") {
         result = result.filter(m => MAJOR_LEAGUES_IDS.includes(m.leagueId) || MAJOR_CLUBS_IDS.includes(m.homeTeamId) || MAJOR_CLUBS_IDS.includes(m.awayTeamId));
       } else if (filterType === "arab") {
@@ -93,7 +149,7 @@ export function FootballView() {
 
       return (a.leagueId || 0) - (b.leagueId || 0);
     });
-  }, [matches, activeTab, filterType, favoriteTeams, belledMatchIds]);
+  }, [matches, activeTab, filterType, favoriteTeams, belledMatchIds, koraDay]);
 
   const renderMatchCard = (match: any, idx: number) => {
     const isFavMatch = isFavTeam(match.homeTeamId) || isFavTeam(match.awayTeamId);
@@ -102,20 +158,36 @@ export function FootballView() {
 
     const handleToggleFav = (e: React.MouseEvent, teamId: number, teamName: string, teamLogo: string) => {
       e.stopPropagation();
-      toggleFavoriteTeam({ id: teamId, name: teamName, logo: teamLogo });
+      if (teamId) {
+        toggleFavoriteTeam({ id: teamId, name: teamName, logo: teamLogo });
+      }
+    };
+
+    const handleMatchClick = () => {
+      if (match.matchLink) {
+        setActiveIptv({
+          stream_id: match.id,
+          name: `${match.homeTeam} vs ${match.awayTeam}`,
+          stream_icon: match.homeLogo,
+          category_id: "direct",
+          url: match.matchLink,
+          type: 'web'
+        });
+      }
     };
 
     return (
       <Card 
         key={match.id} 
         data-nav-id={`match-${idx}`}
+        onClick={handleMatchClick}
         className={cn(
-          "relative overflow-hidden transition-all duration-500 border-white/5 group focusable premium-glass h-48",
+          "relative overflow-hidden transition-all duration-500 border-white/5 group focusable premium-glass h-56 cursor-pointer",
           isBelledMatch ? "ring-2 ring-accent bg-accent/5" : isFavMatch ? "ring-2 ring-primary bg-primary/10" : "bg-card/40"
         )}
         tabIndex={0}
       >
-        <div className="absolute top-3 left-3 z-20">
+        <div className="absolute top-3 left-3 z-20 flex gap-2">
           <button 
             onClick={(e) => { e.stopPropagation(); toggleBelledMatch(match.id); }}
             className={cn(
@@ -127,17 +199,11 @@ export function FootballView() {
           </button>
         </div>
 
-        <CardContent className="p-4 h-full flex flex-col justify-center">
-          <div className="flex items-center justify-between gap-4">
+        <CardContent className="p-4 h-full flex flex-col justify-between">
+          <div className="flex items-center justify-between gap-4 flex-1">
             <div className="flex flex-col items-center flex-1 gap-2 relative group/team">
               <div className={cn("h-18 w-18 rounded-2xl p-2 flex items-center justify-center border transition-all relative overflow-visible shadow-2xl", isFavTeam(match.homeTeamId) ? "bg-primary/20 border-primary" : "bg-white/5 border-white/5")}>
                 <img src={match.homeLogo} alt="" className="h-full w-full object-contain" />
-                
-                {/* Rank Badge - Top Left */}
-                <div className="absolute -top-2 -left-2 w-6 h-6 rounded-full bg-white text-black text-[10px] font-black flex items-center justify-center shadow-lg border border-black/10 z-40">
-                  {match.homeRank || "1"}
-                </div>
-
                 <button 
                   onClick={(e) => handleToggleFav(e, match.homeTeamId, match.homeTeam, match.homeLogo)}
                   className={cn(
@@ -157,7 +223,7 @@ export function FootballView() {
               <div className="text-4xl font-black text-white tabular-nums tracking-tighter drop-shadow-lg">
                 {isLive ? (
                   <div className="flex flex-col items-center">
-                    <span className="text-red-500 animate-pulse text-[12px] mb-[-6px]">{match.minute}'</span>
+                    <span className="text-red-500 animate-pulse text-[12px] mb-[-6px]">{match.minute || ''}'</span>
                     <span>{match.score.away}-{match.score.home}</span>
                   </div>
                 ) : match.status === "finished" ? (
@@ -166,7 +232,7 @@ export function FootballView() {
                     <span>{match.score.away}-{match.score.home}</span>
                   </div>
                 ) : (
-                  convertTo12Hour(match.startTime)
+                  match.startTime
                 )}
               </div>
               <span className="text-[9px] font-bold text-white/30 uppercase tracking-widest text-center line-clamp-1 max-w-[110px]">
@@ -177,16 +243,10 @@ export function FootballView() {
             <div className="flex flex-col items-center flex-1 gap-2 relative group/team">
               <div className={cn("h-18 w-18 rounded-2xl p-2 flex items-center justify-center border transition-all relative overflow-visible shadow-2xl", isFavTeam(match.awayTeamId) ? "bg-primary/20 border-primary" : "bg-white/5 border-white/5")}>
                 <img src={match.awayLogo} alt="" className="h-full w-full object-contain" />
-                
-                {/* Rank Badge - Top Left */}
-                <div className="absolute -top-2 -left-2 w-6 h-6 rounded-full bg-white text-black text-[10px] font-black flex items-center justify-center shadow-lg border border-black/10 z-40">
-                  {match.awayRank || "2"}
-                </div>
-
                 <button 
                   onClick={(e) => handleToggleFav(e, match.awayTeamId, match.awayTeam, match.awayLogo)}
                   className={cn(
-                    "absolute -top-2 -right-2 w-7 h-7 rounded-full flex items-center justify-center shadow-2xl transition-all active:scale-75 z-30",
+                    "absolute -top-2 -left-2 w-7 h-7 rounded-full flex items-center justify-center shadow-2xl transition-all active:scale-75 z-30",
                     isFavTeam(match.awayTeamId) ? "bg-yellow-500 text-black opacity-100" : "bg-black/80 text-white/40 opacity-0 group-hover/team:opacity-100"
                   )}
                 >
@@ -196,6 +256,17 @@ export function FootballView() {
               <span className={cn("text-[11px] font-black text-center line-clamp-1 uppercase tracking-tighter", isFavTeam(match.awayTeamId) ? "text-primary" : "text-white/80")}>
                 {match.awayTeam}
               </span>
+            </div>
+          </div>
+
+          <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between">
+            <div className="flex items-center gap-2 bg-white/5 px-3 py-1 rounded-full">
+              <Globe className="w-3.5 h-3.5 text-primary" />
+              <span className="text-[10px] font-black text-white/60 truncate max-w-[100px]">{match.channel || "SSC HD"}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Shield className="w-3.5 h-3.5 text-accent" />
+              <span className="text-[10px] font-black text-white/40 truncate max-w-[100px]">{match.commentator || "يحدد لاحقاً"}</span>
             </div>
           </div>
         </CardContent>
@@ -210,7 +281,7 @@ export function FootballView() {
           <h1 className="text-4xl font-headline font-bold text-white tracking-tighter flex items-center gap-3">
             مركز كووورة <Trophy className="w-8 h-8 text-accent animate-bounce" />
           </h1>
-          <p className="text-white/40 text-xs font-bold uppercase tracking-widest mr-1">Global Football Hub (Starred Mode)</p>
+          <p className="text-white/40 text-xs font-bold uppercase tracking-widest mr-1">Global Football Hub (GMT+4)</p>
         </div>
         <Button variant="outline" onClick={() => loadMatches(activeTab)} disabled={loading} className="rounded-full bg-white/5 border-white/10 text-white hover:bg-white/10 transition-all focusable">
           <RefreshCw className={cn("w-4 h-4 ml-2", loading && "animate-spin")} /> تحديث
@@ -220,10 +291,22 @@ export function FootballView() {
       <div className="flex flex-col gap-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6 dir-rtl">
-            <TabsList className="bg-white/5 border border-white/10 p-1.5 rounded-[2rem] h-16 w-full max-w-xl shadow-2xl backdrop-blur-3xl">
+            <TabsList className="bg-white/5 border border-white/10 p-1.5 rounded-[2rem] h-16 w-full max-w-2xl shadow-2xl backdrop-blur-3xl">
               <TabsTrigger value="yesterday" className="flex-1 rounded-[1.5rem] font-black text-xs">أمس</TabsTrigger>
               <TabsTrigger value="today" className="flex-1 rounded-[1.5rem] font-black text-xs">اليوم</TabsTrigger>
               <TabsTrigger value="tomorrow" className="flex-1 rounded-[1.5rem] font-black text-xs">غداً</TabsTrigger>
+              
+              <TabsTrigger 
+                value="beinlive" 
+                className="flex-1 rounded-[1.5rem] font-black text-[10px] md:text-xs data-[state=active]:bg-primary data-[state=active]:text-white flex items-center justify-center gap-1.5 transition-all duration-500 group"
+              >
+                <div className="relative">
+                  <Shield className="h-3.5 w-3.5" />
+                  <span className="absolute -top-1 -right-1 w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse border border-black" />
+                </div>
+                KORA LIVE
+              </TabsTrigger>
+
               <TabsTrigger value="live" className="flex-1 rounded-[1.5rem] font-black text-xs data-[state=active]:bg-red-600 flex items-center justify-center gap-2">
                 <Activity className="h-4 w-4" /> المباشرة
               </TabsTrigger>
@@ -232,7 +315,7 @@ export function FootballView() {
               </TabsTrigger>
             </TabsList>
 
-            {activeTab !== "favorites" && (
+            {activeTab !== "favorites" && activeTab !== "beinlive" && (
               <div className="flex items-center gap-2 bg-white/5 p-1.5 rounded-full border border-white/10 h-16 shadow-2xl">
                 <Button variant="ghost" onClick={() => setFilterType("major")} className={cn("rounded-full px-6 h-full font-black text-xs flex items-center gap-2", filterType === "major" ? "bg-primary text-white" : "text-white/40")}><Shield className="w-4 h-4" /> القمة</Button>
                 <Button variant="ghost" onClick={() => setFilterType("arab")} className={cn("rounded-full px-6 h-full font-black text-xs flex items-center gap-2", filterType === "arab" ? "bg-emerald-600 text-white" : "text-white/40")}><Globe className="w-4 h-4" /> العرب</Button>
@@ -243,11 +326,39 @@ export function FootballView() {
           </div>
         </Tabs>
 
+        {activeTab === "beinlive" && !loading && (
+          <div className="flex items-center justify-center gap-3 mb-6 animate-in fade-in slide-in-from-top-2 duration-700">
+            <div className="bg-white/5 p-1 rounded-2xl border border-white/10 flex gap-1">
+              {["الأمس", "اليوم", "الغد"].map((day) => (
+                <Button
+                  key={day}
+                  variant="ghost"
+                  onClick={() => setKoraDay(day as any)}
+                  className={cn(
+                    "rounded-xl px-6 h-9 font-black text-[10px] transition-all",
+                    koraDay === day 
+                      ? "bg-white/10 text-primary shadow-lg border border-white/10" 
+                      : "text-white/30 hover:text-white/60 hover:bg-white/5"
+                  )}
+                >
+                  {day}
+                </Button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="mt-8">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-32 gap-6">
               <Loader2 className="h-12 w-12 animate-spin text-primary" />
               <p className="text-muted-foreground font-black animate-pulse uppercase tracking-[0.3em]">جاري التحميل...</p>
+            </div>
+          ) : error && filteredAndSortedMatches.length === 0 ? (
+            <div className="text-center py-24 flex flex-col items-center gap-6 bg-white/5 rounded-[3rem] border border-dashed border-white/10">
+              <Shield className="h-20 w-20 text-white/5" />
+              <h3 className="text-xl font-black text-red-400 uppercase tracking-widest">{error}</h3>
+              <Button onClick={() => loadMatches(activeTab)} variant="outline" className="rounded-full">إعادة المحاولة</Button>
             </div>
           ) : filteredAndSortedMatches.length === 0 ? (
             <div className="text-center py-24 flex flex-col items-center gap-6 bg-white/5 rounded-[3rem] border border-dashed border-white/10">

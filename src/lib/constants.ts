@@ -5,11 +5,13 @@ export const FOOTBALL_API_KEY = '2f79edc60ed7f63aa4af1feea0f1ff2c';
 export const FOOTBALL_API_BASE_URL = 'https://v3.football.api-sports.io';
 
 export const YT_KEYS_POOL = [
-    "AIzaSyCcB-bW1b1bSu3hzROVhSbRT-D894zHYeg", 
+    "AIzaSyCaqMPtn-egmEQk7XmTel--xsXV1Xbdp7o", // المفتاح الأساسي المفضل
+    "AIzaSyBeTHs25EsKeDFtIS5kq8iDATz-2c8hBrI",
     "AIzaSyCtgdzDMCpCbGe1vSAu0F4wBKERC77ac6I",
-    "AIzaSyAjdVZ2Rodp6ZVEF1pZT195kAtGELolxSI",
+    "AIzaSyBYThRM6tVnzgFgdHOUAN6DN8jQd54OKeg",
     "AIzaSyDULoFJLWNIO9hn0u8siLz-BzTi7eM-CX4",
-    "AIzaSyBYThRM6tVnzgFgdHOUAN6DN8jQd54OKeg"
+    "AIzaSyAjdVZ2Rodp6ZVEF1pZT195kAtGELolxSI",
+    "AIzaSyCcB-bW1b1bSu3hzROVhSbRT-D894zHYeg"
 ];
 
 // JSONBin.io Configuration - Multi-Bin Architecture

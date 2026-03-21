@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Search, Plus, Radio, Loader2, Mic, Star, X, Link as LinkIcon, Trash2, Save, GripVertical, Play, Clock, Activity } from "lucide-react";
+import { Search, Plus, Radio, Loader2, Mic, Star, X, Link as LinkIcon, Trash2, Save, GripVertical, Play, Clock, Activity, Zap } from "lucide-react";
 import { useMediaStore } from "@/lib/store";
 import { searchYouTubeChannels, searchYouTubeVideos, fetchChannelVideos, fetchVideoDetails, YouTubeChannel, YouTubeVideo } from "@/lib/youtube";
 import Image from "next/image";
@@ -58,10 +58,22 @@ export function MediaView() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const [subscriptionLatestVideos, setSubscriptionLatestVideos] = useState<YouTubeVideo[]>([]);
+  const [trendingVideos, setTrendingVideos] = useState<YouTubeVideo[]>([]);
   const [liveChannels, setLiveChannels] = useState<string[]>([]);
   const [isLoadingLatest, setIsLoadingLatest] = useState(false);
+  const [isLoadingTrending, setIsLoadingTrending] = useState(false);
 
-  // Fetch one latest video from each subscription following channel order
+  // Helper to extract YouTube ID from potential URLs
+  const extractVid = (input: string): string => {
+    if (!input) return "";
+    const regExp = /^.*(?:youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const match = input.match(regExp);
+    if (match && match[1].length === 11) return match[1];
+    const cleanId = input.trim();
+    if (cleanId.length === 11 && !cleanId.includes('/') && !cleanId.includes('.')) return cleanId;
+    return cleanId.replace(/[<>]/g, "");
+  };
+
   const fetchLatestFromSubs = useCallback(async () => {
     if (favoriteChannels.length === 0) {
       setSubscriptionLatestVideos([]);
@@ -72,11 +84,8 @@ export function MediaView() {
     try {
       const promises = favoriteChannels.map(ch => fetchChannelVideos(ch.channelid));
       const results = await Promise.all(promises);
-      
       const latestVideos = results.map(vids => vids[0]).filter(Boolean);
       setSubscriptionLatestVideos(latestVideos);
-
-      // تتبع القنوات التي لديها بث مباشر الآن
       const liveIds = latestVideos.filter(v => v.isLive).map(v => v.channelId!).filter(Boolean);
       setLiveChannels(liveIds);
     } catch (e) {
@@ -86,11 +95,60 @@ export function MediaView() {
     }
   }, [favoriteChannels]);
 
+  const fetchTrendingVideos = useCallback(async () => {
+    setIsLoadingTrending(true);
+    try {
+      const response = await fetch('https://api.apify.com/v2/acts/plum_wobble~my-actor-7/runs/last/dataset/items?token=process.env.NEXT_PUBLIC_APIFY_TOKEN&status=SUCCEEDED');
+      if (!response.ok) throw new Error("Failed to fetch trending from Apify");
+      
+      const data = await response.json();
+      if (!Array.isArray(data)) return;
+
+      const sortedData = data.sort((a: any, b: any) => {
+        const vA = parseInt(a.viewCount) || 0;
+        const vB = parseInt(b.viewCount) || 0;
+        return vB - vA;
+      });
+      
+      const mapped = sortedData.map((v: any) => {
+        const rawId = v.videoLink || v.videoId || v.id || v.url || "";
+        const vid = extractVid(rawId);
+        return {
+          id: vid,
+          title: v.channelName || v.title || "فيديو بدون عنوان", // Priority to channelName as requested
+          description: v.description || "",
+          thumbnail: v.thumbnailUrl || v.thumbnail || v.videoThumbnail || `https://i.ytimg.com/vi/${vid}/hqdefault.jpg`,
+          publishedAt: v.date || v.publishedAt || "",
+          channelTitle: v.channelTitle || v.channelName || "YouTube Content",
+          duration: v.duration,
+          viewCount: parseInt(v.viewCount) || 0
+        };
+      }).filter(v => v.id !== "");
+
+      setTrendingVideos(mapped);
+    } catch (error) {
+      console.error("Failed to fetch trending videos", error);
+    } finally {
+      setIsLoadingTrending(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchLatestFromSubs();
-    const interval = setInterval(fetchLatestFromSubs, 10 * 60 * 1000); // تحديث كل 10 دقائق
+    fetchTrendingVideos();
+    const interval = setInterval(() => {
+      fetchLatestFromSubs();
+      fetchTrendingVideos();
+    }, 30 * 60 * 1000);
     return () => clearInterval(interval);
-  }, [fetchLatestFromSubs]);
+  }, [fetchLatestFromSubs, fetchTrendingVideos]);
+
+  const formatViews = (count: number | undefined) => {
+    if (!count) return "---";
+    if (count >= 1000000) return (count / 1000000).toFixed(1) + 'M';
+    if (count >= 1000) return (count / 1000).toFixed(1) + 'K';
+    return count.toString();
+  };
 
   // Focus Management Hooks
   useEffect(() => {
@@ -112,13 +170,22 @@ export function MediaView() {
   }, [channelVideos]);
 
   useEffect(() => {
-    if (favoriteChannels.length > 0 && !selectedChannel && videoResults.length === 0) {
+    if (trendingVideos.length > 0 && !selectedChannel && videoResults.length === 0) {
+      setTimeout(() => {
+        const firstTrending = document.querySelector('[data-nav-id="trending-video-0"]') as HTMLElement;
+        if (firstTrending) firstTrending.focus();
+      }, 300);
+    }
+  }, [trendingVideos, selectedChannel, videoResults]);
+
+  useEffect(() => {
+    if (favoriteChannels.length > 0 && !selectedChannel && videoResults.length === 0 && trendingVideos.length === 0) {
       setTimeout(() => {
         const firstFav = document.querySelector('[data-nav-id="fav-channel-0"]') as HTMLElement;
         if (firstFav) firstFav.focus();
       }, 300);
     }
-  }, [favoriteChannels, selectedChannel, videoResults]);
+  }, [favoriteChannels, selectedChannel, videoResults, trendingVideos]);
 
   const handleVideoSearch = useCallback(async (queryOverride?: string) => {
     const finalQuery = queryOverride || searchQuery;
@@ -178,10 +245,8 @@ export function MediaView() {
   const handleOrderChange = (channelId: string, newOrder: string) => {
     const targetIdx = parseInt(newOrder) - 1;
     if (isNaN(targetIdx) || targetIdx < 0 || targetIdx >= favoriteChannels.length) return;
-    
     const currentIdx = favoriteChannels.findIndex(c => c.channelid === channelId);
     if (currentIdx === -1 || currentIdx === targetIdx) return;
-
     const newList = [...favoriteChannels];
     const [movedChannel] = newList.splice(currentIdx, 1);
     newList.splice(targetIdx, 0, movedChannel);
@@ -202,15 +267,7 @@ export function MediaView() {
     if (!urlInput.trim()) return;
     setIsAddingByUrl(true);
     try {
-      let videoId = "";
-      if (urlInput.includes("youtu.be/")) {
-        videoId = urlInput.split("youtu.be/")[1]?.split("?")[0];
-      } else if (urlInput.includes("youtube.com/watch?v=")) {
-        videoId = urlInput.split("v=")[1]?.split("&")[0];
-      } else if (urlInput.includes("youtube.com/embed/")) {
-        videoId = urlInput.split("embed/")[1]?.split("?")[0];
-      }
-
+      const videoId = extractVid(urlInput);
       if (videoId) {
         const video = await fetchVideoDetails(videoId);
         if (video) {
@@ -242,61 +299,56 @@ export function MediaView() {
   if (isFullScreen) return null;
 
   return (
-    <div className="p-6 space-y-8 max-w-7xl mx-auto pb-32 min-h-screen relative dir-rtl safe-p-top">
-      <header className="flex flex-col gap-8">
-        <div className="flex justify-between items-end">
-          <div className="text-right">
-            <h1 className="text-4xl md:text-5xl font-headline font-bold tracking-tighter text-white">DriveCast Media</h1>
-            <p className="text-muted-foreground text-xs font-medium uppercase tracking-widest opacity-60">Professional Video Center</p>
-          </div>
-          <div className="flex items-center gap-4">
-            <Button
-              variant="outline"
-              onClick={() => setIsReordering(!isReordering)}
-              className={cn("h-12 px-6 rounded-full focusable", isReordering ? "bg-accent text-black" : "bg-white/5 text-white")}
-            >
-              {isReordering ? "إلغاء الترتيب" : "تغيير الترتيب"}
-            </Button>
-            {isReordering && (
-              <Button onClick={handleSaveReorder} className="h-12 px-6 rounded-full bg-primary text-white shadow-glow">
-                <Save className="w-4 h-4 ml-2" /> حفظ الترتيب السحابي
-              </Button>
-            )}
-            <Dialog open={isUrlDialogOpen} onOpenChange={setIsUrlDialogOpen}>
-              <DialogTrigger asChild>
-                <Button variant="ghost" className="h-12 px-6 rounded-full bg-white/5 border border-white/10 text-white hover:bg-white/10 focusable flex items-center gap-2">
-                  <LinkIcon className="w-4 h-4 text-primary" />
-                  <span className="text-[10px] font-black uppercase tracking-widest">إضافة بالرابط</span>
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="bg-zinc-950 border-white/10 rounded-[2.5rem] p-8 w-[90%] max-w-md mx-auto">
-                <DialogHeader>
-                  <DialogTitle className="text-2xl font-black text-white mb-4 text-right">إضافة فيديو بالرابط</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-6">
-                  <Input 
-                    placeholder="https://youtu.be/..." 
-                    value={urlInput} 
-                    onChange={(e) => setUrlInput(e.target.value)}
-                    className="h-14 bg-white/5 border-white/10 rounded-2xl px-6 text-white focusable text-right"
-                  />
-                  <div className="flex gap-4">
-                    <Button onClick={handleAddVideoByUrl} disabled={isAddingByUrl} className="flex-1 h-14 bg-primary text-white font-black rounded-2xl shadow-xl focusable">
-                      {isAddingByUrl ? <Loader2 className="w-6 h-6 animate-spin" /> : "إضافة الفيديو"}
-                    </Button>
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
-          </div>
-        </div>
-
-        <div className="flex flex-col md:flex-row gap-8 items-stretch">
+    <div className="p-6 space-y-10 max-w-7xl mx-auto pb-32 min-h-screen relative dir-rtl safe-p-top">
+      <header className="flex flex-col gap-6">
+        <div className="flex flex-col md:flex-row gap-6 items-stretch">
           <div className="w-full flex flex-col justify-end gap-6 order-2">
             <div className="space-y-3">
-              <div className="flex items-center gap-2 px-2">
-                <Search className="w-4 h-4 text-primary" />
-                <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block">البحث الذكي</label>
+              <div className="flex items-center justify-between px-2">
+                <div className="flex items-center gap-2">
+                  <Search className="w-4 h-4 text-primary" />
+                  <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block">البحث الذكي</label>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsReordering(!isReordering)}
+                    className={cn("h-10 px-4 rounded-full text-xs focusable", isReordering ? "bg-accent text-black" : "bg-white/5 text-white")}
+                  >
+                    {isReordering ? "إلغاء" : "إعادة ترتيب"}
+                  </Button>
+                  {isReordering && (
+                    <Button onClick={handleSaveReorder} className="h-10 px-4 rounded-full bg-primary text-white text-xs shadow-glow">
+                      <Save className="w-4 h-4 ml-2" /> حفظ
+                    </Button>
+                  )}
+                  <Dialog open={isUrlDialogOpen} onOpenChange={setIsUrlDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button variant="ghost" className="h-10 px-4 rounded-full bg-white/5 border border-white/10 text-white hover:bg-white/10 focusable flex items-center gap-2">
+                        <LinkIcon className="w-4 h-4 text-primary" />
+                        <span className="text-[10px] font-black uppercase tracking-widest">بالرابط</span>
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="bg-zinc-950 border-white/10 rounded-[2.5rem] p-8 w-[90%] max-w-md mx-auto">
+                      <DialogHeader>
+                        <DialogTitle className="text-2xl font-black text-white mb-4 text-right">إضافة فيديو بالرابط</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-6">
+                        <Input 
+                          placeholder="https://youtu.be/..." 
+                          value={urlInput} 
+                          onChange={(e) => setUrlInput(e.target.value)}
+                          className="h-14 bg-white/5 border-white/10 rounded-2xl px-6 text-white focusable text-right"
+                        />
+                        <div className="flex gap-4">
+                          <Button onClick={handleAddVideoByUrl} disabled={isAddingByUrl} className="flex-1 h-14 bg-primary text-white font-black rounded-2xl shadow-xl focusable">
+                            {isAddingByUrl ? <Loader2 className="w-6 h-6 animate-spin" /> : "إضافة الفيديو"}
+                          </Button>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </div>
               </div>
               <div className="relative group">
                 <Search className="absolute right-6 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground group-focus-within:text-primary" />
@@ -333,7 +385,7 @@ export function MediaView() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {videoResults.map((video, idx) => (
-              <Card key={video.id} data-nav-id={`search-result-${idx}`} onClick={() => setActiveVideo(video)} className="group video-result-card relative overflow-hidden bg-white/5 border-none rounded-[2rem] transition-all hover:scale-[1.05] cursor-pointer shadow-xl focusable" tabIndex={0}>
+              <Card key={video.id} data-nav-id={`search-result-${idx}`} onClick={() => setActiveVideo(video, videoResults)} className="group video-result-card relative overflow-hidden bg-white/5 border-none rounded-[2rem] transition-all hover:scale-[1.05] cursor-pointer shadow-xl focusable" tabIndex={0}>
                 <div className="aspect-video relative overflow-hidden">
                   <Image src={video.thumbnail} alt={video.title} fill className="object-cover" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
@@ -394,7 +446,7 @@ export function MediaView() {
                   video.isLive && "ring-2 ring-red-600 bg-red-600/5"
                 )}
                 tabIndex={0}
-                onClick={() => setActiveVideo(video)}
+                onClick={() => setActiveVideo(video, channelVideos)}
               >
                 <div className="aspect-video relative overflow-hidden">
                   <Image src={video.thumbnail} alt={video.title} fill className="object-cover opacity-80" />
@@ -414,7 +466,7 @@ export function MediaView() {
         </div>
       ) : (
         <>
-          {/* Subscription Latest Videos - Forced LTR Horizontal Scroll */}
+          {/* Subscription Latest Videos */}
           {favoriteChannels.length > 0 && subscriptionLatestVideos.length > 0 && (
             <section className="space-y-6 animate-in fade-in duration-500" dir="ltr">
               <div className="flex items-center justify-between px-2">
@@ -435,7 +487,7 @@ export function MediaView() {
                         "w-[340px] group relative overflow-hidden bg-zinc-900/80 border-none rounded-[2rem] transition-all hover:scale-[1.02] cursor-pointer shadow-xl focusable",
                         video.isLive && "ring-2 ring-red-600"
                       )}
-                      onClick={() => setActiveVideo(video)}
+                      onClick={() => setActiveVideo(video, subscriptionLatestVideos)}
                       tabIndex={0}
                       data-nav-id={`sub-latest-${idx}`}
                     >
@@ -467,6 +519,61 @@ export function MediaView() {
                       </div>
                     </div>
                   ))}
+                </div>
+                <ScrollBar orientation="horizontal" className="bg-white/5 h-1.5" />
+              </ScrollArea>
+            </section>
+          )}
+
+          {/* Trending Videos */}
+          {trendingVideos.length > 0 && (
+            <section className="space-y-6 animate-in fade-in duration-500" dir="ltr">
+              <div className="flex items-center justify-between px-2">
+                <h2 className="text-2xl font-black font-headline text-white flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-orange-500/20 flex items-center justify-center">
+                    <Zap className="w-5 h-5 text-orange-500 animate-pulse" />
+                  </div>
+                  أفضل المشاهدات
+                  <span className="text-[10px] text-white/30 uppercase tracking-widest ml-2 font-bold">Trending Now</span>
+                </h2>
+              </div>
+              <ScrollArea className="w-full whitespace-nowrap">
+                <div className="flex w-max gap-4 pb-4 px-2">
+                  {isLoadingTrending ? (
+                    [1, 2, 3, 4].map(i => <div key={i} className="w-[340px] h-[220px] rounded-[2rem] bg-white/5 animate-pulse" />)
+                  ) : (
+                    trendingVideos.map((video, idx) => (
+                      <div 
+                        key={video.id + idx} 
+                        className="w-[340px] group relative overflow-hidden bg-zinc-900/80 border-none rounded-[2rem] transition-all hover:scale-[1.02] cursor-pointer shadow-xl focusable"
+                        onClick={() => setActiveVideo(video, trendingVideos)}
+                        tabIndex={0}
+                        data-nav-id={`trending-video-${idx}`}
+                      >
+                        <div className="aspect-video relative overflow-hidden">
+                          <Image src={video.thumbnail} alt={video.title} fill className="object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-3xl flex items-center justify-center border border-white/20 opacity-0 group-hover:opacity-100 transition-all scale-75 group-hover:scale-100">
+                              <Play className="w-6 h-6 text-white fill-white ml-1" />
+                            </div>
+                          </div>
+                          {video.viewCount && (
+                            <div className="absolute top-3 left-3 bg-black/60 px-2 py-0.5 rounded-md text-[8px] font-black text-white/80 border border-white/5">
+                              {formatViews(video.viewCount)} مشاهدة
+                            </div>
+                          )}
+                        </div>
+                        <div className="p-4 space-y-1 text-left">
+                          <h3 className="font-bold text-sm truncate text-white font-headline">{video.title}</h3>
+                          <div className="flex items-center justify-start gap-2 text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
+                            <span className="text-white/40">{video.channelTitle}</span>
+                            <span className="opacity-30">•</span>
+                            <span className="flex items-center gap-1 text-orange-500"><Activity className="w-3 h-3" /> Trending</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
                 <ScrollBar orientation="horizontal" className="bg-white/5 h-1.5" />
               </ScrollArea>
@@ -548,11 +655,7 @@ export function MediaView() {
                     )}>
                       <Image src={channel.image} alt={channel.name} fill className="object-cover group-hover:scale-115 transition-transform duration-700" />
                       <div className="absolute inset-0 bg-black/30 group-hover:bg-transparent transition-all" />
-                      
-                      {isLive && (
-                        <div className="absolute inset-0 bg-red-600/10 animate-pulse pointer-events-none" />
-                      )}
-
+                      {isLive && <div className="absolute inset-0 bg-red-600/10 animate-pulse pointer-events-none" />}
                       {isReordering && (
                         <div className="absolute inset-0 flex items-center justify-center bg-black/60 group">
                           <div className="flex flex-col items-center gap-2">
@@ -567,7 +670,6 @@ export function MediaView() {
                           </div>
                         </div>
                       )}
-
                       <div className="absolute top-2 right-2 flex flex-col gap-2 z-30 transition-all">
                         <button 
                           onClick={(e) => { e.stopPropagation(); toggleStarChannel(channel.channelid); }}
@@ -579,7 +681,6 @@ export function MediaView() {
                           <Star className={cn("w-5 h-5", channel.starred && "fill-current")} />
                         </button>
                       </div>
-
                       {!isReordering && (
                         <button 
                           onClick={(e) => { e.stopPropagation(); removeChannel(channel.channelid); }}
@@ -596,9 +697,7 @@ export function MediaView() {
                       )}>
                         {channel.name}
                       </span>
-                      {isLive && (
-                        <span className="text-[8px] font-black text-red-600 uppercase tracking-widest mt-[-2px] animate-pulse">LIVE NOW</span>
-                      )}
+                      {isLive && <span className="text-[8px] font-black text-red-600 uppercase tracking-widest mt-[-2px] animate-pulse">LIVE NOW</span>}
                     </div>
                   </div>
                 );
