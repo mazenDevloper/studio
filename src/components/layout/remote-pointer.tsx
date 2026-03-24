@@ -1,20 +1,19 @@
-
 "use client";
 
 import { useEffect, useCallback, useState } from "react";
 import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Circle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useMediaStore } from "@/lib/store";
 
 export function RemotePointer() {
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const [isVisible, setIsVisible] = useState(false);
   const pathname = usePathname();
-  const { activeIptv, isFullScreen, nextIptvChannel, prevIptvChannel, wallPlateType } = useMediaStore();
+  const router = useRouter();
+  const { activeIptv, isFullScreen, nextIptvChannel, prevIptvChannel, wallPlateType, setWallPlate } = useMediaStore();
 
   const navigate = useCallback((direction: string) => {
-    // Disable navigation if Wall Plate is active
     if (wallPlateType) return;
 
     const focusables = Array.from(document.querySelectorAll(".focusable")) as HTMLElement[];
@@ -71,11 +70,7 @@ export function RemotePointer() {
 
     for (const el of focusables) {
       if (el === current) continue;
-      
       const rect = el.getBoundingClientRect();
-      const dy = Math.abs((rect.top + rect.height/2) - (currentRect.top + currentRect.height/2));
-      if ((direction === "ArrowLeft" || direction === "ArrowRight") && dy > 150) continue;
-
       const dist = getDistance(currentRect, rect, direction);
       if (dist < minDistance) {
         minDistance = dist;
@@ -92,19 +87,21 @@ export function RemotePointer() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const activeEl = document.activeElement as HTMLElement;
-      const isInputFocused = 
-        activeEl?.tagName === 'INPUT' || 
-        activeEl?.tagName === 'TEXTAREA' || 
-        activeEl?.hasAttribute('contenteditable') ||
-        activeEl?.getAttribute('role') === 'textbox';
-
+      const isInputFocused = activeEl?.tagName === 'INPUT' || activeEl?.tagName === 'TEXTAREA';
       if (isInputFocused) return;
 
-      // Skip normal navigation keys if Wall Plate is active
-      if (wallPlateType) {
-        if (["1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
-          return;
+      // دعم زر العودة لمتصفحات VIDAA (KeyCode 461)
+      if (e.keyCode === 461 || e.key === 'Back' || e.key === 'Escape' || e.key === 'Backspace' || e.key === "0") {
+        e.preventDefault();
+        if (wallPlateType) {
+          setWallPlate(null);
+        } else if (pathname !== '/') {
+          router.back();
         }
+        setActiveKey('0');
+        setIsVisible(true);
+        setTimeout(() => setIsVisible(false), 500);
+        return;
       }
 
       if (e.key === "PageUp" || e.key === "ChannelUp") {
@@ -152,10 +149,7 @@ export function RemotePointer() {
 
     window.addEventListener("keydown", handleKeyDown, true);
     return () => window.removeEventListener("keydown", handleKeyDown, true);
-  }, [navigate, activeIptv, isFullScreen, nextIptvChannel, prevIptvChannel, wallPlateType]);
-
-  // Hide pointer element in Wall Plate mode
-  if (wallPlateType) return null;
+  }, [navigate, activeIptv, isFullScreen, nextIptvChannel, prevIptvChannel, wallPlateType, setWallPlate, router, pathname]);
 
   return (
     <div className={cn(
@@ -180,9 +174,12 @@ export function RemotePointer() {
         <ChevronDown className="w-8 h-8 text-white" />
       </div>
       
-      <div className="flex gap-12 mt-2">
+      <div className="flex gap-8 mt-2">
         <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center border transition-all", activeKey === "1" ? "bg-primary border-primary shadow-glow scale-125" : "bg-white/5 border-white/10")}>
           <span className="text-white text-[10px] font-black">1</span>
+        </div>
+        <div className={cn("w-10 h-10 rounded-full flex items-center justify-center border transition-all", activeKey === "0" ? "bg-red-600 border-white shadow-glow scale-125" : "bg-black/60 border-white/10")}>
+          <span className="text-white text-[10px] font-black">0</span>
         </div>
         <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center border transition-all", activeKey === "3" ? "bg-primary border-primary shadow-glow scale-125" : "bg-white/5 border-white/10")}>
           <span className="text-white text-[10px] font-black">3</span>

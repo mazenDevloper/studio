@@ -2,7 +2,7 @@
 'use server';
 
 /**
- * @fileOverview Server-side proxy for IPTV requests to bypass CORS and Mixed Content blocks.
+ * @fileOverview Server-side proxy for IPTV requests with restored credentials.
  */
 
 const HOST = "http://playstop.watch:2095";

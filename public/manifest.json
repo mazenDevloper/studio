@@ -1,29 +1,16 @@
 {
-  "name": "LXCP",
-  "short_name": "Lexus",
-  "start_url": "/",
-  "scope": "/",
-  "display": "standalone",
-  "background_color": "#000000",
-  "theme_color": "#000000",
+  "short_name": "DriveCast",
+  "name": "DriveCast | CarPlay TV Hub",
   "icons": [
     {
-      "src": "https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/72/d3/4d/72d34d5a-03ae-203e-a586-b431b2979fc7/AppIcon-Lexus-0-0-1x_U007emarketing-0-8-0-sRGB-85-220-0.png/400x400ia-75.webp",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/72/d3/4d/72d34d5a-03ae-203e-a586-b431b2979fc7/AppIcon-Lexus-0-0-1x_U007emarketing-0-8-0-sRGB-85-220-0.png/400x400ia-75.webp",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/72/d3/4d/72d34d5a-03ae-203e-a586-b431b2979fc7/AppIcon-Lexus-0-0-1x_U007emarketing-0-8-0-sRGB-85-220-0.png/400x400ia-75.webp",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
+      "src": "https://dmusera.netlify.app/Lexus-Logo.wine.svg",
+      "type": "image/svg+xml",
+      "sizes": "512x512"
     }
-  ]
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#000000",
+  "theme_color": "#0088ff"
 }

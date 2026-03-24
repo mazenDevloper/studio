@@ -96,7 +96,6 @@ export function DashboardView() {
       const activeEl = document.activeElement as HTMLElement;
       if (activeEl?.tagName === 'INPUT' || activeEl?.tagName === 'TEXTAREA') return;
 
-      // 1, 3: Cycle Manuscript
       if (e.key === "1") {
         e.preventDefault();
         setMIdx(prev => (prev - 1 + customManuscripts.length) % Math.max(1, customManuscripts.length));
@@ -104,7 +103,6 @@ export function DashboardView() {
         e.preventDefault();
         setMIdx(prev => (prev + 1) % Math.max(1, customManuscripts.length));
       }
-      // 2, 8: Brightness Control (Step 0.2)
       else if (e.key === "2") {
         e.preventDefault();
         setBrightness(prev => Math.min(prev + 0.2, 2.5));
@@ -112,7 +110,6 @@ export function DashboardView() {
         e.preventDefault();
         setBrightness(prev => Math.max(prev - 0.2, 0.1));
       }
-      // 4, 6: Cycle Hue (Step 40 degrees)
       else if (e.key === "4") {
         e.preventDefault();
         setHue(prev => (prev - 40 + 360) % 360);
@@ -120,7 +117,6 @@ export function DashboardView() {
         e.preventDefault();
         setHue(prev => (prev + 40) % 360);
       }
-      // 7, 9: Cycle Background
       else if (e.key === "7") {
         e.preventDefault();
         const nextBgIdx = (bgIdx - 1 + allBackgrounds.length) % Math.max(1, allBackgrounds.length);
@@ -132,7 +128,6 @@ export function DashboardView() {
         setBgIdx(nextBgIdx);
         updateMapSettings({ manuscriptBgUrl: allBackgrounds[nextBgIdx] });
       }
-      // 0: Exit
       else if (e.key === "0") {
         e.preventDefault();
         setWallPlate(null);
@@ -207,12 +202,10 @@ export function DashboardView() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6 min-h-[480px]">
-        {/* Left Column: Azkar Widget */}
         <div className="md:col-span-4 rounded-[2.5rem] overflow-hidden relative shadow-2xl h-[480px] bg-black self-start">
           {isWideScreen ? <ActiveAzkarWidget /> : <MapWidget />}
         </div>
 
-        {/* Middle Column: Reminder Summary Widget */}
         <div className="md:col-span-4 rounded-[2.5rem] relative flex items-center justify-center overflow-hidden h-[480px] shadow-2xl focusable bg-black" tabIndex={0} data-nav-id="car-visualizer-container">
           {isWideScreen ? <ReminderSummaryWidget /> : (
             <>
@@ -224,9 +217,12 @@ export function DashboardView() {
           )}
         </div>
 
-        {/* Right Column: Moon + Clock */}
         <div className="md:col-span-4 flex flex-col gap-4 h-[480px] relative">
-          <div className="flex-1 relative overflow-hidden group bg-black rounded-[2.5rem] shadow-2xl">
+          <div 
+            className="flex-1 relative overflow-hidden group bg-black rounded-[2.5rem] shadow-2xl focusable outline-none" 
+            tabIndex={0} 
+            data-nav-id="dashboard-carousel-container"
+          >
             <Carousel setApi={setApi} opts={{ loop: true }} className="w-full h-full">
               <CarouselContent className="h-full ml-0 overflow-hidden no-scrollbar">
                 <CarouselItem className="pl-0 h-full flex items-center justify-center bg-black">

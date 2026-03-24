@@ -61,16 +61,14 @@ export function MoonWidget() {
 
     try {
       const today = new Date();
-      // Use UmAlQura calendar for correct Hijri dates with Latin digits for parsing
       const hijriFormatter = new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura-nu-latn', {day: 'numeric'});
       const dayNum = parseInt(hijriFormatter.format(today), 10);
       
-      // Removed the "- 1" logic which caused 0 on the first day of the month
       const arabicDigits = ['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'];
       const formattedDay = dayNum.toString().split('').map(d => arabicDigits[parseInt(d)]).join('');
       setHijriDay(formattedDay);
     } catch (e) {
-      setHijriDay("١"); // Fallback to 1
+      setHijriDay("١"); 
     }
 
     fetchMoonData();
@@ -92,11 +90,8 @@ export function MoonWidget() {
 
   return (
     <div 
-      className="h-full w-full bg-black rounded-[2.5rem] overflow-hidden relative flex flex-col items-center justify-center p-1 shadow-2xl cursor-pointer focusable outline-none"
+      className="h-full w-full bg-black rounded-[2.5rem] overflow-hidden relative flex flex-col items-center justify-center p-1 outline-none border-2 border-transparent"
       onClick={() => moonData && setWallPlate('moon', { image: moonData.image.url, day: displayValue, label })}
-      tabIndex={0}
-      data-supports-wallplate="true"
-      data-nav-id="moon-widget-container"
     >
       <button 
         className="absolute top-6 left-6 w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/20 transition-all z-50 focusable opacity-0 group-hover:opacity-100 group-focus:opacity-100"
