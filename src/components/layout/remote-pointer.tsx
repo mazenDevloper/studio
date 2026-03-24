@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useCallback, useState } from "react";
@@ -90,7 +91,7 @@ export function RemotePointer() {
       const isInputFocused = activeEl?.tagName === 'INPUT' || activeEl?.tagName === 'TEXTAREA';
       if (isInputFocused) return;
 
-      // دعم زر العودة لمتصفحات VIDAA (KeyCode 461)
+      // VIDAA Remote Back Key (461) + Standard Back Keys
       if (e.keyCode === 461 || e.key === 'Back' || e.key === 'Escape' || e.key === 'Backspace' || e.key === "0") {
         e.preventDefault();
         if (wallPlateType) {
@@ -104,9 +105,10 @@ export function RemotePointer() {
         return;
       }
 
-      if (e.key === "PageUp" || e.key === "ChannelUp") {
+      // VIDAA Channel Keys Support
+      if (e.key === "PageUp" || e.key === "ChannelUp" || e.keyCode === 427) {
         if (activeIptv && isFullScreen) { e.preventDefault(); nextIptvChannel(); return; }
-      } else if (e.key === "PageDown" || e.key === "ChannelDown") {
+      } else if (e.key === "PageDown" || e.key === "ChannelDown" || e.keyCode === 428) {
         if (activeIptv && isFullScreen) { e.preventDefault(); prevIptvChannel(); return; }
       }
 
@@ -136,7 +138,7 @@ export function RemotePointer() {
         setActiveKey(visualKey);
         setIsVisible(true);
         setTimeout(() => setIsVisible(false), 800);
-      } else if (e.key === "5" || e.key === "Enter") {
+      } else if (e.key === "5" || e.key === "Enter" || e.keyCode === 13) {
         const current = document.activeElement as HTMLElement;
         if (current?.classList.contains("focusable")) {
           current.click();

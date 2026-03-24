@@ -1,6 +1,8 @@
+
 {
-  "short_name": "DriveCast",
-  "name": "DriveCast | CarPlay TV Hub",
+  "short_name": "DriveCastTV",
+  "name": "DriveCast CarPlay TV - VIDAA Edition",
+  "description": "Futuristic automotive and TV interface for media and sports.",
   "icons": [
     {
       "src": "https://dmusera.netlify.app/Lexus-Logo.wine.svg",
@@ -8,9 +10,10 @@
       "sizes": "512x512"
     }
   ],
-  "start_url": ".",
-  "display": "standalone",
-  "orientation": "landscape",
+  "start_url": "/",
+  "display": "fullscreen",
+  "theme_color": "#000000",
   "background_color": "#000000",
-  "theme_color": "#0088ff"
+  "orientation": "landscape",
+  "categories": ["multimedia", "sports"]
 }
