@@ -21,12 +21,19 @@ export function CarDock() {
     { name: "Settings", href: "/settings", icon: Settings, color: "bg-zinc-700" },
   ];
 
+<<<<<<< HEAD
   // Logic: < 1080 -> left, >= 1080 -> right
   useEffect(() => {
     const checkWidth = () => {
       if (window.innerWidth < 1080) {
         setDockSide('left');
       } else {
+=======
+  // Auto-Right side if width < 1080
+  useEffect(() => {
+    const checkWidth = () => {
+      if (window.innerWidth < 1080) {
+>>>>>>> 98c1c5d968cac60f9715bedd21fe0759356127b9
         setDockSide('right');
       }
     };

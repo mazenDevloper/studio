@@ -87,7 +87,11 @@ export function MediaView() {
 
   useEffect(() => {
     fetchLatestFromSubs();
+<<<<<<< HEAD
     const interval = setInterval(fetchLatestFromSubs, 10 * 60 * 1000); 
+=======
+    const interval = setInterval(fetchLatestFromSubs, 10 * 60 * 1000); // تحديث كل 10 دقائق
+>>>>>>> 98c1c5d968cac60f9715bedd21fe0759356127b9
     return () => clearInterval(interval);
   }, [fetchLatestFromSubs]);
 
@@ -213,7 +217,11 @@ export function MediaView() {
       if (videoId) {
         const video = await fetchVideoDetails(videoId);
         if (video) {
+<<<<<<< HEAD
           setActiveVideo(video, [video]);
+=======
+          setActiveVideo(video); // سياق الفيديو المنفرد
+>>>>>>> 98c1c5d968cac60f9715bedd21fe0759356127b9
           setIsUrlDialogOpen(false);
           setUrlInput("");
         }

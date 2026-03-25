@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useMediaStore } from "@/lib/store";
@@ -7,10 +8,13 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import Image from "next/image";
 import { fetchChannelDetails } from "@/lib/youtube";
 
+<<<<<<< HEAD
 /**
  * GlobalVideoPlayer - يعمل في الخلفية لضمان استمرار الصوت عند التنقل
  * يعتمد على iframe ثابت يتم إخفاؤه بدلاً من حذفه لضمان عدم انقطاع الصوت
  */
+=======
+>>>>>>> 98c1c5d968cac60f9715bedd21fe0759356127b9
 export function GlobalVideoPlayer() {
   const { 
     activeVideo, 
@@ -94,12 +98,17 @@ export function GlobalVideoPlayer() {
   useEffect(() => {
     if (!mounted || !currentYouTubeId) {
       internalPlayingId.current = null;
+<<<<<<< HEAD
+=======
+      // لا نحذف المشغل هنا لضمان استمراره في الخلفية إذا كان مجرد "مخفي"
+>>>>>>> 98c1c5d968cac60f9715bedd21fe0759356127b9
       return;
     }
 
     const startPlayer = () => {
       const YT = (window as any).YT;
       if (!YT || !YT.Player) return;
+<<<<<<< HEAD
 
       const startSecs = Math.floor(videoProgress[currentYouTubeId] || 0);
 
@@ -188,6 +197,67 @@ export function GlobalVideoPlayer() {
       window.navigator.mediaSession.setActionHandler('previoustrack', null);
     };
   }, [activeVideo, nextTrack, prevTrack, setIsPlaying]);
+=======
+
+      const startSecs = Math.floor(videoProgress[currentYouTubeId] || 0);
+
+      // إذا كان المشغل موجوداً وجاهزاً، نكتفي بتغيير الفيديو
+      if (playerRef.current && typeof playerRef.current.loadVideoById === 'function' && document.getElementById('youtube-player-element')) {
+        if (internalPlayingId.current !== currentYouTubeId) {
+          playerRef.current.loadVideoById({ 
+            videoId: currentYouTubeId, 
+            startSeconds: startSecs 
+          });
+          internalPlayingId.current = currentYouTubeId;
+        }
+        return;
+      }
+
+      // تهيئة مشغل جديد كلياً
+      if (containerRef.current) {
+        containerRef.current.innerHTML = '<div id="youtube-player-element"></div>';
+        playerRef.current = null; // تصفير المرجع القديم لضمان التهيئة الصحيحة
+        
+        playerRef.current = new YT.Player('youtube-player-element', {
+          height: '100%',
+          width: '100%',
+          videoId: currentYouTubeId,
+          playerVars: {
+            autoplay: 1,
+            controls: 1,
+            modestbranding: 1,
+            rel: 0,
+            playsinline: 1,
+            enablejsapi: 1,
+            start: startSecs
+          },
+          events: {
+            onStateChange: onPlayerStateChange,
+            onReady: (e: any) => {
+              e.target.playVideo();
+              internalPlayingId.current = currentYouTubeId;
+            },
+            onError: () => {
+              internalPlayingId.current = null;
+              playerRef.current = null;
+            }
+          }
+        });
+      }
+    };
+
+    const YT = (window as any).YT;
+    if (YT && YT.Player) {
+      startPlayer();
+    } else {
+      (window as any).onYouTubeIframeAPIReady = startPlayer;
+    }
+
+    return () => {
+      if (progressInterval.current) clearInterval(progressInterval.current);
+    };
+  }, [currentYouTubeId, mounted, onPlayerStateChange, videoProgress]);
+>>>>>>> 98c1c5d968cac60f9715bedd21fe0759356127b9
 
   if (!mounted) return null;
 
@@ -202,12 +272,15 @@ export function GlobalVideoPlayer() {
         isMinimized ? "bottom-12 left-1/2 -translate-x-1/2 w-[500px] h-28 rounded-[2.5rem] premium-glass" : 
         isFullScreen ? "inset-0 w-full h-full bg-black rounded-0" : "bottom-8 right-4 w-[50vw] h-[55vh] premium-glass rounded-[3.5rem] bg-black/95"
       )} 
+<<<<<<< HEAD
       style={{ 
         transform: isActive && !isMinimized && !isFullScreen ? 'translate3d(0,0,0)' : 'none', 
         contain: 'layout paint',
         backfaceVisibility: 'hidden',
         willChange: 'transform, width, height'
       }}
+=======
+>>>>>>> 98c1c5d968cac60f9715bedd21fe0759356127b9
     >
       <div className={cn("absolute inset-0 transition-opacity duration-500", isMinimized ? "opacity-0 pointer-events-none" : "opacity-100")}>
         {currentYouTubeId ? (
@@ -230,10 +303,14 @@ export function GlobalVideoPlayer() {
             </div>
             <div className="flex flex-col">
               <h4 className="text-base font-black text-white truncate max-w-[200px]">{activeVideo?.title || activeIptv?.name}</h4>
+<<<<<<< HEAD
               <div className="flex items-center gap-2">
                 <span className="text-[9px] text-accent font-black uppercase tracking-widest">Background Transmission</span>
                 <div className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
               </div>
+=======
+              <span className="text-[9px] text-accent font-black uppercase tracking-widest">Background Transmission</span>
+>>>>>>> 98c1c5d968cac60f9715bedd21fe0759356127b9
             </div>
           </div>
           <div className="flex gap-3">
@@ -258,6 +335,7 @@ export function GlobalVideoPlayer() {
       )}
 
       {!isMinimized && isActive && (
+<<<<<<< HEAD
         <div className={cn(
           "fixed z-[5200] flex items-center transition-all duration-500",
           isFullScreen ? "left-10 bottom-10 scale-150 origin-bottom-left" : "right-12 bottom-12 scale-90"
@@ -266,6 +344,10 @@ export function GlobalVideoPlayer() {
             "flex items-center premium-glass p-2 rounded-full border border-white/20 shadow-2xl overflow-hidden backdrop-blur-3xl transition-all duration-500",
             isControlsExpanded ? "gap-2 px-3" : "w-16 h-16 justify-center"
           )}>
+=======
+        <div className={cn("fixed z-[5200] flex items-center transition-all duration-500", isFullScreen ? "left-10 bottom-10 scale-150 origin-bottom-left" : "right-12 bottom-12 scale-90")}>
+          <div className={cn("flex items-center premium-glass p-2 rounded-full border border-white/20 shadow-2xl overflow-hidden backdrop-blur-3xl transition-all duration-500", isControlsExpanded ? "gap-2 px-3" : "w-16 h-16 justify-center")}>
+>>>>>>> 98c1c5d968cac60f9715bedd21fe0759356127b9
             {!isControlsExpanded ? (
               <button onClick={() => setIsControlsExpanded(true)} className="w-12 h-12 rounded-full bg-primary shadow-glow text-white flex items-center justify-center focusable">
                 <Settings className="w-7 h-7" />
