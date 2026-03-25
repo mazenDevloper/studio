@@ -138,7 +138,7 @@ export function GlobalVideoPlayer() {
             key={activeIptv.stream_id}
             src={`${activeIptv.url}${activeIptv.url.includes('?') ? '&' : '?'}autoplay=1&mute=0`} 
             className="w-full h-full border-none" 
-            allow="autoplay; encrypted-media; fullscreen" 
+            allow="autoplay; encrypted-media; fullscreen; picture-in-picture" 
             referrerPolicy="no-referrer"
             style={{ background: '#000' }}
           />

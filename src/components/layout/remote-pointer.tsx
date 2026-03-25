@@ -6,6 +6,7 @@ import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Circle } from "lucid
 import { cn } from "@/lib/utils";
 import { usePathname, useRouter } from "next/navigation";
 import { useMediaStore } from "@/lib/store";
+import { init } from "@noriginmedia/norigin-spatial-navigation";
 
 export function RemotePointer() {
   const [activeKey, setActiveKey] = useState<string | null>(null);
@@ -13,6 +14,18 @@ export function RemotePointer() {
   const pathname = usePathname();
   const router = useRouter();
   const { activeIptv, isFullScreen, nextIptvChannel, prevIptvChannel, wallPlateType, setWallPlate } = useMediaStore();
+
+  useEffect(() => {
+    // Initialize Spatial Navigation for TV Browsers (VIDAA OS etc.)
+    try {
+      init({
+        debug: false,
+        visualDebug: false,
+      });
+    } catch (e) {
+      console.warn("Spatial Navigation Init Error:", e);
+    }
+  }, []);
 
   const navigate = useCallback((direction: string) => {
     if (wallPlateType) return;
@@ -32,7 +45,7 @@ export function RemotePointer() {
       } else if (pathname === '/iptv') {
         target = document.querySelector('.iptv-channel-item') as HTMLElement || focusables[0];
       } else if (pathname === '/football') {
-        target = document.querySelector('.match-card-item') as HTMLElement || focusables[0];
+        target = document.querySelector('.focusable[data-nav-id^="match-"]') as HTMLElement || focusables[0];
       } else {
         target = focusables.find(el => !el.dataset.navId?.startsWith('dock-')) || focusables[0];
       }
@@ -91,7 +104,7 @@ export function RemotePointer() {
       const isInputFocused = activeEl?.tagName === 'INPUT' || activeEl?.tagName === 'TEXTAREA';
       if (isInputFocused) return;
 
-      // VIDAA Remote Back Key (461) + Standard Back Keys
+      // VIDAA Remote Back Key (461) Support
       if (e.keyCode === 461 || e.key === 'Back' || e.key === 'Escape' || e.key === 'Backspace' || e.key === "0") {
         e.preventDefault();
         if (wallPlateType) {

@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
@@ -10,13 +11,9 @@ import { fetchFootballData } from "@/lib/football-api";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
-// معرفات الأندية والبطولات الكبرى والمنتخبات
 const MAJOR_CLUBS_IDS = [541, 529, 40, 50, 33, 42, 157, 505, 489, 496, 85, 2931, 2939, 2932, 2930, 1029, 1038];
 const MAJOR_LEAGUES_IDS = [
-  1, 2, 3, 4, 5, 7, 9, 10, 11, 17, // البطولات الدولية والقارية (كأس العالم، اليورو، آسيا، إلخ)
-  39, 140, 135, 165, 61, // الدوريات الأوروبية الخمسة الكبرى
-  307, 233, 301, 305, 312, 292, // الدوريات العربية الكبرى
-  13, 14, 16, 19, 20, 21 // بطولات قارية أخرى
+  1, 2, 3, 4, 5, 7, 9, 10, 11, 17, 39, 140, 135, 165, 61, 307, 233, 301, 305, 312, 292, 13, 14, 16, 19, 20, 21
 ];
 
 export function FootballView() {
@@ -33,7 +30,7 @@ export function FootballView() {
   const isBelled = (id: string) => belledMatchIds.includes(id);
 
   const loadMatches = async (view: string, isAutoRefresh = false) => {
-    // ترشيد الاستهلاك: لا يتم التحديث التلقائي إلا إذا كانت هناك مباريات مباشرة حالياً
+    // Optimization: Don't auto-poll if no matches are live
     const hasLiveNow = matches.some(m => m.status === 'live');
     if (isAutoRefresh && !hasLiveNow && lastUpdate !== 0) return;
 
@@ -92,6 +89,7 @@ export function FootballView() {
     if (!matches || !Array.isArray(matches)) return [];
     let result = [...matches];
 
+    // center shows all matches for the selected date range
     if (activeTab === "beinlive") {
       const koraDay = "اليوم";
       return result.filter(m => m.dayCategory === koraDay);
@@ -101,32 +99,29 @@ export function FootballView() {
       result = result.filter(m => m.status === 'live');
     }
 
-    if (activeTab === "favorites") {
-      result = result.filter(m => isFavTeam(m.homeTeamId) || isFavTeam(m.awayTeamId) || isBelled(m.id));
-    }
-
-    // منطق الفرز الذكي: المباريات الكبرى والمنتخبات والمجرسة في القمة
+    // Custom sorting: Bell > Fav > Major leagues/clubs > Status > Time
     return result.sort((a, b) => {
-      // 1. الجرس (أهمية قصوى)
+      // 1. Belled matches first
       const aBelled = isBelled(a.id);
       const bBelled = isBelled(b.id);
       if (aBelled !== bBelled) return aBelled ? -1 : 1;
 
-      // 2. الفرق المفضلة
+      // 2. Favorite teams second
       const aIsFav = isFavTeam(a.homeTeamId) || isFavTeam(a.awayTeamId);
       const bIsFav = isFavTeam(b.homeTeamId) || isFavTeam(b.awayTeamId);
       if (aIsFav !== bIsFav) return aIsFav ? -1 : 1;
 
-      // 3. البطولات الكبرى والمنتخبات (تحديد الأهمية في القمة)
+      // 3. Major leagues or Top clubs third
       const aIsMajor = MAJOR_LEAGUES_IDS.includes(a.leagueId) || MAJOR_CLUBS_IDS.includes(a.homeTeamId) || MAJOR_CLUBS_IDS.includes(a.awayTeamId);
       const bIsMajor = MAJOR_LEAGUES_IDS.includes(b.leagueId) || MAJOR_CLUBS_IDS.includes(b.homeTeamId) || MAJOR_CLUBS_IDS.includes(b.awayTeamId);
       if (aIsMajor !== bIsMajor) return aIsMajor ? -1 : 1;
 
-      // 4. حالة المباراة (مباشر > قادم > انتهى)
+      // 4. Match status (live > upcoming > finished)
       const statusWeight: Record<string, number> = { live: 0, upcoming: 1, finished: 2 };
       const statusDiff = (statusWeight[a.status] || 0) - (statusWeight[b.status] || 0);
       if (statusDiff !== 0) return statusDiff;
 
+      // 5. Start time
       return (a.startTime || "").localeCompare(b.startTime || "");
     });
   }, [matches, activeTab, favoriteTeams, belledMatchIds]);
@@ -223,11 +218,11 @@ export function FootballView() {
           <h1 className="text-4xl font-headline font-bold text-white tracking-tighter flex items-center gap-3">
             مركز كووورة <Trophy className="w-8 h-8 text-accent" />
           </h1>
-          <p className="text-white/40 text-xs font-bold uppercase tracking-widest mr-1">Global Football Hub (Smart Sync)</p>
+          <p className="text-white/40 text-xs font-bold uppercase tracking-widest mr-1">Global Football Hub (Full Coverage)</p>
         </div>
         <div className="flex gap-3">
           <Button variant="outline" onClick={() => loadMatches(activeTab)} disabled={loading} className="rounded-full bg-white/5 border-white/10 text-white hover:bg-white/10 transition-all focusable">
-            <RefreshCw className={cn("w-4 h-4 ml-2", loading && "animate-spin")} /> تحديث
+            <RefreshCw className={cn("w-4 h-4 ml-2", loading && "animate-spin")} /> تحديث يدوي
           </Button>
         </div>
       </header>

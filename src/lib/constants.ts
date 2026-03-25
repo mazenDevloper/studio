@@ -1,3 +1,4 @@
+
 export const AI_ASSISTANT_API_KEY = 'AIzaSyBMmtON9ww4dJxMHrl1wKyWTvI0ipJXJws'; 
 export const WEATHER_API_KEY = '7acefc26deee4904a2393917252207'; 
 export const GOOGLE_MAPS_API_KEY = 'AIzaSyBRqAHJ2elbE_Z7NXXYC50XZpqi6HbG6Rk';

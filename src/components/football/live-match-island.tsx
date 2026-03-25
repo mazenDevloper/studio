@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
@@ -39,10 +40,11 @@ export function LiveMatchIsland() {
   }, []);
 
   const fetchMatches = useCallback(async (force = false) => {
-    // ترشيد Football API: لا يتم التحديث المتكرر إلا إذا كان هناك مباريات مباشرة
+    // Only poll if there's at least one match currently live
     const hasLiveMatch = topMatches.some(m => m.status === 'live');
     const timeSinceLast = Date.now() - lastFetchRef.current;
     
+    // logic to save credits: don't poll if not live or just recently fetched
     if (!force && !hasLiveMatch && timeSinceLast < 3600000 && lastFetchRef.current !== 0) return;
     if (!force && hasLiveMatch && timeSinceLast < 60000) return;
 
@@ -53,6 +55,7 @@ export function LiveMatchIsland() {
       if (matches && matches.length > 0) {
         for (const match of matches) {
           const prev = prevScoresRef.current[match.id];
+          // goal alert only for tracked matches
           const isFavoriteMatch = favoriteTeams.some(t => t.id === match.homeTeamId || t.id === match.awayTeamId) || belledMatchIds.includes(match.id);
           
           if (prev && match.score && isFavoriteMatch) {
@@ -122,7 +125,7 @@ export function LiveMatchIsland() {
   }, [isCountdownActive, showIslands, toggleShowIslands]);
 
   const sortedMatches = useMemo(() => {
-    // الجزيرة تقتصر فقط على المفضلات والمجرسة
+    // Island ONLY shows favorite/belled matches for focus
     return topMatches
       .filter(m => !skippedMatchIds.includes(m.id))
       .filter(m => belledMatchIds.includes(m.id) || favoriteTeams.some(t => t.id === m.homeTeamId || t.id === m.awayTeamId))

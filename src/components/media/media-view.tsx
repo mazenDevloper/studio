@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
@@ -37,7 +38,6 @@ export function MediaView() {
   const [isSearching, setIsSearching] = useState(false);
   const [isLoadingVideos, setIsLoadingVideos] = useState(false);
   const [isReordering, setIsReordering] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(false);
   const [windowWidth, setWindowWidth] = useState(0);
 
   const [channelSearchQuery, setChannelSearchQuery] = useState("");
@@ -152,15 +152,15 @@ export function MediaView() {
     }
   };
 
-  // نظام التناوب: فردي ليوتيوب وزوجي لـ IPTV
   const unifiedLiveFeed = useMemo(() => {
     const iptvItems = favoriteIptvChannels.map(ch => ({ ...ch, feedType: 'iptv' as const }));
     const ytItems = liveFavorites.map(v => ({ ...v, feedType: 'youtube' as const }));
     const interleaved = [];
     const maxLen = Math.max(iptvItems.length, ytItems.length);
     for (let i = 0; i < maxLen; i++) {
-      if (ytItems[i]) interleaved.push(ytItems[i]);
-      if (iptvItems[i]) interleaved.push(iptvItems[i]);
+      // 1-based order: 1 (YouTube), 2 (IPTV), 3 (YouTube), 4 (IPTV)...
+      if (ytItems[i]) interleaved.push(ytItems[i]); 
+      if (iptvItems[i]) interleaved.push(iptvItems[i]); 
     }
     return interleaved;
   }, [favoriteIptvChannels, liveFavorites]);
