@@ -54,7 +54,6 @@ export function ReminderSummaryWidget() {
         let refTime = pData[setting.id as keyof typeof pData];
         let baseMinutesOffset = setting.offsetMinutes;
 
-        // Special Logic for Duha (Calculated 15m after Sunrise)
         if (setting.id === 'duha') {
           refTime = pData['sunrise'];
           baseMinutesOffset += 15;
@@ -67,7 +66,6 @@ export function ReminderSummaryWidget() {
         let aDiff = azanSecs - totalCurrentSecs;
         if (aDiff < -43200) aDiff += 86400;
 
-        // Azan / Duha Reminder
         if (aDiff > -600) {
           list.push({ 
             id: `azan-${setting.id}`, 
@@ -81,7 +79,6 @@ export function ReminderSummaryWidget() {
           });
         }
 
-        // Iqamah Reminder (if applicable)
         if (setting.iqamahDuration > 0) {
           const iqamahSecs = azanSecs + (setting.iqamahDuration * 60);
           let iDiff = iqamahSecs - totalCurrentSecs;
@@ -103,7 +100,6 @@ export function ReminderSummaryWidget() {
       }
     }
 
-    // Process Manual Reminders
     for (const rem of reminders) {
       let targetSecs = 0;
       if (rem.relativePrayer === 'manual' && rem.manualTime) {
@@ -143,10 +139,7 @@ export function ReminderSummaryWidget() {
       }
     }
 
-    const sorted = list.sort((a, b) => Math.abs(a.diff) - Math.abs(b.diff));
-    
-    // Now always show top 3 with hierarchy (no longer hiding when countdown is active)
-    return sorted.slice(0, 3);
+    return list.sort((a, b) => Math.abs(a.diff) - Math.abs(b.diff)).slice(0, 3);
   }, [now, prayerTimes, reminders, prayerSettings]);
 
   const formatCountdown = (diffSeconds: number) => {
@@ -156,13 +149,13 @@ export function ReminderSummaryWidget() {
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  const GlassNumber = ({ text, size = '3.5rem', id }: { text: string, size?: string, id: string }) => (
-    <div className="relative w-full h-full flex flex-col items-center justify-center">
-      <svg className="w-full h-full overflow-visible" viewBox="0 0 300 80">
+  const GlassNumber = ({ text, size = '4.5rem', id }: { text: string, size?: string, id: string }) => (
+    <div className="relative w-[95%] h-full flex flex-col items-center justify-center mx-auto">
+      <svg className="w-full h-full overflow-visible" viewBox="0 0 280 80">
         <defs>
           <linearGradient id={`textFill-sum-${id}`} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="rgba(255,255,255,0.85)" />
-            <stop offset="100%" stopColor="rgba(255,255,255,0.15)" />
+            <stop offset="0%" stopColor="rgba(255,255,255,0.95)" />
+            <stop offset="100%" stopColor="rgba(255,255,255,0.2)" />
           </linearGradient>
           <linearGradient id={`textStroke-sum-${id}`} x1="100%" y1="100%" x2="0%" y2="0%">
             <stop offset="0%" stopColor="rgba(255,255,255,1)" />
@@ -178,7 +171,7 @@ export function ReminderSummaryWidget() {
           style={{ fontSize: size }}
           fill={`url(#textFill-sum-${id})`}
           stroke={`url(#textStroke-sum-${id})`}
-          strokeWidth="0.8"
+          strokeWidth="1"
         >
           {text}
         </text>
@@ -187,7 +180,7 @@ export function ReminderSummaryWidget() {
   );
 
   return (
-    <div className="h-full w-full bg-zinc-950/80 backdrop-blur-[120px] rounded-[2.5rem] border border-white/10 relative overflow-hidden flex flex-col justify-around p-6">
+    <div className="h-full w-full bg-zinc-950/80 backdrop-blur-[120px] rounded-[2.5rem] border border-white/10 relative overflow-hidden flex flex-col justify-center gap-2 p-6">
       <FluidGlass />
       {processedReminders.map((rem, idx) => {
         const RemIcon = rem.icon;
@@ -198,32 +191,30 @@ export function ReminderSummaryWidget() {
 
         return (
           <div key={rem.id} className={cn(
-            "flex flex-col items-center justify-center relative py-4 transition-all duration-700 w-full",
-            processedReminders.length > 1 ? "flex-1 border-b border-white/5 last:border-0" : "flex-[0.8]",
-            // HIERARCHY OPACITY: 1st is solid, 2nd is faded, 3rd is very faded
-            idx === 0 ? "opacity-100" : idx === 1 ? "opacity-60" : "opacity-30"
+            "flex flex-col items-center justify-center relative py-1 transition-all duration-700 w-full",
+            processedReminders.length > 1 && idx < processedReminders.length - 1 ? "border-b border-white/5" : "",
+            idx === 0 ? "opacity-100" : idx === 1 ? "opacity-70" : "opacity-40"
           )}>
             <div className="flex items-center gap-3 mb-[-4px]">
-              <RemIcon className={cn("w-5 h-5 shadow-glow", rem.color)} />
-              <span className={cn("text-lg font-black uppercase truncate max-w-[250px]", rem.color)}>
+              <RemIcon className={cn("w-6 h-6 shadow-glow", rem.color)} />
+              <span className={cn("text-2xl font-black uppercase truncate max-w-[320px]", rem.color)}>
                 {rem.name}
               </span>
             </div>
             
             <div className={cn(
-              "w-full px-2",
-              // Make the prominent one bigger if it's the only one or top of the list
-              (idx === 0 && showCountdown) ? "h-28" : "h-20"
+              "w-[95%] px-2",
+              (idx === 0 && showCountdown) ? "h-24" : "h-16"
             )}>
               <GlassNumber 
                 text={displayVal} 
                 id={`sum-vert-${rem.id}`} 
-                size={(idx === 0 && showCountdown) ? "4.5rem" : "3.5rem"}
+                size={(idx === 0 && showCountdown) ? "5.5rem" : "4.5rem"}
               />
             </div>
             
             {idx === 0 && showCountdown && (
-              <span className="text-white/30 font-black uppercase tracking-[0.4em] text-[10px] mt-2 animate-pulse">
+              <span className="text-white/30 font-black uppercase tracking-[0.4em] text-[10px] mt-1 animate-pulse">
                 Active Countdown
               </span>
             )}

@@ -7,12 +7,14 @@ import { cn } from "@/lib/utils";
 import { Sun, Moon, Stars, BookOpen, Sparkles, Maximize2 } from "lucide-react";
 import useEmblaCarousel from "embla-carousel-react";
 import Autoplay from "embla-carousel-autoplay";
+import Image from "next/image";
 
 export function ActiveAzkarWidget() {
   const [now, setNow] = useState(new Date());
   const prayerTimes = useMediaStore(state => state.prayerTimes);
   const customManuscripts = useMediaStore(state => state.customManuscripts);
   const setWallPlate = useMediaStore(state => state.setWallPlate);
+  const mapSettings = useMediaStore(state => state.mapSettings);
   const [phraseIndex, setPhraseIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
 
@@ -59,27 +61,17 @@ export function ActiveAzkarWidget() {
     };
 
     const currentMins = now.getHours() * 60 + now.getMinutes();
-    const fajr = tToM(p.fajr);
-    const dhuhr = tToM(p.dhuhr);
-    const asr = tToM(p.asr);
-    const maghrib = tToM(p.maghrib);
-    const isha = tToM(p.isha);
-
     const list = [];
 
-    if (currentMins >= fajr && currentMins < (dhuhr - 10)) {
+    if (currentMins >= tToM(p.fajr) && currentMins < (tToM(p.dhuhr) - 10)) {
       list.push({ id: 'morning', name: 'أذكار الصباح', icon: Sun, color: 'text-orange-400' });
     }
-
-    if (currentMins >= asr && currentMins < maghrib) {
+    if (currentMins >= tToM(p.asr) && currentMins < tToM(p.maghrib)) {
       list.push({ id: 'evening', name: 'أذكار المساء', icon: Moon, color: 'text-blue-400' });
     }
-
-    const isQiyam = currentMins >= isha || currentMins < fajr;
-    if (isQiyam) {
+    if (currentMins >= tToM(p.isha) || currentMins < tToM(p.fajr)) {
       list.push({ id: 'qiyam', name: 'قيام الليل', icon: Stars, color: 'text-purple-400' });
     }
-
     list.push({ id: 'wird', name: 'الورد اليومي', icon: BookOpen, color: 'text-emerald-400' });
 
     return list;
@@ -87,29 +79,26 @@ export function ActiveAzkarWidget() {
 
   return (
     <div 
-      className="h-full w-full bg-black rounded-[2.5rem] border border-white/10 p-1 flex flex-col justify-between relative overflow-hidden group focusable outline-none"
+      className="h-full w-full rounded-[2.5rem] border border-white/10 p-1 flex flex-col justify-between relative overflow-hidden group focusable outline-none"
       tabIndex={0}
       data-supports-wallplate="true"
       data-nav-id="active-azkar-container"
     >
-      <div className="absolute top-[-20%] right-[-20%] w-64 h-64 bg-primary/10 blur-[100px] rounded-full pointer-events-none" />
+      {mapSettings.showManuscriptBg && (
+        <div className="absolute inset-0 z-0">
+          <Image src={mapSettings.manuscriptBgUrl} alt="Card Background" fill className="object-cover" priority />
+        </div>
+      )}
       
-      <div className="relative z-10 flex-1 flex flex-col items-center justify-center overflow-hidden no-scrollbar">
+      <div className="relative z-20 flex-1 flex flex-col items-center justify-center overflow-hidden no-scrollbar">
         <div className="w-full h-full overflow-hidden no-scrollbar" ref={emblaRef}>
           <div className="flex h-full">
             {customManuscripts?.length > 0 ? (
               customManuscripts.map((item, i) => (
-                <div 
-                  key={i} 
-                  className="flex-[0_0_100%] min-w-0 h-full flex items-center justify-center cursor-pointer relative"
-                  onClick={() => togglePause()}
-                >
+                <div key={i} className="flex-[0_0_100%] min-w-0 h-full flex items-center justify-center cursor-pointer relative" onClick={() => togglePause()}>
                   <button 
                     className="absolute top-6 left-6 w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/20 transition-all z-50 focusable opacity-0 group-hover:opacity-100 group-focus:opacity-100"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setWallPlate('manuscript', item);
-                    }}
+                    onClick={(e) => { e.stopPropagation(); setWallPlate('manuscript', item); }}
                     data-wallplate-trigger="true"
                   >
                     <Maximize2 className="w-6 h-6" />
@@ -117,14 +106,14 @@ export function ActiveAzkarWidget() {
 
                   <div className="animate-in fade-in zoom-in-95 duration-1000 w-full flex justify-center px-4">
                     {item.type === 'text' ? (
-                      <p className="w-full text-xl md:text-2xl lg:text-3xl font-calligraphy text-white leading-relaxed drop-shadow-[0_0_40px_rgba(255,255,255,0.9)] text-center tracking-wide">
+                      <p className="w-full text-4xl md:text-6xl lg:text-[7rem] font-calligraphy text-white leading-relaxed drop-shadow-[0_0_20px_rgba(255,255,255,0.8)] text-center tracking-wide">
                         {item.content}
                       </p>
                     ) : (
                       <img 
                         src={item.content} 
                         alt="Manuscript"
-                        className="h-72 md:h-96 w-full object-contain brightness-0 invert drop-shadow-[0_0_70px_rgba(255,255,255,1)]"
+                        className="h-80 md:h-[28rem] w-full object-contain brightness-0 invert drop-shadow-[0_0_70px_rgba(255,255,255,1)]"
                       />
                     )}
                   </div>
@@ -144,7 +133,7 @@ export function ActiveAzkarWidget() {
         </div>
       </div>
 
-      <div className="mt-auto relative z-10 space-y-4 border-t border-white/5 p-6 bg-black/40">
+      <div className="mt-auto relative z-20 space-y-4 border-t border-white/5 p-6 bg-white/5">
         <div className="flex items-center justify-between">
           <div className="flex flex-col">
             <h2 className="text-sm font-black text-white/60 uppercase tracking-widest">الأذكار والورد</h2>
@@ -156,7 +145,6 @@ export function ActiveAzkarWidget() {
           </div>
           <Sparkles className="w-5 h-5 text-primary animate-pulse" />
         </div>
-
         <div className="flex gap-2 overflow-x-auto no-scrollbar">
           {activeAzkar.map(item => (
             <div key={item.id} className="flex items-center gap-3 bg-white/5 border border-white/5 py-2 px-4 rounded-xl shrink-0">

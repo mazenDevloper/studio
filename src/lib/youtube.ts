@@ -11,6 +11,7 @@ export interface YouTubeChannel {
   clickschannel: number;
   starred: boolean;
   subscriberCount?: string;
+  isLive?: boolean;
 }
 
 export interface YouTubeVideo {
@@ -23,6 +24,7 @@ export interface YouTubeVideo {
   channelId?: string;
   duration?: string;
   progress?: number;
+  isLive?: boolean;
 }
 
 const youtubeCache: Record<string, { data: any, timestamp: number }> = {};
@@ -89,7 +91,7 @@ export async function searchYouTubeChannels(query: string): Promise<YouTubeChann
   const searchData = await fetchWithRotation('search', {
     part: 'snippet',
     type: 'channel',
-    maxResults: '8',
+    maxResults: '12',
     q: query
   });
   
@@ -142,7 +144,7 @@ export async function searchYouTubeVideos(query: string): Promise<YouTubeVideo[]
   const data = await fetchWithRotation('search', {
     part: 'snippet',
     type: 'video',
-    maxResults: '12',
+    maxResults: '24',
     q: query
   });
   if (!data || !data.items) return [];
@@ -179,7 +181,34 @@ export async function fetchVideoDetails(videoId: string): Promise<YouTubeVideo |
   };
 }
 
+/**
+ * جلب فيديوهات القناة مع إعطاء الأولوية للبث المباشر
+ */
 export async function fetchChannelVideos(channelId: string): Promise<YouTubeVideo[]> {
+  // 1. تحقق أولاً من وجود بث مباشر نشط
+  const liveSearch = await fetchWithRotation('search', {
+    part: 'snippet',
+    channelId: channelId,
+    type: 'video',
+    eventType: 'live',
+    maxResults: '1'
+  });
+
+  const liveVideos: YouTubeVideo[] = [];
+  if (liveSearch?.items?.length > 0) {
+    liveVideos.push({
+      id: liveSearch.items[0].id.videoId,
+      title: liveSearch.items[0].snippet.title,
+      description: liveSearch.items[0].snippet.description,
+      thumbnail: liveSearch.items[0].snippet.thumbnails.high?.url || liveSearch.items[0].snippet.thumbnails.default?.url,
+      publishedAt: liveSearch.items[0].snippet.publishedAt,
+      channelTitle: liveSearch.items[0].snippet.channelTitle,
+      channelId: liveSearch.items[0].snippet.channelId,
+      isLive: true
+    });
+  }
+
+  // 2. جلب أحدث الفيديوهات العادية (Uploads)
   const uploadsPlaylistId = channelId.startsWith('UC') 
     ? channelId.replace('UC', 'UU') 
     : channelId;
@@ -187,20 +216,32 @@ export async function fetchChannelVideos(channelId: string): Promise<YouTubeVide
   const data = await fetchWithRotation('playlistItems', {
     part: 'snippet',
     playlistId: uploadsPlaylistId,
-    maxResults: '20'
+    maxResults: '30'
   });
 
+  let uploadedVideos: YouTubeVideo[] = [];
   if (!data || !data.items) {
     const fallbackData = await fetchWithRotation('search', {
       part: 'snippet',
       channelId: channelId,
-      maxResults: '20',
+      maxResults: '30',
       order: 'date',
       type: 'video'
     });
-    if (!fallbackData || !fallbackData.items) return [];
-    return fallbackData.items.map((item: any) => ({
-      id: item.id.videoId,
+    if (fallbackData?.items) {
+      uploadedVideos = fallbackData.items.map((item: any) => ({
+        id: item.id.videoId,
+        title: item.snippet.title,
+        description: item.snippet.description,
+        thumbnail: item.snippet.thumbnails.high?.url || item.snippet.thumbnails.default?.url,
+        publishedAt: item.snippet.publishedAt,
+        channelTitle: item.snippet.channelTitle,
+        channelId: item.snippet.channelId
+      }));
+    }
+  } else {
+    uploadedVideos = data.items.map((item: any) => ({
+      id: item.snippet.resourceId.videoId,
       title: item.snippet.title,
       description: item.snippet.description,
       thumbnail: item.snippet.thumbnails.high?.url || item.snippet.thumbnails.default?.url,
@@ -210,13 +251,6 @@ export async function fetchChannelVideos(channelId: string): Promise<YouTubeVide
     }));
   }
 
-  return data.items.map((item: any) => ({
-    id: item.snippet.resourceId.videoId,
-    title: item.snippet.title,
-    description: item.snippet.description,
-    thumbnail: item.snippet.thumbnails.high?.url || item.snippet.thumbnails.default?.url,
-    publishedAt: item.snippet.publishedAt,
-    channelTitle: item.snippet.channelTitle,
-    channelId: item.snippet.channelId
-  }));
+  // دمج المباشر مع العادي (المباشر أولاً)
+  return [...liveVideos, ...uploadedVideos.filter(v => !liveVideos.some(lv => lv.id === v.id))];
 }

@@ -89,10 +89,13 @@ interface MediaState {
   prayerSettings: PrayerSetting[];
   reminders: Reminder[];
   customManuscripts: Manuscript[];
+  customWallBackgrounds: string[];
+  customManuscriptColors: string[];
   mapSettings: MapSettings;
   aiSuggestions: any[];
   activeVideo: YouTubeVideo | null;
   activeIptv: IptvChannel | null;
+  activeQuranUrl: string | null;
   playlist: YouTubeVideo[];
   playlistIndex: number;
   isPlaying: boolean;
@@ -102,6 +105,12 @@ interface MediaState {
   showIslands: boolean;
   wallPlateType: 'moon' | 'manuscript' | null;
   wallPlateData: any | null;
+  
+  // Media UI State
+  videoResults: YouTubeVideo[];
+  selectedChannel: YouTubeChannel | null;
+  channelVideos: YouTubeVideo[];
+  
   setFavoriteChannels: (channels: YouTubeChannel[]) => void;
   setFavoriteIptvChannels: (channels: IptvChannel[]) => void;
   addChannel: (channel: YouTubeChannel) => void;
@@ -115,6 +124,10 @@ interface MediaState {
   toggleReminder: (id: string) => void;
   addManuscript: (manuscript: Manuscript) => void;
   removeManuscript: (id: string) => void;
+  addCustomWallBackground: (url: string) => void;
+  removeCustomWallBackground: (url: string) => void;
+  addCustomManuscriptColor: (color: string) => void;
+  removeCustomManuscriptColor: (color: string) => void;
   updatePrayerSetting: (id: string, setting: Partial<PrayerSetting>) => void;
   toggleFavoriteTeam: (team: FavoriteTeam) => void;
   toggleFavoriteLeague: (leagueId: number) => void;
@@ -126,8 +139,9 @@ interface MediaState {
   prevIptvChannel: () => void;
   updateMapSettings: (settings: Partial<MapSettings>) => void;
   setAiSuggestions: (suggestions: any[]) => void;
-  setActiveVideo: (video: YouTubeVideo | null) => void;
+  setActiveVideo: (video: YouTubeVideo | null, context?: YouTubeVideo[]) => void;
   setActiveIptv: (channel: IptvChannel | null) => void;
+  setActiveQuranUrl: (url: string | null) => void;
   setPlaylist: (videos: YouTubeVideo[]) => void;
   nextTrack: () => void;
   prevTrack: () => void;
@@ -137,7 +151,15 @@ interface MediaState {
   setIsFullScreen: (fullScreen: boolean) => void;
   setWallPlate: (type: 'moon' | 'manuscript' | null, data?: any) => void;
   toggleDockSide: () => void;
+  setDockSide: (side: 'left' | 'right') => void;
   toggleShowIslands: () => void;
+  
+  // Media Actions
+  setVideoResults: (results: YouTubeVideo[]) => void;
+  setSelectedChannel: (channel: YouTubeChannel | null) => void;
+  setChannelVideos: (videos: YouTubeVideo[]) => void;
+  resetMediaView: () => void;
+
   fetchPrayerTimes: () => Promise<void>;
   fetchManuscripts: () => Promise<void>;
   syncMasterBin: () => Promise<void>;
@@ -188,6 +210,8 @@ export const useMediaStore = create<MediaState>()(
       prayerSettings: DEFAULT_PRAYER_SETTINGS,
       reminders: [],
       customManuscripts: [],
+      customWallBackgrounds: [],
+      customManuscriptColors: ['#ffffff', '#FFD700', '#C0C0C0'],
       mapSettings: { 
         zoom: 20.0, 
         tilt: 65, 
@@ -199,6 +223,7 @@ export const useMediaStore = create<MediaState>()(
       aiSuggestions: [],
       activeVideo: null,
       activeIptv: null,
+      activeQuranUrl: "https://quran.com/ar/radio",
       playlist: [],
       playlistIndex: 0,
       isPlaying: false,
@@ -208,6 +233,11 @@ export const useMediaStore = create<MediaState>()(
       showIslands: true,
       wallPlateType: null,
       wallPlateData: null,
+      
+      // Media UI State
+      videoResults: [],
+      selectedChannel: null,
+      channelVideos: [],
 
       syncMasterBin: async () => {
         const state = get();
@@ -219,9 +249,9 @@ export const useMediaStore = create<MediaState>()(
           prayerSettings: state.prayerSettings,
           reminders: state.reminders,
           mapSettings: state.mapSettings,
-          dockSide: state.dockSide,
-          showIslands: state.showIslands,
-          videoProgress: state.videoProgress
+          videoProgress: state.videoProgress,
+          customWallBackgrounds: state.customWallBackgrounds,
+          customManuscriptColors: state.customManuscriptColors
         };
         await updateBin(JSONBIN_MASTER_BIN_ID, data);
       },
@@ -385,45 +415,30 @@ export const useMediaStore = create<MediaState>()(
         return { customManuscripts: newList };
       }),
 
-      setIptvPlaylist: (channels, index) => set({ iptvPlaylist: channels, iptvPlaylistIndex: index }),
-      nextIptvChannel: () => {
-        const state = get();
-        if (state.iptvPlaylist.length === 0) return;
-        const nextIdx = (state.iptvPlaylistIndex + 1) % state.iptvPlaylist.length;
-        state.setActiveIptv(state.iptvPlaylist[nextIdx]);
-      },
-      prevIptvChannel: () => {
-        const state = get();
-        if (state.iptvPlaylist.length === 0) return;
-        const prevIdx = (state.iptvPlaylistIndex - 1 + state.iptvPlaylist.length) % state.iptvPlaylist.length;
-        state.setActiveIptv(state.iptvPlaylist[prevIdx]);
-      },
+      addCustomWallBackground: (url) => set((state) => {
+        if (state.customWallBackgrounds.includes(url)) return state;
+        const newList = [...state.customWallBackgrounds, url];
+        setTimeout(() => get().syncMasterBin(), 100);
+        return { customWallBackgrounds: newList };
+      }),
 
-      updateMapSettings: (settings) => set((state) => {
-        const newState = { mapSettings: { ...state.mapSettings, ...settings } };
+      removeCustomWallBackground: (url) => set((state) => {
+        const newList = state.customWallBackgrounds.filter(u => u !== url);
         setTimeout(() => get().syncMasterBin(), 100);
-        return newState;
+        return { customWallBackgrounds: newList };
       }),
-      
-      addReminder: (reminder) => set((state) => {
-        const newList = [...state.reminders, reminder];
+
+      addCustomManuscriptColor: (color) => set((state) => {
+        if (state.customManuscriptColors.includes(color)) return state;
+        const newList = [...state.customManuscriptColors, color];
         setTimeout(() => get().syncMasterBin(), 100);
-        return { reminders: newList };
+        return { customManuscriptColors: newList };
       }),
-      updateReminder: (id, update) => set((state) => {
-        const newList = state.reminders.map(r => r.id === id ? { ...r, ...update } : r);
+
+      removeCustomManuscriptColor: (color) => set((state) => {
+        const newList = state.customManuscriptColors.filter(c => c !== color);
         setTimeout(() => get().syncMasterBin(), 100);
-        return { reminders: newList };
-      }),
-      removeReminder: (id) => set((state) => {
-        const newList = state.reminders.filter(r => r.id !== id);
-        setTimeout(() => get().syncMasterBin(), 100);
-        return { reminders: newList };
-      }),
-      toggleReminder: (id) => set((state) => {
-        const newList = state.reminders.map(r => r.id === id ? { ...r, completed: !r.completed } : r);
-        setTimeout(() => get().syncMasterBin(), 100);
-        return { reminders: newList };
+        return { customManuscriptColors: newList };
       }),
 
       updatePrayerSetting: (id, update) => set((state) => {
@@ -432,8 +447,35 @@ export const useMediaStore = create<MediaState>()(
         return { prayerSettings: newList };
       }),
 
+      updateMapSettings: (settings) => set((state) => {
+        const newSettings = { ...state.mapSettings, ...settings };
+        setTimeout(() => get().syncMasterBin(), 100);
+        return { mapSettings: newSettings };
+      }),
+
       setAiSuggestions: (suggestions) => set({ aiSuggestions: suggestions }),
-      setActiveVideo: (video) => set({ activeVideo: video, activeIptv: null, isPlaying: !!video, isMinimized: false, isFullScreen: !!video }),
+      
+      setActiveVideo: (video, context = []) => {
+        if (!video) {
+          set({ activeVideo: null, isPlaying: false, isMinimized: false, isFullScreen: false });
+          return;
+        }
+        
+        // ذكاء سياقي: إذا تم توفير سياق (مجموعة فيديوهات)، قم بإنشاء قائمة تشغيل
+        const playlist = context.length > 0 ? context : [video];
+        const index = playlist.findIndex(v => v.id === video.id);
+        
+        set({ 
+          activeVideo: video, 
+          activeIptv: null, 
+          isPlaying: true, 
+          isMinimized: false, 
+          isFullScreen: true,
+          playlist: playlist,
+          playlistIndex: index > -1 ? index : 0
+        });
+      },
+
       setActiveIptv: (channel) => {
         const state = get();
         if (!channel) {
@@ -450,9 +492,9 @@ export const useMediaStore = create<MediaState>()(
         }
         set({ activeIptv: finalChannel, activeVideo: null, isPlaying: true, isMinimized: false, isFullScreen: true });
       },
+      setActiveQuranUrl: (url) => set({ activeQuranUrl: url }),
       setPlaylist: (videos) => {
-        const shuffled = [...videos].sort(() => Math.random() - 0.5);
-        set({ playlist: shuffled, playlistIndex: 0, activeVideo: shuffled[0], activeIptv: null, isPlaying: true, isMinimized: false, isFullScreen: true });
+        set({ playlist: videos, playlistIndex: 0, activeVideo: videos[0], activeIptv: null, isPlaying: true, isMinimized: false, isFullScreen: true });
       },
       nextTrack: () => {
         const state = get();
@@ -466,23 +508,40 @@ export const useMediaStore = create<MediaState>()(
         const prevIdx = (state.playlistIndex - 1 + state.playlist.length) % state.playlist.length;
         set({ playlistIndex: prevIdx, activeVideo: state.playlist[prevIdx] });
       },
+      nextIptvChannel: () => {
+        const state = get();
+        if (state.iptvPlaylist.length === 0) return;
+        const nextIdx = (state.iptvPlaylistIndex + 1) % state.iptvPlaylist.length;
+        const channel = state.iptvPlaylist[nextIdx];
+        set({ iptvPlaylistIndex: nextIdx, activeIptv: { ...channel, url: channel.url || `http://playstop.watch:2095/live/W87d737/Pd37qj34/${channel.stream_id}.m3u8`, type: 'web' } });
+      },
+      prevIptvChannel: () => {
+        const state = get();
+        if (state.iptvPlaylist.length === 0) return;
+        const prevIdx = (state.iptvPlaylistIndex - 1 + state.iptvPlaylist.length) % state.iptvPlaylist.length;
+        const channel = state.iptvPlaylist[prevIdx];
+        set({ iptvPlaylistIndex: prevIdx, activeIptv: { ...channel, url: channel.url || `http://playstop.watch:2095/live/W87d737/Pd37qj34/${channel.stream_id}.m3u8`, type: 'web' } });
+      },
       setIsPlaying: (playing) => set({ isPlaying: playing }),
       setIsMinimized: (minimized) => set({ isMinimized: minimized, isFullScreen: false }),
       setIsFullScreen: (fullScreen) => set({ isFullScreen: fullScreen, isMinimized: false }),
       setWallPlate: (type, data) => set({ wallPlateType: type, wallPlateData: data }),
-      toggleDockSide: () => set((state) => {
-        const newSide = state.dockSide === 'left' ? 'right' : 'left';
-        setTimeout(() => get().syncMasterBin(), 100);
-        return { dockSide: newSide };
-      }),
-      toggleShowIslands: () => set((state) => {
-        const newVal = !state.showIslands;
-        setTimeout(() => get().syncMasterBin(), 100);
-        return { showIslands: newVal };
+      toggleDockSide: () => set((state) => ({ dockSide: state.dockSide === 'left' ? 'right' : 'left' })),
+      setDockSide: (side) => set({ dockSide: side }),
+      toggleShowIslands: () => set((state) => ({ showIslands: !state.showIslands })),
+      
+      // Media Actions
+      setVideoResults: (results) => set({ videoResults: results }),
+      setSelectedChannel: (channel) => set({ selectedChannel: channel }),
+      setChannelVideos: (videos) => set({ channelVideos: videos }),
+      resetMediaView: () => set({ 
+        videoResults: [], 
+        selectedChannel: null, 
+        channelVideos: [] 
       }),
     }),
     {
-      name: "drivecast-master-v6",
+      name: "drivecast-master-v7",
       partialize: (state) => ({ 
         videoProgress: state.videoProgress,
         dockSide: state.dockSide,
@@ -517,9 +576,9 @@ if (typeof window !== "undefined") {
           prayerSettings: Array.isArray(masterData.prayerSettings) ? masterData.prayerSettings : DEFAULT_PRAYER_SETTINGS,
           reminders: Array.isArray(masterData.reminders) ? masterData.reminders : [],
           mapSettings: masterData.mapSettings || useMediaStore.getState().mapSettings,
-          dockSide: masterData.dockSide || 'left',
-          showIslands: masterData.showIslands !== undefined ? masterData.showIslands : true,
-          videoProgress: masterData.videoProgress || {}
+          videoProgress: masterData.videoProgress || {},
+          customWallBackgrounds: Array.isArray(masterData.customWallBackgrounds) ? masterData.customWallBackgrounds : [],
+          customManuscriptColors: Array.isArray(masterData.customManuscriptColors) ? masterData.customManuscriptColors : ['#ffffff', '#FFD700', '#C0C0C0']
         });
       }
 

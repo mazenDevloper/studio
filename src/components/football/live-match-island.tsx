@@ -37,6 +37,7 @@ export function LiveMatchIsland() {
   const skippedMatchIds = useMediaStore(state => state.skippedMatchIds);
   const reminders = useMediaStore(state => state.reminders);
   const skipMatch = useMediaStore(state => state.skipMatch);
+  const activeVideo = useMediaStore(state => state.activeVideo);
 
   const [topMatches, setTopMatches] = useState<Match[]>([]);
   const [now, setNow] = useState(new Date());
@@ -268,6 +269,9 @@ export function LiveMatchIsland() {
   const mainMatch = processedMatches[0];
   const miniMatches = processedMatches.slice(1, 4);
   const closestRem = processedReminders[0];
+
+  // Auto-hide island if YouTube video is playing from Media
+  if (activeVideo) return null;
 
   const GlassNumber = ({ text, size = '3rem', id, subtext, colorClass }: { text: string, size?: string, id: string, subtext?: string, colorClass?: string }) => (
     <div className={cn("relative w-full h-full flex flex-col items-center justify-center", colorClass)} style={{ transform: 'translate3d(0,0,0)' }}>

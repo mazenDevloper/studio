@@ -5,6 +5,7 @@ export const FOOTBALL_API_KEY = '2f79edc60ed7f63aa4af1feea0f1ff2c';
 export const FOOTBALL_API_BASE_URL = 'https://v3.football.api-sports.io';
 
 export const YT_KEYS_POOL = [
+    "AIzaSyBeTHs25EsKeDFtIS5kq8iDATz-2c8hBrI", // المفتاح الأساسي الجديد
     "AIzaSyCcB-bW1b1bSu3hzROVhSbRT-D894zHYeg", 
     "AIzaSyCtgdzDMCpCbGe1vSAu0F4wBKERC77ac6I",
     "AIzaSyAjdVZ2Rodp6ZVEF1pZT195kAtGELolxSI",

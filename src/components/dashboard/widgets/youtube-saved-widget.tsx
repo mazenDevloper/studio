@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -45,7 +46,7 @@ export function YouTubeSavedWidget() {
                 <div 
                   key={video.id} 
                   className="w-80 group relative overflow-hidden bg-zinc-900/80 border-none rounded-[2rem] transition-all hover:scale-[1.02] cursor-pointer shadow-xl focusable"
-                  onClick={() => setActiveVideo(video)}
+                  onClick={() => setActiveVideo(video, savedVideos)}
                   tabIndex={0}
                   data-nav-id={`saved-video-${idx}`}
                 >
@@ -53,7 +54,6 @@ export function YouTubeSavedWidget() {
                     <Image src={video.thumbnail} alt={video.title} fill className="object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
                     
-                    {/* Delete Button - Red and prominent */}
                     <Button
                       variant="destructive"
                       size="icon"
@@ -72,7 +72,6 @@ export function YouTubeSavedWidget() {
                       </div>
                     </div>
 
-                    {/* Progress Bar */}
                     {video.progress && video.progress > 0 && (
                       <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-black/40">
                         <div 

@@ -27,9 +27,24 @@ export function LatestVideosWidget({ channels }: Props) {
     try {
       const videoPromises = channels.map(c => fetchChannelVideos(c.channelid));
       const results = await Promise.all(videoPromises);
-      const allVideos = results.flatMap(channelVideos => channelVideos.slice(0, 2));
-      const sorted = allVideos.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
-      setVideos(sorted);
+      
+      const firstVideos: YouTubeVideo[] = [];
+      const remainingVideos: YouTubeVideo[] = [];
+
+      results.forEach(channelVideos => {
+        if (channelVideos.length > 0) {
+          firstVideos.push(channelVideos[0]);
+          remainingVideos.push(...channelVideos.slice(1, 5));
+        }
+      });
+
+      const sortedRemaining = remainingVideos.sort((a, b) => {
+        const dateA = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
+        const dateB = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
+        return dateB - dateA;
+      });
+
+      setVideos([...firstVideos, ...sortedRemaining]);
     } catch (error) {
       console.error("Failed to fetch videos", error);
     } finally {
@@ -77,9 +92,9 @@ export function LatestVideosWidget({ channels }: Props) {
             <div className="flex w-max gap-6 pb-4">
               {videos.map((video, idx) => (
                 <div 
-                  key={video.id} 
+                  key={video.id + idx} 
                   className="w-80 group relative overflow-hidden bg-zinc-900/80 border-none rounded-[2rem] transition-all hover:scale-[1.02] cursor-pointer shadow-xl focusable" 
-                  onClick={() => setActiveVideo(video)} 
+                  onClick={() => setActiveVideo(video, videos)} 
                   tabIndex={0}
                   data-nav-id={`latest-video-${idx}`}
                 >
@@ -90,7 +105,7 @@ export function LatestVideosWidget({ channels }: Props) {
                   <div className="p-5 space-y-2 text-right">
                     <h3 className="font-bold text-base truncate text-white font-headline">{video.title}</h3>
                     <div className="flex items-center justify-end gap-3 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                       <span>Live Center</span>
+                       <span className="text-white/40">{video.channelTitle}</span>
                        <span className="opacity-30">•</span>
                        <span className="flex items-center gap-1 text-accent"><Clock className="w-3 h-3" /> Latest</span>
                     </div>
