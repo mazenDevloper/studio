@@ -1,0 +1,100 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * DRIVECAST SECURITY RULES - PROTOTYPING PHASE
+     * 
+     * Core Philosophy:
+     * This ruleset implements a strict "Owner-Only" model for private user data and a 
+     * "Read-Only Cache" model for YouTube-sourced content. The goal is to maximize 
+     * Authorization Independence, ensuring that any single request can be authorized 
+     * without traversing complex document hierarchies or performing multiple lookups.
+     *
+     * Data Structure:
+     * 1. /users/{userId}: Private user profiles and preferences. Auth is path-based.
+     * 2. /youtubeChannels/{channelId}: Publicly available channel metadata. Read-only for users.
+     * 3. /youtubeVideos/{videoId}: Publicly available video metadata. Read-only for users.
+     *
+     * Key Security Decisions:
+     * - User Privacy: Users can only see their own profile. Global listing of users is disabled.
+     * - Content Integrity: YouTube data (Channels/Videos) is treated as a read-only cache. 
+     *   Direct client writes to these collections are forbidden to prevent data corruption.
+     * - Denormalization: Video documents include 'channelId' directly to allow secure, 
+     *   flat queries without needing to check a parent channel document.
+     * - Prototyping Flexibility: While authorization is strictly enforced based on UIDs, 
+     *   general data types and optional fields are not validated to allow for rapid UI iteration.
+     */
+
+    // --- Global Helper Functions ---
+
+    /**
+     * @description Checks if the request is made by a signed-in user.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * @description Checks if the authenticated user's UID matches the provided ID.
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /**
+     * @description Ensures the user owns the document and that the document actually exists.
+     * Used for update and delete operations to prevent acting on null resources.
+     */
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
+
+    // --- Collection Rules ---
+
+    /**
+     * @description Rules for the User collection, managing profiles and saved preferences.
+     * @path /users/{userId}
+     * @allow (create) User 'abc' creates document '/users/abc' where data.id == 'abc'.
+     * @deny (list) User 'abc' attempts to list all documents in /users.
+     * @principle Restricts access to a user's own data tree based on their Auth UID.
+     */
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Rules for YouTubeChannel metadata. This is a read-only cache for clients.
+     * @path /youtubeChannels/{channelId}
+     * @allow (get) Any authenticated user retrieves a specific channel's details.
+     * @deny (update) Any user attempts to modify channel metadata (e.g., thumbnail URL).
+     * @principle Public authenticated read access with administrative-only write control.
+     */
+    match /youtubeChannels/{channelId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if false; // Writes restricted to backend services
+      allow update: if false; // Writes restricted to backend services
+      allow delete: if false; // Writes restricted to backend services
+    }
+
+    /**
+     * @description Rules for YouTubeVideo metadata. Includes denormalized channel references.
+     * @path /youtubeVideos/{videoId}
+     * @allow (list) An authenticated user queries videos where channelId == 'XYZ'.
+     * @deny (delete) A user attempts to remove a video from the global cache.
+     * @principle Enables efficient, secure listing of video content for all users.
+     */
+    match /youtubeVideos/{videoId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if false; // Writes restricted to backend services
+      allow update: if false; // Writes restricted to backend services
+      allow delete: if false; // Writes restricted to backend services
+    }
+  }
+}

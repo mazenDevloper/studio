@@ -28,8 +28,6 @@ export function LatestVideosWidget({ channels }: Props) {
       const videoPromises = channels.map(c => fetchChannelVideos(c.channelid));
       const results = await Promise.all(videoPromises);
       
-      // Smart Sorting Algorithm: 
-      // 1. Get the latest video from each channel first (one from Ch1, one from Ch2, etc.)
       const firstVideos: YouTubeVideo[] = [];
       const remainingVideos: YouTubeVideo[] = [];
 
@@ -40,14 +38,12 @@ export function LatestVideosWidget({ channels }: Props) {
         }
       });
 
-      // 2. Sort the remaining videos globally by date descending
       const sortedRemaining = remainingVideos.sort((a, b) => {
         const dateA = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
         const dateB = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
         return dateB - dateA;
       });
 
-      // 3. Combine: [First from each] + [Sorted Remaining]
       setVideos([...firstVideos, ...sortedRemaining]);
     } catch (error) {
       console.error("Failed to fetch videos", error);
@@ -98,7 +94,8 @@ export function LatestVideosWidget({ channels }: Props) {
                 <div 
                   key={video.id + idx} 
                   className="w-80 group relative overflow-hidden bg-zinc-900/80 border-none rounded-[2rem] transition-all hover:scale-[1.02] cursor-pointer shadow-xl focusable" 
-                  onClick={() => setActiveVideo(video)} 
+                  // SMART BINDING: Pass the entire videos list as context
+                  onClick={() => setActiveVideo(video, videos)} 
                   tabIndex={0}
                   data-nav-id={`latest-video-${idx}`}
                 >

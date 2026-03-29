@@ -1,53 +1,180 @@
-
 {
   "entities": {
-    "UserYouTubeData": {
-      "title": "YouTube User Data",
-      "description": "JSON-style storage for channels and videos.",
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
       "type": "object",
+      "description": "Represents an individual user of the DriveCast application, holding personal preferences and saved content.",
       "properties": {
-        "favoriteChannels": { "type": "array" },
-        "starredChannelIds": { "type": "array" },
-        "savedVideos": { "type": "array" },
-        "videoProgress": { "type": "object" }
-      }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the User entity."
+        },
+        "username": {
+          "type": "string",
+          "description": "The chosen username for the user, used for display purposes."
+        },
+        "email": {
+          "type": "string",
+          "description": "The email address associated with the user's account.",
+          "format": "email"
+        },
+        "favoriteYouTubeChannelIds": {
+          "type": "array",
+          "description": "An array of IDs referencing YouTubeChannel entities that the user has marked as favorite. (Relationship: User N:N YouTubeChannel)",
+          "items": {
+            "type": "string"
+          }
+        },
+        "savedYouTubeVideoIds": {
+          "type": "array",
+          "description": "An array of IDs referencing YouTubeVideo entities that the user has saved. (Relationship: User N:N YouTubeVideo)",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id"
+      ]
     },
-    "UserFootballData": {
-      "title": "Football Preferences",
-      "description": "JSON-style storage for teams and leagues.",
+    "YouTubeChannel": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "YouTubeChannel",
       "type": "object",
+      "description": "Represents a YouTube channel that users can favorite or interact with within the app.",
       "properties": {
-        "favoriteTeams": { "type": "array" },
-        "favoriteTeamIds": { "type": "array" },
-        "favoriteLeagueIds": { "type": "array" }
-      }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the YouTubeChannel entity. This corresponds to the official YouTube Channel ID."
+        },
+        "title": {
+          "type": "string",
+          "description": "The official title or name of the YouTube channel."
+        },
+        "thumbnailUrl": {
+          "type": "string",
+          "description": "The URL to the channel's thumbnail image.",
+          "format": "uri"
+        },
+        "channelUrl": {
+          "type": "string",
+          "description": "The URL to the official YouTube page for the channel.",
+          "format": "uri"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "thumbnailUrl",
+        "channelUrl"
+      ]
     },
-    "UserSettingsData": {
-      "title": "System Settings",
-      "description": "JSON-style storage for map and app preferences.",
+    "YouTubeVideo": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "YouTubeVideo",
       "type": "object",
+      "description": "Represents a specific YouTube video that a user has saved for later viewing.",
       "properties": {
-        "mapSettings": { "type": "object" },
-        "reminders": { "type": "array" },
-        "reciterKeywords": { "type": "array" }
-      }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the YouTubeVideo entity. This corresponds to the official YouTube Video ID."
+        },
+        "title": {
+          "type": "string",
+          "description": "The title of the YouTube video."
+        },
+        "description": {
+          "type": "string",
+          "description": "A brief description or summary of the video content."
+        },
+        "thumbnailUrl": {
+          "type": "string",
+          "description": "The URL to the video's thumbnail image.",
+          "format": "uri"
+        },
+        "videoUrl": {
+          "type": "string",
+          "description": "The URL to the official YouTube page for the video.",
+          "format": "uri"
+        },
+        "channelId": {
+          "type": "string",
+          "description": "Reference to the YouTubeChannel entity that published this video. (Relationship: YouTubeChannel 1:N YouTubeVideo)"
+        },
+        "publishedAt": {
+          "type": "string",
+          "description": "The date and time when the video was published on YouTube.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "thumbnailUrl",
+        "videoUrl",
+        "channelId",
+        "publishedAt"
+      ]
     }
   },
   "auth": {
-    "providers": ["anonymous"]
+    "providers": [
+      "password",
+      "anonymous"
+    ]
   },
   "firestore": {
-    "/users/{userId}/data/youtube": {
-      "schema": "UserYouTubeData",
-      "description": "Standalone YouTube data file."
-    },
-    "/users/{userId}/data/football": {
-      "schema": "UserFootballData",
-      "description": "Standalone Football data file."
-    },
-    "/users/{userId}/data/settings": {
-      "schema": "UserSettingsData",
-      "description": "Standalone Settings data file."
-    }
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Individual user profiles, storing personal data and preferences like favorite YouTube channels and saved videos. Authorization is path-based, meaning only the authenticated user matching `{userId}` can access their own document. This achieves authorization independence and supports private data segregation.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user, corresponding to Firebase Authentication UID."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/youtubeChannels/{channelId}",
+        "definition": {
+          "entityName": "YouTubeChannel",
+          "schema": {
+            "$ref": "#/backend/entities/YouTubeChannel"
+          },
+          "description": "Cached YouTube channel data for display and search within the application. This collection is globally readable by all authenticated users, allowing efficient `list` operations (QAPs) without complex hierarchical authorization dependencies. Write access is restricted to administrative services.",
+          "params": [
+            {
+              "name": "channelId",
+              "description": "The unique identifier of the YouTube channel."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/youtubeVideos/{videoId}",
+        "definition": {
+          "entityName": "YouTubeVideo",
+          "schema": {
+            "$ref": "#/backend/entities/YouTubeVideo"
+          },
+          "description": "Cached YouTube video data. Each document includes the `channelId` field, which is a denormalized attribute used to link videos to their respective channels directly. This enables efficient queries (e.g., fetching all videos for a given channel) and ensures Authorization Independence as no `get()` calls to parent channel documents are needed for access control. Globally readable for all authenticated users.",
+          "params": [
+            {
+              "name": "videoId",
+              "description": "The unique identifier of the YouTube video."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The recommended Firestore structure is designed to adhere strictly to the core design principles, particularly Authorization Independence and support for QAPs (Queries Are Not Filters). \n\n1.  **Users (`/users/{userId}`):** This top-level collection stores individual user profiles. Each document ID (`userId`) directly corresponds to the Firebase Authentication UID (`request.auth.uid`). This provides an extremely simple and robust authorization model: a user can only read or write their own profile document. This inherently achieves **Authorization Independence** as access to a user's data is determined solely by the path, eliminating any need for `get()` calls to check parent document ownership. User-specific preferences like `favoriteYouTubeChannelIds` and `savedYouTubeVideoIds` are stored directly within the user's document, making them private and easily accessible by the owner. QAPs are supported by only allowing reads/writes to `/users/request.auth.uid`, effectively disallowing broad `list` operations on the entire `users` collection, which would be insecure.\n\n2.  **YouTube Channels (`/youtubeChannels/{channelId}`):** This collection serves as a cache for YouTube channel metadata. These documents are intended to be globally readable by all authenticated users. **Authorization Independence** is achieved because the data itself is public-facing (after being sourced from YouTube) and does not rely on any user-specific or parent document for access control. Write access would typically be restricted to backend services or administrators. This structure fully supports **QAPs** as `list` operations can be performed efficiently (e.g., to populate a search results page or a grid of all available channels) with simple security rules allowing `read` access for all authenticated users.\n\n3.  **YouTube Videos (`/youtubeVideos/{videoId}`):** Similar to YouTube Channels, this collection caches YouTube video metadata. Each video document includes a `channelId` field. This `channelId` is a **denormalized** piece of information, directly linking the video to its parent channel without requiring a subcollection structure or a `get()` call to the channel document during authorization. This explicit inclusion of `channelId` within the video document is crucial for **Authorization Independence** and enables efficient queries. For example, to fetch all videos from a specific channel, a query like `collection('youtubeVideos').where('channelId', '==', 'someChannelId')` can be executed directly and securely. This again fully supports **QAPs**, allowing `list` operations for all videos within a channel with simple `read` rules for authenticated users, avoiding the performance and security pitfalls of `get()` based authorization on parent collections."
   }
 }

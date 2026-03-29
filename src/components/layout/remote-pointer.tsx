@@ -16,12 +16,8 @@ export function RemotePointer() {
   const { activeIptv, isFullScreen, nextIptvChannel, prevIptvChannel, wallPlateType, setWallPlate } = useMediaStore();
 
   useEffect(() => {
-    // Initialize Spatial Navigation for TV Browsers (VIDAA OS etc.)
     try {
-      init({
-        debug: false,
-        visualDebug: false,
-      });
+      init({ debug: false, visualDebug: false });
     } catch (e) {
       console.warn("Spatial Navigation Init Error:", e);
     }
@@ -39,13 +35,9 @@ export function RemotePointer() {
     if (!isCurrentFocusable || !direction) {
       let target: HTMLElement | null = null;
       if (pathname === '/') {
-        target = document.querySelector('[data-nav-id="moon-widget-container"]') as HTMLElement || focusables.find(el => !el.dataset.navId?.startsWith('dock-')) || focusables[0];
+        target = document.querySelector('[data-nav-id="moon-widget-container"]') as HTMLElement || focusables[0];
       } else if (pathname === '/media') {
-        target = document.querySelector('[data-nav-id^="fav-channel-"]') as HTMLElement || focusables[0];
-      } else if (pathname === '/iptv') {
-        target = document.querySelector('.iptv-channel-item') as HTMLElement || focusables[0];
-      } else if (pathname === '/football') {
-        target = document.querySelector('.focusable[data-nav-id^="match-"]') as HTMLElement || focusables[0];
+        target = document.querySelector('[data-nav-id="fav-ch-0"]') as HTMLElement || focusables[0];
       } else {
         target = focusables.find(el => !el.dataset.navId?.startsWith('dock-')) || focusables[0];
       }
@@ -84,6 +76,9 @@ export function RemotePointer() {
 
     for (const el of focusables) {
       if (el === current) continue;
+      // Aggressive safety: skip elements without focusable class or with -1 tabIndex
+      if (!el.classList.contains('focusable') || el.tabIndex === -1) continue;
+      
       const rect = el.getBoundingClientRect();
       const dist = getDistance(currentRect, rect, direction);
       if (dist < minDistance) {
@@ -101,24 +96,18 @@ export function RemotePointer() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const activeEl = document.activeElement as HTMLElement;
-      const isInputFocused = activeEl?.tagName === 'INPUT' || activeEl?.tagName === 'TEXTAREA';
-      if (isInputFocused) return;
+      if (activeEl?.tagName === 'INPUT' || activeEl?.tagName === 'TEXTAREA') return;
 
-      // VIDAA Remote Back Key (461) Support
       if (e.keyCode === 461 || e.key === 'Back' || e.key === 'Escape' || e.key === 'Backspace' || e.key === "0") {
         e.preventDefault();
-        if (wallPlateType) {
-          setWallPlate(null);
-        } else if (pathname !== '/') {
-          router.back();
-        }
+        if (wallPlateType) setWallPlate(null);
+        else if (pathname !== '/') router.back();
         setActiveKey('0');
         setIsVisible(true);
         setTimeout(() => setIsVisible(false), 500);
         return;
       }
 
-      // VIDAA Channel Keys Support
       if (e.key === "PageUp" || e.key === "ChannelUp" || e.keyCode === 427) {
         if (activeIptv && isFullScreen) { e.preventDefault(); nextIptvChannel(); return; }
       } else if (e.key === "PageDown" || e.key === "ChannelDown" || e.keyCode === 428) {
@@ -188,7 +177,6 @@ export function RemotePointer() {
       <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center border-2", activeKey === "8" ? "bg-primary border-primary shadow-glow" : "bg-black/60 border-white/10 backdrop-blur-xl")}>
         <ChevronDown className="w-8 h-8 text-white" />
       </div>
-      
       <div className="flex gap-8 mt-2">
         <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center border transition-all", activeKey === "1" ? "bg-primary border-primary shadow-glow scale-125" : "bg-white/5 border-white/10")}>
           <span className="text-white text-[10px] font-black">1</span>

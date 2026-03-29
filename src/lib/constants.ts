@@ -6,6 +6,10 @@ export const FOOTBALL_API_KEY = '2f79edc60ed7f63aa4af1feea0f1ff2c';
 export const FOOTBALL_API_BASE_URL = 'https://v3.football.api-sports.io';
  
 export const YT_KEYS_POOL = [
+  "AIzaSyABJ0ChF7XVsXeppoLS9VBIxNJglc-0rB0", 
+  "AIzaSyDb4_3-IBy5ZPsIwlkv81z3EDS9Tue98n4", 
+  "AIzaSyBWsvSFb6VNx89VOzjP0-zq7sWgShfiWjE", 
+  "AIzaSyATzZbuYsLdQq-S8zFih3hkgtZVpS0bcN8",
   "AIzaSyCDk0lSml9gAvvsgBoWKvVToiFaxWlTZEw",
   "AIzaSyCcB-bW1b1bSu3hzROVhSbRT-D894zHYeg",
   "AIzaSyAjdVZ2Rodp6ZVEF1pZT195kAtGELolxSI",
@@ -19,14 +23,15 @@ export const YT_KEYS_POOL = [
   "AIzaSyBeTHs25EsKeDFtIS5kq8iDATz-2c8hBrI"
 ];
 
-// JSONBin.io Configuration
 export const JSONBIN_MASTER_KEY = '$2a$10$SYrYv.ct8hiMU9YeUxEQ.ecRkOrTqs.TDchJRV3wW.aKJnDXy2oVy';
-export const JSONBIN_MASTER_BIN_ID = '69b63cb1c3097a1dd5278bf4'; 
 export const JSONBIN_CHANNELS_BIN_ID = '68ef1b3dd0ea881f40a38bd1'; 
 export const JSONBIN_SAVED_VIDEOS_BIN_ID = '68e4ac20d0ea881f4098138c'; 
 export const JSONBIN_IPTV_FAVS_BIN_ID = '69a87b8bd0ea881f40eeec0c'; 
 export const JSONBIN_PRAYER_TIMES_BIN_ID = '69a00f6eae596e708f4b7291'; 
 export const JSONBIN_MANUSCRIPTS_BIN_ID = '69b63c5cc3097a1dd5278b25'; 
+export const JSONBIN_MASTER_BIN_ID = '69b63cb1c3097a1dd5278bf4'; 
+export const JSONBIN_MATCHES_SCHEDULE_BIN_ID = '69c782cbb7ec241ddcb0b99a';
+export const JSONBIN_CLUBS_CACHE_BIN_ID = '69b6a00bc3097a1dd527b3fa';
 
 export const prayerTimesData = [
     {"date":"2026-03-05","day":"الخميس","fajr":"05:27","sunrise":"06:39","dhuhr":"12:40","asr":"16:02","maghrib":"18:36","isha":"19:43"}

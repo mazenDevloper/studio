@@ -80,6 +80,7 @@
     inset 0 0 20px rgba(0, 136, 255, 0.4);
   outline: none !important;
   border-color: hsl(var(--primary)) !important;
+  cursor: pointer;
 }
 
 .no-scrollbar::-webkit-scrollbar {
@@ -101,4 +102,13 @@
 
 .font-calligraphy {
   font-family: 'Aref Ruqaa', serif;
+}
+
+@keyframes marquee-end {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-30%); } 
+}
+
+.animate-marquee-end {
+  animation: marquee-end 3s ease-in-out forwards;
 }

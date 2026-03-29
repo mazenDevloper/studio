@@ -12,6 +12,8 @@ import {
   JSONBIN_IPTV_FAVS_BIN_ID,
   JSONBIN_PRAYER_TIMES_BIN_ID,
   JSONBIN_MANUSCRIPTS_BIN_ID,
+  JSONBIN_MATCHES_SCHEDULE_BIN_ID,
+  JSONBIN_CLUBS_CACHE_BIN_ID,
   prayerTimesData
 } from "./constants";
 
@@ -48,6 +50,8 @@ export interface MapSettings {
   backgroundIndex: number;
   showManuscriptBg: boolean;
   manuscriptBgUrl: string;
+  displayScale: number;
+  fontScale: number;
 }
 
 export interface Manuscript {
@@ -106,10 +110,12 @@ interface MediaState {
   wallPlateType: 'moon' | 'manuscript' | null;
   wallPlateData: any | null;
   
-  // Media UI State
   videoResults: YouTubeVideo[];
   selectedChannel: YouTubeChannel | null;
   channelVideos: YouTubeVideo[];
+  
+  clubsCache: any[];
+  isClubsLoading: boolean;
   
   setFavoriteChannels: (channels: YouTubeChannel[]) => void;
   setFavoriteIptvChannels: (channels: IptvChannel[]) => void;
@@ -154,7 +160,6 @@ interface MediaState {
   setDockSide: (side: 'left' | 'right') => void;
   toggleShowIslands: () => void;
   
-  // Media Actions
   setVideoResults: (results: YouTubeVideo[]) => void;
   setSelectedChannel: (channel: YouTubeChannel | null) => void;
   setChannelVideos: (videos: YouTubeVideo[]) => void;
@@ -163,6 +168,9 @@ interface MediaState {
   fetchPrayerTimes: () => Promise<void>;
   fetchManuscripts: () => Promise<void>;
   syncMasterBin: () => Promise<void>;
+  syncAllMatchesToCloud: () => Promise<void>;
+  syncLeagueClubsToCloud: (leagueId: string) => Promise<void>;
+  fetchClubsFromCache: (leagueId: string) => Promise<void>;
   saveIptvReorder: () => Promise<void>;
   saveChannelsReorder: () => Promise<void>;
 }
@@ -183,13 +191,13 @@ const updateBin = async (binId: string, data: any) => {
 };
 
 const DEFAULT_PRAYER_SETTINGS: PrayerSetting[] = [
-  { id: 'fajr', name: 'الفجر', offsetMinutes: 0, showCountdown: true, countdownWindow: 20, showCountup: true, countupWindow: 25, iqamahDuration: 25 },
+  { id: 'fajr', name: 'الفجر', offsetMinutes: 0, showCountdown: true, countdownWindow: 25, showCountup: true, countupWindow: 30, iqamahDuration: 25 },
   { id: 'sunrise', name: 'الشروق', offsetMinutes: 0, showCountdown: true, countdownWindow: 20, showCountup: true, countupWindow: 5, iqamahDuration: 0 },
   { id: 'duha', name: 'الضحى', offsetMinutes: 15, showCountdown: true, countdownWindow: 15, showCountup: false, countupWindow: 0, iqamahDuration: 0 },
-  { id: 'dhuhr', name: 'الظهر', offsetMinutes: 0, showCountdown: true, countdownWindow: 20, showCountup: true, countupWindow: 20, iqamahDuration: 20 },
-  { id: 'asr', name: 'العصر', offsetMinutes: 0, showCountdown: true, countdownWindow: 20, showCountup: true, countupWindow: 20, iqamahDuration: 20 },
-  { id: 'maghrib', name: 'المغرب', offsetMinutes: 0, showCountdown: true, countdownWindow: 20, showCountup: true, countupWindow: 10, iqamahDuration: 10 },
-  { id: 'isha', name: 'العشاء', offsetMinutes: 0, showCountdown: true, countdownWindow: 20, showCountup: true, countupWindow: 20, iqamahDuration: 20 },
+  { id: 'dhuhr', name: 'الظهر', offsetMinutes: 0, showCountdown: true, countdownWindow: 20, showCountup: true, countupWindow: 25, iqamahDuration: 20 },
+  { id: 'asr', name: 'العصر', offsetMinutes: 0, showCountdown: true, countdownWindow: 20, showCountup: true, countupWindow: 25, iqamahDuration: 20 },
+  { id: 'maghrib', name: 'المغرب', offsetMinutes: 0, showCountdown: true, countdownWindow: 20, showCountup: true, countupWindow: 15, iqamahDuration: 10 },
+  { id: 'isha', name: 'العشاء', offsetMinutes: 0, showCountdown: true, countdownWindow: 20, showCountup: true, countupWindow: 25, iqamahDuration: 20 },
 ];
 
 export const useMediaStore = create<MediaState>()(
@@ -218,7 +226,9 @@ export const useMediaStore = create<MediaState>()(
         carScale: 1.02, 
         backgroundIndex: 0,
         showManuscriptBg: true,
-        manuscriptBgUrl: "https://images.unsplash.com/photo-1578301978693-85fa9c0320b9?q=80&w=2000"
+        manuscriptBgUrl: "https://images.unsplash.com/photo-1578301978693-85fa9c0320b9?q=80&w=2000",
+        displayScale: 1.0,
+        fontScale: 1.0
       },
       aiSuggestions: [],
       activeVideo: null,
@@ -234,10 +244,12 @@ export const useMediaStore = create<MediaState>()(
       wallPlateType: null,
       wallPlateData: null,
       
-      // Media UI State
       videoResults: [],
       selectedChannel: null,
       channelVideos: [],
+      
+      clubsCache: [],
+      isClubsLoading: false,
 
       syncMasterBin: async () => {
         const state = get();
@@ -254,6 +266,68 @@ export const useMediaStore = create<MediaState>()(
           customManuscriptColors: state.customManuscriptColors
         };
         await updateBin(JSONBIN_MASTER_BIN_ID, data);
+      },
+
+      syncAllMatchesToCloud: async () => {
+        const { fetchFootballData } = await import("./football-api");
+        try {
+          const [yesterday, today, tomorrow] = await Promise.all([
+            fetchFootballData('yesterday'),
+            fetchFootballData('today'),
+            fetchFootballData('tomorrow')
+          ]);
+          const data = { 
+            yesterday, 
+            today, 
+            tomorrow, 
+            updatedAt: new Date().toISOString() 
+          };
+          await updateBin(JSONBIN_MATCHES_SCHEDULE_BIN_ID, data);
+        } catch (e) {
+          console.error("Sync All Matches Error:", e);
+          throw e;
+        }
+      },
+
+      fetchClubsFromCache: async (leagueId: string) => {
+        set({ isClubsLoading: true });
+        try {
+          const res = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_CLUBS_CACHE_BIN_ID}/latest?nocache=${Date.now()}`, {
+            headers: { 'X-Master-Key': JSONBIN_MASTER_KEY }
+          });
+          if (res.ok) {
+            const data = await res.json();
+            const record = data.record;
+            if (record && record.leagueId === leagueId && Array.isArray(record.teams)) {
+              set({ clubsCache: record.teams });
+            } else {
+              set({ clubsCache: [] });
+            }
+          }
+        } catch (e) {
+          console.error("Fetch Clubs Cache Error:", e);
+        } finally {
+          set({ isClubsLoading: false });
+        }
+      },
+
+      syncLeagueClubsToCloud: async (leagueId: string) => {
+        const { searchFootballTeams } = await import("./football-api");
+        try {
+          const teams = await searchFootballTeams("", leagueId);
+          if (teams && teams.length > 0) {
+            const data = { 
+              leagueId, 
+              teams, 
+              updatedAt: new Date().toISOString() 
+            };
+            await updateBin(JSONBIN_CLUBS_CACHE_BIN_ID, data);
+            set({ clubsCache: teams });
+          }
+        } catch (e) {
+          console.error("Sync Clubs Error:", e);
+          throw e;
+        }
       },
 
       saveIptvReorder: async () => {
@@ -290,8 +364,14 @@ export const useMediaStore = create<MediaState>()(
           });
           if (res.ok) {
             const data = await res.json();
-            const list = Array.isArray(data.record) ? data.record : (data.record?.manuscripts || []);
-            set({ customManuscripts: list });
+            const record = data.record;
+            // Robust check for manuscripts array
+            let list = [];
+            if (Array.isArray(record)) list = record;
+            else if (record && Array.isArray(record.manuscripts)) list = record.manuscripts;
+            else if (record && record.manuscripts) list = record.manuscripts;
+            
+            set({ customManuscripts: Array.isArray(list) ? list : [] });
           }
         } catch (e) {
           console.error("Failed to fetch manuscripts:", e);
@@ -454,34 +534,25 @@ export const useMediaStore = create<MediaState>()(
       }),
 
       setAiSuggestions: (suggestions) => set({ aiSuggestions: suggestions }),
+      
       setActiveVideo: (video, context) => {
-        const state = get();
         if (video) {
-          // If a context (list of surrounding videos) is provided, use it as the playlist
-          if (context && context.length > 0) {
-            const idx = context.findIndex(v => v.id === video.id);
-            set({ 
-              playlist: context, 
-              playlistIndex: idx > -1 ? idx : 0,
-              activeVideo: video, 
-              activeIptv: null, 
-              isPlaying: true, 
-              isMinimized: false, 
-              isFullScreen: true 
-            });
-          } else {
-            set({ 
-              activeVideo: video, 
-              activeIptv: null, 
-              isPlaying: true, 
-              isMinimized: false, 
-              isFullScreen: true 
-            });
-          }
+          const playlist = context && context.length > 0 ? context : [video];
+          const idx = playlist.findIndex(v => v.id === video.id);
+          set({ 
+            playlist: playlist, 
+            playlistIndex: idx > -1 ? idx : 0,
+            activeVideo: video, 
+            activeIptv: null, 
+            isPlaying: true, 
+            isMinimized: false, 
+            isFullScreen: true 
+          });
         } else {
           set({ activeVideo: null, isPlaying: false, isMinimized: false, isFullScreen: false });
         }
       },
+
       setActiveIptv: (channel) => {
         const state = get();
         if (!channel) {
@@ -494,10 +565,20 @@ export const useMediaStore = create<MediaState>()(
         
         if (state.favoriteIptvChannels.some(c => c.stream_id === finalChannel.stream_id)) {
           const idx = state.favoriteIptvChannels.findIndex(c => c.stream_id === finalChannel.stream_id);
-          set({ iptvPlaylist: state.favoriteIptvChannels, iptvPlaylistIndex: idx });
+          set({ 
+            iptvPlaylist: state.favoriteIptvChannels, 
+            iptvPlaylistIndex: idx,
+            activeIptv: finalChannel, 
+            activeVideo: null, 
+            isPlaying: true, 
+            isMinimized: false, 
+            isFullScreen: true 
+          });
+        } else {
+          set({ activeIptv: finalChannel, activeVideo: null, isPlaying: true, isMinimized: false, isFullScreen: true });
         }
-        set({ activeIptv: finalChannel, activeVideo: null, isPlaying: true, isMinimized: false, isFullScreen: true });
       },
+
       setActiveQuranUrl: (url) => set({ activeQuranUrl: url }),
       setPlaylist: (videos) => {
         set({ playlist: videos, playlistIndex: 0, activeVideo: videos[0], activeIptv: null, isPlaying: true, isMinimized: false, isFullScreen: true });
@@ -547,7 +628,6 @@ export const useMediaStore = create<MediaState>()(
       },
       toggleShowIslands: () => set((state) => ({ showIslands: !state.showIslands })),
       
-      // Media Actions
       setVideoResults: (results) => set({ videoResults: results }),
       setSelectedChannel: (channel) => set({ selectedChannel: channel }),
       setChannelVideos: (videos) => set({ channelVideos: videos }),
@@ -558,7 +638,7 @@ export const useMediaStore = create<MediaState>()(
       }),
     }),
     {
-      name: "drivecast-master-v7",
+      name: "drivecast-master-v11",
       partialize: (state) => ({ 
         videoProgress: state.videoProgress,
         dockSide: state.dockSide,
@@ -583,7 +663,6 @@ if (typeof window !== "undefined") {
         } catch (e) { return null; }
       };
 
-      // Priority: Check for dockSide cookie
       const cookies = document.cookie.split('; ');
       const sideCookie = cookies.find(row => row.startsWith('dockSide='));
       if (sideCookie) {
@@ -633,10 +712,12 @@ if (typeof window !== "undefined") {
       }
 
       const manuscriptsData = await fetchBin(JSONBIN_MANUSCRIPTS_BIN_ID);
-      if (Array.isArray(manuscriptsData)) {
-        useMediaStore.setState({ customManuscripts: manuscriptsData });
-      } else if (manuscriptsData?.manuscripts && Array.isArray(manuscriptsData.manuscripts)) {
-        useMediaStore.setState({ customManuscripts: manuscriptsData.manuscripts });
+      if (manuscriptsData) {
+        let list = [];
+        if (Array.isArray(manuscriptsData)) list = manuscriptsData;
+        else if (manuscriptsData.manuscripts && Array.isArray(manuscriptsData.manuscripts)) list = manuscriptsData.manuscripts;
+        else if (manuscriptsData.record && Array.isArray(manuscriptsData.record)) list = manuscriptsData.record;
+        useMediaStore.setState({ customManuscripts: Array.isArray(list) ? list : [] });
       }
     } catch (e) {
       console.error("Global Bin Sync Error:", e);

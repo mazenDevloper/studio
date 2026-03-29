@@ -1,9 +1,8 @@
-
 export const firebaseConfig = {
-  apiKey: "AIzaSyBMmtON9ww4dJxMHrl1wKyWTvI0ipJXJws",
-  authDomain: "drivecast-carplay.firebaseapp.com",
-  projectId: "drivecast-carplay",
-  storageBucket: "drivecast-carplay.appspot.com",
-  messagingSenderId: "123456789",
-  appId: "1:123456789:web:abcdef"
+  "projectId": "carp2-87730383-650eb",
+  "appId": "1:872455200932:web:1733290315a4a3a8710631",
+  "apiKey": "AIzaSyARb1_3Eal-AluNhtYjP_gpmc8q1O3rCjg",
+  "authDomain": "carp2-87730383-650eb.firebaseapp.com",
+  "measurementId": "",
+  "messagingSenderId": "872455200932"
 };

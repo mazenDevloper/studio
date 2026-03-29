@@ -2,61 +2,44 @@
 "use client";
 
 import { useMediaStore } from "@/lib/store";
-import { X, Monitor, ChevronDown, Play, Pause, ChevronRight, ChevronLeft, Settings } from "lucide-react";
+import { X, Monitor, ChevronDown, ChevronRight, ChevronLeft, Settings, LayoutGrid, Bookmark, BookmarkCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import Image from "next/image";
-import { fetchChannelDetails } from "@/lib/youtube";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 export function GlobalVideoPlayer() {
   const { 
-    activeVideo, activeIptv, isPlaying, isMinimized, isFullScreen, videoProgress, nextTrack, prevTrack, nextIptvChannel, prevIptvChannel,
-    setActiveVideo, setActiveIptv, setIsPlaying, setIsMinimized, setIsFullScreen, updateVideoProgress
+    activeVideo, activeIptv, isPlaying, isMinimized, isFullScreen, nextTrack, prevTrack,
+    setActiveVideo, setActiveIptv, setIsPlaying, setIsMinimized, setIsFullScreen, updateVideoProgress,
+    playlist, videoProgress, toggleSaveVideo, savedVideos
   } = useMediaStore();
   
   const [mounted, setMounted] = useState(false);
   const [isControlsExpanded, setIsControlsExpanded] = useState(false);
-  const [channelIcon, setChannelIcon] = useState<string | null>(null);
+  const [showGrid, setShowGrid] = useState(false);
   const playerRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const lastIdRef = useRef<string | null>(null);
   const progressInterval = useRef<any>(null);
+  const closeBtnRef = useRef<HTMLButtonElement>(null);
 
   const isActive = !!(activeVideo || activeIptv);
+  const isSaved = activeVideo ? savedVideos.some(v => v.id === activeVideo.id) : false;
+
+  useEffect(() => {
+    if (isActive && isControlsExpanded && closeBtnRef.current) {
+      setTimeout(() => closeBtnRef.current?.focus(), 200);
+    }
+  }, [isActive, isControlsExpanded]);
 
   const currentYouTubeId = useMemo(() => {
     const input = activeVideo ? activeVideo.id : (activeIptv?.url || "");
     if (!input || typeof input !== 'string') return null;
-    
     const regExp = /^.*(?:youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
     const match = input.match(regExp);
-    if (match && match[1].length === 11) return match[1];
-    
-    if (input.length === 11 && !input.includes(".") && !input.includes("/")) return input;
-    
-    return null;
+    return (match && match[1].length === 11) ? match[1] : (input.length === 11 ? input : null);
   }, [activeVideo, activeIptv?.url]);
-
-  useEffect(() => {
-    if (!isActive) {
-      if (playerRef.current && typeof playerRef.current.stopVideo === 'function') {
-        try { playerRef.current.stopVideo(); } catch (e) {}
-      }
-      lastIdRef.current = null;
-      playerRef.current = null; 
-      if (progressInterval.current) clearInterval(progressInterval.current);
-    }
-  }, [isActive]);
-
-  useEffect(() => {
-    if (activeVideo?.channelId) {
-      fetchChannelDetails(activeVideo.channelId).then(details => {
-        if (details) setChannelIcon(details.image);
-      });
-    } else {
-      setChannelIcon(null);
-    }
-  }, [activeVideo?.channelId]);
 
   useEffect(() => {
     setMounted(true);
@@ -65,7 +48,18 @@ export function GlobalVideoPlayer() {
       tag.src = "https://www.youtube.com/iframe_api";
       document.body.appendChild(tag);
     }
-  }, []);
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!isActive || isMinimized) return;
+      if (e.key === "ArrowDown" && isControlsExpanded) {
+        e.preventDefault();
+        setShowGrid(true);
+      }
+      if (e.key === "Escape") setShowGrid(false);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isActive, isMinimized, isControlsExpanded]);
 
   const onPlayerStateChange = useCallback((event: any) => {
     const YT = (window as any).YT;
@@ -76,10 +70,9 @@ export function GlobalVideoPlayer() {
         if (playerRef.current?.getCurrentTime && lastIdRef.current) {
           updateVideoProgress(lastIdRef.current, playerRef.current.getCurrentTime());
         }
-      }, 5000);
+      }, 15000); 
     } else if (event.data === YT.PlayerState.PAUSED) {
       setIsPlaying(false);
-      if (progressInterval.current) clearInterval(progressInterval.current);
     } else if (event.data === YT.PlayerState.ENDED) {
       nextTrack();
     }
@@ -88,94 +81,142 @@ export function GlobalVideoPlayer() {
   const initPlayer = useCallback((videoId: string) => {
     if (!containerRef.current || !mounted) return;
     const YT = (window as any).YT;
-    if (!YT || !YT.Player) return;
-
+    if (!YT?.Player) return;
+    
     if (playerRef.current && typeof playerRef.current.loadVideoById === 'function') {
       if (lastIdRef.current === videoId) return;
       lastIdRef.current = videoId;
-      playerRef.current.loadVideoById({ videoId, startSeconds: Math.floor(videoProgress[videoId] || 0) });
+      playerRef.current.loadVideoById({ 
+        videoId, 
+        startSeconds: Math.floor(videoProgress[videoId] || 0) 
+      });
       return;
     }
 
     lastIdRef.current = videoId;
     containerRef.current.innerHTML = '<div id="yt-stable-element"></div>';
+    
     playerRef.current = new YT.Player('yt-stable-element', {
-      height: '100%', width: '100%', videoId,
-      playerVars: { autoplay: 1, controls: 1, modestbranding: 1, rel: 0, playsinline: 1, enablejsapi: 1, origin: window.location.origin, start: Math.floor(videoProgress[videoId] || 0) },
-      events: { onReady: (e: any) => e.target.playVideo(), onStateChange: onPlayerStateChange }
+      height: '100%', 
+      width: '100%', 
+      videoId,
+      playerVars: { 
+        autoplay: 1, 
+        controls: 1, 
+        modestbranding: 1, 
+        rel: 0, 
+        playsinline: 1, 
+        origin: window.location.origin,
+        enablejsapi: 1,
+        widget_referrer: window.location.href,
+        host: 'https://www.youtube.com'
+      },
+      events: { 
+        onReady: (e: any) => e.target.playVideo(), 
+        onStateChange: onPlayerStateChange 
+      }
     });
-  }, [mounted, onPlayerStateChange, videoProgress]);
+  }, [mounted, onPlayerStateChange, videoProgress]); 
 
   useEffect(() => {
     if (currentYouTubeId && mounted) {
       const YT = (window as any).YT;
-      if (YT && YT.Player) initPlayer(currentYouTubeId);
+      if (YT?.Player) initPlayer(currentYouTubeId);
       else (window as any).onYouTubeIframeAPIReady = () => initPlayer(currentYouTubeId);
     }
   }, [currentYouTubeId, mounted, initPlayer]);
 
   const handleClose = () => {
-    if (playerRef.current && typeof playerRef.current.stopVideo === 'function') {
-      try { playerRef.current.stopVideo(); } catch (e) {}
+    if (playerRef.current?.destroy) {
+      try { playerRef.current.destroy(); } catch {}
     }
-    lastIdRef.current = null;
     playerRef.current = null;
+    lastIdRef.current = null;
     setActiveVideo(null);
     setActiveIptv(null);
+    setShowGrid(false);
   };
 
   if (!mounted) return null;
 
-  const displayImage = activeIptv ? activeIptv.stream_icon : (channelIcon || activeVideo?.thumbnail || "");
-
   return (
-    <div className={cn("fixed z-[9999] shadow-2xl overflow-hidden transition-all duration-700", !isActive ? "top-[-9999px] left-[-9999px] opacity-0" : isMinimized ? "bottom-12 left-1/2 -translate-x-1/2 w-[500px] h-28 rounded-[2.5rem] premium-glass" : isFullScreen ? "inset-0 w-full h-full bg-black" : "bottom-8 right-4 w-[50vw] h-[55vh] premium-glass rounded-[3.5rem] bg-black/95")}>
-      <div className={cn("absolute inset-0 transition-opacity duration-500", isMinimized ? "opacity-0 pointer-events-none" : "opacity-100")}>
-        {currentYouTubeId ? (
-          <div ref={containerRef} className="w-full h-full bg-black" />
-        ) : (activeIptv?.url ? (
+    <div className={cn(
+      "fixed z-[9999] shadow-2xl transition-all duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] overflow-hidden",
+      !isActive ? "top-[-9999px] left-[-9999px] opacity-0" : 
+      isMinimized ? "bottom-12 left-1/2 -translate-x-1/2 w-[500px] h-28 rounded-[2.5rem] premium-glass bg-black/40 border border-white/10" : 
+      isFullScreen ? "inset-0 w-full h-full bg-black ring-0 border-0" : 
+      "bottom-8 right-8 w-[50vw] h-[55vh] premium-glass rounded-[3.5rem] bg-black/95 border border-white/10"
+    )}>
+      
+      <div className={cn("absolute inset-0 transition-opacity duration-700", isMinimized ? "opacity-0 pointer-events-none" : "opacity-100")}>
+        {currentYouTubeId ? <div ref={containerRef} className="w-full h-full bg-black" /> : 
+        (activeIptv?.url && (
           <iframe 
-            key={activeIptv.stream_id}
-            src={`${activeIptv.url}${activeIptv.url.includes('?') ? '&' : '?'}autoplay=1&mute=0`} 
+            key={activeIptv.stream_id} 
+            src={`${activeIptv.url}${activeIptv.url.includes('?') ? '&' : '?'}autoplay=1`} 
             className="w-full h-full border-none" 
-            allow="autoplay; encrypted-media; fullscreen; picture-in-picture" 
-            referrerPolicy="no-referrer"
-            style={{ background: '#000' }}
+            allow="autoplay; encrypted-media; fullscreen" 
+            sandbox="allow-scripts allow-forms allow-same-origin allow-presentation allow-downloads"
+            style={{ background: '#000' }} 
           />
-        ) : null)}
+        ))}
       </div>
 
-      {isMinimized && isActive && (
-        <div className="h-full flex items-center justify-between px-8 relative z-10 cursor-pointer" onClick={() => setIsFullScreen(true)}>
-          <div className="flex items-center gap-4 flex-1 min-w-0 text-right">
-            <div className="relative w-16 h-16 rounded-full overflow-hidden border border-white/10 bg-zinc-900 shadow-xl"><Image src={displayImage} alt="" fill className="object-cover" /></div>
-            <div className="flex flex-col"><h4 className="text-base font-black text-white truncate max-w-[200px]">{activeVideo?.title || activeIptv?.name}</h4><span className="text-[9px] text-accent font-black uppercase tracking-widest">Background Mode</span></div>
-          </div>
-          <div className="flex gap-3">
-            <button onClick={(e) => { e.stopPropagation(); setIsPlaying(!isPlaying); if (playerRef.current) isPlaying ? playerRef.current.pauseVideo() : playerRef.current.playVideo(); }} className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center border border-white/10 focusable">{isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-1" />}</button>
-            <button onClick={(e) => { e.stopPropagation(); handleClose(); }} className="w-10 h-10 rounded-full bg-red-600 text-white flex items-center justify-center focusable"><X className="w-5 h-5" /></button>
-          </div>
+      <div className={cn(
+        "absolute bottom-0 left-0 right-0 z-[100] bg-black/90 backdrop-blur-3xl border-t border-white/10 transition-all duration-700 ease-in-out px-12 py-8 overflow-hidden rounded-t-[3rem]",
+        showGrid ? "translate-y-0 h-[45vh]" : "translate-y-full h-0"
+      )}>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-black text-white flex items-center gap-4"><LayoutGrid className="w-6 h-6 text-primary" /> قائمة التشغيل</h2>
+          <Button onClick={() => setShowGrid(false)} className="w-12 h-12 rounded-full bg-white/10 text-white focusable cursor-pointer"><X className="w-6 h-6" /></Button>
         </div>
-      )}
-
-      {!isMinimized && isActive && (
-        <div className={cn("fixed z-[5200] flex items-center transition-all duration-500", isFullScreen ? "left-10 bottom-10 scale-150 origin-bottom-left" : "right-12 bottom-12 scale-90")}>
-          <div className={cn("flex items-center premium-glass p-2 rounded-full border border-white/20 shadow-2xl backdrop-blur-3xl transition-all duration-500", isControlsExpanded ? "gap-2 px-3" : "w-16 h-16 justify-center")}>
-            {!isControlsExpanded ? (
-              <button onClick={() => setIsControlsExpanded(true)} className="w-12 h-12 rounded-full bg-primary shadow-glow text-white flex items-center justify-center focusable"><Settings className="w-7 h-7" /></button>
-            ) : (
-              <>
-                <button onClick={() => setIsControlsExpanded(false)} className="w-12 h-12 rounded-full bg-white/10 text-white/40 flex items-center justify-center focusable"><ChevronRight className="w-6 h-6" /></button>
-                <div className="flex gap-2">
-                  <button onClick={prevTrack} className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center focusable"><ChevronRight className="w-6 h-6" /></button>
-                  <button onClick={nextTrack} className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center focusable"><ChevronLeft className="w-6 h-6" /></button>
+        
+        <ScrollArea className="h-full pr-4 pb-20">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
+            {playlist.map((v, i) => (
+              <div key={i} onClick={() => { setActiveVideo(v, playlist); setShowGrid(false); }} className={cn("group rounded-[1.5rem] bg-white/5 p-2 transition-all focusable cursor-pointer border-2", activeVideo?.id === v.id ? "border-primary shadow-glow" : "border-transparent")}>
+                <div className="aspect-video relative rounded-[1rem] overflow-hidden mb-2">
+                  <img src={v.thumbnail} alt="" className="w-full h-full object-cover" />
                 </div>
-                <div className="w-px h-8 bg-white/20 mx-1" />
-                <button onClick={() => setIsMinimized(true)} className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center focusable"><ChevronDown className="w-5 h-5" /></button>
-                <button onClick={() => setIsFullScreen(!isFullScreen)} className={cn("w-12 h-12 rounded-full flex items-center justify-center focusable", isFullScreen && "bg-primary shadow-glow")}><Monitor className="w-5 h-5" /></button>
-                <button onClick={handleClose} className="w-12 h-12 rounded-full bg-red-600 text-white flex items-center justify-center focusable"><X className="w-5 h-5" /></button>
-              </>
-            )}
+                <h3 className="text-[9px] font-bold text-white line-clamp-2 px-2 uppercase tracking-tight">{v.title}</h3>
+              </div>
+            ))}
+          </div>
+        </ScrollArea>
+      </div>
+
+      {isActive && (
+        <div className={cn("fixed z-[5200] flex items-center transition-all duration-700", isFullScreen ? "left-10 bottom-10 scale-125 origin-bottom-left" : "right-12 bottom-12 scale-90")}>
+          <div className="flex items-center gap-4">
+            <button 
+              ref={closeBtnRef} 
+              onClick={handleClose} 
+              className="w-10 h-10 rounded-full bg-red-600/10 border border-red-600/30 text-red-500/80 flex items-center justify-center focusable cursor-pointer shadow-lg active:scale-90 transition-all backdrop-blur-md hover:bg-red-600/20 hover:text-red-500"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            
+            <div className={cn("flex items-center bg-white/5 backdrop-blur-3xl p-2.5 rounded-full border border-white/10 shadow-2xl transition-all", isControlsExpanded ? "gap-3 px-4" : "px-2.5")}>
+              {!isControlsExpanded ? (
+                <button onClick={() => setIsControlsExpanded(true)} className="w-10 h-10 rounded-full bg-white/5 border border-white/5 text-white/60 flex items-center justify-center focusable cursor-pointer"><Settings className="w-6 h-6" /></button>
+              ) : (
+                <>
+                  <button onClick={() => setIsControlsExpanded(false)} className="w-9 h-9 rounded-full bg-white/5 text-white/20 flex items-center justify-center focusable cursor-pointer"><ChevronRight className="w-5 h-5" /></button>
+                  <button onClick={prevTrack} className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center focusable cursor-pointer"><ChevronRight className="w-5 h-5" /></button>
+                  <button onClick={nextTrack} className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center focusable cursor-pointer"><ChevronLeft className="w-5 h-5" /></button>
+                  <div className="w-px h-7 bg-white/10 mx-1" />
+                  <button 
+                    onClick={() => activeVideo && toggleSaveVideo(activeVideo)} 
+                    className={cn("w-9 h-9 rounded-full flex items-center justify-center focusable cursor-pointer transition-colors", isSaved ? "bg-accent/40 text-accent shadow-glow" : "bg-white/5 text-white/40")}
+                  >
+                    {isSaved ? <BookmarkCheck className="w-5 h-5" /> : <Bookmark className="w-5 h-5" />}
+                  </button>
+                  <button onClick={() => setIsMinimized(true)} className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center focusable cursor-pointer"><ChevronDown className="w-5 h-5" /></button>
+                  <button onClick={() => setIsFullScreen(!isFullScreen)} className={cn("w-9 h-9 rounded-full flex items-center justify-center focusable cursor-pointer", isFullScreen && "bg-primary/40 shadow-glow")}><Monitor className="w-5 h-5" /></button>
+                  <button onClick={() => setShowGrid(!showGrid)} className={cn("w-9 h-9 rounded-full flex items-center justify-center focusable cursor-pointer", showGrid && "bg-emerald-500/40 shadow-glow")}><LayoutGrid className="w-5 h-5" /></button>
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}
