@@ -32,7 +32,8 @@ import {
   Loader2,
   Monitor,
   Type,
-  FileCode
+  FileCode,
+  Sparkles
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,7 +57,7 @@ import { JSONBIN_MATCHES_SCHEDULE_BIN_ID, JSONBIN_MASTER_KEY } from "@/lib/const
 
 const BACKGROUNDS = [
   "https://images.unsplash.com/photo-1534067783941-51c9c23ecefd",
-  "https://images.unsplash.com/photo-1446776811953-b23d57bd21aa",
+  "https://images.unsplash.com/photo-1446776811953-bd23d57bd21aa",
   "https://images.unsplash.com/photo-1594911772125-07fc7a2d8d9f",
   "https://images.unsplash.com/photo-1478760329108-5c3ed9d495a0"
 ];
@@ -111,9 +112,7 @@ export function SettingsView() {
   const { toast } = useToast();
   
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [isRefreshingManuscripts, setIsRefreshingManuscripts] = useState(false);
   const [localBgUrl, setLocalBgUrl] = useState(mapSettings.manuscriptBgUrl || "");
-  const [localColorInput, setLocalColorInput] = useState("");
   const [exhaustedKeys, setExhaustedKeys] = useState(0);
   const [isSeeding, setIsSeeding] = useState(false);
   
@@ -140,7 +139,8 @@ export function SettingsView() {
   useEffect(() => {
     setLocalBgUrl(mapSettings.manuscriptBgUrl);
     setExhaustedKeys(getExhaustedKeysCount());
-  }, [mapSettings.manuscriptBgUrl]);
+    fetchManuscripts();
+  }, [mapSettings.manuscriptBgUrl, fetchManuscripts]);
 
   useEffect(() => {
     if (searchLeagueId !== "all") {
@@ -214,11 +214,16 @@ export function SettingsView() {
     }
   };
 
-  const handleRefreshManuscripts = async () => {
-    setIsRefreshingManuscripts(true);
-    await fetchManuscripts();
-    setIsRefreshingManuscripts(false);
-    toast({ title: "تم التحديث", description: "تم جلب أحدث المخطوطات من السحابة بنجاح." });
+  const handleAddManuscript = () => {
+    if (!manuscriptInput.trim()) return;
+    const newM: Manuscript = {
+      id: Math.random().toString(36).substr(2, 9),
+      type: manuscriptType,
+      content: manuscriptInput
+    };
+    addManuscript(newM);
+    setManuscriptInput("");
+    toast({ title: "تم الحفظ", description: "تمت إضافة المخطوطة ومزامنتها سحابياً." });
   };
 
   const handleResetKeys = () => {
@@ -355,6 +360,76 @@ export function SettingsView() {
               </div>
             </Card>
           </div>
+
+          <Card className="premium-glass p-10 space-y-8">
+            <div className="flex flex-col gap-2">
+              <CardTitle className="text-2xl font-black text-white flex items-center gap-3">
+                <Sparkles className="w-6 h-6 text-amber-400" />
+                إدارة المخطوطات والورد (Manuscripts)
+              </CardTitle>
+              <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest">Cloud Synchronized Manuscripts Hub</p>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+              <div className="lg:col-span-4 space-y-6 bg-white/5 p-8 rounded-[2.5rem] border border-white/5">
+                <h3 className="text-lg font-black text-white mb-4">إضافة مخطوطة سحابية</h3>
+                <div className="space-y-4">
+                  <div className="flex gap-2">
+                    <Button 
+                      onClick={() => setManuscriptType('text')} 
+                      className={cn("flex-1 h-12 rounded-xl focusable", manuscriptType === 'text' ? "bg-primary" : "bg-white/5 opacity-40")}
+                    >
+                      <Type className="w-4 h-4 ml-2" /> نص
+                    </Button>
+                    <Button 
+                      onClick={() => setManuscriptType('image')} 
+                      className={cn("flex-1 h-12 rounded-xl focusable", manuscriptType === 'image' ? "bg-primary" : "bg-white/5 opacity-40")}
+                    >
+                      <ImageIcon className="w-4 h-4 ml-2" /> صورة
+                    </Button>
+                  </div>
+                  
+                  <textarea 
+                    placeholder={manuscriptType === 'text' ? "ادخل نص الورد أو الذكر..." : "ادخل رابط الصورة المباشر (Cloud URL)..."}
+                    value={manuscriptInput}
+                    onChange={(e) => setManuscriptInput(e.target.value)}
+                    className="w-full min-h-[120px] bg-black/40 border-white/10 rounded-xl p-4 text-white text-right text-sm focusable"
+                  />
+
+                  <Button onClick={handleAddManuscript} className="w-full h-14 bg-amber-600 text-white font-black rounded-xl shadow-glow focusable">
+                    <Upload className="w-5 h-5 ml-2" /> حفظ في المستودع السحابي
+                  </Button>
+                </div>
+              </div>
+
+              <div className="lg:col-span-8">
+                <ScrollArea className="h-[450px] pr-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-10">
+                    {customManuscripts.length === 0 ? (
+                      <div className="col-span-full py-20 flex flex-col items-center justify-center opacity-20 border-2 border-dashed border-white/10 rounded-[2.5rem]">
+                        <Sparkles className="w-16 h-16 mb-4" />
+                        <p className="font-black uppercase tracking-widest text-xs">لا توجد مخطوطات محفوظة حالياً</p>
+                      </div>
+                    ) : customManuscripts.map((m) => (
+                      <div key={m.id} className="bg-white/5 p-6 rounded-2xl border border-white/5 relative group min-h-[180px] flex flex-col justify-between">
+                        <div className="flex-1 flex items-center justify-center overflow-hidden">
+                          {m.type === 'text' ? (
+                            <p className="font-calligraphy text-2xl text-white text-center leading-relaxed line-clamp-4">{m.content}</p>
+                          ) : (
+                            <img src={m.content} className="max-h-32 w-auto object-contain rounded-lg" alt="" />
+                          )}
+                        </div>
+                        <div className="mt-4 pt-4 border-t border-white/5 flex items-center justify-between">
+                          <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">{m.type === 'text' ? 'Text Content' : 'Cloud Image'}</span>
+                          <Button variant="ghost" size="icon" onClick={() => removeManuscript(m.id)} className="w-9 h-9 rounded-full bg-red-600/10 text-red-500 focusable opacity-0 group-hover:opacity-100 transition-all"><Trash2 className="w-4 h-4" /></Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </div>
+            </div>
+          </Card>
 
           <Card className="premium-glass p-10 space-y-8">
             <div className="flex flex-col gap-2">
@@ -687,7 +762,7 @@ export function SettingsView() {
                         const fav = isFavTeam(team.team.id);
                         return (
                           <div 
-                            key={team.team.id} 
+                            key={`club-${team.team.id}`} 
                             onClick={() => handleToggleFavorite(team)}
                             className={cn(
                               "p-4 rounded-[2rem] border transition-all cursor-pointer flex flex-col items-center gap-3 focusable group/card",

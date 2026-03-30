@@ -133,19 +133,17 @@ export function IptvView() {
 
   const sortedAndFilteredChannels = useMemo(() => {
     const list = Array.isArray(channels) ? channels : [];
-    if (selectedCat === 'direct') return list.filter(c => c.name?.toLowerCase().includes(search.toLowerCase()));
-    
-    return [...list]
-      .sort((a, b) => {
-        const aStarred = isStarred(a.stream_id);
-        const bStarred = isStarred(b.stream_id);
-        if (aStarred && !bStarred) return -1;
-        if (!aStarred && bStarred) return 1;
-        return 0;
-      })
-      .filter(c => 
-        c.name && typeof c.name === 'string' && c.name.toLowerCase().includes(search.toLowerCase())
-      );
+    const base = selectedCat === 'direct' ? list : [...list].sort((a, b) => {
+      const aStarred = isStarred(a.stream_id);
+      const bStarred = isStarred(b.stream_id);
+      if (aStarred && !bStarred) return -1;
+      if (!aStarred && bStarred) return 1;
+      return 0;
+    });
+
+    return base.filter(c => 
+      c.name && typeof c.name === 'string' && c.name.toLowerCase().includes(search.toLowerCase())
+    );
   }, [channels, search, favoriteIptvChannels, selectedCat]);
 
   const handleChannelSelect = (ch: IptvChannel, idx: number) => {
@@ -242,7 +240,7 @@ export function IptvView() {
               <span className="text-white/40 font-black uppercase tracking-widest">جاري جلب القوائم...</span>
             </div>
           ) : categories.map((cat, idx) => (
-            <Card key={cat.category_id} onClick={() => fetchChannels(cat.category_id)} data-nav-id={`iptv-cat-${idx}`} className="group iptv-cat-item bg-white/5 border-white/5 hover:border-emerald-500 transition-all cursor-pointer focusable overflow-hidden rounded-[2.5rem] shadow-xl" tabIndex={0}>
+            <Card key={`cat-${cat.category_id}-${idx}`} onClick={() => fetchChannels(cat.category_id)} data-nav-id={`iptv-cat-${idx}`} className="group iptv-cat-item bg-white/5 border-white/5 hover:border-emerald-500 transition-all cursor-pointer focusable overflow-hidden rounded-[2.5rem] shadow-xl" tabIndex={0}>
               <CardContent className="p-8 flex items-center justify-between">
                 <div className="flex items-center gap-5">
                   <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center border transition-all duration-500", cat.category_id === 'direct' ? "bg-emerald-500/20 border-emerald-500/20 group-hover:scale-110 shadow-lg" : "bg-white/10 border-white/10")}>
@@ -263,7 +261,7 @@ export function IptvView() {
               <div className="col-span-full py-40 flex justify-center"><Loader2 className="w-16 h-16 animate-spin text-emerald-500" /></div>
             ) : sortedAndFilteredChannels.map((ch, idx) => (
               <div 
-                key={ch.stream_id} 
+                key={`ch-${ch.stream_id}-${idx}`} 
                 className={cn(
                   "flex flex-col items-center gap-4 group relative",
                   isReordering && selectedCat === 'direct' && "cursor-move",

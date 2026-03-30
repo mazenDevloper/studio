@@ -23,6 +23,32 @@ export function RemotePointer() {
     }
   }, []);
 
+  // Sticky Focus Logic: Ensures ALWAYS a focused element
+  useEffect(() => {
+    const keepFocus = () => {
+      const current = document.activeElement;
+      if (!current || current === document.body || !current.classList.contains('focusable')) {
+        let target: HTMLElement | null = null;
+        if (pathname === '/') {
+          target = document.querySelector('[data-nav-id="car-visualizer-container"]') as HTMLElement;
+        } else if (pathname === '/media') {
+          target = document.querySelector('[data-nav-id="subs-all"]') as HTMLElement;
+        } else if (pathname === '/iptv') {
+          target = document.querySelector('[data-nav-id="iptv-cat-0"]') as HTMLElement;
+        } else {
+          target = document.querySelector('.focusable') as HTMLElement;
+        }
+        
+        if (target) {
+          target.focus();
+          target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }
+    };
+    const timer = setInterval(keepFocus, 1000);
+    return () => clearInterval(timer);
+  }, [pathname]);
+
   const navigate = useCallback((direction: string) => {
     if (wallPlateType) return;
 
@@ -33,19 +59,8 @@ export function RemotePointer() {
     const isCurrentFocusable = current && current.classList.contains("focusable");
     
     if (!isCurrentFocusable || !direction) {
-      let target: HTMLElement | null = null;
-      if (pathname === '/') {
-        target = document.querySelector('[data-nav-id="moon-widget-container"]') as HTMLElement || focusables[0];
-      } else if (pathname === '/media') {
-        target = document.querySelector('[data-nav-id="fav-ch-0"]') as HTMLElement || focusables[0];
-      } else {
-        target = focusables.find(el => !el.dataset.navId?.startsWith('dock-')) || focusables[0];
-      }
-      
-      if (target) {
-        target.focus();
-        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
+      const defaultTarget = document.querySelector('[data-nav-id="subs-all"]') as HTMLElement || focusables[0];
+      defaultTarget.focus();
       return;
     }
 
@@ -59,13 +74,14 @@ export function RemotePointer() {
       const dx = p2.x - p1.x;
       const dy = p2.y - p1.y;
 
-      if (dir === "ArrowRight" && dx <= 5) return Infinity;
-      if (dir === "ArrowLeft" && dx >= -5) return Infinity;
+      if (dir === "ArrowRight" && dx <= 5) return Infinity; 
+      if (dir === "ArrowLeft" && dx >= -5) return Infinity;  
       if (dir === "ArrowDown" && dy <= 5) return Infinity;
       if (dir === "ArrowUp" && dy >= -5) return Infinity;
 
-      const primaryAxisWeight = 0.3;
-      const secondaryAxisWeight = 2.0;
+      // WEIGHTED ALIGNMENT for 3-Step Hub: penalize drift heavily
+      const primaryAxisWeight = 0.01; 
+      const secondaryAxisWeight = 200.0; 
       
       if (dir === "ArrowRight" || dir === "ArrowLeft") {
         return Math.sqrt(Math.pow(dx * primaryAxisWeight, 2) + Math.pow(dy * secondaryAxisWeight, 2));
@@ -76,7 +92,6 @@ export function RemotePointer() {
 
     for (const el of focusables) {
       if (el === current) continue;
-      // Aggressive safety: skip elements without focusable class or with -1 tabIndex
       if (!el.classList.contains('focusable') || el.tabIndex === -1) continue;
       
       const rect = el.getBoundingClientRect();
@@ -89,7 +104,12 @@ export function RemotePointer() {
 
     if (next) {
       next.focus();
-      next.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+      const scrollParent = next.closest('.overflow-x-auto, .overflow-y-auto, [style*="overflow-x"]');
+      if (scrollParent) {
+        next.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+      } else {
+        next.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
     }
   }, [pathname, wallPlateType]);
 

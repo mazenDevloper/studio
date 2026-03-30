@@ -116,10 +116,19 @@ async function fetchWithRotation(endpoint: string, params: Record<string, string
 }
 
 /**
- * AGGRESSIVE QUOTA SAVER: Costs ~2-3 units (100% stable).
- * Uses playlistItems instead of search.
+ * UNIVERSAL LIVE DETECTOR: Specifically searches for live events and streams.
  */
 export async function fetchChannelVideos(channelId: string, limit = 15): Promise<YouTubeVideo[]> {
+  // 1. Specific Search for Active Live streams
+  const liveSearchData = await fetchWithRotation('search', {
+    part: 'snippet',
+    channelId: channelId,
+    eventType: 'live',
+    type: 'video',
+    maxResults: '2'
+  });
+
+  // 2. Fetch Channel Uploads
   const chanData = await fetchWithRotation('channels', { part: 'contentDetails,snippet', id: channelId });
   if (!chanData?.items?.[0]) return [];
   
@@ -134,32 +143,43 @@ export async function fetchChannelVideos(channelId: string, limit = 15): Promise
 
   if (!playlistData?.items) return [];
 
-  const videoIds = playlistData.items.map((i: any) => i.snippet.resourceId.videoId).join(',');
-  const statsData = await fetchWithRotation('videos', { part: 'snippet,statistics', id: videoIds });
+  // 3. Combine and Deduplicate
+  const liveIds = liveSearchData?.items?.map((i: any) => i.id.videoId) || [];
+  const uploadIds = playlistData.items.map((i: any) => i.snippet.resourceId.videoId);
+  const allUniqueIds = Array.from(new Set([...liveIds, ...uploadIds]));
+
+  const statsData = await fetchWithRotation('videos', { part: 'snippet,statistics', id: allUniqueIds.join(',') });
   const statsMap: Record<string, any> = {};
+  
   if (statsData?.items) {
     statsData.items.forEach((v: any) => {
       statsMap[v.id] = {
-        isLive: v.snippet.liveBroadcastContent === 'live',
-        viewCount: parseInt(v.statistics.viewCount) || 0
+        isLive: v.snippet.liveBroadcastContent === 'live' || v.snippet.liveBroadcastContent === 'upcoming',
+        viewCount: parseInt(v.statistics.viewCount) || 0,
+        title: v.snippet.title,
+        description: v.snippet.description,
+        thumbnail: v.snippet.thumbnails.high?.url || v.snippet.thumbnails.default?.url,
+        publishedAt: v.snippet.publishedAt
       };
     });
   }
 
-  return playlistData.items.map((item: any) => {
-    const vidId = item.snippet.resourceId.videoId;
+  const results: YouTubeVideo[] = allUniqueIds.map(vidId => {
+    const data = statsMap[vidId];
     return {
       id: vidId,
-      title: item.snippet.title,
-      description: item.snippet.description,
-      thumbnail: item.snippet.thumbnails.high?.url || item.snippet.thumbnails.default?.url,
-      publishedAt: item.snippet.publishedAt,
+      title: data?.title || "Video",
+      description: data?.description || "",
+      thumbnail: data?.thumbnail || "",
+      publishedAt: data?.publishedAt || new Date().toISOString(),
       channelTitle: channelTitle,
       channelId: channelId,
-      isLive: statsMap[vidId]?.isLive || false,
-      viewCount: statsMap[vidId]?.viewCount || 0
+      isLive: data?.isLive || false,
+      viewCount: data?.viewCount || 0
     };
   });
+
+  return results;
 }
 
 export async function searchYouTubeChannels(query: string): Promise<YouTubeChannel[]> {

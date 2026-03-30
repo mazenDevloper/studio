@@ -109,6 +109,7 @@ interface MediaState {
   showIslands: boolean;
   wallPlateType: 'moon' | 'manuscript' | null;
   wallPlateData: any | null;
+  playerMode: 'api' | 'web';
   
   videoResults: YouTubeVideo[];
   selectedChannel: YouTubeChannel | null;
@@ -146,7 +147,7 @@ interface MediaState {
   updateMapSettings: (settings: Partial<MapSettings>) => void;
   setAiSuggestions: (suggestions: any[]) => void;
   setActiveVideo: (video: YouTubeVideo | null, context?: YouTubeVideo[]) => void;
-  setActiveIptv: (channel: IptvChannel | null) => void;
+  setActiveIptv: (channel: IptvChannel | null, context?: IptvChannel[]) => void;
   setActiveQuranUrl: (url: string | null) => void;
   setPlaylist: (videos: YouTubeVideo[]) => void;
   nextTrack: () => void;
@@ -159,6 +160,7 @@ interface MediaState {
   toggleDockSide: () => void;
   setDockSide: (side: 'left' | 'right') => void;
   toggleShowIslands: () => void;
+  setPlayerMode: (mode: 'api' | 'web') => void;
   
   setVideoResults: (results: YouTubeVideo[]) => void;
   setSelectedChannel: (channel: YouTubeChannel | null) => void;
@@ -243,6 +245,7 @@ export const useMediaStore = create<MediaState>()(
       showIslands: true,
       wallPlateType: null,
       wallPlateData: null,
+      playerMode: 'api',
       
       videoResults: [],
       selectedChannel: null,
@@ -365,11 +368,17 @@ export const useMediaStore = create<MediaState>()(
           if (res.ok) {
             const data = await res.json();
             const record = data.record;
-            // Robust check for manuscripts array
             let list = [];
-            if (Array.isArray(record)) list = record;
-            else if (record && Array.isArray(record.manuscripts)) list = record.manuscripts;
-            else if (record && record.manuscripts) list = record.manuscripts;
+            
+            // Robust parsing for manuscripts
+            if (Array.isArray(record)) {
+              list = record;
+            } else if (record && Array.isArray(record.manuscripts)) {
+              list = record.manuscripts;
+            } else if (record && record.record) {
+              if (Array.isArray(record.record)) list = record.record;
+              else if (Array.isArray(record.record.manuscripts)) list = record.record.manuscripts;
+            }
             
             set({ customManuscripts: Array.isArray(list) ? list : [] });
           }
@@ -539,6 +548,9 @@ export const useMediaStore = create<MediaState>()(
         if (video) {
           const playlist = context && context.length > 0 ? context : [video];
           const idx = playlist.findIndex(v => v.id === video.id);
+          // Special logic for beIN - Force Web mode if blocked channel detected
+          const isBlockedChannel = video.channelTitle?.toLowerCase().includes('bein') || false;
+          
           set({ 
             playlist: playlist, 
             playlistIndex: idx > -1 ? idx : 0,
@@ -546,14 +558,15 @@ export const useMediaStore = create<MediaState>()(
             activeIptv: null, 
             isPlaying: true, 
             isMinimized: false, 
-            isFullScreen: true 
+            isFullScreen: true,
+            playerMode: isBlockedChannel ? 'web' : 'api' 
           });
         } else {
           set({ activeVideo: null, isPlaying: false, isMinimized: false, isFullScreen: false });
         }
       },
 
-      setActiveIptv: (channel) => {
+      setActiveIptv: (channel, context) => {
         const state = get();
         if (!channel) {
           set({ activeIptv: null, isPlaying: false, isMinimized: false, isFullScreen: false });
@@ -563,20 +576,18 @@ export const useMediaStore = create<MediaState>()(
         finalChannel.type = 'web';
         finalChannel.url = finalChannel.url || `http://playstop.watch:2095/live/W87d737/Pd37qj34/${finalChannel.stream_id}.m3u8`;
         
-        if (state.favoriteIptvChannels.some(c => c.stream_id === finalChannel.stream_id)) {
-          const idx = state.favoriteIptvChannels.findIndex(c => c.stream_id === finalChannel.stream_id);
-          set({ 
-            iptvPlaylist: state.favoriteIptvChannels, 
-            iptvPlaylistIndex: idx,
-            activeIptv: finalChannel, 
-            activeVideo: null, 
-            isPlaying: true, 
-            isMinimized: false, 
-            isFullScreen: true 
-          });
-        } else {
-          set({ activeIptv: finalChannel, activeVideo: null, isPlaying: true, isMinimized: false, isFullScreen: true });
-        }
+        const iptvPlaylist = context && context.length > 0 ? context : state.favoriteIptvChannels;
+        const idx = iptvPlaylist.findIndex(c => c.stream_id === finalChannel.stream_id);
+
+        set({ 
+          iptvPlaylist: iptvPlaylist, 
+          iptvPlaylistIndex: idx > -1 ? idx : 0,
+          activeIptv: finalChannel, 
+          activeVideo: null, 
+          isPlaying: true, 
+          isMinimized: false, 
+          isFullScreen: true 
+        });
       },
 
       setActiveQuranUrl: (url) => set({ activeQuranUrl: url }),
@@ -585,12 +596,14 @@ export const useMediaStore = create<MediaState>()(
       },
       nextTrack: () => {
         const state = get();
+        if (state.activeIptv) { get().nextIptvChannel(); return; }
         if (state.playlist.length === 0) return;
         const nextIdx = (state.playlistIndex + 1) % state.playlist.length;
         set({ playlistIndex: nextIdx, activeVideo: state.playlist[nextIdx] });
       },
       prevTrack: () => {
         const state = get();
+        if (state.activeIptv) { get().prevIptvChannel(); return; }
         if (state.playlist.length === 0) return;
         const prevIdx = (state.playlistIndex - 1 + state.playlist.length) % state.playlist.length;
         set({ playlistIndex: prevIdx, activeVideo: state.playlist[prevIdx] });
@@ -613,6 +626,7 @@ export const useMediaStore = create<MediaState>()(
       setIsMinimized: (minimized) => set({ isMinimized: minimized, isFullScreen: false }),
       setIsFullScreen: (fullScreen) => set({ isFullScreen: fullScreen, isMinimized: false }),
       setWallPlate: (type, data) => set({ wallPlateType: type, wallPlateData: data }),
+      setPlayerMode: (mode) => set({ playerMode: mode }),
       toggleDockSide: () => set((state) => {
         const nextSide = state.dockSide === 'left' ? 'right' : 'left';
         if (typeof document !== 'undefined') {
@@ -638,11 +652,12 @@ export const useMediaStore = create<MediaState>()(
       }),
     }),
     {
-      name: "drivecast-master-v11",
+      name: "drivecast-master-v12",
       partialize: (state) => ({ 
         videoProgress: state.videoProgress,
         dockSide: state.dockSide,
-        showIslands: state.showIslands
+        showIslands: state.showIslands,
+        playerMode: state.playerMode
       }),
     }
   )
@@ -714,9 +729,12 @@ if (typeof window !== "undefined") {
       const manuscriptsData = await fetchBin(JSONBIN_MANUSCRIPTS_BIN_ID);
       if (manuscriptsData) {
         let list = [];
-        if (Array.isArray(manuscriptsData)) list = manuscriptsData;
-        else if (manuscriptsData.manuscripts && Array.isArray(manuscriptsData.manuscripts)) list = manuscriptsData.manuscripts;
-        else if (manuscriptsData.record && Array.isArray(manuscriptsData.record)) list = manuscriptsData.record;
+        const record = manuscriptsData.record || manuscriptsData;
+        if (Array.isArray(record)) list = record;
+        else if (record.manuscripts && Array.isArray(record.manuscripts)) list = record.manuscripts;
+        else if (record.record && Array.isArray(record.record)) list = record.record;
+        else if (record.record && record.record.manuscripts && Array.isArray(record.record.manuscripts)) list = record.record.manuscripts;
+        
         useMediaStore.setState({ customManuscripts: Array.isArray(list) ? list : [] });
       }
     } catch (e) {

@@ -1,30 +1,36 @@
 
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { 
   Search, Plus, Loader2, X, Play, RadioIcon, 
-  Video, Pin, Flame, Activity, List, Star
+  Video, Pin, Flame, Activity, List, Star, GripVertical, Save
 } from "lucide-react";
 import { useMediaStore, YouTubeChannel, YouTubeVideo } from "@/lib/store";
 import { searchYouTubeChannels, fetchChannelVideos } from "@/lib/youtube";
 import Image from "next/image";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 export function MediaView() {
   const { 
-    favoriteChannels, setActiveVideo, isFullScreen, dockSide,
+    favoriteChannels, setFavoriteChannels, setActiveVideo, isFullScreen, dockSide,
     selectedChannel, setSelectedChannel, channelVideos, setChannelVideos,
-    addChannel, favoriteIptvChannels, setActiveIptv, toggleStarChannel
+    addChannel, favoriteIptvChannels, setActiveIptv, toggleStarChannel,
+    saveChannelsReorder
   } = useMediaStore();
 
+  const { toast } = useToast();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
   const [isSidebarPinned, setIsSidebarPinned] = useState(false);
+  const [isReordering, setIsReordering] = useState(false);
+  const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
+  
   const [channelSearchQuery, setChannelSearchQuery] = useState("");
   const [channelResults, setChannelResults] = useState<YouTubeChannel[]>([]);
   const [isSearchingChannels, setIsSearchingChannels] = useState(false);
@@ -36,7 +42,27 @@ export function MediaView() {
   const [isDataLoading, setIsDataLoading] = useState(false);
   const [windowWidth, setWindowWidth] = useState(0);
 
-  const truncateName = (name: string) => name && name.length > 15 ? name.substring(0, 15) + "..." : name;
+  const scrollRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  const truncateName = (name: string) => {
+    if (!name) return "";
+    return name.length > 15 ? name.substring(0, 15) + "..." : name;
+  };
+
+  const setInitialScroll = useCallback((key: string) => {
+    const el = scrollRefs.current[key];
+    if (el) {
+      el.scrollLeft = 0; // RTL: Right is 0
+      setTimeout(() => {
+        // Focus latest element at the right
+        const lastItem = el.querySelector('[data-nav-id*="video-"]:last-child') as HTMLElement;
+        if (lastItem) {
+          lastItem.focus({ preventScroll: true });
+          el.scrollLeft = 0; 
+        }
+      }, 100);
+    }
+  }, []);
 
   useEffect(() => {
     const handleResize = () => setWindowWidth(window.innerWidth);
@@ -45,11 +71,8 @@ export function MediaView() {
     
     const timer = setTimeout(() => {
       const allItem = document.querySelector('[data-nav-id="subs-all"]') as HTMLElement;
-      if (allItem) {
-        allItem.focus();
-        allItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    }, 1000);
+      if (allItem) allItem.focus();
+    }, 800);
     
     return () => {
       window.removeEventListener('resize', handleResize);
@@ -61,7 +84,7 @@ export function MediaView() {
     if (favoriteChannels.length === 0) return;
     setIsDataLoading(true);
     try {
-      const latestPromises = favoriteChannels.map(ch => fetchChannelVideos(ch.channelid, 10));
+      const latestPromises = favoriteChannels.map(ch => fetchChannelVideos(ch.channelid, 5));
       const results = await Promise.all(latestPromises);
       
       const allVideos: YouTubeVideo[] = [];
@@ -70,7 +93,7 @@ export function MediaView() {
 
       results.forEach(list => {
         if (list.length > 0) {
-          latest.push(list[0]);
+          latest.push(...list.slice(0, 2));
           allVideos.push(...list);
           live.push(...list.filter(v => v.isLive));
         }
@@ -78,14 +101,27 @@ export function MediaView() {
 
       setLatestFromSubs(latest);
       setLiveFavorites(live);
+      
       const trending = [...allVideos].sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0));
-      setTrending24h(trending.slice(0, 12));
+      const channelCount: Record<string, number> = {};
+      const filteredTrending = trending.filter(v => {
+        const cid = v.channelId || "";
+        channelCount[cid] = (channelCount[cid] || 0) + 1;
+        return channelCount[cid] <= 3; // 3 videos max per channel in trending
+      });
+      setTrending24h(filteredTrending.slice(0, 15));
+      
+      setTimeout(() => {
+        setInitialScroll('trending');
+        setInitialScroll('live');
+        setInitialScroll('subs');
+      }, 500);
     } catch (e) {
       console.error("Content Refresh Error:", e);
     } finally {
       setIsDataLoading(false);
     }
-  }, [favoriteChannels]);
+  }, [favoriteChannels, setInitialScroll]);
 
   useEffect(() => { refreshContent(); }, [refreshContent]);
 
@@ -94,8 +130,24 @@ export function MediaView() {
       if (selectedChannel) {
         setIsDataLoading(true);
         try {
-          const videos = await fetchChannelVideos(selectedChannel.channelid, 30);
-          setChannelVideos(videos);
+          const videos = await fetchChannelVideos(selectedChannel.channelid, 40);
+          
+          // SMART ORDERING: Live -> Most Viewed -> Newest
+          const live = videos.filter(v => v.isLive);
+          const others = videos.filter(v => !v.isLive);
+          const sortedOthers = [...others].sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0));
+          
+          const mostViewed = sortedOthers.length > 0 ? sortedOthers[0] : null;
+          const remaining = mostViewed ? sortedOthers.slice(1) : sortedOthers;
+          const finalRemaining = [...remaining].sort((a, b) => 
+            new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
+          );
+
+          const result = [...live];
+          if (mostViewed && !live.some(l => l.id === mostViewed.id)) result.push(mostViewed);
+          result.push(...finalRemaining);
+
+          setChannelVideos(result);
         } finally {
           setIsDataLoading(false);
         }
@@ -127,6 +179,31 @@ export function MediaView() {
     return interleaved;
   }, [favoriteIptvChannels, liveFromSubs]);
 
+  const handleDragStart = (idx: number) => {
+    if (!isReordering) return;
+    setDraggedIdx(idx);
+  };
+
+  const handleDragOver = (e: React.DragEvent, idx: number) => {
+    if (!isReordering || draggedIdx === null || draggedIdx === idx) return;
+    e.preventDefault();
+    const newList = [...favoriteChannels];
+    const item = newList.splice(draggedIdx, 1)[0];
+    newList.splice(idx, 0, item);
+    setFavoriteChannels(newList);
+    setDraggedIdx(idx);
+  };
+
+  const handleSaveReorder = async () => {
+    try {
+      await saveChannelsReorder();
+      setIsReordering(false);
+      toast({ title: "تم الحفظ", description: "تم تحديث ترتيب القنوات سحابياً" });
+    } catch (e) {
+      toast({ variant: "destructive", title: "خطأ", description: "فشل حفظ الترتيب" });
+    }
+  };
+
   if (isFullScreen) return null;
 
   const isWideScreen = windowWidth > 1080;
@@ -135,7 +212,6 @@ export function MediaView() {
     : (isSidebarCollapsed && !isSidebarPinned ? "w-20" : "w-72");
 
   const cardWidthClass = "w-80"; 
-  const scrollAlignmentClass = dockSide === 'left' ? "flex-row justify-start" : "flex-row-reverse justify-start";
 
   return (
     <div className={cn(
@@ -167,6 +243,18 @@ export function MediaView() {
               >
                 <Pin className="w-4 h-4" />
               </Button>
+              <Button 
+                variant="ghost" size="icon" 
+                onClick={() => setIsReordering(!isReordering)} 
+                className={cn("w-8 h-8 rounded-full focusable transition-all opacity-20", isReordering && "bg-accent/40 opacity-100")}
+              >
+                <List className="w-4 h-4" />
+              </Button>
+              {isReordering && (
+                <Button onClick={handleSaveReorder} variant="ghost" size="icon" className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-500 focusable">
+                  <Save className="w-4 h-4 ml-2" />
+                </Button>
+              )}
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
                   <Button className="w-8 h-8 rounded-full bg-primary/80 p-0 focusable">
@@ -223,12 +311,18 @@ export function MediaView() {
               <div 
                 key={ch.channelid} 
                 onClick={() => setSelectedChannel(ch)}
+                draggable={isReordering}
+                onDragStart={() => handleDragStart(idx)}
+                onDragOver={(e) => handleDragOver(e, idx)}
+                onDragEnd={() => setDraggedIdx(null)}
                 className={cn(
                   "flex items-center gap-3 p-3 transition-all cursor-pointer focusable overflow-hidden w-[95%] mx-auto rounded-xl group/item relative",
-                  selectedChannel?.channelid === ch.channelid ? "bg-primary text-white shadow-glow" : "hover:bg-white/5 text-white/60"
+                  selectedChannel?.channelid === ch.channelid ? "bg-primary text-white shadow-glow" : "hover:bg-white/5 text-white/60",
+                  isReordering && "cursor-move",
+                  draggedIdx === idx && "opacity-50 scale-95"
                 )}
                 tabIndex={0}
-                data-nav-id={`fav-ch-${idx}`}
+                data-nav-id={`subs-${idx}`}
               >
                 <div className="relative w-9 h-9 rounded-xl overflow-hidden border border-white/10 flex-shrink-0">
                   <img src={ch.image} alt="" className="w-full h-full object-cover" />
@@ -238,21 +332,24 @@ export function MediaView() {
                     <div className="flex-1 text-right overflow-hidden">
                       <h4 className={cn(
                         "font-black text-sm whitespace-nowrap",
-                        selectedChannel?.channelid === ch.channelid ? "text-white" : "text-inherit",
-                        "group-focus/item:animate-marquee-end group-hover/item:animate-marquee-end"
+                        selectedChannel?.channelid === ch.channelid ? "text-white" : "text-inherit"
                       )}>
                         {truncateName(ch.name)}
                       </h4>
                     </div>
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); toggleStarChannel(ch.channelid); }}
-                      className={cn(
-                        "w-6 h-6 rounded-full flex items-center justify-center transition-all",
-                        ch.starred ? "text-yellow-400 opacity-100" : "text-white/20 opacity-0 group-hover/item:opacity-100"
-                      )}
-                    >
-                      <Star className={cn("w-4 h-4", ch.starred && "fill-current")} />
-                    </button>
+                    {isReordering ? (
+                      <GripVertical className="w-4 h-4 text-white/20" />
+                    ) : (
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); toggleStarChannel(ch.channelid); }}
+                        className={cn(
+                          "w-6 h-6 rounded-full flex items-center justify-center transition-all",
+                          ch.starred ? "text-yellow-400 opacity-100" : "text-white/20 opacity-0 group-hover/item:opacity-100"
+                        )}
+                      >
+                        <Star className={cn("w-4 h-4", ch.starred && "fill-current")} />
+                      </button>
+                    )}
                   </>
                 )}
               </div>
@@ -279,8 +376,18 @@ export function MediaView() {
               {isDataLoading && channelVideos.length === 0 ? (
                 <div className="col-span-full py-20 flex justify-center"><Loader2 className="w-12 h-12 animate-spin text-primary" /></div>
               ) : channelVideos.map((v, i) => (
-                <Card key={i} onClick={() => setActiveVideo(v, channelVideos)} className="group bg-white/5 border-none rounded-[2rem] transition-all hover:scale-[1.02] cursor-pointer focusable overflow-hidden shadow-2xl" tabIndex={0}>
-                  <div className="aspect-video relative"><img src={v.thumbnail} alt="" className="w-full h-full object-cover" /></div>
+                <Card key={v.id + i} onClick={() => setActiveVideo(v, channelVideos)} className="group bg-white/5 border-none rounded-[2rem] transition-all hover:scale-[1.02] cursor-pointer focusable overflow-hidden shadow-2xl" tabIndex={0} data-nav-id={`video-ch-${i}`}>
+                  <div className="aspect-video relative">
+                    <img src={v.thumbnail} alt="" className="w-full h-full object-cover" />
+                    {v.isLive && (
+                      <div className="absolute top-4 left-4 bg-red-600 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase animate-pulse">LIVE</div>
+                    )}
+                    {i === 1 && !v.isLive && (
+                      <div className="absolute top-4 left-4 bg-accent text-black text-[10px] font-black px-3 py-1 rounded-full uppercase shadow-glow flex items-center gap-2">
+                        <Activity className="w-3 h-3" /> الأكثر مشاهدة
+                      </div>
+                    )}
+                  </div>
                   <CardContent className="p-6 text-right h-24 flex items-center justify-end"><h3 className="font-bold text-sm text-white line-clamp-2 leading-tight">{v.title}</h3></CardContent>
                 </Card>
               ))}
@@ -290,6 +397,7 @@ export function MediaView() {
 
         {!selectedChannel && (
           <div className="space-y-10">
+            {/* Header Alignment Anchor */}
             <section className="w-full px-8 pt-8">
               <div className="premium-glass p-4 rounded-[2rem] border border-white/10 shadow-2xl backdrop-blur-3xl opacity-60">
                 <div className="relative">
@@ -309,22 +417,23 @@ export function MediaView() {
                   <Flame className="w-6 h-6 text-orange-500" /> التفاعل الأعلى (24 ساعة)
                 </h2>
               </div>
-              <ScrollArea className="w-full whitespace-nowrap p-0">
-                <div className={cn("flex w-max gap-4", scrollAlignmentClass)}>
-                  {trending24h.map((v, i) => (
-                    <div key={i} onClick={() => setActiveVideo(v, trending24h)} className={cn("group relative overflow-hidden bg-zinc-900/80 rounded-[2rem] border-2 border-transparent hover:border-orange-500 transition-all cursor-pointer focusable shadow-2xl", cardWidthClass)} tabIndex={0}>
-                      <div className="aspect-video relative">
-                        <img src={v.thumbnail} alt="" className="w-full h-full object-cover" />
-                        <div className="absolute top-4 left-4 px-4 py-1.5 rounded-full text-[10px] font-black text-white bg-orange-600 shadow-lg flex items-center gap-2 uppercase tracking-widest">
-                          <Activity className="w-3 h-3" /> ساخن
-                        </div>
+              <div 
+                ref={el => { scrollRefs.current['trending'] = el; }}
+                className="w-full flex gap-4 px-8 pb-4 overflow-x-auto no-scrollbar scroll-smooth"
+                style={{ direction: 'rtl' }}
+              >
+                {trending24h.map((v, i) => (
+                  <div key={v.id + i} onClick={() => setActiveVideo(v, trending24h)} className={cn("group relative overflow-hidden bg-zinc-900/80 rounded-[2rem] border-2 border-transparent hover:border-orange-500 transition-all cursor-pointer focusable shadow-2xl shrink-0", cardWidthClass)} tabIndex={0} data-nav-id={`video-trending-${i}`}>
+                    <div className="aspect-video relative">
+                      <img src={v.thumbnail} alt="" className="w-full h-full object-cover" />
+                      <div className="absolute top-4 left-4 px-4 py-1.5 rounded-full text-[10px] font-black text-white bg-orange-600 shadow-lg flex items-center gap-2 uppercase tracking-widest">
+                        <Activity className="w-3 h-3" /> ساخن
                       </div>
-                      <div className="p-4 text-right"><h3 className="font-bold text-xs truncate text-white">{v.title}</h3><p className="text-[9px] text-white/40 uppercase mt-1 font-black tracking-widest">{v.channelTitle}</p></div>
                     </div>
-                  ))}
-                </div>
-                <ScrollBar orientation="horizontal" className="bg-white/5 h-2" />
-              </ScrollArea>
+                    <div className="p-4 text-right"><h3 className="font-bold text-xs truncate text-white">{v.title}</h3><p className="text-[9px] text-white/40 uppercase mt-1 font-black tracking-widest">{v.channelTitle}</p></div>
+                  </div>
+                ))}
+              </div>
             </section>
 
             <section className="space-y-6">
@@ -333,32 +442,40 @@ export function MediaView() {
                   <RadioIcon className="w-6 h-6 text-red-600" /> البث المباشر الموحد
                 </h2>
               </div>
-              <ScrollArea className="w-full whitespace-nowrap p-0">
-                <div className={cn("flex w-max gap-4", scrollAlignmentClass)}>
-                  {interleavedLiveFeed.map((item: any, i: number) => {
-                    const isIptv = item.feedType === 'iptv';
-                    return (
-                      <div 
-                        key={i} 
-                        onClick={() => isIptv ? setActiveIptv(item) : setActiveVideo(item, interleavedLiveFeed.filter(f => f.feedType !== 'iptv'))} 
-                        className={cn(
-                          "group relative overflow-hidden bg-zinc-900/80 border-4 rounded-[2rem] transition-all hover:scale-[1.02] cursor-pointer shadow-2xl focusable", 
-                          isIptv ? "border-emerald-600/40" : "border-red-600/40",
-                          cardWidthClass
-                        )} 
-                        tabIndex={0}
-                      >
-                        <div className="aspect-video relative">
-                          <img src={(isIptv ? item.stream_icon : item.thumbnail) || ""} alt="" className="w-full h-full object-cover" />
-                          <div className={cn("absolute top-4 left-4 px-4 py-1.5 rounded-full text-[10px] font-black text-white uppercase", isIptv ? "bg-emerald-600" : "bg-red-600")}>{isIptv ? "IPTV" : "LIVE"}</div>
-                        </div>
-                        <div className="p-4 text-right"><h3 className="font-bold text-xs truncate text-white">{isIptv ? item.name : item.title}</h3></div>
+              <div 
+                ref={el => { scrollRefs.current['live'] = el; }}
+                className="w-full flex gap-4 px-8 pb-4 overflow-x-auto no-scrollbar scroll-smooth"
+                style={{ direction: 'rtl' }}
+              >
+                {interleavedLiveFeed.map((item: any, i: number) => {
+                  const isIptv = item.feedType === 'iptv';
+                  return (
+                    <div 
+                      key={`${isIptv ? 'iptv' : 'yt'}-${i}`} 
+                      onClick={() => {
+                        if (isIptv) {
+                          setActiveIptv(item, favoriteIptvChannels);
+                        } else {
+                          setActiveVideo(item, liveFromSubs);
+                        }
+                      }}
+                      className={cn(
+                        "group relative overflow-hidden bg-zinc-900/80 border-4 rounded-[2rem] transition-all hover:scale-[1.02] cursor-pointer shadow-2xl focusable shrink-0", 
+                        isIptv ? "border-emerald-600/40" : "border-red-600/40",
+                        cardWidthClass
+                      )} 
+                      tabIndex={0}
+                      data-nav-id={`video-live-${i}`}
+                    >
+                      <div className="aspect-video relative">
+                        <img src={(isIptv ? item.stream_icon : item.thumbnail) || ""} alt="" className="w-full h-full object-cover" />
+                        <div className={cn("absolute top-4 left-4 px-4 py-1.5 rounded-full text-[10px] font-black text-white uppercase", isIptv ? "bg-emerald-600" : "bg-red-600")}>{isIptv ? "IPTV" : "LIVE"}</div>
                       </div>
-                    );
-                  })}
-                </div>
-                <ScrollBar orientation="horizontal" className="bg-white/5 h-2" />
-              </ScrollArea>
+                      <div className="p-4 text-right"><h3 className="font-bold text-xs truncate text-white">{isIptv ? item.name : item.title}</h3></div>
+                    </div>
+                  );
+                })}
+              </div>
             </section>
 
             <section className="space-y-6">
@@ -367,17 +484,18 @@ export function MediaView() {
                   <Video className="w-6 h-6 text-primary" /> أحدث فيديوهات المشتركين
                 </h2>
               </div>
-              <ScrollArea className="w-full whitespace-nowrap p-0">
-                <div className={cn("flex w-max gap-4", scrollAlignmentClass)}>
-                  {latestFromSubs.map((v, i) => (
-                    <div key={i} onClick={() => setActiveVideo(v, latestFromSubs)} className={cn("group relative overflow-hidden bg-zinc-900/80 rounded-[2rem] border-2 border-transparent hover:border-primary transition-all cursor-pointer focusable shadow-2xl", cardWidthClass)} tabIndex={0}>
-                      <div className="aspect-video relative"><img src={v.thumbnail} alt="" className="w-full h-full object-cover" /></div>
-                      <div className="p-4 text-right"><h3 className="font-bold text-xs truncate text-white">{v.title}</h3><p className="text-[9px] text-white/40 uppercase mt-1 font-black tracking-widest">{v.channelTitle}</p></div>
-                    </div>
-                  ))}
-                </div>
-                <ScrollBar orientation="horizontal" className="bg-white/5 h-2" />
-              </ScrollArea>
+              <div 
+                ref={el => { scrollRefs.current['subs'] = el; }}
+                className="w-full flex gap-4 px-8 pb-4 overflow-x-auto no-scrollbar scroll-smooth"
+                style={{ direction: 'rtl' }}
+              >
+                {latestFromSubs.map((v, i) => (
+                  <div key={v.id + i} onClick={() => setActiveVideo(v, latestFromSubs)} className={cn("group relative overflow-hidden bg-zinc-900/80 rounded-[2rem] border-2 border-transparent hover:border-primary transition-all cursor-pointer focusable shadow-2xl shrink-0", cardWidthClass)} tabIndex={0} data-nav-id={`video-subs-${i}`}>
+                    <div className="aspect-video relative"><img src={v.thumbnail} alt="" className="w-full h-full object-cover" /></div>
+                    <div className="p-4 text-right"><h3 className="font-bold text-xs truncate text-white">{v.title}</h3><p className="text-[9px] text-white/40 uppercase mt-1 font-black tracking-widest">{v.channelTitle}</p></div>
+                  </div>
+                ))}
+              </div>
             </section>
           </div>
         )}

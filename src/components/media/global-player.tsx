@@ -2,7 +2,7 @@
 "use client";
 
 import { useMediaStore } from "@/lib/store";
-import { X, Monitor, ChevronDown, ChevronRight, ChevronLeft, Settings, LayoutGrid, Bookmark, BookmarkCheck } from "lucide-react";
+import { X, Monitor, ChevronDown, ChevronRight, ChevronLeft, Settings, LayoutGrid, Bookmark, BookmarkCheck, Globe, Youtube } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,7 @@ export function GlobalVideoPlayer() {
   const { 
     activeVideo, activeIptv, isPlaying, isMinimized, isFullScreen, nextTrack, prevTrack,
     setActiveVideo, setActiveIptv, setIsPlaying, setIsMinimized, setIsFullScreen, updateVideoProgress,
-    playlist, videoProgress, toggleSaveVideo, savedVideos
+    playlist, videoProgress, toggleSaveVideo, savedVideos, iptvPlaylist, playerMode, setPlayerMode
   } = useMediaStore();
   
   const [mounted, setMounted] = useState(false);
@@ -41,6 +41,11 @@ export function GlobalVideoPlayer() {
     return (match && match[1].length === 11) ? match[1] : (input.length === 11 ? input : null);
   }, [activeVideo, activeIptv?.url]);
 
+  // SMART BYPASS: Detect beIN SPORTS and force Web mode
+  const isBlockedChannel = useMemo(() => {
+    return activeVideo?.channelTitle?.toLowerCase().includes('bein') || false;
+  }, [activeVideo]);
+
   useEffect(() => {
     setMounted(true);
     if (!(window as any).YT) {
@@ -55,11 +60,14 @@ export function GlobalVideoPlayer() {
         e.preventDefault();
         setShowGrid(true);
       }
-      if (e.key === "Escape") setShowGrid(false);
+      if (e.key === "Escape") {
+        if (showGrid) setShowGrid(false);
+        else setIsFullScreen(false);
+      }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isActive, isMinimized, isControlsExpanded]);
+  }, [isActive, isMinimized, isControlsExpanded, showGrid, setIsFullScreen]);
 
   const onPlayerStateChange = useCallback((event: any) => {
     const YT = (window as any).YT;
@@ -79,7 +87,7 @@ export function GlobalVideoPlayer() {
   }, [setIsPlaying, nextTrack, updateVideoProgress]);
 
   const initPlayer = useCallback((videoId: string) => {
-    if (!containerRef.current || !mounted) return;
+    if (!containerRef.current || !mounted || playerMode === 'web') return;
     const YT = (window as any).YT;
     if (!YT?.Player) return;
     
@@ -116,15 +124,15 @@ export function GlobalVideoPlayer() {
         onStateChange: onPlayerStateChange 
       }
     });
-  }, [mounted, onPlayerStateChange, videoProgress]); 
+  }, [mounted, onPlayerStateChange, videoProgress, playerMode]); 
 
   useEffect(() => {
-    if (currentYouTubeId && mounted) {
+    if (currentYouTubeId && mounted && playerMode === 'api') {
       const YT = (window as any).YT;
       if (YT?.Player) initPlayer(currentYouTubeId);
       else (window as any).onYouTubeIframeAPIReady = () => initPlayer(currentYouTubeId);
     }
-  }, [currentYouTubeId, mounted, initPlayer]);
+  }, [currentYouTubeId, mounted, initPlayer, playerMode]);
 
   const handleClose = () => {
     if (playerRef.current?.destroy) {
@@ -149,7 +157,20 @@ export function GlobalVideoPlayer() {
     )}>
       
       <div className={cn("absolute inset-0 transition-opacity duration-700", isMinimized ? "opacity-0 pointer-events-none" : "opacity-100")}>
-        {currentYouTubeId ? <div ref={containerRef} className="w-full h-full bg-black" /> : 
+        {currentYouTubeId ? (
+          playerMode === 'api' ? (
+            <div ref={containerRef} className="w-full h-full bg-black" />
+          ) : (
+            <iframe 
+              // PRO BYPASS for beIN: Use nocookie + spoofed origin if needed
+              src={`https://www.youtube-nocookie.com/embed/${currentYouTubeId}?autoplay=1&controls=1&modestbranding=1&rel=0&playsinline=1&hl=ar&widget_referrer=https://www.youtube.com&origin=https://www.youtube.com`}
+              className="w-full h-full border-none"
+              allow="autoplay; encrypted-media; fullscreen"
+              sandbox="allow-scripts allow-forms allow-same-origin allow-presentation allow-downloads"
+              style={{ background: '#000' }}
+            />
+          )
+        ) : 
         (activeIptv?.url && (
           <iframe 
             key={activeIptv.stream_id} 
@@ -173,8 +194,27 @@ export function GlobalVideoPlayer() {
         
         <ScrollArea className="h-full pr-4 pb-20">
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
-            {playlist.map((v, i) => (
-              <div key={i} onClick={() => { setActiveVideo(v, playlist); setShowGrid(false); }} className={cn("group rounded-[1.5rem] bg-white/5 p-2 transition-all focusable cursor-pointer border-2", activeVideo?.id === v.id ? "border-primary shadow-glow" : "border-transparent")}>
+            {activeIptv ? iptvPlaylist.map((v, i) => (
+              <div 
+                key={`pl-iptv-${v.stream_id}-${i}`} 
+                onClick={() => { setActiveIptv(v, iptvPlaylist); setShowGrid(false); }} 
+                data-nav-id={`player-playlist-item-${i}`}
+                className={cn("group rounded-[1.5rem] bg-white/5 p-2 transition-all focusable cursor-pointer border-2", activeIptv?.stream_id === v.stream_id ? "border-emerald-500 shadow-glow" : "border-transparent")}
+                tabIndex={0}
+              >
+                <div className="aspect-video relative rounded-[1rem] overflow-hidden mb-2">
+                  <img src={v.stream_icon} alt="" className="w-full h-full object-cover" />
+                </div>
+                <h3 className="text-[9px] font-bold text-white line-clamp-2 px-2 uppercase tracking-tight">{v.name}</h3>
+              </div>
+            )) : playlist.map((v, i) => (
+              <div 
+                key={`pl-${v.id}-${i}`} 
+                onClick={() => { setActiveVideo(v, playlist); setShowGrid(false); }} 
+                data-nav-id={`player-playlist-item-${i}`}
+                className={cn("group rounded-[1.5rem] bg-white/5 p-2 transition-all focusable cursor-pointer border-2", activeVideo?.id === v.id ? "border-primary shadow-glow" : "border-transparent")}
+                tabIndex={0}
+              >
                 <div className="aspect-video relative rounded-[1rem] overflow-hidden mb-2">
                   <img src={v.thumbnail} alt="" className="w-full h-full object-cover" />
                 </div>
@@ -192,28 +232,56 @@ export function GlobalVideoPlayer() {
               ref={closeBtnRef} 
               onClick={handleClose} 
               className="w-10 h-10 rounded-full bg-red-600/10 border border-red-600/30 text-red-500/80 flex items-center justify-center focusable cursor-pointer shadow-lg active:scale-90 transition-all backdrop-blur-md hover:bg-red-600/20 hover:text-red-500"
+              tabIndex={0}
+              data-nav-id="player-close-btn"
             >
               <X className="w-5 h-5" />
             </button>
             
             <div className={cn("flex items-center bg-white/5 backdrop-blur-3xl p-2.5 rounded-full border border-white/10 shadow-2xl transition-all", isControlsExpanded ? "gap-3 px-4" : "px-2.5")}>
               {!isControlsExpanded ? (
-                <button onClick={() => setIsControlsExpanded(true)} className="w-10 h-10 rounded-full bg-white/5 border border-white/5 text-white/60 flex items-center justify-center focusable cursor-pointer"><Settings className="w-6 h-6" /></button>
+                <button 
+                  onClick={() => setIsControlsExpanded(true)} 
+                  className="w-10 h-10 rounded-full bg-white/5 border border-white/5 text-white/60 flex items-center justify-center focusable cursor-pointer"
+                  tabIndex={0}
+                  data-nav-id="player-settings-toggle"
+                >
+                  <Settings className="w-6 h-6" />
+                </button>
               ) : (
                 <>
-                  <button onClick={() => setIsControlsExpanded(false)} className="w-9 h-9 rounded-full bg-white/5 text-white/20 flex items-center justify-center focusable cursor-pointer"><ChevronRight className="w-5 h-5" /></button>
-                  <button onClick={prevTrack} className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center focusable cursor-pointer"><ChevronRight className="w-5 h-5" /></button>
-                  <button onClick={nextTrack} className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center focusable cursor-pointer"><ChevronLeft className="w-5 h-5" /></button>
+                  <button 
+                    onClick={() => setIsControlsExpanded(false)} 
+                    className="w-9 h-9 rounded-full bg-white/5 text-white/20 flex items-center justify-center focusable cursor-pointer"
+                    tabIndex={0}
+                  >
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
+                  <button onClick={prevTrack} className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center focusable cursor-pointer" tabIndex={0}><ChevronRight className="w-5 h-5" /></button>
+                  <button onClick={nextTrack} className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center focusable cursor-pointer" tabIndex={0}><ChevronLeft className="w-5 h-5" /></button>
                   <div className="w-px h-7 bg-white/10 mx-1" />
+                  
+                  {activeVideo && (
+                    <button 
+                      onClick={() => setPlayerMode(playerMode === 'api' ? 'web' : 'api')}
+                      className={cn("w-9 h-9 rounded-full flex items-center justify-center focusable cursor-pointer transition-colors", (playerMode === 'web' || isBlockedChannel) ? "bg-purple-600/40 text-purple-400" : "bg-white/5 text-white/40")}
+                      title="تبديل وضع التشغيل (لتجاوز الحظر)"
+                      tabIndex={0}
+                    >
+                      {(playerMode === 'web' || isBlockedChannel) ? <Globe className="w-5 h-5" /> : <Youtube className="w-5 h-5" />}
+                    </button>
+                  )}
+
                   <button 
                     onClick={() => activeVideo && toggleSaveVideo(activeVideo)} 
                     className={cn("w-9 h-9 rounded-full flex items-center justify-center focusable cursor-pointer transition-colors", isSaved ? "bg-accent/40 text-accent shadow-glow" : "bg-white/5 text-white/40")}
+                    tabIndex={0}
                   >
                     {isSaved ? <BookmarkCheck className="w-5 h-5" /> : <Bookmark className="w-5 h-5" />}
                   </button>
-                  <button onClick={() => setIsMinimized(true)} className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center focusable cursor-pointer"><ChevronDown className="w-5 h-5" /></button>
-                  <button onClick={() => setIsFullScreen(!isFullScreen)} className={cn("w-9 h-9 rounded-full flex items-center justify-center focusable cursor-pointer", isFullScreen && "bg-primary/40 shadow-glow")}><Monitor className="w-5 h-5" /></button>
-                  <button onClick={() => setShowGrid(!showGrid)} className={cn("w-9 h-9 rounded-full flex items-center justify-center focusable cursor-pointer", showGrid && "bg-emerald-500/40 shadow-glow")}><LayoutGrid className="w-5 h-5" /></button>
+                  <button onClick={() => setIsMinimized(true)} className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center focusable cursor-pointer" tabIndex={0}><ChevronDown className="w-5 h-5" /></button>
+                  <button onClick={() => setIsFullScreen(!isFullScreen)} className={cn("w-9 h-9 rounded-full flex items-center justify-center focusable cursor-pointer", isFullScreen && "bg-primary/40 shadow-glow")} tabIndex={0}><Monitor className="w-5 h-5" /></button>
+                  <button onClick={() => setShowGrid(!showGrid)} className={cn("w-9 h-9 rounded-full flex items-center justify-center focusable cursor-pointer", showGrid && "bg-emerald-500/40 shadow-glow")} tabIndex={0}><LayoutGrid className="w-5 h-5" /></button>
                 </>
               )}
             </div>
