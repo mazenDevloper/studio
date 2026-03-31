@@ -79,11 +79,18 @@ export function RemotePointer() {
       if (dir === "ArrowDown" && dy <= 5) return Infinity;
       if (dir === "ArrowUp" && dy >= -5) return Infinity;
 
-      // WEIGHTED ALIGNMENT for 3-Step Hub: penalize drift heavily
-      const primaryAxisWeight = 0.01; 
-      const secondaryAxisWeight = 200.0; 
+      // CROSS-ZONE NAVIGATION LOGIC:
+      // When moving between Sidebar and Content, we relax the vertical penalty (dy).
+      const isHorizontal = dir === "ArrowRight" || dir === "ArrowLeft";
+      const isFromSidebar = current.closest('aside') !== null;
+      const isToSidebar = rect2.left < 300; // Rough sidebar width check
       
-      if (dir === "ArrowRight" || dir === "ArrowLeft") {
+      const isCrossZone = (isFromSidebar && !isToSidebar) || (!isFromSidebar && isToSidebar);
+      
+      const primaryAxisWeight = 0.01; 
+      const secondaryAxisWeight = (isHorizontal && isCrossZone) ? 5.0 : 200.0; 
+      
+      if (isHorizontal) {
         return Math.sqrt(Math.pow(dx * primaryAxisWeight, 2) + Math.pow(dy * secondaryAxisWeight, 2));
       } else {
         return Math.sqrt(Math.pow(dx * secondaryAxisWeight, 2) + Math.pow(dy * primaryAxisWeight, 2));

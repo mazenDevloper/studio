@@ -19,7 +19,7 @@ import {
   Clock,
   ChevronDown,
   ChevronUp,
-  Image as ImageIcon,
+  ImageIcon,
   Type as TypeIcon,
   AlertTriangle,
   Palette,
@@ -33,7 +33,9 @@ import {
   Monitor,
   Type,
   FileCode,
-  Sparkles
+  Sparkles,
+  Timer,
+  Save
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -80,39 +82,27 @@ const RELATIVE_PRAYER_OPTIONS = [
   { id: 'manual', name: 'يدوي (وقت محدد)' },
 ];
 
+const ICON_OPTIONS = [
+  { id: 'bell', icon: Bell },
+  { id: 'play', icon: RefreshCw },
+  { id: 'circle', icon: Database },
+];
+
+const COLOR_OPTIONS = [
+  { id: 'text-blue-400', class: 'bg-blue-400' },
+  { id: 'text-emerald-400', class: 'bg-emerald-400' },
+  { id: 'text-orange-400', class: 'bg-orange-400' },
+  { id: 'text-red-400', class: 'bg-red-400' },
+  { id: 'text-purple-400', class: 'bg-purple-400' },
+  { id: 'text-accent', class: 'bg-accent' },
+];
+
 export function SettingsView() {
-  const { 
-    reminders, 
-    addReminder, 
-    removeReminder, 
-    updateReminder,
-    prayerSettings,
-    updatePrayerSetting,
-    customManuscripts,
-    addManuscript,
-    removeManuscript,
-    customWallBackgrounds,
-    addCustomWallBackground,
-    removeCustomWallBackground,
-    customManuscriptColors,
-    addCustomManuscriptColor,
-    removeCustomManuscriptColor,
-    favoriteTeams, 
-    toggleFavoriteTeam,
-    favoriteLeagueIds,
-    toggleFavoriteLeague,
-    mapSettings, 
-    updateMapSettings,
-    fetchManuscripts,
-    syncLeagueClubsToCloud,
-    clubsCache,
-    fetchClubsFromCache,
-    isClubsLoading
-  } = useMediaStore();
+  const store = useMediaStore();
   const { toast } = useToast();
   
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [localBgUrl, setLocalBgUrl] = useState(mapSettings.manuscriptBgUrl || "");
+  const [localBgUrl, setLocalBgUrl] = useState(store.mapSettings.manuscriptBgUrl || "");
   const [exhaustedKeys, setExhaustedKeys] = useState(0);
   const [isSeeding, setIsSeeding] = useState(false);
   
@@ -122,9 +112,9 @@ export function SettingsView() {
     manualTime: "08:00",
     offsetMinutes: 0,
     showCountdown: true,
-    countdownWindow: 10,
+    countdownWindow: 15,
     showCountup: true,
-    countupWindow: 10,
+    countupWindow: 15,
     color: "text-blue-400",
     iconType: "bell"
   });
@@ -137,35 +127,35 @@ export function SettingsView() {
   const [isSyncingClubs, setIsSyncingClubs] = useState(false);
 
   useEffect(() => {
-    setLocalBgUrl(mapSettings.manuscriptBgUrl);
+    setLocalBgUrl(store.mapSettings.manuscriptBgUrl);
     setExhaustedKeys(getExhaustedKeysCount());
-    fetchManuscripts();
-  }, [mapSettings.manuscriptBgUrl, fetchManuscripts]);
+    if (typeof store.fetchManuscripts === 'function') store.fetchManuscripts();
+  }, [store.mapSettings.manuscriptBgUrl]);
 
   useEffect(() => {
-    if (searchLeagueId !== "all") {
-      fetchClubsFromCache(searchLeagueId);
+    if (searchLeagueId !== "all" && typeof store.fetchClubsFromCache === 'function') {
+      store.fetchClubsFromCache(searchLeagueId);
     }
-  }, [searchLeagueId, fetchClubsFromCache]);
+  }, [searchLeagueId]);
 
   const allAvailableWallBackgrounds = useMemo(() => {
     const list = [...STATIC_WALL_BACKGROUNDS.map(b => ({ ...b, isCustom: false }))];
-    if (Array.isArray(customWallBackgrounds)) {
-      customWallBackgrounds.forEach((url, i) => {
+    if (Array.isArray(store.customWallBackgrounds)) {
+      store.customWallBackgrounds.forEach((url, i) => {
         if (!STATIC_WALL_BACKGROUNDS.some(s => s.url === url)) {
           list.push({ id: `custom-bg-${i}`, name: `خلفية مرفوعة ${i + 1}`, url, isCustom: true });
         }
       });
     }
     return list;
-  }, [customWallBackgrounds]);
+  }, [store.customWallBackgrounds]);
 
   const filteredClubsResults = useMemo(() => {
-    if (!clubsCache) return [];
-    return clubsCache.filter(item => 
+    if (!store.clubsCache) return [];
+    return store.clubsCache.filter(item => 
       item.team.name.toLowerCase().includes(clubSearch.toLowerCase())
     );
-  }, [clubsCache, clubSearch]);
+  }, [store.clubsCache, clubSearch]);
 
   const handleSyncClubs = async () => {
     if (searchLeagueId === "all") {
@@ -174,8 +164,10 @@ export function SettingsView() {
     }
     setIsSyncingClubs(true);
     try {
-      await syncLeagueClubsToCloud(searchLeagueId);
-      toast({ title: "تم التخزين", description: "تم حفظ أندية الدوري في قاعدة البيانات السحابية." });
+      if (typeof store.syncLeagueClubsToCloud === 'function') {
+        await store.syncLeagueClubsToCloud(searchLeagueId);
+        toast({ title: "تم التخزين", description: "تم حفظ أندية الدوري في قاعدة البيانات السحابية." });
+      }
     } catch (e) {
       toast({ variant: "destructive", title: "خطأ", description: "فشل تخزين الأندية سحابياً." });
     } finally {
@@ -189,7 +181,7 @@ export function SettingsView() {
       "2026-03-27": [],
       "2026-03-28": [],
       "2026-03-29": [],
-      "lastGlobalUpdate": 1774745481292,
+      "lastGlobalUpdate": Date.now(),
       "2026-03-30": []
     };
 
@@ -221,9 +213,11 @@ export function SettingsView() {
       type: manuscriptType,
       content: manuscriptInput
     };
-    addManuscript(newM);
-    setManuscriptInput("");
-    toast({ title: "تم الحفظ", description: "تمت إضافة المخطوطة ومزامنتها سحابياً." });
+    if (typeof store.addManuscript === 'function') {
+      store.addManuscript(newM);
+      setManuscriptInput("");
+      toast({ title: "تم الحفظ", description: "تمت إضافة المخطوطة ومزامنتها سحابياً." });
+    }
   };
 
   const handleResetKeys = () => {
@@ -234,8 +228,8 @@ export function SettingsView() {
 
   const handleApplyBackground = () => {
     if (!localBgUrl.trim()) return;
-    updateMapSettings({ manuscriptBgUrl: localBgUrl });
-    addCustomWallBackground(localBgUrl);
+    if (typeof store.updateMapSettings === 'function') store.updateMapSettings({ manuscriptBgUrl: localBgUrl });
+    if (typeof store.addCustomWallBackground === 'function') store.addCustomWallBackground(localBgUrl);
     toast({ title: "تم الحفظ سحابياً", description: "تم تحديث خلفية حائط المخطوطة ومزامنتها بنجاح." });
   };
 
@@ -248,30 +242,37 @@ export function SettingsView() {
       manualTime: form.manualTime,
       offsetMinutes: form.offsetMinutes || 0,
       showCountdown: form.showCountdown ?? true,
-      countdownWindow: form.countdownWindow || 10,
+      countdownWindow: form.countdownWindow || 15,
       showCountup: form.showCountup ?? true,
-      countupWindow: form.countupWindow || 10,
+      countupWindow: form.countupWindow || 15,
       completed: false,
       color: form.color || 'text-blue-400',
-      iconType: 'bell',
+      iconType: (form.iconType as any) || 'bell',
     };
+    
     if (editingId) {
-      updateReminder(editingId, reminderData);
-      setEditingId(null);
-      toast({ title: "تم التعديل", description: "تم تحديث التذكير بنجاح." });
+      if (typeof store.updateReminder === 'function') {
+        store.updateReminder(editingId, reminderData);
+        setEditingId(null);
+        toast({ title: "تم التعديل", description: "تم تحديث التذكير ومزامنته سحابياً." });
+      }
     } else {
-      addReminder(reminderData);
-      toast({ title: "تمت الإضافة", description: "تمت إضافة التذكير بنجاح." });
+      if (typeof store.addReminder === 'function') {
+        store.addReminder(reminderData);
+        toast({ title: "تمت الإضافة", description: "تمت إضافة التذكير ومزامنته سحابياً." });
+      }
     }
-    setForm({ label: "", relativePrayer: "manual", manualTime: "08:00", offsetMinutes: 0, showCountdown: true, countdownWindow: 10, showCountup: true, countupWindow: 10, color: "text-blue-400", iconType: "bell" });
+    setForm({ label: "", relativePrayer: "manual", manualTime: "08:00", offsetMinutes: 0, showCountdown: true, countdownWindow: 15, showCountup: true, countupWindow: 15, color: "text-blue-400", iconType: "bell" });
   };
 
   const handleToggleFavorite = (team: any) => {
-    toggleFavoriteTeam({ id: team.team.id, name: team.team.name, logo: team.team.logo });
-    toast({ title: "تم التحديث", description: "تم تحديث قائمة التتبع السحابية." });
+    if (typeof store.toggleFavoriteTeam === 'function') {
+      store.toggleFavoriteTeam({ id: team.team.id, name: team.team.name, logo: team.team.logo });
+      toast({ title: "تم التحديث", description: "تم تحديث قائمة التتبع السحابية." });
+    }
   };
 
-  const isFavTeam = (id: number) => favoriteTeams.some(t => t.id === id);
+  const isFavTeam = (id: number) => store.favoriteTeams.some(t => t.id === id);
 
   return (
     <div className="p-12 space-y-12 max-w-7xl mx-auto pb-40 animate-in fade-in duration-700 text-right dir-rtl">
@@ -323,24 +324,24 @@ export function SettingsView() {
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
                     <span className="text-sm font-black text-white/60">مقياس الواجهة (Display Scale)</span>
-                    <span className="text-primary font-black">{Math.round((mapSettings.displayScale ?? 1.0) * 100)}%</span>
+                    <span className="text-primary font-black">{Math.round((store.mapSettings.displayScale ?? 1.0) * 100)}%</span>
                   </div>
                   <Slider 
-                    value={[mapSettings.displayScale ?? 1.0]} 
+                    value={[store.mapSettings.displayScale ?? 1.0]} 
                     min={0.5} max={1.5} step={0.05} 
-                    onValueChange={([v]) => updateMapSettings({ displayScale: v })} 
+                    onValueChange={([v]) => store.updateMapSettings({ displayScale: v })} 
                   />
                 </div>
 
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
                     <span className="text-sm font-black text-white/60">حجم الخط العالمي (Font Size)</span>
-                    <span className="text-primary font-black">{Math.round((mapSettings.fontScale ?? 1.0) * 100)}%</span>
+                    <span className="text-primary font-black">{Math.round((store.mapSettings.fontScale ?? 1.0) * 100)}%</span>
                   </div>
                   <Slider 
-                    value={[mapSettings.fontScale ?? 1.0]} 
+                    value={[store.mapSettings.fontScale ?? 1.0]} 
                     min={0.7} max={1.3} step={0.05} 
-                    onValueChange={([v]) => updateMapSettings({ fontScale: v })} 
+                    onValueChange={([v]) => store.updateMapSettings({ fontScale: v })} 
                   />
                 </div>
               </div>
@@ -353,7 +354,7 @@ export function SettingsView() {
               </CardTitle>
               <div className="grid grid-cols-2 gap-4 h-64">
                 {BACKGROUNDS.map((bg, idx) => (
-                  <button key={idx} onClick={() => updateMapSettings({ backgroundIndex: idx })} className={cn("relative rounded-2xl overflow-hidden border-4 focusable", mapSettings.backgroundIndex === idx ? "border-primary" : "border-transparent opacity-40")}>
+                  <button key={idx} onClick={() => store.updateMapSettings({ backgroundIndex: idx })} className={cn("relative rounded-2xl overflow-hidden border-4 focusable", store.mapSettings.backgroundIndex === idx ? "border-primary scale-105 shadow-glow" : "border-transparent opacity-40")}>
                     <img src={`${bg}?auto=format&fit=crop&q=40&w=300`} className="w-full h-full object-cover" alt="" />
                   </button>
                 ))}
@@ -405,12 +406,12 @@ export function SettingsView() {
               <div className="lg:col-span-8">
                 <ScrollArea className="h-[450px] pr-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-10">
-                    {customManuscripts.length === 0 ? (
+                    {store.customManuscripts.length === 0 ? (
                       <div className="col-span-full py-20 flex flex-col items-center justify-center opacity-20 border-2 border-dashed border-white/10 rounded-[2.5rem]">
                         <Sparkles className="w-16 h-16 mb-4" />
                         <p className="font-black uppercase tracking-widest text-xs">لا توجد مخطوطات محفوظة حالياً</p>
                       </div>
-                    ) : customManuscripts.map((m) => (
+                    ) : store.customManuscripts.map((m) => (
                       <div key={m.id} className="bg-white/5 p-6 rounded-2xl border border-white/5 relative group min-h-[180px] flex flex-col justify-between">
                         <div className="flex-1 flex items-center justify-center overflow-hidden">
                           {m.type === 'text' ? (
@@ -421,7 +422,7 @@ export function SettingsView() {
                         </div>
                         <div className="mt-4 pt-4 border-t border-white/5 flex items-center justify-between">
                           <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">{m.type === 'text' ? 'Text Content' : 'Cloud Image'}</span>
-                          <Button variant="ghost" size="icon" onClick={() => removeManuscript(m.id)} className="w-9 h-9 rounded-full bg-red-600/10 text-red-500 focusable opacity-0 group-hover:opacity-100 transition-all"><Trash2 className="w-4 h-4" /></Button>
+                          <Button variant="ghost" size="icon" onClick={() => store.removeManuscript(m.id)} className="w-9 h-9 rounded-full bg-red-600/10 text-red-500 focusable opacity-0 group-hover:opacity-100 transition-all"><Trash2 className="w-4 h-4" /></Button>
                         </div>
                       </div>
                     ))}
@@ -448,8 +449,8 @@ export function SettingsView() {
                     <span className="text-[10px] text-white/40">تظهر خلف المخطوطات في وضع الحائط</span>
                   </div>
                   <Switch 
-                    checked={mapSettings.showManuscriptBg} 
-                    onCheckedChange={(v) => updateMapSettings({ showManuscriptBg: v })} 
+                    checked={store.mapSettings.showManuscriptBg} 
+                    onCheckedChange={(v) => store.updateMapSettings({ showManuscriptBg: v })} 
                   />
                 </div>
 
@@ -480,12 +481,12 @@ export function SettingsView() {
                         <button 
                           onClick={() => {
                             setLocalBgUrl(bg.url);
-                            updateMapSettings({ manuscriptBgUrl: bg.url });
+                            store.updateMapSettings({ manuscriptBgUrl: bg.url });
                             toast({ title: "تم الاختيار", description: `تم تفعيل خلفية ${bg.name}` });
                           }}
                           className={cn(
                             "relative aspect-video w-full rounded-xl overflow-hidden border-2 transition-all focusable",
-                            mapSettings.manuscriptBgUrl === bg.url ? "border-primary scale-105 shadow-glow" : "border-transparent opacity-40 hover:opacity-100"
+                            store.mapSettings.manuscriptBgUrl === bg.url ? "border-primary scale-105 shadow-glow" : "border-transparent opacity-40 hover:opacity-100"
                           )}
                         >
                           <img src={bg.url} className="w-full h-full object-cover" alt={bg.name} />
@@ -495,7 +496,7 @@ export function SettingsView() {
                         </button>
                         {bg.isCustom && (
                           <button 
-                            onClick={(e) => { e.stopPropagation(); removeCustomWallBackground(bg.url); }}
+                            onClick={(e) => { e.stopPropagation(); store.removeCustomWallBackground(bg.url); }}
                             className="absolute -top-2 -left-2 w-6 h-6 rounded-full bg-red-600 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all shadow-xl z-20"
                           >
                             <X className="w-3 h-3" />
@@ -521,7 +522,7 @@ export function SettingsView() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {prayerSettings.map((s) => (
+              {store.prayerSettings.map((s) => (
                 <div key={s.id} className="bg-white/5 p-6 rounded-[2rem] border border-white/5 space-y-6">
                   <div className="flex items-center justify-between border-b border-white/5 pb-4">
                     <span className="text-xl font-black text-white">{s.name}</span>
@@ -537,7 +538,7 @@ export function SettingsView() {
                       <Slider 
                         value={[s.offsetMinutes]} 
                         min={-30} max={30} step={1} 
-                        onValueChange={([v]) => updatePrayerSetting(s.id, { offsetMinutes: v })} 
+                        onValueChange={([v]) => store.updatePrayerSetting(s.id, { offsetMinutes: v })} 
                       />
                     </div>
 
@@ -549,7 +550,7 @@ export function SettingsView() {
                       <Slider 
                         value={[s.iqamahDuration]} 
                         min={0} max={45} step={1} 
-                        onValueChange={([v]) => updatePrayerSetting(s.id, { iqamahDuration: v })} 
+                        onValueChange={([v]) => store.updatePrayerSetting(s.id, { iqamahDuration: v })} 
                       />
                     </div>
 
@@ -559,7 +560,7 @@ export function SettingsView() {
                         <Input 
                           type="number" 
                           value={s.countdownWindow} 
-                          onChange={(e) => updatePrayerSetting(s.id, { countdownWindow: parseInt(e.target.value) })}
+                          onChange={(e) => store.updatePrayerSetting(s.id, { countdownWindow: parseInt(e.target.value) })}
                           className="w-16 h-8 bg-black/40 border-white/10 rounded-lg text-center font-black text-xs"
                         />
                         <span className="text-[10px] text-white/20">د</span>
@@ -577,65 +578,148 @@ export function SettingsView() {
             <div className="flex flex-col gap-2">
               <CardTitle className="text-2xl font-black text-white flex items-center gap-3">
                 <Bell className="w-6 h-6 text-primary" />
-                إدارة التذكيرات الذكية
+                إدارة التذكيرات الذكية (Cloud Management)
               </CardTitle>
-              <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest">Custom Notification Hub</p>
+              <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest">Master Notification Hub</p>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-              <div className="lg:col-span-4 space-y-6 bg-white/5 p-8 rounded-[2.5rem] border border-white/5">
-                <h3 className="text-lg font-black text-white mb-4">{editingId ? 'تعديل تذكير' : 'إضافة تذكير جديد'}</h3>
-                <div className="space-y-4">
-                  <Input placeholder="نص التذكير..." value={form.label} onChange={(e) => setForm({...form, label: e.target.value})} className="h-14 bg-black/40 border-white/10 rounded-xl px-6 focusable" />
-                  
+              <div className="lg:col-span-5 space-y-6 bg-white/5 p-8 rounded-[3rem] border border-white/5">
+                <h3 className="text-xl font-black text-white mb-4">{editingId ? 'تعديل تذكير سحابي' : 'إضافة تذكير جديد'}</h3>
+                <div className="space-y-6">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-white/40 uppercase px-2">مرتبط بـ:</label>
-                    <Select value={form.relativePrayer} onValueChange={(v) => setForm({...form, relativePrayer: v as any})}>
-                      <SelectTrigger className="h-14 bg-black/40 border-white/10 rounded-xl focusable">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="bg-zinc-900 border-white/10 text-white">
-                        {RELATIVE_PRAYER_OPTIONS.map(opt => <SelectItem key={opt.id} value={opt.id}>{opt.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    <label className="text-[10px] font-black text-white/40 uppercase px-2">عنوان التذكير</label>
+                    <Input placeholder="نص التذكير..." value={form.label} onChange={(e) => setForm({...form, label: e.target.value})} className="h-14 bg-black/40 border-white/10 rounded-xl px-6 focusable" />
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-white/40 uppercase px-2">مرتبط بـ:</label>
+                      <Select value={form.relativePrayer} onValueChange={(v) => setForm({...form, relativePrayer: v as any})}>
+                        <SelectTrigger className="h-14 bg-black/40 border-white/10 rounded-xl focusable">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-zinc-900 border-white/10 text-white">
+                          {RELATIVE_PRAYER_OPTIONS.map(opt => <SelectItem key={opt.id} value={opt.id}>{opt.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-white/40 uppercase px-2">الأيقونة</label>
+                      <Select value={form.iconType} onValueChange={(v) => setForm({...form, iconType: v as any})}>
+                        <SelectTrigger className="h-14 bg-black/40 border-white/10 rounded-xl focusable">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-zinc-900 border-white/10 text-white">
+                          {ICON_OPTIONS.map(opt => (
+                            <SelectItem key={opt.id} value={opt.id}>
+                              <div className="flex items-center gap-2">
+                                <opt.icon className="w-4 h-4" /> {opt.id}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
 
-                  {form.relativePrayer === 'manual' && (
-                    <Input type="time" value={form.manualTime} onChange={(e) => setForm({...form, manualTime: e.target.value})} className="h-14 bg-black/40 border-white/10 rounded-xl px-6 focusable" />
+                  {form.relativePrayer === 'manual' ? (
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-white/40 uppercase px-2">وقت التذكير (يدوي)</label>
+                      <Input type="time" value={form.manualTime} onChange={(e) => setForm({...form, manualTime: e.target.value})} className="h-14 bg-black/40 border-white/10 rounded-xl px-6 focusable" />
+                    </div>
+                  ) : (
+                    <div className="space-y-4 bg-black/20 p-4 rounded-2xl border border-white/5">
+                      <div className="flex justify-between items-center text-[10px] font-black uppercase text-white/40 mb-2">
+                        <span>إزاحة الوقت (دقيقة قبل/بعد الصلاة)</span>
+                        <span className="text-primary">{form.offsetMinutes} د</span>
+                      </div>
+                      <Slider 
+                        value={[form.offsetMinutes || 0]} 
+                        min={-120} max={120} step={1} 
+                        onValueChange={([v]) => setForm({...form, offsetMinutes: v})} 
+                      />
+                    </div>
                   )}
 
-                  <Button onClick={handleSubmitReminder} className="w-full h-14 bg-primary text-white font-black rounded-xl shadow-glow focusable">
-                    {editingId ? 'تحديث التذكير' : 'حفظ التذكير'}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-4 bg-black/20 p-4 rounded-2xl border border-white/5">
+                      <span className="text-[10px] font-black text-white/40 uppercase block mb-2">نافذة التنبيه (قبل)</span>
+                      <div className="flex items-center gap-2">
+                        <Input type="number" value={form.countdownWindow} onChange={(e) => setForm({...form, countdownWindow: parseInt(e.target.value)})} className="h-10 bg-white/5 border-none text-center font-black" />
+                        <span className="text-[10px] text-white/20">د</span>
+                      </div>
+                    </div>
+                    <div className="space-y-4 bg-black/20 p-4 rounded-2xl border border-white/5">
+                      <span className="text-[10px] font-black text-white/40 uppercase block mb-2">نافذة التنبيه (بعد)</span>
+                      <div className="flex items-center gap-2">
+                        <Input type="number" value={form.countupWindow} onChange={(e) => setForm({...form, countupWindow: parseInt(e.target.value)})} className="h-10 bg-white/5 border-none text-center font-black" />
+                        <span className="text-[10px] text-white/20">د</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black text-white/40 uppercase px-2">لون التمييز</label>
+                    <div className="flex gap-3 px-2">
+                      {COLOR_OPTIONS.map(opt => (
+                        <button 
+                          key={opt.id} 
+                          onClick={() => setForm({...form, color: opt.id})}
+                          className={cn(
+                            "w-8 h-8 rounded-full border-4 transition-all",
+                            opt.class,
+                            form.color === opt.id ? "border-white scale-125 shadow-glow" : "border-transparent opacity-40"
+                          )}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  <Button onClick={handleSubmitReminder} className="w-full h-16 bg-primary text-white font-black text-xl rounded-2xl shadow-glow focusable">
+                    <Save className="w-6 h-6 ml-3" /> {editingId ? 'تحديث التذكير السحابي' : 'حفظ التذكير سحابياً'}
                   </Button>
                 </div>
               </div>
 
-              <div className="lg:col-span-8 space-y-4">
-                {reminders.length === 0 ? (
-                  <div className="h-full flex flex-col items-center justify-center opacity-20 py-20 border-2 border-dashed border-white/10 rounded-[2.5rem]">
-                    <Bell className="w-16 h-16 mb-4" />
-                    <p className="font-black uppercase tracking-widest text-xs">لا توجد تذكيرات مخصصة حالياً</p>
-                  </div>
-                ) : reminders.map((r) => (
-                  <div key={r.id} className="bg-white/5 p-6 rounded-2xl border border-white/5 flex items-center justify-between group">
-                    <div className="flex items-center gap-6">
-                      <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20">
-                        <Bell className={cn("w-6 h-6", r.color)} />
+              <div className="lg:col-span-7">
+                <ScrollArea className="h-[600px] pr-4">
+                  <div className="flex flex-col gap-4 pb-10">
+                    {store.reminders.length === 0 ? (
+                      <div className="h-full flex flex-col items-center justify-center opacity-20 py-20 border-2 border-dashed border-white/10 rounded-[2.5rem]">
+                        <Bell className="w-16 h-16 mb-4" />
+                        <p className="font-black uppercase tracking-widest text-xs">لا توجد تذكيرات مخصصة حالياً</p>
                       </div>
-                      <div className="flex flex-col">
-                        <span className="text-lg font-black text-white">{r.label}</span>
-                        <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">
-                          {RELATIVE_PRAYER_OPTIONS.find(o => o.id === r.relativePrayer)?.name} 
-                          {r.offsetMinutes !== 0 && ` (${r.offsetMinutes > 0 ? '+' : ''}${r.offsetMinutes} د)`}
-                        </span>
+                    ) : store.reminders.map((r) => (
+                      <div key={r.id} className="bg-white/5 p-6 rounded-2xl border border-white/5 flex items-center justify-between group animate-in fade-in slide-in-from-left-4">
+                        <div className="flex items-center gap-6">
+                          <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center border transition-all", r.color.replace('text', 'bg').replace('400', '500') + '/20 border-' + r.color.replace('text-', ''))}>
+                            {r.iconType === 'play' ? <RefreshCw className={cn("w-7 h-7", r.color)} /> : r.iconType === 'circle' ? <Database className={cn("w-7 h-7", r.color)} /> : <Bell className={cn("w-7 h-7", r.color)} />}
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-xl font-black text-white">{r.label}</span>
+                            <div className="flex items-center gap-3 mt-1">
+                              <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">
+                                {RELATIVE_PRAYER_OPTIONS.find(o => o.id === r.relativePrayer)?.name || 'يدوي'}
+                              </span>
+                              {r.offsetMinutes !== 0 && (
+                                <span className={cn("text-[10px] font-black px-2 py-0.5 rounded-full bg-primary/10", r.color)}>
+                                  {r.offsetMinutes! > 0 ? '+' : ''}{r.offsetMinutes} د
+                                </span>
+                              )}
+                              <span className="text-[9px] text-white/20 font-bold">Window: ±{r.countdownWindow}د</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                          <Button variant="ghost" size="icon" onClick={() => { setForm(r); setEditingId(r.id); }} className="w-12 h-12 rounded-full bg-white/5 focusable"><Edit2 className="w-5 h-5" /></Button>
+                          <Button variant="ghost" size="icon" onClick={() => store.removeReminder(r.id)} className="w-12 h-12 rounded-full bg-red-600/10 text-red-500 focusable"><Trash2 className="w-4 h-4" /></Button>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
-                      <Button variant="ghost" size="icon" onClick={() => { setForm(r); setEditingId(r.id); }} className="w-10 h-10 rounded-full bg-white/5 focusable"><Edit2 className="w-4 h-4" /></Button>
-                      <Button variant="ghost" size="icon" onClick={() => removeReminder(r.id)} className="w-10 h-10 rounded-full bg-red-600/10 text-red-500 focusable"><Trash2 className="w-4 h-4" /></Button>
-                    </div>
+                    ))}
                   </div>
-                ))}
+                </ScrollArea>
               </div>
             </div>
           </Card>
@@ -684,12 +768,12 @@ export function SettingsView() {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   {MAJOR_LEAGUES.map(league => {
-                    const isFav = favoriteLeagueIds.includes(league.id);
+                    const isFav = store.favoriteLeagueIds.includes(league.id);
                     return (
                       <Button
                         key={league.id}
                         variant="outline"
-                        onClick={() => toggleFavoriteLeague(league.id)}
+                        onClick={() => store.toggleFavoriteLeague(league.id)}
                         className={cn(
                           "h-14 rounded-2xl border transition-all font-black text-xs justify-between px-6 focusable",
                           isFav ? "bg-accent/20 border-accent text-accent" : "bg-white/5 border-white/10 text-white/40 hover:bg-white/10"
@@ -736,17 +820,17 @@ export function SettingsView() {
                     </div>
                     <Button 
                       onClick={handleSyncClubs} 
-                      disabled={isSyncingClubs || searchLeagueId === 'all'} 
+                      disabled={store.isClubsLoading || searchLeagueId === 'all'} 
                       className="h-16 px-6 bg-purple-600 hover:bg-purple-700 text-white font-black rounded-2xl shadow-xl focusable flex items-center gap-2"
                     >
-                      {isSyncingClubs ? <Loader2 className="w-5 h-5 animate-spin" /> : <Database className="w-5 h-5" />}
+                      {store.isClubsLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Database className="w-5 h-5" />}
                       تخزين الأندية
                     </Button>
                   </div>
                 </div>
 
                 <ScrollArea className="h-[350px] pr-2">
-                  {isClubsLoading ? (
+                  {store.isClubsLoading ? (
                     <div className="flex flex-col items-center justify-center py-20 gap-4">
                       <Loader2 className="w-10 h-10 animate-spin text-primary" />
                       <span className="text-white/40 font-bold">جاري جلب المستودع السحابي...</span>
@@ -793,18 +877,18 @@ export function SettingsView() {
                     </CardTitle>
                     <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest">Active Watchlist</p>
                   </div>
-                  <span className="bg-primary/20 text-primary px-4 py-1 rounded-full text-xs font-black">{favoriteTeams.length + favoriteLeagueIds.length} عنصر</span>
+                  <span className="bg-primary/20 text-primary px-4 py-1 rounded-full text-xs font-black">{store.favoriteTeams.length + store.favoriteLeagueIds.length} عنصر</span>
                 </div>
 
                 <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2 no-scrollbar">
-                  {favoriteTeams.length === 0 && favoriteLeagueIds.length === 0 ? (
+                  {store.favoriteTeams.length === 0 && store.favoriteLeagueIds.length === 0 ? (
                     <div className="py-20 text-center opacity-20 flex flex-col items-center gap-4">
                       <Trophy className="w-16 h-16" />
                       <p className="text-xs font-black uppercase tracking-widest">قائمة التتبع فارغة</p>
                     </div>
                   ) : (
                     <>
-                      {favoriteLeagueIds.map(lid => {
+                      {store.favoriteLeagueIds.map(lid => {
                         const l = MAJOR_LEAGUES.find(ml => ml.id === lid);
                         return (
                           <div key={`l-${lid}`} className="p-4 rounded-2xl bg-accent/5 border border-accent/20 flex items-center justify-between group">
@@ -812,11 +896,11 @@ export function SettingsView() {
                               <Shield className="w-8 h-8 text-accent" />
                               <span className="text-sm font-black text-white/80">{l?.name || "دوري مخصص"}</span>
                             </div>
-                            <Button variant="ghost" size="icon" onClick={() => toggleFavoriteLeague(lid)} className="w-10 h-10 rounded-full bg-red-600/10 text-red-500 focusable"><Trash2 className="w-4 h-4" /></Button>
+                            <Button variant="ghost" size="icon" onClick={() => store.toggleFavoriteLeague(lid)} className="w-10 h-10 rounded-full bg-red-600/10 text-red-500 focusable"><Trash2 className="w-4 h-4" /></Button>
                           </div>
                         );
                       })}
-                      {favoriteTeams.map(t => (
+                      {store.favoriteTeams.map(t => (
                         <div key={`t-${t.id}`} className="p-4 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-between group">
                           <div className="flex items-center gap-4">
                             <div className="relative w-10 h-10">
@@ -824,7 +908,7 @@ export function SettingsView() {
                             </div>
                             <span className="text-sm font-black text-white/80">{t.name}</span>
                           </div>
-                          <Button variant="ghost" size="icon" onClick={() => toggleFavoriteTeam(t)} className="w-10 h-10 rounded-full bg-red-600/10 text-red-500 focusable"><Trash2 className="w-4 h-4" /></Button>
+                          <Button variant="ghost" size="icon" onClick={() => store.toggleFavoriteTeam(t)} className="w-10 h-10 rounded-full bg-red-600/10 text-red-500 focusable"><Trash2 className="w-4 h-4" /></Button>
                         </div>
                       ))}
                     </>

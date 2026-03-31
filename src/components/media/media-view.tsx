@@ -52,9 +52,8 @@ export function MediaView() {
   const setInitialScroll = useCallback((key: string) => {
     const el = scrollRefs.current[key];
     if (el) {
-      el.scrollLeft = 0; // RTL: Right is 0
+      el.scrollLeft = 0; 
       setTimeout(() => {
-        // Focus latest element at the right
         const lastItem = el.querySelector('[data-nav-id*="video-"]:last-child') as HTMLElement;
         if (lastItem) {
           lastItem.focus({ preventScroll: true });
@@ -107,7 +106,7 @@ export function MediaView() {
       const filteredTrending = trending.filter(v => {
         const cid = v.channelId || "";
         channelCount[cid] = (channelCount[cid] || 0) + 1;
-        return channelCount[cid] <= 3; // 3 videos max per channel in trending
+        return channelCount[cid] <= 3; 
       });
       setTrending24h(filteredTrending.slice(0, 15));
       
@@ -131,8 +130,6 @@ export function MediaView() {
         setIsDataLoading(true);
         try {
           const videos = await fetchChannelVideos(selectedChannel.channelid, 40);
-          
-          // SMART ORDERING: Live -> Most Viewed -> Newest
           const live = videos.filter(v => v.isLive);
           const others = videos.filter(v => !v.isLive);
           const sortedOthers = [...others].sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0));
@@ -261,7 +258,7 @@ export function MediaView() {
                     <Plus className="w-4 h-4" />
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-4xl bg-zinc-950 border-white/10 rounded-[2.5rem] p-0 dir-rtl shadow-2xl">
+                <DialogContent className="max-w-4xl bg-zinc-950 border-white/10 rounded-[2.5rem] p-0 dir-rtl shadow-2xl z-[5000]">
                   <DialogHeader className="p-8 border-b border-white/10 text-right">
                     <DialogTitle className="text-xl font-black text-white">إضافة قناة</DialogTitle>
                     <div className="flex gap-4 mt-6">

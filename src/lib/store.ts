@@ -370,7 +370,6 @@ export const useMediaStore = create<MediaState>()(
             const record = data.record;
             let list = [];
             
-            // Robust parsing for manuscripts
             if (Array.isArray(record)) {
               list = record;
             } else if (record && Array.isArray(record.manuscripts)) {
@@ -548,7 +547,6 @@ export const useMediaStore = create<MediaState>()(
         if (video) {
           const playlist = context && context.length > 0 ? context : [video];
           const idx = playlist.findIndex(v => v.id === video.id);
-          // Special logic for beIN - Force Web mode if blocked channel detected
           const isBlockedChannel = video.channelTitle?.toLowerCase().includes('bein') || false;
           
           set({ 
@@ -576,7 +574,11 @@ export const useMediaStore = create<MediaState>()(
         finalChannel.type = 'web';
         finalChannel.url = finalChannel.url || `http://playstop.watch:2095/live/W87d737/Pd37qj34/${finalChannel.stream_id}.m3u8`;
         
-        const iptvPlaylist = context && context.length > 0 ? context : state.favoriteIptvChannels;
+        // CRITICAL FIX: Ensure playlist is never empty. If no context, at least include current channel.
+        const iptvPlaylist = (context && context.length > 0) 
+          ? context 
+          : (state.favoriteIptvChannels.length > 0 ? state.favoriteIptvChannels : [finalChannel]);
+          
         const idx = iptvPlaylist.findIndex(c => c.stream_id === finalChannel.stream_id);
 
         set({ 
@@ -592,6 +594,7 @@ export const useMediaStore = create<MediaState>()(
 
       setActiveQuranUrl: (url) => set({ activeQuranUrl: url }),
       setPlaylist: (videos) => {
+        if (!videos || videos.length === 0) return;
         set({ playlist: videos, playlistIndex: 0, activeVideo: videos[0], activeIptv: null, isPlaying: true, isMinimized: false, isFullScreen: true });
       },
       nextTrack: () => {

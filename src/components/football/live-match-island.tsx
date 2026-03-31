@@ -40,11 +40,9 @@ export function LiveMatchIsland() {
   }, []);
 
   const fetchMatches = useCallback(async (force = false) => {
-    // Only poll if there's at least one match currently live
     const hasLiveMatch = topMatches.some(m => m.status === 'live');
     const timeSinceLast = Date.now() - lastFetchRef.current;
     
-    // logic to save credits: don't poll if not live or just recently fetched
     if (!force && !hasLiveMatch && timeSinceLast < 3600000 && lastFetchRef.current !== 0) return;
     if (!force && hasLiveMatch && timeSinceLast < 60000) return;
 
@@ -55,7 +53,6 @@ export function LiveMatchIsland() {
       if (matches && matches.length > 0) {
         for (const match of matches) {
           const prev = prevScoresRef.current[match.id];
-          // goal alert only for tracked matches
           const isFavoriteMatch = favoriteTeams.some(t => t.id === match.homeTeamId || t.id === match.awayTeamId) || belledMatchIds.includes(match.id);
           
           if (prev && match.score && isFavoriteMatch) {
@@ -125,14 +122,17 @@ export function LiveMatchIsland() {
   }, [isCountdownActive, showIslands, toggleShowIslands]);
 
   const sortedMatches = useMemo(() => {
-    // Island ONLY shows favorite/belled matches for focus
     return topMatches
       .filter(m => !skippedMatchIds.includes(m.id))
-      .filter(m => belledMatchIds.includes(m.id) || favoriteTeams.some(t => t.id === m.homeTeamId || t.id === m.awayTeamId))
       .sort((a, b) => {
         const aBelled = belledMatchIds.includes(a.id);
         const bBelled = belledMatchIds.includes(b.id);
         if (aBelled !== bBelled) return aBelled ? -1 : 1;
+        
+        const aIsFav = favoriteTeams.some(t => t.id === a.homeTeamId || t.id === a.awayTeamId);
+        const bIsFav = favoriteTeams.some(t => t.id === b.homeTeamId || t.id === b.awayTeamId);
+        if (aIsFav !== bIsFav) return aIsFav ? -1 : 1;
+
         const statusWeight: Record<string, number> = { live: 0, upcoming: 1, finished: 2 };
         return (statusWeight[a.status] || 0) - (statusWeight[b.status] || 0);
       });
@@ -143,7 +143,8 @@ export function LiveMatchIsland() {
     return sortedMatches[0];
   }, [sortedMatches, overrideMatchId]);
 
-  if (activeVideo) return null;
+  // FIXED: No longer returning null if activeVideo is present. 
+  // Visibility is strictly controlled by showIslands.
 
   const GlassNumber = ({ text, size = '3rem', id, subtext, colorClass }: { text: string, size?: string, id: string, subtext?: string, colorClass?: string }) => (
     <div className="relative w-full h-full flex flex-col items-center justify-center">
@@ -168,7 +169,10 @@ export function LiveMatchIsland() {
   );
 
   return (
-    <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[10001] flex flex-col items-center gap-4 pointer-events-none scale-110 dir-rtl">
+    <div className={cn(
+      "fixed top-6 left-1/2 -translate-x-1/2 z-[10001] flex flex-col items-center gap-4 pointer-events-none scale-110 dir-rtl transition-all duration-700",
+      showIslands ? "translate-y-0 opacity-100" : "-translate-y-20 opacity-0"
+    )}>
       <div className="flex items-start gap-4">
         <div onClick={toggleShowIslands} className="pointer-events-auto shadow-2xl w-[3.5rem] h-[3.5rem] rounded-full flex items-center justify-center premium-glass cursor-pointer active:scale-90 transition-all border border-white/10">
           {(showIslands || isCountdownActive) ? <Eye className="w-5 h-5 text-accent" /> : <EyeOff className="w-5 h-5 text-white/20" />}
@@ -224,7 +228,7 @@ export function LiveMatchIsland() {
 
       {showIslands && sortedMatches.length > 1 && !activeGoal && (
         <div className="flex items-center gap-2 animate-in slide-in-from-top-2 duration-700">
-          {sortedMatches.slice(1, 6).map((match) => {
+          {sortedMatches.slice(1, 8).map((match) => {
             const isFavoriteMatch = favoriteTeams.some(t => t.id === match.homeTeamId || t.id === match.awayTeamId);
             return (
               <div 
