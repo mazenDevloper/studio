@@ -20,7 +20,11 @@ export const YT_KEYS_POOL = [
   "AIzaSyBLrMA6plsSZtqg2iY9Z1N1fJAHNmgGxos",
   "AIzaSyCaqMPtn-egmEQk7XmTel--xsXV1Xbdp7o",
   "AIzaSyDj4w1H3Is_rmTLhl40zER7AgYhT_tKASo",
-  "AIzaSyBeTHs25EsKeDFtIS5kq8iDATz-2c8hBrI"
+  "AIzaSyBeTHs25EsKeDFtIS5kq8iDATz-2c8hBrI",
+  "AIzaSyBbhRcFh-u3bWcG8sPLNnOl5r_lMG8q7Zs",
+  "AIzaSyBYCIeFqlTv1xn53rHRTIv0_0rLIGf9t2Q",
+  "AIzaSyAuyQADaB5SzwebqRMaG_AfkKRyB-uBL3c",
+  "AIzaSyCDXmW0Jzhv93uYjk9xfgxCS2061jqWaaY"
 ];
 
 export const JSONBIN_MASTER_KEY = '$2a$10$SYrYv.ct8hiMU9YeUxEQ.ecRkOrTqs.TDchJRV3wW.aKJnDXy2oVy';
@@ -32,6 +36,7 @@ export const JSONBIN_MANUSCRIPTS_BIN_ID = '69b63c5cc3097a1dd5278b25';
 export const JSONBIN_MASTER_BIN_ID = '69b63cb1c3097a1dd5278bf4'; 
 export const JSONBIN_MATCHES_SCHEDULE_BIN_ID = '69c782cbb7ec241ddcb0b99a';
 export const JSONBIN_CLUBS_CACHE_BIN_ID = '69b6a00bc3097a1dd527b3fa';
+export const JSONBIN_POPULAR_RECITERS_BIN_ID = '6909c1cd43b1c97be997b522';
 
 export const prayerTimesData = [
     {"date":"2026-03-05","day":"الخميس","fajr":"05:27","sunrise":"06:39","dhuhr":"12:40","asr":"16:02","maghrib":"18:36","isha":"19:43"}

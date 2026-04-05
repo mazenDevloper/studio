@@ -2,40 +2,11 @@
 "use client";
 
 import { useState, useCallback, useEffect, useMemo } from "react";
-import { useMediaStore, Reminder, FavoriteTeam, Manuscript, PrayerSetting } from "@/lib/store";
+import { useMediaStore, Reminder, Manuscript, AppAction } from "@/lib/store";
 import { 
-  Settings, 
-  Bell, 
-  Trash2, 
-  Edit2,
-  Trophy,
-  Search,
-  Star,
-  RefreshCw,
-  Plus,
-  Globe,
-  Zap,
-  Shield,
-  Clock,
-  ChevronDown,
-  ChevronUp,
-  ImageIcon,
-  Type as TypeIcon,
-  AlertTriangle,
-  Palette,
-  Upload,
-  Eye,
-  X,
-  Pipette,
-  AlertCircle,
-  Database,
-  Loader2,
-  Monitor,
-  Type,
-  FileCode,
-  Sparkles,
-  Timer,
-  Save
+  Settings, Bell, Trash2, Edit2, Trophy, Search, Star, RefreshCw, Plus, Globe, Zap, Clock,
+  ChevronDown, ChevronUp, ImageIcon, Type as TypeIcon, Monitor, Database, Loader2, Gamepad2, Keyboard,
+  MousePointer2, Tv, SkipForward, SkipBack, Bookmark, LayoutGrid, Maximize2, Minimize2, Save, Timer
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,10 +14,10 @@ import { Card, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
-import { cn } from "@/lib/utils";
+import { cn, normalizeKey } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { MAJOR_LEAGUES } from "@/lib/football-data";
-import { getExhaustedKeysCount, resetYoutubeBlacklist } from "@/lib/youtube";
+import { searchFootballTeams } from "@/lib/football-api";
 import {
   Select,
   SelectContent,
@@ -55,21 +26,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { JSONBIN_MATCHES_SCHEDULE_BIN_ID, JSONBIN_MASTER_KEY } from "@/lib/constants";
-
-const BACKGROUNDS = [
-  "https://images.unsplash.com/photo-1534067783941-51c9c23ecefd",
-  "https://images.unsplash.com/photo-1446776811953-bd23d57bd21aa",
-  "https://images.unsplash.com/photo-1594911772125-07fc7a2d8d9f",
-  "https://images.unsplash.com/photo-1478760329108-5c3ed9d495a0"
-];
-
-const STATIC_WALL_BACKGROUNDS = [
-  { id: 'art-1', name: 'زيتي تجريدي', url: 'https://images.unsplash.com/photo-1578301978693-85fa9c0320b9?q=80&w=2000' },
-  { id: 'art-2', name: 'ألوان مائية', url: 'https://images.unsplash.com/photo-1541701494587-cb58502866ab?q=80&w=2000' },
-  { id: 'art-3', name: 'نسيج قماشي', url: 'https://images.unsplash.com/photo-1561214115-f2f134cc4912?q=80&w=2000' },
-  { id: 'art-4', name: 'ظلال الرخام', url: 'https://images.unsplash.com/photo-1533154683836-84ea7a0bc310?q=80&w=2000' }
-];
 
 const RELATIVE_PRAYER_OPTIONS = [
   { id: 'fajr', name: 'الفجر' },
@@ -82,49 +38,71 @@ const RELATIVE_PRAYER_OPTIONS = [
   { id: 'manual', name: 'يدوي (وقت محدد)' },
 ];
 
-const ICON_OPTIONS = [
-  { id: 'bell', icon: Bell },
-  { id: 'play', icon: RefreshCw },
-  { id: 'circle', icon: Database },
+const BUTTON_ACTION_CATEGORIES = [
+  {
+    title: 'أزرار التنقل الأساسية',
+    items: [
+      { id: 'nav_up', label: 'للأعلى (Up)', icon: ChevronUp },
+      { id: 'nav_down', label: 'للأسفل (Down)', icon: ChevronDown },
+      { id: 'nav_left', label: 'يسار (Left)', icon: ChevronLeft },
+      { id: 'nav_right', label: 'يمين (Right)', icon: ChevronRight },
+      { id: 'nav_ok', label: 'موافق / إدخال (OK/Enter)', icon: MousePointer2 },
+      { id: 'nav_back', label: 'رجوع (Back)', icon: X },
+    ]
+  },
+  {
+    title: 'تحكم المشغل (أثناء العمل)',
+    items: [
+      { id: 'player_next', label: 'القناة التالية', icon: SkipForward },
+      { id: 'player_prev', label: 'القناة السابقة', icon: SkipBack },
+      { id: 'player_save', label: 'حفظ الفيديو', icon: Bookmark },
+      { id: 'player_fullscreen', label: 'تبديل ملء الشاشة (Cinema)', icon: Maximize2 },
+      { id: 'player_playlist', label: 'إظهار/إخفاء القائمة', icon: LayoutGrid },
+      { id: 'player_minimize', label: 'تصغير المشغل (Minimize)', icon: Minimize2 },
+      { id: 'player_close', label: 'إغلاق المشغل (Close)', icon: X },
+    ]
+  },
+  {
+    title: 'اختصارات التطبيقات',
+    items: [
+      { id: 'goto_home', label: 'الرئيسية (Home)', icon: Monitor },
+      { id: 'goto_media', label: 'الميديا (Media)', icon: Globe },
+      { id: 'goto_quran', label: 'القرآن (Quran)', icon: Database },
+      { id: 'goto_hihi2', label: 'هاي كورة (Hihi2)', icon: Trophy },
+      { id: 'goto_iptv', label: 'البث المباشر (IPTV)', icon: Tv },
+      { id: 'goto_football', label: 'كووورة (Football)', icon: Trophy },
+      { id: 'goto_settings', label: 'الإعدادات (Settings)', icon: Settings },
+    ]
+  }
 ];
 
-const COLOR_OPTIONS = [
-  { id: 'text-blue-400', class: 'bg-blue-400' },
-  { id: 'text-emerald-400', class: 'bg-emerald-400' },
-  { id: 'text-orange-400', class: 'bg-orange-400' },
-  { id: 'text-red-400', class: 'bg-red-400' },
-  { id: 'text-purple-400', class: 'bg-purple-400' },
-  { id: 'text-accent', class: 'bg-accent' },
-];
+function X({ className }: { className?: string }) { 
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M18 6 6 18" /><path d="m6 6 12 12" />
+    </svg>
+  );
+}
+
+function ChevronLeft({ className }: { className?: string }) { return <ChevronDown className={cn(className, "rotate-90")} />; }
+function ChevronRight({ className }: { className?: string }) { return <ChevronDown className={cn(className, "-rotate-90")} />; }
 
 export function SettingsView() {
-  // ATOMIC SELECTORS TO PREVENT TypeError
-  const addReminder = useMediaStore(s => s.addReminder);
-  const updateReminder = useMediaStore(s => s.updateReminder);
-  const removeReminder = useMediaStore(s => s.removeReminder);
-  const reminders = useMediaStore(s => s.reminders);
-  const mapSettings = useMediaStore(s => s.mapSettings);
-  const updateMapSettings = useMediaStore(s => s.updateMapSettings);
-  const favoriteTeams = useMediaStore(s => s.favoriteTeams);
-  const toggleFavoriteTeam = useMediaStore(s => s.toggleFavoriteTeam);
-  const favoriteLeagueIds = useMediaStore(s => s.favoriteLeagueIds);
-  const toggleFavoriteLeague = useMediaStore(s => s.toggleFavoriteLeague);
-  const clubsCache = useMediaStore(s => s.clubsCache);
-  const isClubsLoading = useMediaStore(s => s.isClubsLoading);
-  const customWallBackgrounds = useMediaStore(s => s.customWallBackgrounds);
-  const prayerSettings = useMediaStore(s => s.prayerSettings);
-  const updatePrayerSetting = useMediaStore(s => s.updatePrayerSetting);
-  const customManuscripts = useMediaStore(s => s.customManuscripts);
-  const addManuscript = useMediaStore(s => s.addManuscript);
-  const removeManuscript = useMediaStore(s => s.removeManuscript);
-  const addCustomWallBackground = useMediaStore(s => s.addCustomWallBackground);
-  const removeCustomWallBackground = useMediaStore(s => s.removeCustomWallBackground);
+  const { 
+    addReminder, updateReminder, removeReminder, reminders,
+    mapSettings, updateMapSettings, prayerSettings, updatePrayerSetting,
+    customManuscripts, addManuscript, removeManuscript,
+    keyMappings, setKeyMapping, clearKeyMappings,
+    favoriteTeams, toggleFavoriteTeam, favoriteLeagueIds, toggleFavoriteLeague
+  } = useMediaStore();
   
   const { toast } = useToast();
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [localBgUrl, setLocalBgUrl] = useState(mapSettings.manuscriptBgUrl || "");
-  const [exhaustedKeys, setExhaustedKeys] = useState(0);
-  
+  const [mappingAction, setMappingAction] = useState<AppAction | null>(null);
+  const [teamSearch, setTeamSearch] = useState("");
+  const [teamResults, setTeamResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+
   const [form, setForm] = useState<Partial<Reminder>>({
     label: "",
     relativePrayer: "manual",
@@ -141,49 +119,33 @@ export function SettingsView() {
   const [manuscriptInput, setManuscriptInput] = useState("");
   const [manuscriptType, setManuscriptType] = useState<'text' | 'image'>('text');
 
-  const [clubSearch, setClubSearch] = useState("");
-
   useEffect(() => {
-    setLocalBgUrl(mapSettings.manuscriptBgUrl);
-    setExhaustedKeys(getExhaustedKeysCount());
-  }, [mapSettings.manuscriptBgUrl]);
+    if (!mappingAction) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      e.preventDefault();
+      const normalized = normalizeKey(e);
+      setKeyMapping(mappingAction, normalized);
+      setMappingAction(null);
+      toast({ title: "تم البرمجة", description: `تم تعيين الزر [${normalized}] للوظيفة المحددة بنجاح.` });
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [mappingAction, setKeyMapping, toast]);
 
-  const allAvailableWallBackgrounds = useMemo(() => {
-    const list = [...STATIC_WALL_BACKGROUNDS.map(b => ({ ...b, isCustom: false }))];
-    if (Array.isArray(customWallBackgrounds)) {
-      customWallBackgrounds.forEach((url, i) => {
-        if (!STATIC_WALL_BACKGROUNDS.some(s => s.url === url)) {
-          list.push({ id: `custom-bg-${i}`, name: `خلفية مرفوعة ${i + 1}`, url, isCustom: true });
-        }
-      });
+  const handleSearchTeams = async () => {
+    if (!teamSearch.trim()) return;
+    setIsSearching(true);
+    try {
+      const results = await searchFootballTeams(teamSearch);
+      setTeamResults(results);
+    } finally {
+      setIsSearching(false);
     }
-    return list;
-  }, [customWallBackgrounds]);
-
-  const filteredClubsResults = useMemo(() => {
-    if (!clubsCache) return [];
-    return clubsCache.filter(item => 
-      item.team.name.toLowerCase().includes(clubSearch.toLowerCase())
-    );
-  }, [clubsCache, clubSearch]);
-
-  const handleApplyBackground = () => {
-    if (!localBgUrl.trim()) return;
-    if (typeof updateMapSettings === 'function') updateMapSettings({ manuscriptBgUrl: localBgUrl });
-    if (typeof addCustomWallBackground === 'function') addCustomWallBackground(localBgUrl);
-    toast({ title: "تم الحفظ سحابياً", description: "تم تحديث خلفية حائط المخطوطة ومزامنتها بنجاح." });
-  };
-
-  const handleResetKeys = () => {
-    resetYoutubeBlacklist();
-    setExhaustedKeys(0);
-    toast({ title: "تمت التصفية", description: "تمت إزالة كافة مفاتيح YouTube من القائمة السوداء بنجاح." });
   };
 
   const handleSubmitReminder = () => {
     if (!form.label?.trim()) return;
-    
-    const reminderData: Reminder = {
+    const data: Reminder = {
       id: editingId || Math.random().toString(36).substr(2, 9),
       label: form.label!,
       relativePrayer: (form.relativePrayer as any) || 'manual',
@@ -197,160 +159,127 @@ export function SettingsView() {
       color: form.color || 'text-blue-400',
       iconType: (form.iconType as any) || 'bell',
     };
-    
     if (editingId) {
-      if (typeof updateReminder === 'function') {
-        updateReminder(editingId, reminderData);
-        setEditingId(null);
-        toast({ title: "تم التعديل", description: "تم تحديث التذكير ومزامنته سحابياً." });
-      }
+      updateReminder(editingId, data);
+      setEditingId(null);
+      toast({ title: "تم التعديل", description: "تم تحديث التذكير سحابياً." });
     } else {
-      if (typeof addReminder === 'function') {
-        addReminder(reminderData);
-        toast({ title: "تمت الإضافة", description: "تمت إضافة التذكير ومزامنته سحابياً." });
-      }
+      addReminder(data);
+      toast({ title: "تمت الإضافة", description: "تمت إضافة التذكير سحابياً." });
     }
-    
-    setForm({ 
-      label: "", relativePrayer: "manual", manualTime: "08:00", 
-      offsetMinutes: 0, showCountdown: true, countdownWindow: 15, 
-      showCountup: true, countupWindow: 15, color: "text-blue-400", 
-      iconType: "bell" 
-    });
+    setForm({ label: "", relativePrayer: "manual", manualTime: "08:00", offsetMinutes: 0, showCountdown: true, countdownWindow: 15, showCountup: true, countupWindow: 15, color: "text-blue-400", iconType: "bell" });
   };
 
+  const safeKeyMappings = useMemo(() => {
+    const safe: Record<string, string[]> = {};
+    Object.keys(keyMappings || {}).forEach(k => {
+      const val = keyMappings[k];
+      safe[k] = Array.isArray(val) ? val : [];
+    });
+    return safe;
+  }, [keyMappings]);
+
   return (
-    <div className="p-12 space-y-12 max-w-7xl mx-auto pb-40 animate-in fade-in duration-700 text-right dir-rtl">
-      <header className="flex flex-col gap-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-6xl font-black font-headline text-white tracking-tighter flex items-center gap-6">
-            مركز التحكم <Settings className="w-12 h-12 text-primary animate-spin-slow" />
-          </h1>
-          <div className="flex items-center gap-4 bg-white/5 px-6 py-3 rounded-2xl border border-white/10 shadow-2xl relative">
-            <AlertCircle className={cn("w-6 h-6", exhaustedKeys > 5 ? "text-red-500" : "text-yellow-500")} />
-            <div className="flex flex-col">
-              <span className="text-white font-black text-lg tabular-nums leading-none">{exhaustedKeys} / 15</span>
-              <span className="text-[9px] text-white/40 uppercase font-bold tracking-widest mt-1">مفاتيح مستنفدة حالياً</span>
+    <div className="p-12 space-y-12 max-w-7xl mx-auto pb-40 animate-in fade-in duration-700 text-right dir-rtl relative">
+      {mappingAction && (
+        <div className="fixed inset-0 z-[1000] bg-black/90 backdrop-blur-3xl flex items-center justify-center animate-in fade-in duration-500">
+          <div className="text-center space-y-8 max-w-md p-12 bg-white/5 rounded-[3rem] border border-white/10 shadow-glow">
+            <div className="w-24 h-24 rounded-full bg-primary flex items-center justify-center mx-auto animate-bounce"><Keyboard className="w-12 h-12 text-white" /></div>
+            <div className="space-y-2">
+              <h2 className="text-4xl font-black text-white tracking-tighter">برمجة زر جديد</h2>
+              <p className="text-xl text-primary font-bold">يرجى الضغط الآن على الزر الذي تريد استخدامه لهذه الوظيفة</p>
             </div>
-            <Button 
-              onClick={handleResetKeys} 
-              variant="ghost" 
-              size="icon" 
-              className="mr-2 h-10 w-10 rounded-full bg-red-600/10 hover:bg-red-600/20 text-red-500 focusable"
-              title="تصفية القائمة السوداء"
-            >
-              <RefreshCw className="w-5 h-5" />
-            </Button>
+            <Button variant="ghost" onClick={() => setMappingAction(null)} className="text-white/40 hover:text-white mt-4 focusable">إلغاء العملية</Button>
           </div>
         </div>
-        <p className="text-white/40 font-bold uppercase tracking-[0.6em] text-sm">System Configuration & Preferences</p>
+      )}
+
+      <header className="flex flex-col gap-4">
+        <h1 className="text-6xl font-black font-headline text-white tracking-tighter flex items-center gap-6">
+          مركز التحكم <Settings className="w-12 h-12 text-primary animate-spin-slow" />
+        </h1>
+        <p className="text-white/40 font-bold uppercase tracking-[0.6em] text-sm">System Configuration & Detailed Preferences</p>
       </header>
 
       <Tabs defaultValue="appearance" className="w-full">
         <TabsList className="bg-white/5 p-1 rounded-full border border-white/10 h-16 mb-12 flex justify-start w-fit">
           <TabsTrigger value="appearance" className="rounded-full px-10 h-full data-[state=active]:bg-primary font-bold text-lg focusable">المظهر</TabsTrigger>
+          <TabsTrigger value="football" className="rounded-full px-10 h-full data-[state=active]:bg-primary font-bold text-lg focusable">كرة القدم</TabsTrigger>
           <TabsTrigger value="prayers" className="rounded-full px-10 h-full data-[state=active]:bg-primary font-bold text-lg focusable">الصلوات</TabsTrigger>
           <TabsTrigger value="reminders" className="rounded-full px-10 h-full data-[state=active]:bg-primary font-bold text-lg focusable">التذكيرات</TabsTrigger>
-          <TabsTrigger value="football" className="rounded-full px-10 h-full data-[state=active]:bg-primary font-bold text-lg focusable">الرياضة</TabsTrigger>
+          <TabsTrigger value="buttonmap" className="rounded-full px-10 h-full data-[state=active]:bg-primary font-bold text-lg focusable">برمجة الأزرار</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="appearance" className="space-y-12 outline-none">
+        <TabsContent value="appearance" className="space-y-12">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <Card className="premium-glass p-10 space-y-10">
-              <div className="flex flex-col gap-2">
-                <CardTitle className="text-2xl font-black text-white flex items-center gap-3">
-                  <Monitor className="w-6 h-6 text-primary" />
-                  زوم المتصفح والعرض
-                </CardTitle>
-                <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest">Global Display Scaling</p>
-              </div>
-              
+              <CardTitle className="text-2xl font-black text-white flex items-center gap-3"><Monitor className="w-6 h-6 text-primary" />زوم المتصفح والعرض</CardTitle>
               <div className="space-y-8">
                 <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-black text-white/60">مقياس الواجهة (Display Scale)</span>
-                    <span className="text-primary font-black">{Math.round((mapSettings.displayScale ?? 1.0) * 100)}%</span>
-                  </div>
-                  <Slider 
-                    value={[mapSettings.displayScale ?? 1.0]} 
-                    min={0.5} max={1.5} step={0.05} 
-                    onValueChange={([v]) => updateMapSettings({ displayScale: v })} 
-                  />
+                  <div className="flex justify-between items-center"><span className="text-sm font-black text-white/60">مقياس الواجهة الذكية</span><span className="text-primary font-black">{Math.round((mapSettings.displayScale ?? 1.0) * 100)}%</span></div>
+                  <Slider value={[mapSettings.displayScale ?? 1.0]} min={0.5} max={1.5} step={0.05} onValueChange={([v]) => updateMapSettings({ displayScale: v })} />
                 </div>
-
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-black text-white/60">حجم الخط العالمي (Font Size)</span>
-                    <span className="text-primary font-black">{Math.round((mapSettings.fontScale ?? 1.0) * 100)}%</span>
-                  </div>
-                  <Slider 
-                    value={[mapSettings.fontScale ?? 1.0]} 
-                    min={0.7} max={1.3} step={0.05} 
-                    onValueChange={([v]) => updateMapSettings({ fontScale: v })} 
-                  />
+                <div className="flex items-center justify-between p-6 bg-white/5 rounded-2xl border border-white/5">
+                  <div className="space-y-1"><h4 className="text-lg font-bold text-white">خلفية المخطوطات</h4><p className="text-xs text-white/40">إظهار خلفيات فنية خلف نصوص الأذكار</p></div>
+                  <Switch checked={mapSettings.showManuscriptBg} onCheckedChange={(v) => updateMapSettings({ showManuscriptBg: v })} />
                 </div>
               </div>
             </Card>
-
-            <Card className="premium-glass p-10">
-              <CardTitle className="text-2xl font-black text-white mb-6 flex items-center gap-3">
-                <ImageIcon className="w-6 h-6 text-accent" />
-                الخلفية العامة
-              </CardTitle>
-              <div className="grid grid-cols-2 gap-4 h-64">
-                {BACKGROUNDS.map((bg, idx) => (
-                  <button key={idx} onClick={() => updateMapSettings({ backgroundIndex: idx })} className={cn("relative rounded-2xl overflow-hidden border-4 focusable", mapSettings.backgroundIndex === idx ? "border-primary scale-105 shadow-glow" : "border-transparent opacity-40")}>
-                    <img src={`${bg}?auto=format&fit=crop&q=40&w=300`} className="w-full h-full object-cover" alt="" />
-                  </button>
-                ))}
+            <Card className="premium-glass p-10 space-y-10">
+              <CardTitle className="text-2xl font-black text-white flex items-center gap-3"><ImageIcon className="w-6 h-6 text-primary" />إدارة المخطوطات</CardTitle>
+              <div className="space-y-6">
+                <div className="flex gap-4">
+                  <Input placeholder={manuscriptType === 'text' ? "أدخل نص الذكر..." : "أدخل رابط الصورة..."} value={manuscriptInput} onChange={(e) => setManuscriptInput(e.target.value)} className="h-14 bg-black/40 border-white/10 rounded-xl px-6 focusable text-white text-right flex-1" />
+                  <Button onClick={() => { if(manuscriptInput) { addManuscript({ id: Date.now().toString(), type: manuscriptType, content: manuscriptInput }); setManuscriptInput(""); } }} className="h-14 w-14 bg-primary rounded-xl focusable"><Plus className="w-6 h-6" /></Button>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant={manuscriptType === 'text' ? 'default' : 'outline'} onClick={() => setManuscriptType('text')} className="flex-1 rounded-xl h-12 focusable">نصي</Button>
+                  <Button variant={manuscriptType === 'image' ? 'default' : 'outline'} onClick={() => setManuscriptType('image')} className="flex-1 rounded-xl h-12 focusable">صورة</Button>
+                </div>
+                <ScrollArea className="h-48 rounded-xl bg-white/5 p-4 border border-white/5">
+                  <div className="space-y-2">
+                    {customManuscripts.map(m => (
+                      <div key={m.id} className="flex items-center justify-between p-3 bg-black/20 rounded-lg border border-white/5">
+                        <span className="text-xs truncate max-w-[200px] text-white/60">{m.content}</span>
+                        <Button variant="ghost" size="icon" onClick={() => removeManuscript(m.id)} className="w-8 h-8 text-red-500 hover:bg-red-500/20 rounded-full focusable"><Trash2 className="w-4 h-4" /></Button>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
               </div>
             </Card>
           </div>
+        </TabsContent>
 
-          <Card className="premium-glass p-10 space-y-8">
-            <div className="flex flex-col gap-2">
-              <CardTitle className="text-2xl font-black text-white flex items-center gap-3">
-                <Sparkles className="w-6 h-6 text-amber-400" />
-                إدارة المخطوطات والورد (Manuscripts)
-              </CardTitle>
-              <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest">Cloud Synchronized Manuscripts Hub</p>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-              <div className="lg:col-span-4 space-y-6 bg-white/5 p-8 rounded-[2.5rem] border border-white/5">
-                <h3 className="text-lg font-black text-white mb-4">إضافة مخطوطة سحابية</h3>
-                <div className="space-y-4">
-                  <div className="flex gap-2">
-                    <Button onClick={() => setManuscriptType('text')} className={cn("flex-1 h-12 rounded-xl focusable", manuscriptType === 'text' ? "bg-primary" : "bg-white/5 opacity-40")}>نص</Button>
-                    <Button onClick={() => setManuscriptType('image')} className={cn("flex-1 h-12 rounded-xl focusable", manuscriptType === 'image' ? "bg-primary" : "bg-white/5 opacity-40")}>صورة</Button>
-                  </div>
-                  <textarea 
-                    placeholder={manuscriptType === 'text' ? "ادخل نص الورد أو الذكر..." : "ادخل رابط الصورة المباشر..."}
-                    value={manuscriptInput}
-                    onChange={(e) => setManuscriptInput(e.target.value)}
-                    className="w-full min-h-[120px] bg-black/40 border-white/10 rounded-xl p-4 text-white text-right text-sm focusable"
-                  />
-                  <Button onClick={() => {
-                    if (manuscriptInput.trim()) {
-                      addManuscript({ id: Math.random().toString(36).substr(2, 9), type: manuscriptType, content: manuscriptInput });
-                      setManuscriptInput("");
-                      toast({ title: "تم الحفظ", description: "تمت إضافة المخطوطة سحابياً." });
-                    }
-                  }} className="w-full h-14 bg-amber-600 text-white font-black rounded-xl shadow-glow focusable">حفظ سحابي</Button>
+        <TabsContent value="football" className="space-y-8">
+          <Card className="premium-glass p-8 space-y-8">
+            <CardTitle className="text-2xl font-black text-white flex items-center gap-3"><Trophy className="w-6 h-6 text-primary" />تخصيص مركز كووورة</CardTitle>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+              <div className="space-y-6">
+                <h3 className="text-xl font-black text-primary border-b border-primary/20 pb-2">الدوريات المفضلة</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  {MAJOR_LEAGUES.map(league => (
+                    <div key={league.id} onClick={() => toggleFavoriteLeague(league.id)} className={cn("p-4 rounded-xl border transition-all cursor-pointer focusable flex items-center gap-3", favoriteLeagueIds.includes(league.id) ? "bg-primary/20 border-primary text-white" : "bg-white/5 border-white/5 text-white/40")}>
+                      <div className={cn("w-2 h-2 rounded-full", favoriteLeagueIds.includes(league.id) ? "bg-primary animate-pulse" : "bg-white/10")} />
+                      <span className="text-sm font-bold">{league.name}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
-              <div className="lg:col-span-8">
-                <ScrollArea className="h-[450px] pr-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-10">
-                    {customManuscripts.map((m) => (
-                      <div key={m.id} className="bg-white/5 p-6 rounded-2xl border border-white/5 flex flex-col justify-between min-h-[180px] group">
-                        <div className="flex-1 flex items-center justify-center overflow-hidden">
-                          {m.type === 'text' ? <p className="font-calligraphy text-2xl text-white text-center leading-relaxed">{m.content}</p> : <img src={m.content} className="max-h-32 w-auto object-contain" />}
-                        </div>
-                        <div className="mt-4 pt-4 border-t border-white/5 flex items-center justify-between">
-                          <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">{m.type}</span>
-                          <Button variant="ghost" size="icon" onClick={() => removeManuscript(m.id)} className="w-9 h-9 rounded-full bg-red-600/10 text-red-500 focusable opacity-0 group-hover:opacity-100 transition-all"><Trash2 className="w-4 h-4" /></Button>
-                        </div>
+              <div className="space-y-6">
+                <h3 className="text-xl font-black text-primary border-b border-primary/20 pb-2">الأندية والمنتخبات</h3>
+                <div className="flex gap-3">
+                  <Input placeholder="بحث عن فريق..." value={teamSearch} onChange={(e) => setTeamSearch(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearchTeams()} className="h-14 bg-black/40 border-white/10 rounded-xl px-6 focusable text-white text-right" />
+                  <Button onClick={handleSearchTeams} disabled={isSearching} className="h-14 w-14 bg-primary rounded-xl focusable">{isSearching ? <Loader2 className="w-6 h-6 animate-spin" /> : <Search className="w-6 h-6" />}</Button>
+                </div>
+                <ScrollArea className="h-64 rounded-2xl bg-white/5 p-4 border border-white/5">
+                  <div className="grid grid-cols-1 gap-2">
+                    {teamResults.map(tr => (
+                      <div key={tr.team.id} className="flex items-center justify-between p-3 bg-black/20 rounded-xl border border-white/5 hover:border-primary transition-all">
+                        <div className="flex items-center gap-4"><img src={tr.team.logo} className="w-8 h-8 object-contain" alt="" /><span className="font-bold text-white text-sm">{tr.team.name}</span></div>
+                        <Button variant="ghost" onClick={() => toggleFavoriteTeam({ id: tr.team.id, name: tr.team.name, logo: tr.team.logo })} className={cn("rounded-full focusable h-10 px-6", favoriteTeams.some(t => t.id === tr.team.id) ? "bg-yellow-500/20 text-yellow-500" : "text-white/40")}>
+                          {favoriteTeams.some(t => t.id === tr.team.id) ? <Star className="w-4 h-4 fill-current" /> : <Plus className="w-4 h-4" />}
+                        </Button>
                       </div>
                     ))}
                   </div>
@@ -360,33 +289,19 @@ export function SettingsView() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="prayers" className="space-y-8 outline-none">
+        <TabsContent value="prayers" className="space-y-8">
           <Card className="premium-glass p-8 space-y-8">
-            <div className="flex flex-col gap-2">
-              <CardTitle className="text-2xl font-black text-white flex items-center gap-3">
-                <Clock className="w-6 h-6 text-primary" />
-                تعديل أوقات الصلوات والإقامة
-              </CardTitle>
-              <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest">Master Prayer & Iqamah Sync</p>
-            </div>
+            <CardTitle className="text-2xl font-black text-white flex items-center gap-3"><Clock className="w-6 h-6 text-primary" />تعديل أوقات الصلوات والاقامة</CardTitle>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {prayerSettings.map((s) => (
-                <div key={s.id} className="bg-white/5 p-6 rounded-[2rem] border border-white/5 space-y-6">
-                  <span className="text-xl font-black text-white block border-b border-white/5 pb-4">{s.name}</span>
+              {prayerSettings.map(ps => (
+                <div key={ps.id} className="bg-white/5 p-6 rounded-[2.5rem] border border-white/10 space-y-6">
+                  <div className="flex items-center justify-between border-b border-white/5 pb-4"><h3 className="text-2xl font-black text-primary">{ps.name}</h3><Timer className="w-6 h-6 text-white/20" /></div>
                   <div className="space-y-4">
-                    <div className="flex flex-col gap-2">
-                      <div className="flex justify-between items-center text-[10px] font-black uppercase text-white/40">
-                        <span>إزاحة الوقت</span>
-                        <span className="text-primary">{s.offsetMinutes} د</span>
-                      </div>
-                      <Slider value={[s.offsetMinutes]} min={-30} max={30} step={1} onValueChange={([v]) => updatePrayerSetting(s.id, { offsetMinutes: v })} />
-                    </div>
-                    <div className="flex flex-col gap-2">
-                      <div className="flex justify-between items-center text-[10px] font-black uppercase text-white/40">
-                        <span>مدة الإقامة</span>
-                        <span className="text-accent">{s.iqamahDuration} د</span>
-                      </div>
-                      <Slider value={[s.iqamahDuration]} min={0} max={45} step={1} onValueChange={([v]) => updatePrayerSetting(s.id, { iqamahDuration: v })} />
+                    <div className="space-y-2"><div className="flex justify-between text-xs font-black text-white/40 uppercase"><span>إزاحة الوقت (دقائق)</span><span>{ps.offsetMinutes > 0 ? `+${ps.offsetMinutes}` : ps.offsetMinutes}</span></div><Slider value={[ps.offsetMinutes]} min={-60} max={60} step={1} onValueChange={([v]) => updatePrayerSetting(ps.id, { offsetMinutes: v })} /></div>
+                    <div className="space-y-2"><div className="flex justify-between text-xs font-black text-white/40 uppercase"><span>مدة الإقامة (دقائق)</span><span>{ps.iqamahDuration}</span></div><Slider value={[ps.iqamahDuration]} min={0} max={60} step={1} onValueChange={([v]) => updatePrayerSetting(ps.id, { iqamahDuration: v })} /></div>
+                    <div className="grid grid-cols-2 gap-4 pt-2">
+                      <div className="flex flex-col gap-2"><span className="text-[10px] font-black text-white/20 uppercase">العد التنازلي</span><Switch checked={ps.showCountdown} onCheckedChange={(v) => updatePrayerSetting(ps.id, { showCountdown: v })} /></div>
+                      <div className="flex flex-col gap-2"><span className="text-[10px] font-black text-white/20 uppercase">نافذة التنبيه</span><Select value={ps.countdownWindow.toString()} onValueChange={(v) => updatePrayerSetting(ps.id, { countdownWindow: parseInt(v) })}><SelectTrigger className="h-10 rounded-xl focusable"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="5">5 د</SelectItem><SelectItem value="10">10 د</SelectItem><SelectItem value="15">15 د</SelectItem><SelectItem value="25">25 د</SelectItem></SelectContent></Select></div>
                     </div>
                   </div>
                 </div>
@@ -397,63 +312,43 @@ export function SettingsView() {
 
         <TabsContent value="reminders" className="space-y-8 outline-none">
           <Card className="premium-glass p-8 space-y-8">
-            <div className="flex flex-col gap-2">
-              <CardTitle className="text-2xl font-black text-white flex items-center gap-3">
-                <Bell className="w-6 h-6 text-primary" />
-                إدارة التذكيرات الذكية (Cloud Management)
-              </CardTitle>
-              <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest">Master Notification Hub</p>
-            </div>
+            <CardTitle className="text-2xl font-black text-white flex items-center gap-3"><Bell className="w-6 h-6 text-primary" />إدارة التذكيرات الذكية</CardTitle>
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
               <div className="lg:col-span-5 space-y-6 bg-white/5 p-8 rounded-[3rem] border border-white/5">
-                <h3 className="text-xl font-black text-white mb-4">{editingId ? 'تعديل تذكير سحابي' : 'إضافة تذكير جديد'}</h3>
                 <div className="space-y-6">
-                  <Input placeholder="نص التذكير..." value={form.label} onChange={(e) => setForm({...form, label: e.target.value})} className="h-14 bg-black/40 border-white/10 rounded-xl px-6 focusable" />
+                  <Input placeholder="نص التذكير..." value={form.label} onChange={(e) => setForm({...form, label: e.target.value})} className="h-14 bg-black/40 border-white/10 rounded-xl px-6 focusable text-white text-right" />
                   <div className="grid grid-cols-2 gap-4">
-                    <Select value={form.relativePrayer} onValueChange={(v) => setForm({...form, relativePrayer: v as any})}>
-                      <SelectTrigger className="h-14 bg-black/40 border-white/10 rounded-xl focusable"><SelectValue /></SelectTrigger>
-                      <SelectContent className="bg-zinc-900 border-white/10 text-white">
-                        {RELATIVE_PRAYER_OPTIONS.map(opt => <SelectItem key={opt.id} value={opt.id}>{opt.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                    <Select value={form.iconType} onValueChange={(v) => setForm({...form, iconType: v as any})}>
-                      <SelectTrigger className="h-14 bg-black/40 border-white/10 rounded-xl focusable"><SelectValue /></SelectTrigger>
-                      <SelectContent className="bg-zinc-900 border-white/10 text-white">
-                        {ICON_OPTIONS.map(opt => <SelectItem key={opt.id} value={opt.id}>{opt.id}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  {form.relativePrayer === 'manual' ? (
-                    <Input type="time" value={form.manualTime} onChange={(e) => setForm({...form, manualTime: e.target.value})} className="h-14 bg-black/40 border-white/10 rounded-xl px-6 focusable" />
-                  ) : (
-                    <div className="space-y-4 bg-black/20 p-4 rounded-2xl border border-white/5">
-                      <div className="flex justify-between items-center text-[10px] font-black uppercase text-white/40 mb-2">
-                        <span>إزاحة الوقت</span>
-                        <span className="text-primary">{form.offsetMinutes} د</span>
-                      </div>
-                      <Slider value={[form.offsetMinutes || 0]} min={-120} max={120} step={1} onValueChange={([v]) => setForm({...form, offsetMinutes: v})} />
+                    <div className="space-y-2">
+                      <span className="text-xs font-black text-white/40 mr-2">التوقيت النسبي</span>
+                      <Select value={form.relativePrayer} onValueChange={(v: any) => setForm({...form, relativePrayer: v})}>
+                        <SelectTrigger className="h-12 rounded-xl focusable"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {RELATIVE_PRAYER_OPTIONS.map(opt => <SelectItem key={opt.id} value={opt.id}>{opt.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
                     </div>
-                  )}
+                    {form.relativePrayer === 'manual' ? (
+                      <div className="space-y-2"><span className="text-xs font-black text-white/40 mr-2">الوقت المحدد</span><Input type="time" value={form.manualTime} onChange={(e) => setForm({...form, manualTime: e.target.value})} className="h-12 bg-black/40 border-white/10 rounded-xl px-4 focusable" /></div>
+                    ) : (
+                      <div className="space-y-2"><span className="text-xs font-black text-white/40 mr-2">الإزاحة (دقائق)</span><Input type="number" value={form.offsetMinutes} onChange={(e) => setForm({...form, offsetMinutes: parseInt(e.target.value)})} className="h-12 bg-black/40 border-white/10 rounded-xl px-4 focusable" /></div>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2"><span className="text-xs font-black text-white/40 mr-2">لون التنبيه</span><Select value={form.color} onValueChange={(v) => setForm({...form, color: v})}><SelectTrigger className="h-12 rounded-xl focusable"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="text-blue-400">أزرق</SelectItem><SelectItem value="text-emerald-400">أخضر</SelectItem><SelectItem value="text-orange-400">برتقالي</SelectItem><SelectItem value="text-red-400">أحمر</SelectItem></SelectContent></Select></div>
+                    <div className="space-y-2"><span className="text-xs font-black text-white/40 mr-2">الأيقونة</span><Select value={form.iconType} onValueChange={(v: any) => setForm({...form, iconType: v})}><SelectTrigger className="h-12 rounded-xl focusable"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="bell">جرس</SelectItem><SelectItem value="play">تشغيل</SelectItem><SelectItem value="circle">دائرة</SelectItem></SelectContent></Select></div>
+                  </div>
                   <Button onClick={handleSubmitReminder} className="w-full h-16 bg-primary text-white font-black text-xl rounded-2xl shadow-glow focusable">
-                    <Save className="w-6 h-6 ml-3" /> {editingId ? 'تحديث التذكير سحابياً' : 'حفظ التذكير سحابياً'}
+                    <Save className="w-6 h-6 ml-3" /> {editingId ? 'تحديث التذكير' : 'حفظ التذكير'}
                   </Button>
                 </div>
               </div>
               <div className="lg:col-span-7">
                 <ScrollArea className="h-[600px] pr-4">
-                  <div className="flex flex-col gap-4 pb-10">
+                  <div className="flex flex-col gap-4">
                     {reminders.map((r) => (
-                      <div key={r.id} className="bg-white/5 p-6 rounded-2xl border border-white/5 flex items-center justify-between group">
-                        <div className="flex items-center gap-6">
-                          <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center border", r.color.replace('text', 'bg').replace('400', '500') + '/20')}>
-                            <Bell className={cn("w-7 h-7", r.color)} />
-                          </div>
-                          <span className="text-xl font-black text-white">{r.label}</span>
-                        </div>
-                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
-                          <Button variant="ghost" size="icon" onClick={() => { setForm(r); setEditingId(r.id); }} className="w-12 h-12 rounded-full bg-white/5 focusable"><Edit2 className="w-5 h-5" /></Button>
-                          <Button variant="ghost" size="icon" onClick={() => removeReminder(r.id)} className="w-12 h-12 rounded-full bg-red-600/10 text-red-500 focusable"><Trash2 className="w-4 h-4" /></Button>
-                        </div>
+                      <div key={r.id} className="bg-white/5 p-6 rounded-2xl border border-white/5 flex items-center justify-between group animate-in fade-in slide-in-from-right-4">
+                        <div className="flex items-center gap-6"><div className={cn("w-12 h-12 rounded-full flex items-center justify-center bg-white/5 shadow-inner", r.color)}><Bell className="w-6 h-6" /></div><div className="flex flex-col"><span className="text-xl font-black text-white">{r.label}</span><span className="text-[10px] text-white/20 uppercase tracking-widest font-bold">{r.relativePrayer === 'manual' ? r.manualTime : `${RELATIVE_PRAYER_OPTIONS.find(o => o.id === r.relativePrayer)?.name} (${r.offsetMinutes > 0 ? '+' : ''}${r.offsetMinutes} د)`}</span></div></div>
+                        <div className="flex items-center gap-2"><Button variant="ghost" size="icon" onClick={() => { setForm(r); setEditingId(r.id); }} className="w-12 h-12 rounded-full focusable transition-all hover:bg-white/10"><Edit2 className="w-5 h-5 text-white/40" /></Button><Button variant="ghost" size="icon" onClick={() => removeReminder(r.id)} className="w-12 h-12 rounded-full focusable transition-all hover:bg-red-500/20"><Trash2 className="w-5 h-5 text-red-500/60" /></Button></div>
                       </div>
                     ))}
                   </div>
@@ -463,19 +358,55 @@ export function SettingsView() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="football" className="outline-none space-y-12">
-          <Card className="premium-glass p-8 space-y-6">
-            <CardTitle className="text-2xl font-black text-white flex items-center gap-3"><Trophy className="w-6 h-6 text-accent" /> تتبع الدوريات الكبرى</CardTitle>
-            <div className="grid grid-cols-2 gap-3">
-              {MAJOR_LEAGUES.map(league => {
-                const isFav = favoriteLeagueIds.includes(league.id);
-                return (
-                  <Button key={league.id} variant="outline" onClick={() => toggleFavoriteLeague(league.id)} className={cn("h-14 rounded-2xl border font-black text-xs justify-between px-6 focusable", isFav ? "bg-accent/20 border-accent text-accent" : "bg-white/5 border-white/10 text-white/40")}>
-                    {league.name}
-                    {isFav ? <Star className="w-4 h-4 fill-current" /> : <Plus className="w-4 h-4" />}
-                  </Button>
-                );
-              })}
+        <TabsContent value="buttonmap" className="space-y-8 outline-none">
+          <Card className="premium-glass p-8 space-y-8">
+            <CardTitle className="text-2xl font-black text-white flex items-center gap-3">
+              <Gamepad2 className="w-6 h-6 text-primary" />
+              برمجة أزرار التحكم المتعددة (Active Multi-Key Binding)
+            </CardTitle>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+              {BUTTON_ACTION_CATEGORIES.map((cat, idx) => (
+                <div key={idx} className="space-y-6">
+                  <h3 className="text-xl font-black text-primary uppercase tracking-tighter border-b border-primary/20 pb-2">{cat.title}</h3>
+                  <div className="flex flex-col gap-3">
+                    {cat.items.map(item => (
+                      <div key={item.id} className="flex flex-col gap-2">
+                        <div 
+                          onClick={() => setMappingAction(item.id as AppAction)}
+                          className={cn(
+                            "w-full p-5 rounded-[1.5rem] bg-white/5 border border-white/5 hover:border-primary transition-all flex items-center justify-between group focusable cursor-pointer",
+                            mappingAction === item.id && "border-primary bg-primary/10 shadow-glow"
+                          )}
+                          tabIndex={0}
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
+                              <item.icon className="w-5 h-5 text-white/60" />
+                            </div>
+                            <span className="font-bold text-white/80">{item.label}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); clearKeyMappings(item.id as AppAction); }} className="w-8 h-8 rounded-full hover:bg-red-600/20 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity focusable">
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                            <Plus className="w-5 h-5 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </div>
+                        </div>
+                        
+                        <div className="flex flex-wrap gap-2 pr-4">
+                          {Array.isArray(safeKeyMappings[item.id]) && safeKeyMappings[item.id].map((k, kIdx) => (
+                            <span key={kIdx} className="px-3 py-1 bg-primary/20 rounded-lg border border-primary/20 text-primary font-black tabular-nums text-xs animate-in zoom-in-95">
+                              {k}
+                            </span>
+                          ))}
+                          {(!safeKeyMappings[item.id] || safeKeyMappings[item.id].length === 0) && <span className="text-[10px] text-white/20 italic">لم يتم تعيين أزرار بعد</span>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           </Card>
         </TabsContent>

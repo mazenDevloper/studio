@@ -6,13 +6,14 @@ import { Match } from "@/lib/football-data";
 import { fetchFootballData } from "@/lib/football-api";
 import { useMediaStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { X, Eye, EyeOff } from "lucide-react";
+import { X, Eye, EyeOff, Bell, Clock, Timer } from "lucide-react";
 
 interface ReminderItem {
   id: string;
   name: string;
   diff: number;
   isWithinWindow: boolean;
+  type: 'azan' | 'custom';
 }
 
 interface GoalEvent {
@@ -23,7 +24,7 @@ interface GoalEvent {
 
 export function LiveMatchIsland() {
   const { 
-    favoriteTeams, prayerTimes, prayerSettings, belledMatchIds, 
+    favoriteTeams, prayerTimes, prayerSettings, reminders, belledMatchIds, 
     showIslands, toggleShowIslands, skippedMatchIds, skipMatch, activeVideo 
   } = useMediaStore();
 
@@ -98,6 +99,7 @@ export function LiveMatchIsland() {
     const list: ReminderItem[] = [];
     const totalCurrentSecs = (now.getHours() * 3600) + (now.getMinutes() * 60) + now.getSeconds();
 
+    // 1. Prayer Time Reminders
     if (prayerTimes?.length) {
       const pData = prayerTimes.find(p => p.date.endsWith(`-${now.getDate().toString().padStart(2, '0')}`)) || prayerTimes[0];
       for (const setting of prayerSettings) {
@@ -107,12 +109,35 @@ export function LiveMatchIsland() {
         const azanSecs = baseMinutes * 60;
         let aDiff = azanSecs - totalCurrentSecs;
         if (aDiff < -43200) aDiff += 86400;
-        const isWithin = aDiff > 0 && aDiff < (setting.countdownWindow * 60);
-        if (isWithin) list.push({ id: `azan-${setting.id}`, name: setting.name, diff: aDiff, isWithinWindow: true });
+        
+        if (aDiff > 0 && aDiff < (setting.countdownWindow * 60)) {
+          list.push({ id: `azan-${setting.id}`, name: setting.name, diff: aDiff, isWithinWindow: true, type: 'azan' });
+        }
       }
     }
+
+    // 2. Custom Reminders from Settings
+    for (const rem of reminders) {
+      let targetSecs = 0;
+      if (rem.relativePrayer === 'manual' && rem.manualTime) {
+        targetSecs = tToM(rem.manualTime) * 60;
+      } else if (prayerTimes?.length) {
+        const pData = prayerTimes.find(p => p.date.endsWith(`-${now.getDate().toString().padStart(2, '0')}`)) || prayerTimes[0];
+        let refTime = pData[rem.relativePrayer as keyof typeof pData];
+        if (refTime) targetSecs = (tToM(refTime) + rem.offsetMinutes) * 60;
+      }
+
+      if (targetSecs > 0) {
+        let diff = targetSecs - totalCurrentSecs;
+        if (diff < -43200) diff += 86400;
+        if (diff > 0 && diff < (rem.countdownWindow * 60)) {
+          list.push({ id: rem.id, name: rem.label, diff, isWithinWindow: true, type: 'custom' });
+        }
+      }
+    }
+
     return list.sort((a, b) => Math.abs(a.diff) - Math.abs(b.diff));
-  }, [now, prayerTimes, prayerSettings]);
+  }, [now, prayerTimes, prayerSettings, reminders]);
 
   const closestRem = processedReminders.length > 0 ? processedReminders[0] : null;
   const isCountdownActive = closestRem?.isWithinWindow;
@@ -142,9 +167,6 @@ export function LiveMatchIsland() {
     if (overrideMatchId) return sortedMatches.find(m => m.id === overrideMatchId) || sortedMatches[0];
     return sortedMatches[0];
   }, [sortedMatches, overrideMatchId]);
-
-  // FIXED: No longer returning null if activeVideo is present. 
-  // Visibility is strictly controlled by showIslands.
 
   const GlassNumber = ({ text, size = '3rem', id, subtext, colorClass }: { text: string, size?: string, id: string, subtext?: string, colorClass?: string }) => (
     <div className="relative w-full h-full flex flex-col items-center justify-center">
@@ -181,11 +203,14 @@ export function LiveMatchIsland() {
         {(showIslands || isCountdownActive) && (
           <>
             {closestRem && !activeGoal && (
-              <div className="pointer-events-auto shadow-2xl relative overflow-hidden premium-glass w-[18rem] h-[3.5rem] rounded-[2.5rem] animate-in slide-in-from-top-4">
-                <div className="relative z-10 h-full w-full flex flex-col items-center justify-center">
-                  <span className="text-[0.8rem] font-black text-accent uppercase">{closestRem.name}</span>
-                  <div className="h-10 w-full">
-                    <GlassNumber text={`-${formatCountdown(closestRem.diff)}`} id="rem-full" size="2.8rem" />
+              <div className="pointer-events-auto shadow-2xl relative overflow-hidden premium-glass w-[18rem] h-[3.5rem] rounded-[2.5rem] animate-in slide-in-from-top-4 flex items-center px-4 gap-3">
+                <div className={cn("w-8 h-8 rounded-full flex items-center justify-center shrink-0", closestRem.type === 'azan' ? "bg-accent/20" : "bg-primary/20")}>
+                  {closestRem.type === 'azan' ? <Clock className="w-4 h-4 text-accent" /> : <Bell className="w-4 h-4 text-primary" />}
+                </div>
+                <div className="relative z-10 flex-1 flex flex-col items-center justify-center">
+                  <span className="text-[0.8rem] font-black text-white/80 uppercase truncate max-w-[120px]">{closestRem.name}</span>
+                  <div className="h-8 w-full">
+                    <GlassNumber text={`-${formatCountdown(closestRem.diff)}`} id="rem-full" size="2.4rem" />
                   </div>
                 </div>
               </div>

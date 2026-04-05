@@ -2,7 +2,7 @@
 "use client";
 
 import { useMediaStore } from "@/lib/store";
-import { X, Monitor, ChevronDown, ChevronRight, ChevronLeft, Settings, LayoutGrid, Bookmark, BookmarkCheck, Globe, Youtube, Eye } from "lucide-react";
+import { X, Monitor, ChevronDown, ChevronRight, ChevronLeft, Settings, LayoutGrid, Bookmark, BookmarkCheck, Globe, Youtube, Eye, Maximize2, Minimize2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
@@ -12,12 +12,11 @@ export function GlobalVideoPlayer() {
     activeVideo, activeIptv, isPlaying, isMinimized, isFullScreen, nextTrack, prevTrack,
     setActiveVideo, setActiveIptv, setIsPlaying, setIsMinimized, setIsFullScreen, updateVideoProgress,
     playlist, videoProgress, toggleSaveVideo, savedVideos, iptvPlaylist, playerMode, setPlayerMode,
-    showIslands, toggleShowIslands
+    showIslands, toggleShowIslands, gridMode, setGridMode
   } = useMediaStore();
   
   const [mounted, setMounted] = useState(false);
   const [isControlsExpanded, setIsControlsExpanded] = useState(false);
-  const [gridMode, setGridMode] = useState<'hidden' | 'partial' | 'full'>('hidden');
   const playerRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const lastIdRef = useRef<string | null>(null);
@@ -117,7 +116,7 @@ export function GlobalVideoPlayer() {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isActive, isMinimized, gridMode, setIsFullScreen]);
+  }, [isActive, isMinimized, gridMode, setIsFullScreen, setGridMode]);
 
   const handleTouchStart = (e: React.TouchEvent) => { touchStart.current = e.touches[0].clientY; };
   const handleTouchEnd = (e: React.TouchEvent) => {
@@ -212,8 +211,22 @@ export function GlobalVideoPlayer() {
         )}
       >
         <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-4"><div className="w-12 h-12 rounded-2xl bg-primary/20 flex items-center justify-center border border-primary/20"><LayoutGrid className="w-7 h-7 text-primary" /></div><div className="flex flex-col"><h2 className="text-3xl font-black text-white tracking-tighter">قائمة التشغيل الذكية</h2><span className="text-[10px] text-white/40 uppercase font-bold tracking-[0.3em]">{gridMode === 'full' ? 'Full View Sync' : 'Partial Context View'}</span></div></div>
-          <Button variant="ghost" size="icon" onClick={() => setGridMode('hidden')} className="w-14 h-14 rounded-full bg-white/5 text-white focusable"><X className="w-8 h-8" /></Button>
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-primary/20 flex items-center justify-center border border-primary/20">
+              <LayoutGrid className="w-7 h-7 text-primary" />
+            </div>
+            <div className="flex flex-col">
+              <h2 className="text-3xl font-black text-white tracking-tighter">قائمة التشغيل الذكية</h2>
+              <span className="text-[10px] text-white/40 uppercase font-bold tracking-[0.3em]">
+                {gridMode === 'full' ? 'Full View Sync' : 'Partial Context View'}
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="icon" onClick={() => setGridMode('hidden')} className="w-14 h-14 rounded-full bg-white/5 text-white focusable">
+              <X className="w-8 h-8" />
+            </Button>
+          </div>
         </div>
         <div className="h-full overflow-y-auto no-scrollbar pb-40">
           <div className="grid grid-cols-3 gap-8">
@@ -245,7 +258,8 @@ export function GlobalVideoPlayer() {
                   {activeVideo && <button onClick={() => setPlayerMode(playerMode === 'api' ? 'web' : 'api')} className={cn("w-9 h-9 rounded-full flex items-center justify-center focusable cursor-pointer transition-colors", (playerMode === 'web' || isBlockedChannel) ? "bg-purple-600/40 text-purple-400" : "bg-white/5 text-white/40")} tabIndex={0}>{(playerMode === 'web' || isBlockedChannel) ? <Globe className="w-5 h-5" /> : <Youtube className="w-5 h-5" />}</button>}
                   <button onClick={() => activeVideo && toggleSaveVideo(activeVideo)} className={cn("w-9 h-9 rounded-full flex items-center justify-center focusable cursor-pointer transition-colors", isSaved ? "bg-accent/40 text-accent shadow-glow" : "bg-white/5 text-white/40")} tabIndex={0}>{isSaved ? <BookmarkCheck className="w-5 h-5" /> : <Bookmark className="w-5 h-5" />}</button>
                   <button onClick={toggleShowIslands} className={cn("w-9 h-9 rounded-full flex items-center justify-center focusable cursor-pointer transition-colors", showIslands ? "bg-emerald-500/40 text-emerald-400 shadow-glow" : "bg-white/5 text-white/40")} tabIndex={0}><Eye className="w-5 h-5" /></button>
-                  <button onClick={() => setIsMinimized(true)} className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center focusable cursor-pointer" tabIndex={0}><ChevronDown className="w-5 h-5" /></button>
+                  <button onClick={() => setGridMode(gridMode === 'hidden' ? 'partial' : gridMode === 'partial' ? 'full' : 'hidden')} className={cn("w-9 h-9 rounded-full flex items-center justify-center focusable cursor-pointer transition-colors", gridMode !== 'hidden' && "bg-primary/40 text-white")} tabIndex={0}><LayoutGrid className="w-5 h-5" /></button>
+                  <button onClick={() => setIsMinimized(true)} className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center focusable cursor-pointer" tabIndex={0}><Minimize2 className="w-5 h-5" /></button>
                   <button onClick={() => setIsFullScreen(!isFullScreen)} className={cn("w-9 h-9 rounded-full flex items-center justify-center focusable cursor-pointer", isFullScreen && "bg-primary/40 shadow-glow")} tabIndex={0}><Monitor className="w-5 h-5" /></button>
                 </>
               )}

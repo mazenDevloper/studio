@@ -1,71 +1,129 @@
 
 "use client";
 
-import { useEffect, useCallback, useState } from "react";
-import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Circle } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { useEffect, useCallback, useState, useRef } from "react";
+import { normalizeKey } from "@/lib/utils";
 import { usePathname, useRouter } from "next/navigation";
-import { useMediaStore } from "@/lib/store";
+import { useMediaStore, AppAction } from "@/lib/store";
 import { init } from "@noriginmedia/norigin-spatial-navigation";
 
 export function RemotePointer() {
-  const [activeKey, setActiveKey] = useState<string | null>(null);
-  const [isVisible, setIsVisible] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
-  const { activeIptv, isFullScreen, nextIptvChannel, prevIptvChannel, wallPlateType, setWallPlate, dockSide } = useMediaStore();
+  const { 
+    activeIptv, activeVideo, isFullScreen, nextTrack, prevTrack, toggleSaveVideo,
+    wallPlateType, setWallPlate, setIsFullScreen, setIsMinimized,
+    setActiveVideo, setActiveIptv, dockSide
+  } = useMediaStore();
 
   useEffect(() => {
     try { init({ debug: false, visualDebug: false }); } 
     catch (e) { console.warn("Spatial Navigation Init Error:", e); }
   }, []);
 
+  // FOCUS GUARDIAN: Ensure something is ALWAYS focused
   useEffect(() => {
-    const keepFocus = () => {
-      const current = document.activeElement;
-      if (!current || current === document.body || !current.classList.contains('focusable')) {
-        let target: HTMLElement | null = null;
-        if (pathname === '/') target = document.querySelector('[data-nav-id="car-visualizer-container"]') as HTMLElement;
-        else if (pathname === '/media') target = document.querySelector('[data-nav-id="subs-all"]') as HTMLElement;
-        else if (pathname === '/iptv') target = document.querySelector('[data-nav-id="iptv-cat-0"]') as HTMLElement;
-        else target = document.querySelector('.focusable') as HTMLElement;
-        
-        if (target) {
-          target.focus();
-          target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
+    const guardian = setInterval(() => {
+      const active = document.activeElement as HTMLElement;
+      const isInput = active?.tagName === 'INPUT' || active?.tagName === 'TEXTAREA';
+      const isFocusable = active?.classList.contains('focusable');
+      
+      if (!isInput && !isFocusable) {
+        // Try to focus active sidebar target, or dock home, or first focusable
+        const target = document.querySelector('.active-nav-target') as HTMLElement
+                    || document.querySelector('[data-nav-id="dock-Home"]') as HTMLElement
+                    || document.querySelector('.focusable') as HTMLElement;
+        target?.focus();
       }
-    };
-    const timer = setInterval(keepFocus, 1000);
-    return () => clearInterval(timer);
-  }, [pathname]);
+    }, 1000);
+    return () => clearInterval(guardian);
+  }, []);
 
   const navigate = useCallback((direction: string) => {
     if (wallPlateType) return;
-    const focusables = Array.from(document.querySelectorAll(".focusable")) as HTMLElement[];
-    if (focusables.length === 0) return;
     
+    const focusables = Array.from(document.querySelectorAll(".focusable")) as HTMLElement[];
     const current = document.activeElement as HTMLElement;
-    if (!current?.classList.contains("focusable") || !direction) {
-      (document.querySelector('[data-nav-id="subs-all"]') as HTMLElement || focusables[0]).focus();
+    
+    // Guardian if lost
+    if (!current?.classList.contains("focusable")) {
+      const target = document.querySelector('.active-nav-target') as HTMLElement || focusables[0];
+      target?.focus();
       return;
     }
 
     const currentRect = current.getBoundingClientRect();
     const currentId = current.getAttribute('data-nav-id') || "";
     
-    // ZONE DETECTION: 1: Dock, 2: Subscriptions, 3: Content
     const getZone = (id: string) => {
-      if (id.startsWith('dock-')) return 1;
-      if (id.startsWith('subs-')) return 2;
-      if (id.startsWith('video-') || id.startsWith('iptv-')) return 3;
-      return 0;
+      if (id.startsWith('dock-')) return 1; 
+      if (id.startsWith('subs-') || id.startsWith('reciter-') || id.startsWith('aside-')) return 2; 
+      return 3; 
     };
 
     const currentZone = getZone(currentId);
+    const isDockLeft = dockSide === 'left';
+    const towardContent = isDockLeft ? "ArrowRight" : "ArrowLeft";
+    const towardDock = isDockLeft ? "ArrowLeft" : "ArrowRight";
+
+    // SMART JUMP: Sidebar (Zone 2) -> Content (Zone 3)
+    if (direction === towardContent && currentZone === 2) {
+      const target = document.querySelector('[data-nav-id="video-result-0"]') as HTMLElement
+                  || document.querySelector('[data-nav-id="video-ch-0"]') as HTMLElement
+                  || document.querySelector('[data-nav-id="q-reciter-0"]') as HTMLElement
+                  || document.querySelector('[data-nav-id$="-0"]') as HTMLElement;
+      if (target) {
+        target.focus();
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+    }
+
+    // SMART JUMP: Content (Zone 3) -> Sidebar (Zone 2)
+    if (direction === towardDock && currentZone === 3) {
+      const target = document.querySelector('.active-nav-target') as HTMLElement
+                  || document.querySelector('[data-nav-id="subs-all"]') as HTMLElement;
+      if (target) {
+        target.focus();
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+    }
+
+    // VERTICAL LEVEL NAVIGATION (3-Click Hierarchy)
+    if (direction === "ArrowDown" || direction === "ArrowUp") {
+      const sectionOrder = [
+        'q-reciter', 
+        'q-surah', 
+        'video-result', 
+        'video-ch',
+        'video-live', 
+        'video-latest', 
+        'video-trending', 
+        'video-sports', 
+        'video-kids'
+      ];
+      const currentPrefix = currentId.split('-').slice(0, -1).join('-');
+      const currentIndex = sectionOrder.indexOf(currentPrefix);
+
+      if (currentIndex !== -1) {
+        let nextIndex = direction === "ArrowDown" ? currentIndex + 1 : currentIndex - 1;
+        while (nextIndex >= 0 && nextIndex < sectionOrder.length) {
+          const target = document.querySelector(`[data-nav-id="${sectionOrder[nextIndex]}-0"]`) as HTMLElement;
+          if (target) {
+            target.focus();
+            target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return;
+          }
+          nextIndex = direction === "ArrowDown" ? nextIndex + 1 : nextIndex - 1;
+        }
+      }
+    }
 
     let minDistance = Infinity;
     let next: HTMLElement | null = null;
+    const currentPrefix = currentId.split('-').slice(0, -1).join('-');
+    const isHorizontalMove = direction === "ArrowLeft" || direction === "ArrowRight";
 
     const getDistance = (rect1: DOMRect, rect2: DOMRect, dir: string, targetId: string) => {
       const p1 = { x: rect1.left + rect1.width / 2, y: rect1.top + rect1.height / 2 };
@@ -73,101 +131,109 @@ export function RemotePointer() {
       const dx = p2.x - p1.x;
       const dy = p2.y - p1.y;
 
-      // Basic directional pruning
       if (dir === "ArrowRight" && dx <= 5) return Infinity; 
       if (dir === "ArrowLeft" && dx >= -5) return Infinity;  
       if (dir === "ArrowDown" && dy <= 5) return Infinity;
       if (dir === "ArrowUp" && dy >= -5) return Infinity;
 
-      const isHorizontal = dir === "ArrowRight" || dir === "ArrowLeft";
-      const targetZone = getZone(targetId);
-      
-      // FORGIVING LOGIC: If we are jumping between Zones, ignore vertical offset mostly
-      const isZoneJump = currentZone !== 0 && targetZone !== 0 && currentZone !== targetZone;
-      
-      let primaryAxisWeight = 1.0;
-      let secondaryAxisWeight = isHorizontal ? 2.5 : 200.0;
-
-      if (isZoneJump && isHorizontal) {
-        // Boost elements in the next/prev logical zone
-        secondaryAxisWeight = 0.5; // Make it very forgiving for vertical alignment
-        primaryAxisWeight = 0.1;   // Prefer zone jumps if moving horizontally
+      let distance = Math.sqrt(dx * dx + dy * dy);
+      // Prioritize same-row movement
+      if (isHorizontalMove && currentZone === 3) {
+        if (targetId.startsWith(currentPrefix)) distance *= 0.5;
+        else distance *= 10.0; 
       }
-      
-      return isHorizontal 
-        ? Math.sqrt(Math.pow(dx * primaryAxisWeight, 2) + Math.pow(dy * secondaryAxisWeight, 2))
-        : Math.sqrt(Math.pow(dx * secondaryAxisWeight, 2) + Math.pow(dy * primaryAxisWeight, 2));
+      return distance;
     };
 
     for (const el of focusables) {
-      if (el === current || el.tabIndex === -1) continue;
-      const dist = getDistance(currentRect, el.getBoundingClientRect(), direction, el.getAttribute('data-nav-id') || "");
+      if (el === current) continue;
+      const targetId = el.getAttribute('data-nav-id') || "";
+      const dist = getDistance(currentRect, el.getBoundingClientRect(), direction, targetId);
       if (dist < minDistance) { minDistance = dist; next = el; }
+    }
+
+    // CIRCULAR NAVIGATION within Content Rows
+    if (isHorizontalMove && currentZone === 3 && !next) {
+      const allInRow = Array.from(document.querySelectorAll(`[data-nav-id^="${currentPrefix}-"]`)) as HTMLElement[];
+      if (allInRow.length > 1) {
+        next = (direction === towardContent) ? allInRow[0] : allInRow[allInRow.length - 1];
+      }
     }
 
     if (next) {
       next.focus();
-      next.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+      next.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
-  }, [wallPlateType]);
+  }, [wallPlateType, pathname, dockSide]);
+
+  const isAction = useCallback((key: string, action: AppAction) => {
+    const mappings = useMediaStore.getState().keyMappings[action] || [];
+    return mappings.some(m => m.toLowerCase() === key.toLowerCase());
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const activeEl = document.activeElement as HTMLElement;
-      if (activeEl?.tagName === 'INPUT' || activeEl?.tagName === 'TEXTAREA') return;
+      const key = normalizeKey(e); 
       
-      if (e.keyCode === 461 || e.key === 'Back' || e.key === 'Escape' || e.key === 'Backspace' || e.key === "0") {
-        e.preventDefault(); 
-        if (wallPlateType) setWallPlate(null); 
-        else if (pathname !== '/') router.back();
-        setActiveKey('0'); setIsVisible(true); setTimeout(() => setIsVisible(false), 500); 
-        return;
+      // SEARCH SHORTCUT (0 key)
+      if (key === '0' || e.keyCode === 48) {
+        if (pathname === '/media' || pathname === '/quran') {
+          const searchInput = document.querySelector(`[data-nav-id="${pathname.slice(1)}-search-input"]`) as HTMLInputElement;
+          if (searchInput) {
+            e.preventDefault();
+            if (activeEl === searchInput) {
+              searchInput.blur();
+              const firstContent = document.querySelector('[data-nav-id="q-reciter-0"]') as HTMLElement;
+              firstContent?.focus();
+            } else { 
+              searchInput.focus(); 
+            }
+            return;
+          }
+        }
       }
 
-      if (activeIptv && isFullScreen && (e.key === "PageUp" || e.key === "ChannelUp" || e.keyCode === 427)) { e.preventDefault(); nextIptvChannel(); return; }
-      if (activeIptv && isFullScreen && (e.key === "PageDown" || e.key === "ChannelDown" || e.keyCode === 428)) { e.preventDefault(); prevIptvChannel(); return; }
-      if (activeIptv && e.key === "1") { prevIptvChannel(); setActiveKey("1"); setIsVisible(true); setTimeout(() => setIsVisible(false), 500); return; }
-      if (activeIptv && e.key === "3") { nextIptvChannel(); setActiveKey("3"); setIsVisible(true); setTimeout(() => setIsVisible(false), 500); return; }
+      if (activeEl?.tagName === 'INPUT' || activeEl?.tagName === 'TEXTAREA') {
+        if (e.key === "Enter") activeEl.blur(); 
+        return;
+      }
+      
+      const isPlayerActive = !!(activeVideo || activeIptv);
 
-      const standardMap: Record<string, string> = { "2": "ArrowUp", "4": "ArrowLeft", "6": "ArrowRight", "8": "ArrowDown", "ArrowUp": "ArrowUp", "ArrowDown": "ArrowDown", "ArrowLeft": "ArrowLeft", "ArrowRight": "ArrowRight" };
-      if (standardMap[e.key]) {
-        e.preventDefault(); 
-        const dir = standardMap[e.key]; 
-        navigate(dir);
-        let visualKey = e.key; 
-        if (e.key === "ArrowUp") visualKey = "2"; 
-        if (e.key === "ArrowDown") visualKey = "8"; 
-        if (e.key === "ArrowLeft") visualKey = "4"; 
-        if (e.key === "ArrowRight") visualKey = "6";
-        setActiveKey(visualKey); setIsVisible(true); setTimeout(() => setIsVisible(false), 800);
-      } else if (e.key === "5" || e.key === "Enter" || e.keyCode === 13) {
-        const current = document.activeElement as HTMLElement;
-        if (current?.classList.contains("focusable")) { 
-          current.click(); 
-          setActiveKey('5'); 
-          setIsVisible(true); 
-          setTimeout(() => setIsVisible(false), 500); 
-        }
+      if (isAction(key, 'nav_back') || e.keyCode === 461) {
+        if (wallPlateType) { e.preventDefault(); setWallPlate(null); return; }
+        if (pathname !== '/') { e.preventDefault(); router.back(); return; }
+      }
+
+      if (isPlayerActive) {
+        if (isAction(key, 'player_next')) { e.preventDefault(); nextTrack(); return; }
+        if (isAction(key, 'player_prev')) { e.preventDefault(); prevTrack(); return; }
+        if (isAction(key, 'player_save') && activeVideo) { e.preventDefault(); toggleSaveVideo(activeVideo); return; }
+        if (isAction(key, 'player_fullscreen')) { e.preventDefault(); setIsFullScreen(true); return; }
+        if (isAction(key, 'player_minimize')) { e.preventDefault(); setIsMinimized(true); return; }
+        if (isAction(key, 'player_close')) { e.preventDefault(); setActiveVideo(null); setActiveIptv(null); return; }
+      }
+
+      if (isAction(key, 'goto_home')) { e.preventDefault(); router.push('/'); return; }
+      if (isAction(key, 'goto_media')) { e.preventDefault(); router.push('/media'); return; }
+      if (isAction(key, 'goto_quran')) { e.preventDefault(); router.push('/quran'); return; }
+      if (isAction(key, 'goto_football')) { e.preventDefault(); router.push('/football'); return; }
+      if (isAction(key, 'goto_iptv')) { e.preventDefault(); router.push('/iptv'); return; }
+      if (isAction(key, 'goto_settings')) { e.preventDefault(); router.push('/settings'); return; }
+
+      if (isAction(key, 'nav_up')) { e.preventDefault(); navigate("ArrowUp"); return; }
+      if (isAction(key, 'nav_down')) { e.preventDefault(); navigate("ArrowDown"); return; }
+      if (isAction(key, 'nav_left')) { e.preventDefault(); navigate("ArrowLeft"); return; }
+      if (isAction(key, 'nav_right')) { e.preventDefault(); navigate("ArrowRight"); return; }
+      
+      if (isAction(key, 'nav_ok') || e.keyCode === 13) {
+        if (activeEl?.classList.contains("focusable")) { activeEl.click(); }
       }
     };
     window.addEventListener("keydown", handleKeyDown, true);
     return () => window.removeEventListener("keydown", handleKeyDown, true);
-  }, [navigate, activeIptv, isFullScreen, nextIptvChannel, prevIptvChannel, wallPlateType, setWallPlate, router, pathname]);
+  }, [navigate, isAction, activeIptv, activeVideo, isFullScreen, nextTrack, prevTrack, toggleSaveVideo, wallPlateType, setWallPlate, router, pathname, setIsFullScreen, setIsMinimized, setActiveVideo, setActiveIptv, dockSide]);
 
-  return (
-    <div className={cn("fixed bottom-24 right-12 z-[10000] pointer-events-none flex flex-col items-center gap-3 transition-all duration-500 scale-110", isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10")}>
-      <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center border-2", activeKey === "2" ? "bg-primary border-primary shadow-glow" : "bg-black/60 border-white/10 backdrop-blur-xl")}><ChevronUp className="w-8 h-8 text-white" /></div>
-      <div className="flex gap-3">
-        <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center border-2", activeKey === "4" ? "bg-primary border-primary shadow-glow" : "bg-black/60 border-white/10 backdrop-blur-xl")}><ChevronLeft className="w-8 h-8 text-white" /></div>
-        <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center border-2", activeKey === '5' ? "bg-accent border-accent shadow-glow" : "bg-black/60 border-white/10 backdrop-blur-xl")}><Circle className="w-8 h-8 text-white" /></div>
-        <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center border-2", activeKey === "6" ? "bg-primary border-primary shadow-glow" : "bg-black/60 border-white/10 backdrop-blur-xl")}><ChevronRight className="w-8 h-8 text-white" /></div>
-      </div>
-      <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center border-2", activeKey === "8" ? "bg-primary border-primary shadow-glow" : "bg-black/60 border-white/10 backdrop-blur-xl")}><ChevronDown className="w-8 h-8 text-white" /></div>
-      <div className="flex gap-8 mt-2">
-        <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center border transition-all", activeKey === "1" ? "bg-primary border-primary shadow-glow scale-125" : "bg-white/5 border-white/10")}><span className="text-white text-[10px] font-black">1</span></div>
-        <div className={cn("w-10 h-10 rounded-full flex items-center justify-center border transition-all", activeKey === "0" ? "bg-red-600 border-white shadow-glow scale-125" : "bg-black/60 border-white/10")}><span className="text-white text-[10px] font-black">0</span></div>
-        <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center border transition-all", activeKey === "3" ? "bg-primary border-primary shadow-glow scale-125" : "bg-white/5 border-white/10")}><span className="text-white text-[10px] font-black">3</span></div>
-      </div>
-    </div>
-  );
+  return null;
 }
