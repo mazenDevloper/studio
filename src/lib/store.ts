@@ -574,7 +574,7 @@ export const useMediaStore = create<MediaState>()(
       }),
 
       removeCustomWallBackground: (url) => set((state) => {
-        newList = state.customWallBackgrounds.filter(u => u !== url);
+        const newList = state.customWallBackgrounds.filter(u => u !== url);
         setTimeout(() => get().syncMasterBin(), 100);
         return { customWallBackgrounds: newList };
       }),

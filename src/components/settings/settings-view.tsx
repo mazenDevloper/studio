@@ -6,11 +6,12 @@ import { useMediaStore, Reminder, Manuscript, AppAction } from "@/lib/store";
 import { 
   Settings, Bell, Trash2, Edit2, Trophy, Search, Star, RefreshCw, Plus, Globe, Zap, Clock,
   ChevronDown, ChevronUp, ImageIcon, Type as TypeIcon, Monitor, Database, Loader2, Gamepad2, Keyboard,
-  MousePointer2, Tv, SkipForward, SkipBack, Bookmark, LayoutGrid, Maximize2, Minimize2, Save, Timer
+  MousePointer2, Tv, SkipForward, SkipBack, Bookmark, LayoutGrid, Maximize2, Minimize2, Save, Timer,
+  Palette, Grid, Upload
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardTitle } from "@/components/ui/card";
+import { Card, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
@@ -26,6 +27,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import Image from "next/image";
+
+const STATIC_WALL_BACKGROUNDS = [
+  { id: 'art-1', name: 'زيتي تجريدي', url: 'https://images.unsplash.com/photo-1578301978693-85fa9c0320b9?q=80&w=2000' },
+  { id: 'art-2', name: 'ألوان مائية', url: 'https://images.unsplash.com/photo-1541701494587-cb58502866ab?q=80&w=2000' },
+  { id: 'art-3', name: 'نسيج قماشي', url: 'https://images.unsplash.com/photo-1561214115-f2f134cc4912?q=80&w=2000' },
+  { id: 'art-4', name: 'ظلال الرخام', url: 'https://images.unsplash.com/photo-1533154683836-84ea7a0bc310?q=80&w=2000' }
+];
 
 const RELATIVE_PRAYER_OPTIONS = [
   { id: 'fajr', name: 'الفجر' },
@@ -93,7 +102,8 @@ export function SettingsView() {
     mapSettings, updateMapSettings, prayerSettings, updatePrayerSetting,
     customManuscripts, addManuscript, removeManuscript,
     keyMappings, setKeyMapping, clearKeyMappings,
-    favoriteTeams, toggleFavoriteTeam, favoriteLeagueIds, toggleFavoriteLeague
+    favoriteTeams, toggleFavoriteTeam, favoriteLeagueIds, toggleFavoriteLeague,
+    customWallBackgrounds, addCustomWallBackground, removeCustomWallBackground
   } = useMediaStore();
   
   const { toast } = useToast();
@@ -118,6 +128,7 @@ export function SettingsView() {
 
   const [manuscriptInput, setManuscriptInput] = useState("");
   const [manuscriptType, setManuscriptType] = useState<'text' | 'image'>('text');
+  const [bgUrlInput, setBgUrlInput] = useState("");
 
   useEffect(() => {
     if (!mappingAction) return;
@@ -170,14 +181,19 @@ export function SettingsView() {
     setForm({ label: "", relativePrayer: "manual", manualTime: "08:00", offsetMinutes: 0, showCountdown: true, countdownWindow: 15, showCountup: true, countupWindow: 15, color: "text-blue-400", iconType: "bell" });
   };
 
-  const safeKeyMappings = useMemo(() => {
-    const safe: Record<string, string[]> = {};
-    Object.keys(keyMappings || {}).forEach(k => {
-      const val = keyMappings[k];
-      safe[k] = Array.isArray(val) ? val : [];
-    });
-    return safe;
-  }, [keyMappings]);
+  const allBackgrounds = useMemo(() => {
+    return [
+      ...STATIC_WALL_BACKGROUNDS, 
+      ...customWallBackgrounds.map((url, i) => ({ id: `custom-bg-${i}`, name: `خلفية مخصصة ${i+1}`, url, isCustom: true }))
+    ];
+  }, [customWallBackgrounds]);
+
+  const handleAddBackground = () => {
+    if (!bgUrlInput.trim()) return;
+    addCustomWallBackground(bgUrlInput);
+    setBgUrlInput("");
+    toast({ title: "تمت الإضافة", description: "تمت إضافة الخلفية المخصصة بنجاح." });
+  };
 
   return (
     <div className="p-12 space-y-12 max-w-7xl mx-auto pb-40 animate-in fade-in duration-700 text-right dir-rtl relative">
@@ -211,43 +227,99 @@ export function SettingsView() {
         </TabsList>
 
         <TabsContent value="appearance" className="space-y-12">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <Card className="premium-glass p-10 space-y-10">
-              <CardTitle className="text-2xl font-black text-white flex items-center gap-3"><Monitor className="w-6 h-6 text-primary" />زوم المتصفح والعرض</CardTitle>
-              <div className="space-y-8">
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center"><span className="text-sm font-black text-white/60">مقياس الواجهة الذكية</span><span className="text-primary font-black">{Math.round((mapSettings.displayScale ?? 1.0) * 100)}%</span></div>
-                  <Slider value={[mapSettings.displayScale ?? 1.0]} min={0.5} max={1.5} step={0.05} onValueChange={([v]) => updateMapSettings({ displayScale: v })} />
-                </div>
-                <div className="flex items-center justify-between p-6 bg-white/5 rounded-2xl border border-white/5">
-                  <div className="space-y-1"><h4 className="text-lg font-bold text-white">خلفية المخطوطات</h4><p className="text-xs text-white/40">إظهار خلفيات فنية خلف نصوص الأذكار</p></div>
-                  <Switch checked={mapSettings.showManuscriptBg} onCheckedChange={(v) => updateMapSettings({ showManuscriptBg: v })} />
-                </div>
-              </div>
-            </Card>
-            <Card className="premium-glass p-10 space-y-10">
-              <CardTitle className="text-2xl font-black text-white flex items-center gap-3"><ImageIcon className="w-6 h-6 text-primary" />إدارة المخطوطات</CardTitle>
-              <div className="space-y-6">
-                <div className="flex gap-4">
-                  <Input placeholder={manuscriptType === 'text' ? "أدخل نص الذكر..." : "أدخل رابط الصورة..."} value={manuscriptInput} onChange={(e) => setManuscriptInput(e.target.value)} className="h-14 bg-black/40 border-white/10 rounded-xl px-6 focusable text-white text-right flex-1" />
-                  <Button onClick={() => { if(manuscriptInput) { addManuscript({ id: Date.now().toString(), type: manuscriptType, content: manuscriptInput }); setManuscriptInput(""); } }} className="h-14 w-14 bg-primary rounded-xl focusable"><Plus className="w-6 h-6" /></Button>
-                </div>
-                <div className="flex gap-2">
-                  <Button variant={manuscriptType === 'text' ? 'default' : 'outline'} onClick={() => setManuscriptType('text')} className="flex-1 rounded-xl h-12 focusable">نصي</Button>
-                  <Button variant={manuscriptType === 'image' ? 'default' : 'outline'} onClick={() => setManuscriptType('image')} className="flex-1 rounded-xl h-12 focusable">صورة</Button>
-                </div>
-                <ScrollArea className="h-48 rounded-xl bg-white/5 p-4 border border-white/5">
-                  <div className="space-y-2">
-                    {customManuscripts.map(m => (
-                      <div key={m.id} className="flex items-center justify-between p-3 bg-black/20 rounded-lg border border-white/5">
-                        <span className="text-xs truncate max-w-[200px] text-white/60">{m.content}</span>
-                        <Button variant="ghost" size="icon" onClick={() => removeManuscript(m.id)} className="w-8 h-8 text-red-500 hover:bg-red-500/20 rounded-full focusable"><Trash2 className="w-4 h-4" /></Button>
-                      </div>
-                    ))}
+          <div className="grid grid-cols-1 gap-12">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <Card className="premium-glass p-8 space-y-8">
+                <CardTitle className="text-2xl font-black text-white flex items-center gap-3"><Monitor className="w-6 h-6 text-primary" />عرض الشاشة</CardTitle>
+                <div className="space-y-8">
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center"><span className="text-sm font-black text-white/60">مقياس الواجهة الذكية</span><span className="text-primary font-black">{Math.round((mapSettings.displayScale ?? 1.0) * 100)}%</span></div>
+                    <Slider value={[mapSettings.displayScale ?? 1.0]} min={0.5} max={1.5} step={0.05} onValueChange={([v]) => updateMapSettings({ displayScale: v })} />
                   </div>
-                </ScrollArea>
+                  <div className="flex items-center justify-between p-6 bg-white/5 rounded-2xl border border-white/5">
+                    <div className="space-y-1"><h4 className="text-lg font-bold text-white">خلفية لوحة الأذكار</h4><p className="text-xs text-white/40">إظهار الصور الفنية خلف نصوص الأذكار</p></div>
+                    <Switch checked={mapSettings.showManuscriptBg} onCheckedChange={(v) => updateMapSettings({ showManuscriptBg: v })} />
+                  </div>
+                </div>
+              </Card>
+
+              <Card className="premium-glass p-8 space-y-8">
+                <CardTitle className="text-2xl font-black text-white flex items-center gap-3"><ImageIcon className="w-6 h-6 text-primary" />إضافة محتوى جديد</CardTitle>
+                <div className="space-y-6">
+                  <div className="flex gap-4">
+                    <Input placeholder={manuscriptType === 'text' ? "أدخل نص الذكر أو الحكمة..." : "أدخل رابط صورة المخطوطة..."} value={manuscriptInput} onChange={(e) => setManuscriptInput(e.target.value)} className="h-14 bg-black/40 border-white/10 rounded-xl px-6 focusable text-white text-right flex-1" />
+                    <Button onClick={() => { if(manuscriptInput) { addManuscript({ id: Date.now().toString(), type: manuscriptType, content: manuscriptInput }); setManuscriptInput(""); toast({title: "تمت الإضافة"}); } }} className="h-14 w-14 bg-primary rounded-xl focusable"><Plus className="w-6 h-6" /></Button>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant={manuscriptType === 'text' ? 'default' : 'outline'} onClick={() => setManuscriptType('text')} className="flex-1 rounded-xl h-12 focusable">نصي</Button>
+                    <Button variant={manuscriptType === 'image' ? 'default' : 'outline'} onClick={() => setManuscriptType('image')} className="flex-1 rounded-xl h-12 focusable">صورة</Button>
+                  </div>
+                </div>
+              </Card>
+            </div>
+
+            <section className="space-y-6">
+              <h3 className="text-2xl font-black text-white flex items-center gap-3"><TypeIcon className="w-6 h-6 text-primary" />المخطوطات الحالية</h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                {customManuscripts.map((m, idx) => (
+                  <div key={m.id} className="group relative bg-white/5 rounded-[2rem] border border-white/10 overflow-hidden focusable h-48 flex items-center justify-center p-4 transition-all hover:bg-white/10" tabIndex={0} data-nav-id={`manuscript-item-${idx}`}>
+                    {m.type === 'text' ? (
+                      <p className="font-calligraphy text-xl text-white text-center line-clamp-3">{m.content}</p>
+                    ) : (
+                      <img src={m.content} className="w-full h-full object-contain" alt="" />
+                    )}
+                    <button 
+                      onClick={() => removeManuscript(m.id)}
+                      className="absolute top-4 left-4 w-10 h-10 rounded-full bg-red-600 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-all focusable"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  </div>
+                ))}
               </div>
-            </Card>
+            </section>
+
+            <section className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h3 className="text-2xl font-black text-white flex items-center gap-3"><Palette className="w-6 h-6 text-primary" />خلفيات اللوحة</h3>
+                <div className="flex gap-3 w-full max-w-md">
+                  <Input placeholder="رابط خلفية مخصصة..." value={bgUrlInput} onChange={(e) => setBgUrlInput(e.target.value)} className="bg-white/5 border-white/10 h-12 rounded-xl text-right focusable" />
+                  <Button onClick={handleAddBackground} className="bg-primary h-12 rounded-xl focusable px-6"><Upload className="w-5 h-5 ml-2" /> رفع</Button>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                {allBackgrounds.map((bg, idx) => (
+                  <div 
+                    key={bg.id} 
+                    onClick={() => updateMapSettings({ manuscriptBgUrl: bg.url })}
+                    className={cn(
+                      "group relative rounded-[2rem] overflow-hidden focusable h-40 cursor-pointer border-4 transition-all",
+                      mapSettings.manuscriptBgUrl === bg.url ? "border-primary shadow-glow scale-105" : "border-white/5 opacity-60 hover:opacity-100"
+                    )}
+                    tabIndex={0}
+                    data-nav-id={`bg-item-${idx}`}
+                  >
+                    <Image src={bg.url} alt={bg.name} fill className="object-cover" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end p-4">
+                      <span className="text-xs font-black text-white">{bg.name}</span>
+                    </div>
+                    {mapSettings.manuscriptBgUrl === bg.url && (
+                      <div className="absolute top-4 left-4 w-8 h-8 rounded-full bg-primary flex items-center justify-center shadow-lg">
+                        <Save className="w-4 h-4 text-white" />
+                      </div>
+                    )}
+                    {(bg as any).isCustom && (
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); removeCustomWallBackground(bg.url); }}
+                        className="absolute top-4 right-4 w-8 h-8 rounded-full bg-red-600 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all shadow-xl"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </section>
           </div>
         </TabsContent>
 
@@ -258,8 +330,8 @@ export function SettingsView() {
               <div className="space-y-6">
                 <h3 className="text-xl font-black text-primary border-b border-primary/20 pb-2">الدوريات المفضلة</h3>
                 <div className="grid grid-cols-2 gap-3">
-                  {MAJOR_LEAGUES.map(league => (
-                    <div key={league.id} onClick={() => toggleFavoriteLeague(league.id)} className={cn("p-4 rounded-xl border transition-all cursor-pointer focusable flex items-center gap-3", favoriteLeagueIds.includes(league.id) ? "bg-primary/20 border-primary text-white" : "bg-white/5 border-white/5 text-white/40")}>
+                  {MAJOR_LEAGUES.map((league, idx) => (
+                    <div key={league.id} onClick={() => toggleFavoriteLeague(league.id)} data-nav-id={`league-item-${idx}`} className={cn("p-4 rounded-xl border transition-all cursor-pointer focusable flex items-center gap-3", favoriteLeagueIds.includes(league.id) ? "bg-primary/20 border-primary text-white" : "bg-white/5 border-white/5 text-white/40")} tabIndex={0}>
                       <div className={cn("w-2 h-2 rounded-full", favoriteLeagueIds.includes(league.id) ? "bg-primary animate-pulse" : "bg-white/10")} />
                       <span className="text-sm font-bold">{league.name}</span>
                     </div>
@@ -269,12 +341,12 @@ export function SettingsView() {
               <div className="space-y-6">
                 <h3 className="text-xl font-black text-primary border-b border-primary/20 pb-2">الأندية والمنتخبات</h3>
                 <div className="flex gap-3">
-                  <Input placeholder="بحث عن فريق..." value={teamSearch} onChange={(e) => setTeamSearch(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearchTeams()} className="h-14 bg-black/40 border-white/10 rounded-xl px-6 focusable text-white text-right" />
+                  <Input placeholder="بحث عن فريق..." value={teamSearch} onChange={(e) => setTeamSearch(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearchTeams()} className="h-14 bg-black/40 border-white/10 rounded-xl px-6 focusable text-white text-right flex-1" />
                   <Button onClick={handleSearchTeams} disabled={isSearching} className="h-14 w-14 bg-primary rounded-xl focusable">{isSearching ? <Loader2 className="w-6 h-6 animate-spin" /> : <Search className="w-6 h-6" />}</Button>
                 </div>
                 <ScrollArea className="h-64 rounded-2xl bg-white/5 p-4 border border-white/5">
                   <div className="grid grid-cols-1 gap-2">
-                    {teamResults.map(tr => (
+                    {teamResults.map((tr, idx) => (
                       <div key={tr.team.id} className="flex items-center justify-between p-3 bg-black/20 rounded-xl border border-white/5 hover:border-primary transition-all">
                         <div className="flex items-center gap-4"><img src={tr.team.logo} className="w-8 h-8 object-contain" alt="" /><span className="font-bold text-white text-sm">{tr.team.name}</span></div>
                         <Button variant="ghost" onClick={() => toggleFavoriteTeam({ id: tr.team.id, name: tr.team.name, logo: tr.team.logo })} className={cn("rounded-full focusable h-10 px-6", favoriteTeams.some(t => t.id === tr.team.id) ? "bg-yellow-500/20 text-yellow-500" : "text-white/40")}>
@@ -291,18 +363,14 @@ export function SettingsView() {
 
         <TabsContent value="prayers" className="space-y-8">
           <Card className="premium-glass p-8 space-y-8">
-            <CardTitle className="text-2xl font-black text-white flex items-center gap-3"><Clock className="w-6 h-6 text-primary" />تعديل أوقات الصلوات والاقامة</CardTitle>
+            <CardTitle className="text-2xl font-black text-white flex items-center gap-3"><Clock className="w-6 h-6 text-primary" />أوقات الصلوات والاقامة</CardTitle>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {prayerSettings.map(ps => (
-                <div key={ps.id} className="bg-white/5 p-6 rounded-[2.5rem] border border-white/10 space-y-6">
+              {prayerSettings.map((ps, idx) => (
+                <div key={ps.id} className="bg-white/5 p-6 rounded-[2.5rem] border border-white/10 space-y-6 focusable" tabIndex={0} data-nav-id={`prayer-card-${idx}`}>
                   <div className="flex items-center justify-between border-b border-white/5 pb-4"><h3 className="text-2xl font-black text-primary">{ps.name}</h3><Timer className="w-6 h-6 text-white/20" /></div>
                   <div className="space-y-4">
-                    <div className="space-y-2"><div className="flex justify-between text-xs font-black text-white/40 uppercase"><span>إزاحة الوقت (دقائق)</span><span>{ps.offsetMinutes > 0 ? `+${ps.offsetMinutes}` : ps.offsetMinutes}</span></div><Slider value={[ps.offsetMinutes]} min={-60} max={60} step={1} onValueChange={([v]) => updatePrayerSetting(ps.id, { offsetMinutes: v })} /></div>
-                    <div className="space-y-2"><div className="flex justify-between text-xs font-black text-white/40 uppercase"><span>مدة الإقامة (دقائق)</span><span>{ps.iqamahDuration}</span></div><Slider value={[ps.iqamahDuration]} min={0} max={60} step={1} onValueChange={([v]) => updatePrayerSetting(ps.id, { iqamahDuration: v })} /></div>
-                    <div className="grid grid-cols-2 gap-4 pt-2">
-                      <div className="flex flex-col gap-2"><span className="text-[10px] font-black text-white/20 uppercase">العد التنازلي</span><Switch checked={ps.showCountdown} onCheckedChange={(v) => updatePrayerSetting(ps.id, { showCountdown: v })} /></div>
-                      <div className="flex flex-col gap-2"><span className="text-[10px] font-black text-white/20 uppercase">نافذة التنبيه</span><Select value={ps.countdownWindow.toString()} onValueChange={(v) => updatePrayerSetting(ps.id, { countdownWindow: parseInt(v) })}><SelectTrigger className="h-10 rounded-xl focusable"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="5">5 د</SelectItem><SelectItem value="10">10 د</SelectItem><SelectItem value="15">15 د</SelectItem><SelectItem value="25">25 د</SelectItem></SelectContent></Select></div>
-                    </div>
+                    <div className="space-y-2"><div className="flex justify-between text-xs font-black text-white/40 uppercase"><span>إزاحة الوقت</span><span>{ps.offsetMinutes > 0 ? `+${ps.offsetMinutes}` : ps.offsetMinutes} د</span></div><Slider value={[ps.offsetMinutes]} min={-60} max={60} step={1} onValueChange={([v]) => updatePrayerSetting(ps.id, { offsetMinutes: v })} /></div>
+                    <div className="space-y-2"><div className="flex justify-between text-xs font-black text-white/40 uppercase"><span>الإقامة</span><span>{ps.iqamahDuration} د</span></div><Slider value={[ps.iqamahDuration]} min={0} max={60} step={1} onValueChange={([v]) => updatePrayerSetting(ps.id, { iqamahDuration: v })} /></div>
                   </div>
                 </div>
               ))}
@@ -312,43 +380,36 @@ export function SettingsView() {
 
         <TabsContent value="reminders" className="space-y-8 outline-none">
           <Card className="premium-glass p-8 space-y-8">
-            <CardTitle className="text-2xl font-black text-white flex items-center gap-3"><Bell className="w-6 h-6 text-primary" />إدارة التذكيرات الذكية</CardTitle>
+            <CardTitle className="text-2xl font-black text-white flex items-center gap-3"><Bell className="w-6 h-6 text-primary" />التذكيرات الذكية</CardTitle>
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
               <div className="lg:col-span-5 space-y-6 bg-white/5 p-8 rounded-[3rem] border border-white/5">
                 <div className="space-y-6">
-                  <Input placeholder="نص التذكير..." value={form.label} onChange={(e) => setForm({...form, label: e.target.value})} className="h-14 bg-black/40 border-white/10 rounded-xl px-6 focusable text-white text-right" />
+                  <Input placeholder="نص التذكير..." value={form.label} onChange={(e) => setForm({...form, label: e.target.value})} className="h-14 bg-black/40 border-white/10 rounded-xl px-6 focusable text-white text-right" data-nav-id="reminder-input-label" />
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <span className="text-xs font-black text-white/40 mr-2">التوقيت النسبي</span>
-                      <Select value={form.relativePrayer} onValueChange={(v: any) => setForm({...form, relativePrayer: v})}>
-                        <SelectTrigger className="h-12 rounded-xl focusable"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {RELATIVE_PRAYER_OPTIONS.map(opt => <SelectItem key={opt.id} value={opt.id}>{opt.name}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    <Select value={form.relativePrayer} onValueChange={(v: any) => setForm({...form, relativePrayer: v})}>
+                      <SelectTrigger className="h-12 rounded-xl focusable" data-nav-id="reminder-select-ref"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {RELATIVE_PRAYER_OPTIONS.map(opt => <SelectItem key={opt.id} value={opt.id}>{opt.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
                     {form.relativePrayer === 'manual' ? (
-                      <div className="space-y-2"><span className="text-xs font-black text-white/40 mr-2">الوقت المحدد</span><Input type="time" value={form.manualTime} onChange={(e) => setForm({...form, manualTime: e.target.value})} className="h-12 bg-black/40 border-white/10 rounded-xl px-4 focusable" /></div>
+                      <Input type="time" value={form.manualTime} onChange={(e) => setForm({...form, manualTime: e.target.value})} className="h-12 bg-black/40 border-white/10 rounded-xl px-4 focusable" />
                     ) : (
-                      <div className="space-y-2"><span className="text-xs font-black text-white/40 mr-2">الإزاحة (دقائق)</span><Input type="number" value={form.offsetMinutes} onChange={(e) => setForm({...form, offsetMinutes: parseInt(e.target.value)})} className="h-12 bg-black/40 border-white/10 rounded-xl px-4 focusable" /></div>
+                      <Input type="number" value={form.offsetMinutes} onChange={(e) => setForm({...form, offsetMinutes: parseInt(e.target.value)})} className="h-12 bg-black/40 border-white/10 rounded-xl px-4 focusable" />
                     )}
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2"><span className="text-xs font-black text-white/40 mr-2">لون التنبيه</span><Select value={form.color} onValueChange={(v) => setForm({...form, color: v})}><SelectTrigger className="h-12 rounded-xl focusable"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="text-blue-400">أزرق</SelectItem><SelectItem value="text-emerald-400">أخضر</SelectItem><SelectItem value="text-orange-400">برتقالي</SelectItem><SelectItem value="text-red-400">أحمر</SelectItem></SelectContent></Select></div>
-                    <div className="space-y-2"><span className="text-xs font-black text-white/40 mr-2">الأيقونة</span><Select value={form.iconType} onValueChange={(v: any) => setForm({...form, iconType: v})}><SelectTrigger className="h-12 rounded-xl focusable"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="bell">جرس</SelectItem><SelectItem value="play">تشغيل</SelectItem><SelectItem value="circle">دائرة</SelectItem></SelectContent></Select></div>
-                  </div>
-                  <Button onClick={handleSubmitReminder} className="w-full h-16 bg-primary text-white font-black text-xl rounded-2xl shadow-glow focusable">
-                    <Save className="w-6 h-6 ml-3" /> {editingId ? 'تحديث التذكير' : 'حفظ التذكير'}
+                  <Button onClick={handleSubmitReminder} className="w-full h-16 bg-primary text-white font-black text-xl rounded-2xl shadow-glow focusable" data-nav-id="reminder-submit-btn">
+                    <Save className="w-6 h-6 ml-3" /> {editingId ? 'تحديث' : 'حفظ'}
                   </Button>
                 </div>
               </div>
               <div className="lg:col-span-7">
-                <ScrollArea className="h-[600px] pr-4">
+                <ScrollArea className="h-[500px]">
                   <div className="flex flex-col gap-4">
-                    {reminders.map((r) => (
-                      <div key={r.id} className="bg-white/5 p-6 rounded-2xl border border-white/5 flex items-center justify-between group animate-in fade-in slide-in-from-right-4">
-                        <div className="flex items-center gap-6"><div className={cn("w-12 h-12 rounded-full flex items-center justify-center bg-white/5 shadow-inner", r.color)}><Bell className="w-6 h-6" /></div><div className="flex flex-col"><span className="text-xl font-black text-white">{r.label}</span><span className="text-[10px] text-white/20 uppercase tracking-widest font-bold">{r.relativePrayer === 'manual' ? r.manualTime : `${RELATIVE_PRAYER_OPTIONS.find(o => o.id === r.relativePrayer)?.name} (${r.offsetMinutes > 0 ? '+' : ''}${r.offsetMinutes} د)`}</span></div></div>
-                        <div className="flex items-center gap-2"><Button variant="ghost" size="icon" onClick={() => { setForm(r); setEditingId(r.id); }} className="w-12 h-12 rounded-full focusable transition-all hover:bg-white/10"><Edit2 className="w-5 h-5 text-white/40" /></Button><Button variant="ghost" size="icon" onClick={() => removeReminder(r.id)} className="w-12 h-12 rounded-full focusable transition-all hover:bg-red-500/20"><Trash2 className="w-5 h-5 text-red-500/60" /></Button></div>
+                    {reminders.map((r, idx) => (
+                      <div key={r.id} className="bg-white/5 p-6 rounded-2xl border border-white/5 flex items-center justify-between group focusable" tabIndex={0} data-nav-id={`reminder-item-${idx}`}>
+                        <div className="flex items-center gap-6"><div className={cn("w-12 h-12 rounded-full flex items-center justify-center bg-white/5 shadow-inner", r.color)}><Bell className="w-6 h-6" /></div><div className="flex flex-col"><span className="text-xl font-black text-white">{r.label}</span></div></div>
+                        <div className="flex items-center gap-2"><Button variant="ghost" size="icon" onClick={() => { setForm(r); setEditingId(r.id); }} className="w-12 h-12 rounded-full focusable"><Edit2 className="w-5 h-5 text-white/40" /></Button><Button variant="ghost" size="icon" onClick={() => removeReminder(r.id)} className="w-12 h-12 rounded-full focusable"><Trash2 className="w-5 h-5 text-red-500/60" /></Button></div>
                       </div>
                     ))}
                   </div>
@@ -360,47 +421,19 @@ export function SettingsView() {
 
         <TabsContent value="buttonmap" className="space-y-8 outline-none">
           <Card className="premium-glass p-8 space-y-8">
-            <CardTitle className="text-2xl font-black text-white flex items-center gap-3">
-              <Gamepad2 className="w-6 h-6 text-primary" />
-              برمجة أزرار التحكم المتعددة (Active Multi-Key Binding)
-            </CardTitle>
-
+            <CardTitle className="text-2xl font-black text-white flex items-center gap-3"><Gamepad2 className="w-6 h-6 text-primary" />برمجة الأزرار</CardTitle>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-              {BUTTON_ACTION_CATEGORIES.map((cat, idx) => (
-                <div key={idx} className="space-y-6">
-                  <h3 className="text-xl font-black text-primary uppercase tracking-tighter border-b border-primary/20 pb-2">{cat.title}</h3>
+              {BUTTON_ACTION_CATEGORIES.map((cat, catIdx) => (
+                <div key={catIdx} className="space-y-6">
+                  <h3 className="text-xl font-black text-primary border-b border-primary/20 pb-2">{cat.title}</h3>
                   <div className="flex flex-col gap-3">
-                    {cat.items.map(item => (
-                      <div key={item.id} className="flex flex-col gap-2">
-                        <div 
-                          onClick={() => setMappingAction(item.id as AppAction)}
-                          className={cn(
-                            "w-full p-5 rounded-[1.5rem] bg-white/5 border border-white/5 hover:border-primary transition-all flex items-center justify-between group focusable cursor-pointer",
-                            mappingAction === item.id && "border-primary bg-primary/10 shadow-glow"
-                          )}
-                          tabIndex={0}
-                        >
-                          <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
-                              <item.icon className="w-5 h-5 text-white/60" />
-                            </div>
-                            <span className="font-bold text-white/80">{item.label}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); clearKeyMappings(item.id as AppAction); }} className="w-8 h-8 rounded-full hover:bg-red-600/20 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity focusable">
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                            <Plus className="w-5 h-5 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
-                          </div>
-                        </div>
-                        
-                        <div className="flex flex-wrap gap-2 pr-4">
-                          {Array.isArray(safeKeyMappings[item.id]) && safeKeyMappings[item.id].map((k, kIdx) => (
-                            <span key={kIdx} className="px-3 py-1 bg-primary/20 rounded-lg border border-primary/20 text-primary font-black tabular-nums text-xs animate-in zoom-in-95">
-                              {k}
-                            </span>
+                    {cat.items.map((item, itemIdx) => (
+                      <div key={item.id} onClick={() => setMappingAction(item.id as AppAction)} className={cn("w-full p-5 rounded-[1.5rem] bg-white/5 border border-white/5 hover:border-primary transition-all flex items-center justify-between focusable cursor-pointer", mappingAction === item.id && "border-primary bg-primary/10 shadow-glow")} tabIndex={0} data-nav-id={`keymap-${catIdx}-${itemIdx}`}>
+                        <div className="flex items-center gap-4"><div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center"><item.icon className="w-5 h-5 text-white/60" /></div><span className="font-bold text-white/80">{item.label}</span></div>
+                        <div className="flex gap-2">
+                          {keyMappings[item.id]?.map((k, kIdx) => (
+                            <span key={kIdx} className="px-3 py-1 bg-primary/20 rounded-lg border border-primary/20 text-primary font-black text-xs">{k}</span>
                           ))}
-                          {(!safeKeyMappings[item.id] || safeKeyMappings[item.id].length === 0) && <span className="text-[10px] text-white/20 italic">لم يتم تعيين أزرار بعد</span>}
                         </div>
                       </div>
                     ))}

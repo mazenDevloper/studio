@@ -12,8 +12,7 @@ import { PrayerTimelineWidget } from "./widgets/prayer-timeline-widget";
 import { MapWidget } from "./widgets/map-widget";
 import { ReminderSummaryWidget } from "./widgets/reminder-summary-widget";
 import { ActiveAzkarWidget } from "./widgets/active-azkar-widget";
-import { PrayerCountdownCard } from "./widgets/prayer-countdown-card";
-import { useMediaStore, Manuscript } from "@/lib/store";
+import { useMediaStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { Carousel, CarouselContent, CarouselItem, CarouselApi } from "@/components/ui/carousel";
 import { X } from "lucide-react";
@@ -78,6 +77,18 @@ export function DashboardView() {
       setCurrent(api.selectedScrollSnap());
     });
   }, [api, activeVideo]);
+
+  // PRIORITY FOCUS: Target reminders summary on entry
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const reminders = document.querySelector('[data-nav-id="reminder-summary-0"]') as HTMLElement;
+      if (reminders) {
+        reminders.focus();
+        reminders.classList.add('active-nav-target');
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     if (wallPlateType === 'manuscript' && wallPlateData) {
@@ -202,26 +213,22 @@ export function DashboardView() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6 min-h-[480px]">
-        <div className="md:col-span-4 rounded-[2.5rem] overflow-hidden relative shadow-2xl h-[480px] bg-black self-start">
+        {/* Level 1: Left Widget (Azkar or Map) */}
+        <div className="md:col-span-4 rounded-[2.5rem] overflow-hidden relative shadow-2xl h-[480px] bg-black self-start focusable" tabIndex={0} data-nav-id="dashboard-col-0">
           {isWideScreen ? <ActiveAzkarWidget /> : <MapWidget />}
         </div>
 
-        <div className="md:col-span-4 rounded-[2.5rem] relative flex items-center justify-center overflow-hidden h-[480px] shadow-2xl focusable bg-black" tabIndex={0} data-nav-id="car-visualizer-container">
-          {isWideScreen ? <ReminderSummaryWidget /> : (
-            <>
-              <div className="absolute inset-0 w-full h-full">
-                <Image src="https://dmusera.netlify.app/es350gb.png" alt="Lexus ES" fill priority className="object-cover drop-shadow-[0_25px_60px_rgba(0,0,0,0.9)]" />
-              </div>
-              <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
-            </>
-          )}
+        {/* Level 1: Center Widget (The prioritized Reminders) */}
+        <div className="md:col-span-4 rounded-[2.5rem] relative flex items-center justify-center overflow-hidden h-[480px] shadow-2xl focusable bg-black outline-none" tabIndex={0} data-nav-id="reminder-summary-0">
+          <ReminderSummaryWidget />
         </div>
 
+        {/* Level 1: Right Column (Carousel + Clock) */}
         <div className="md:col-span-4 flex flex-col gap-4 h-[480px] relative">
           <div 
             className="flex-1 relative overflow-hidden group bg-black rounded-[2.5rem] shadow-2xl focusable outline-none" 
             tabIndex={0} 
-            data-nav-id="dashboard-carousel-container"
+            data-nav-id="dashboard-carousel-0"
           >
             <Carousel setApi={setApi} opts={{ loop: true }} className="w-full h-full">
               <CarouselContent className="h-full ml-0 overflow-hidden no-scrollbar">
@@ -243,16 +250,18 @@ export function DashboardView() {
               </div>
             )}
           </div>
-          <div className="flex-[0.35] rounded-[2.5rem] relative overflow-hidden shadow-2xl focusable bg-black" tabIndex={0} data-nav-id="clock-widget-container">
+          <div className="flex-[0.35] rounded-[2.5rem] relative overflow-hidden shadow-2xl focusable bg-black" tabIndex={0} data-nav-id="clock-widget-0">
             <DateAndClockWidget />
           </div>
         </div>
       </div>
 
-      <div className="w-full p-0 shadow-xl focusable bg-black" tabIndex={0} data-nav-id="prayer-timeline-section">
+      {/* Level 2: Prayer Timeline */}
+      <div className="w-full p-0 shadow-xl focusable bg-black rounded-[2.5rem] overflow-hidden outline-none" tabIndex={0} data-nav-id="prayer-timeline-0">
         <PrayerTimelineWidget />
       </div>
 
+      {/* Level 3+: Dynamic Feeds */}
       <div className="w-full space-y-8 pb-12 bg-black">
         <LatestVideosWidget channels={Array.isArray(favoriteChannels) ? favoriteChannels.filter(c => c?.starred) : []} />
         <YouTubeSavedWidget />

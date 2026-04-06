@@ -63,7 +63,7 @@ export function QuranView() {
     fetchDiscoveryData();
 
     const timer = setTimeout(() => {
-      const target = document.querySelector('[data-nav-id="reciter-0"]') as HTMLElement;
+      const target = document.querySelector('[data-nav-id="reciter-all"]') as HTMLElement;
       if (target) target.focus();
     }, 800);
 
@@ -73,7 +73,7 @@ export function QuranView() {
     };
   }, []);
 
-  // AUTO-FOCUS results
+  // AUTO-FOCUS ON QURAN RESULTS
   useEffect(() => {
     if (ytResults.length > 0) {
       setTimeout(() => {
@@ -113,7 +113,15 @@ export function QuranView() {
       }
       return parts.join(" ") + " ";
     });
-    inputRef.current?.focus();
+
+    if (type === 'reciter') {
+      setTimeout(() => {
+        const firstSurah = document.querySelector('[data-nav-id="q-surah-0"]') as HTMLElement;
+        firstSurah?.focus();
+      }, 100);
+    } else {
+      inputRef.current?.focus();
+    }
   };
 
   const handleReciterSearch = useCallback(async () => {
@@ -163,7 +171,6 @@ export function QuranView() {
   const sidebarWidthClass = isWideScreen ? (isExpanded ? "w-[27%]" : "w-20") : "w-0 hidden";
   const horizontalListClass = "w-full flex gap-4 px-8 pb-4 overflow-x-auto no-scrollbar scroll-smooth justify-start items-center";
 
-  // ISOLATION
   const showResults = ytResults.length > 0;
 
   return (
@@ -204,20 +211,30 @@ export function QuranView() {
               <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-white/10"><List className="w-5 h-5" /></div>
               {isExpanded && <h4 className="font-black text-sm truncate flex-1 text-right">الكل</h4>}
             </div>
-            {allReciters.map((r, idx) => (
-              <div key={r.channelid || idx} onClick={() => handleAutocomplete(r.name, 'reciter')} className={cn("flex items-center p-3 rounded-xl w-[90%] mx-auto gap-3 transition-all cursor-pointer focusable overflow-hidden group/item relative", search.includes(r.name) ? "bg-primary text-white shadow-glow active-nav-target" : "hover:bg-white/5 text-white/60")} tabIndex={0} data-nav-id={`reciter-${idx}`}>
-                <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shrink-0 overflow-hidden">
-                  {r.image ? <img src={r.image} className="w-full h-full object-cover" alt="" /> : <User className="w-5 h-5 text-white" />}
+            {allReciters.map((r, idx) => {
+              const isActive = search.includes(r.name);
+              return (
+                <div 
+                  key={r.channelid || idx} 
+                  onClick={() => handleAutocomplete(r.name, 'reciter')} 
+                  className={cn("flex items-center p-3 rounded-xl w-[90%] mx-auto gap-3 transition-all cursor-pointer focusable overflow-hidden group/item relative", isActive ? "bg-primary text-white shadow-glow active-nav-target" : "hover:bg-white/5 text-white/60")} 
+                  tabIndex={0} 
+                  data-nav-id={`reciter-${idx}`}
+                >
+                  <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shrink-0 overflow-hidden">
+                    {r.image ? <img src={r.image} className="w-full h-full object-cover" alt="" /> : <User className="w-5 h-5 text-white" />}
+                  </div>
+                  {isExpanded && <h4 className="font-black text-sm truncate flex-1 text-right">{r.name}</h4>}
                 </div>
-                {isExpanded && <h4 className="font-black text-sm truncate flex-1 text-right">{r.name}</h4>}
-              </div>
-            ))}
+              );
+            })}
           </div>
         </ScrollArea>
       </aside>
 
       <main className="flex-1 overflow-y-auto no-scrollbar pb-40 relative px-12 space-y-12" style={{ direction: 'rtl' }}>
         
+        {/* ISOLATED VIEW LOGIC IN QURAN */}
         {!showResults ? (
           <section className="pt-10 space-y-8 animate-in fade-in slide-in-from-top-4 duration-700">
             <div className="flex items-center justify-between w-full">
@@ -236,7 +253,7 @@ export function QuranView() {
                 value={search} 
                 onChange={(e) => setSearch(e.target.value)}
                 onKeyDown={(e) => (e.key === 'Enter') && handleYTSearch(search)}
-                className="h-20 bg-white/5 border-white/10 rounded-[2.5rem] pr-16 pl-16 text-2xl font-bold focusable text-right shadow-2xl focus:bg-white/10"
+                className="h-20 bg-white/5 border-white/10 rounded-[2.5rem] pr-16 pl-16 text-2xl font-bold text-right shadow-2xl focus:bg-white/10 transition-all border-none search-input-quiet"
                 data-nav-id="quran-search-input"
               />
               {search && <button onClick={() => { setSearch(""); setYtResults([]); }} className="absolute left-6 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white/40 focusable"><X className="w-5 h-5" /></button>}
@@ -249,7 +266,7 @@ export function QuranView() {
                   <span className="text-[10px] font-black uppercase">إضافة</span>
                 </button>
                 {filteredReciters.map((r, i) => (
-                  <button key={i} onClick={() => handleAutocomplete(r.name, 'reciter')} data-nav-id={`q-reciter-${i+1}`} className="flex flex-col items-center gap-2 px-4 py-4 rounded-[2.5rem] bg-white/5 border border-white/10 text-white hover:bg-emerald-600/20 transition-all focusable shrink-0 min-w-[120px]">
+                  <button key={i} onClick={() => handleAutocomplete(r.name, 'reciter')} data-nav-id={`q-reciter-${i+1}`} className="flex flex-col items-center gap-2 px-4 py-4 rounded-[2.5rem] bg-white/5 border border-white/10 text-white hover:bg-emerald-600/20 transition-all focusable shrink-0 min-w-[140px]">
                     <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-emerald-500/30 shadow-2xl">
                       {r.image ? <img src={r.image} className="w-full h-full object-cover" alt="" /> : <div className="w-full h-full flex items-center justify-center bg-emerald-500/10"><User className="w-10 h-10 text-emerald-400" /></div>}
                     </div>

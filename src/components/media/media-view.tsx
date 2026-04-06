@@ -88,7 +88,6 @@ export function MediaView() {
     }
     fetchDiscoveryData();
 
-    // Initial Focus
     const timer = setTimeout(() => {
       const target = document.querySelector('[data-nav-id="subs-all"]') as HTMLElement;
       if (target) target.focus();
@@ -100,7 +99,7 @@ export function MediaView() {
     };
   }, []);
 
-  // AUTO-FOCUS results
+  // SMART AUTO-FOCUS ON SEARCH RESULTS
   useEffect(() => {
     if (searchResults.length > 0) {
       setTimeout(() => {
@@ -113,6 +112,7 @@ export function MediaView() {
     }
   }, [searchResults]);
 
+  // SMART AUTO-FOCUS ON CHANNEL VIDEOS
   useEffect(() => {
     if (selectedChannel && channelVideos.length > 0) {
       setTimeout(() => {
@@ -157,7 +157,16 @@ export function MediaView() {
       }
       return parts.join(" ") + " ";
     });
-    inputRef.current?.focus();
+
+    if (type === 'reciter') {
+      // JUMP TO SURAHS ON RECITER SELECTION
+      setTimeout(() => {
+        const firstSurah = document.querySelector('[data-nav-id="q-surah-0"]') as HTMLElement;
+        firstSurah?.focus();
+      }, 100);
+    } else {
+      inputRef.current?.focus();
+    }
   };
 
   const allReciters = useMemo(() => {
@@ -305,14 +314,16 @@ export function MediaView() {
 
   const horizontalListClass = "w-full flex gap-4 px-8 pb-4 overflow-x-auto no-scrollbar scroll-smooth justify-start items-center";
 
-  // VIEW LOGIC
+  // ISOLATED VIEW LOGIC: Show results/channels only
   const showIsolatedView = !!selectedChannel || searchResults.length > 0;
 
   return (
-    <div className={cn(
-      "h-screen flex bg-transparent transition-all duration-700 overflow-hidden",
-      isDockLeft ? "flex-row-reverse" : "flex-row"
-    )}>
+    <div 
+      className={cn(
+        "h-screen flex bg-transparent transition-all duration-700 overflow-hidden",
+        isDockLeft ? "flex-row-reverse" : "flex-row"
+      )}
+    >
       
       <aside 
         className={cn(
@@ -341,7 +352,7 @@ export function MediaView() {
                   <DialogHeader className="p-8 border-b border-white/10 text-right">
                     <DialogTitle className="text-xl font-black text-white">إضافة قناة</DialogTitle>
                     <div className="flex gap-4 mt-6">
-                      <Input placeholder="اسم القناة..." value={channelSearchQuery} onChange={(e) => setChannelSearchQuery(e.target.value)} className="h-12 bg-white/5 rounded-xl px-6 text-right focusable flex-1" />
+                      <Input placeholder="اسم القناة..." value={channelSearchQuery} onChange={(e) => setChannelSearchQuery(e.target.value)} className="h-12 bg-white/5 rounded-xl px-6 text-right flex-1" />
                       <Button onClick={handleChannelSearch} className="h-12 w-12 bg-primary rounded-xl focusable">{isSearchingChannels ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}</Button>
                     </div>
                   </DialogHeader>
@@ -365,7 +376,6 @@ export function MediaView() {
           <div className="py-4 flex flex-col gap-1">
             <div 
               onClick={() => { setSelectedChannel(null); setSearchResults([]); setSearch(""); }} 
-              onFocus={() => setIsSidebarFocused(true)}
               className={cn("flex items-center gap-3 p-3 transition-all cursor-pointer focusable overflow-hidden w-[95%] mx-auto rounded-xl", !selectedChannel && !searchResults.length ? "bg-primary text-white shadow-glow active-nav-target" : "hover:bg-white/5 text-white/60")} 
               tabIndex={0} 
               data-nav-id="subs-all"
@@ -379,7 +389,6 @@ export function MediaView() {
                 <div 
                   key={ch.channelid} 
                   onClick={() => { setSearchResults([]); setSelectedChannel(ch); }}
-                  onFocus={() => setIsSidebarFocused(true)}
                   className={cn(
                     "flex items-center p-3 rounded-xl w-[95%] mx-auto gap-3 transition-all cursor-pointer focusable overflow-hidden group/item relative shrink-0",
                     isActive ? "bg-primary text-white shadow-glow active-nav-target" : "hover:bg-white/5 text-white/60"
@@ -414,8 +423,8 @@ export function MediaView() {
                     placeholder="ابحث (رقم 0 للتركيز)..." 
                     value={search} 
                     onChange={(e) => setSearch(e.target.value)}
-                    onKeyDown={(e) => (e.key === 'Enter' || e.keyCode === 13) && handleYTSearch(search)}
-                    className="h-20 bg-white/5 border-white/10 rounded-[2.5rem] pr-16 pl-16 text-2xl font-bold focusable text-right shadow-2xl"
+                    onKeyDown={(e) => (e.key === 'Enter') && handleYTSearch(search)}
+                    className="h-20 bg-white/5 border-white/10 rounded-[2.5rem] pr-16 pl-16 text-2xl font-bold text-right shadow-2xl focus:bg-white/10 transition-all border-none search-input-quiet"
                     data-nav-id="media-search-input"
                   />
                   {search && <button onClick={() => { setSearch(""); setSearchResults([]); setSuggestionContext('none'); }} className="absolute left-6 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white/40 focusable"><X className="w-5 h-5" /></button>}
@@ -565,7 +574,7 @@ export function MediaView() {
             {!pendingReciter ? (
               <>
                 <div className="flex gap-4">
-                  <Input placeholder="ابحث عن قناة القارئ..." value={reciterSearchQuery} onChange={(e) => setReciterSearchQuery(e.target.value)} className="h-14 bg-white/5 rounded-xl px-6 text-right focusable flex-1" />
+                  <Input placeholder="ابحث عن قناة القارئ..." value={reciterSearchQuery} onChange={(e) => setReciterSearchQuery(e.target.value)} className="h-14 bg-white/5 rounded-xl px-6 text-right flex-1" />
                   <Button onClick={handleReciterSearch} className="h-14 w-14 bg-primary rounded-xl focusable">{isSearchingReciters ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-6 h-6" />}</Button>
                 </div>
                 <ScrollArea className="h-64 bg-white/5 rounded-2xl p-4 border border-white/5">

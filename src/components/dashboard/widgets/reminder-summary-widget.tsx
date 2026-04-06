@@ -180,7 +180,7 @@ export function ReminderSummaryWidget() {
   );
 
   return (
-    <div className="h-full w-full bg-zinc-950/80 backdrop-blur-[120px] rounded-[2.5rem] border border-white/10 relative overflow-hidden flex flex-col justify-center gap-2 p-6">
+    <div className="h-full w-full bg-zinc-950/80 backdrop-blur-[120px] rounded-[2.5rem] border border-white/10 relative overflow-hidden flex flex-col justify-center gap-2 p-6 outline-none focusable" tabIndex={0}>
       <FluidGlass />
       {processedReminders.map((rem, idx) => {
         const RemIcon = rem.icon;
