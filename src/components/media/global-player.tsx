@@ -1,11 +1,57 @@
 
 "use client";
 
-import { useMediaStore } from "@/lib/store";
-import { X, Monitor, ChevronDown, ChevronRight, ChevronLeft, Settings, LayoutGrid, Bookmark, BookmarkCheck, Globe, Youtube, Eye, Maximize2, Minimize2 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { useMediaStore, AppAction, MappingContext } from "@/lib/store";
+import { X, Monitor, ChevronDown, ChevronRight, ChevronLeft, Settings, LayoutGrid, Bookmark, BookmarkCheck, Globe, Youtube, Eye, Maximize2, Minimize2, Play, Pause, FastForward, Rewind } from "lucide-react";
+import { cn, normalizeKey } from "@/lib/utils";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
+
+/**
+ * Priorities HW TV Keys for display in badges with specific priorities for Colors and Numbers
+ */
+function getPriorityKey(keys: string[]): string | null {
+  if (!keys || keys.length === 0) return null;
+  const hardwarePriority = ['Red', 'Green', 'Yellow', 'Blue', 'ChannelUp', 'ChannelDown', 'PageUp', 'PageDown', 'Back', 'Exit', '1', '3', '7', '9', '0', '2', '4', '5', '6', '8'];
+  const found = hardwarePriority.find(hw => keys.some(k => k.toLowerCase() === hw.toLowerCase()));
+  if (found) return found;
+  return keys[0];
+}
+
+function ShortcutBadge({ action }: { action: AppAction }) {
+  const { keyMappings } = useMediaStore();
+  const playerKeys = keyMappings.player?.[action] || [];
+  const globalKeys = keyMappings.global?.[action] || [];
+  const combined = Array.from(new Set([...playerKeys, ...globalKeys]));
+  
+  const displayKey = getPriorityKey(combined);
+  if (!displayKey) return null;
+  
+  const shortKey = displayKey.length > 4 ? displayKey.substring(0, 3) : displayKey;
+  
+  const colorClasses: Record<string, string> = {
+    'Red': 'bg-red-600 text-white',
+    'Green': 'bg-green-600 text-white',
+    'Yellow': 'bg-yellow-500 text-black',
+    'Blue': 'bg-blue-600 text-white',
+    '1': 'bg-zinc-800 text-white',
+    '3': 'bg-zinc-800 text-white',
+    '7': 'bg-zinc-800 text-white',
+    '9': 'bg-zinc-800 text-white',
+    '0': 'bg-zinc-800 text-white'
+  };
+  
+  const badgeClass = colorClasses[displayKey] || 'bg-white text-black';
+  
+  return (
+    <div className={cn(
+      "absolute -top-1 -left-1 text-[8px] font-black px-1 py-0.5 rounded shadow-glow z-20 uppercase border border-black/10 transition-all duration-300 grayscale-0 opacity-100",
+      badgeClass
+    )}>
+      {shortKey}
+    </div>
+  );
+}
 
 export function GlobalVideoPlayer() {
   const { 
@@ -21,47 +67,45 @@ export function GlobalVideoPlayer() {
   const containerRef = useRef<HTMLDivElement>(null);
   const lastIdRef = useRef<string | null>(null);
   const progressInterval = useRef<any>(null);
-  const touchStart = useRef<number | null>(null);
 
   const isActive = !!(activeVideo || activeIptv);
   const isSaved = activeVideo ? savedVideos.some(v => v.id === activeVideo.id) : false;
 
-  // SMART AUTO-FOCUS ON CONTROLS
-  useEffect(() => {
-    if (isActive && isFullScreen && !isMinimized && gridMode === 'hidden') {
-      const timer = setTimeout(() => {
-        const target = document.querySelector('[data-nav-id="player-settings-toggle"]') as HTMLElement;
-        if (target) target.focus();
-      }, 500);
-      return () => clearTimeout(timer);
+  const startSeconds = useMemo(() => {
+    if (activeVideo?.id && videoProgress[activeVideo.id]) {
+      return Math.floor(videoProgress[activeVideo.id]);
     }
-  }, [isActive, isFullScreen, isMinimized, gridMode]);
+    return 0;
+  }, [activeVideo?.id, videoProgress]);
 
-  // SMART AUTO-FOCUS ON PLAYLIST
+  // FORCED PLAYER CONTROL ACTIONS
   useEffect(() => {
-    if (gridMode !== 'hidden') {
-      const timer = setTimeout(() => {
-        const firstItem = document.querySelector('[data-nav-id="player-playlist-item-0"]') as HTMLElement;
-        if (firstItem) {
-          firstItem.focus();
-          firstItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-      }, 400); 
-      return () => clearTimeout(timer);
-    }
-  }, [gridMode]);
+    const handleForcedKeys = (e: KeyboardEvent) => {
+      if (!isActive) return;
+      const key = normalizeKey(e);
+      const mappings = useMediaStore.getState().keyMappings;
+      
+      // Close Forced
+      if (mappings.player?.player_close?.includes(key) || mappings.global?.player_close?.includes(key)) {
+        e.preventDefault();
+        handleClose();
+      }
+      
+      // Playlist Toggle Forced
+      if (mappings.player?.player_playlist?.includes(key)) {
+        e.preventDefault();
+        setGridMode(gridMode === 'hidden' ? 'full' : 'hidden');
+      }
 
-  const currentYouTubeId = useMemo(() => {
-    const input = activeVideo ? activeVideo.id : (activeIptv?.url || "");
-    if (!input || typeof input !== 'string') return null;
-    const regExp = /^.*(?:youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-    const match = input.match(regExp);
-    return (match && match[1].length === 11) ? match[1] : (input.length === 11 ? input : null);
-  }, [activeVideo, activeIptv?.url]);
-
-  const isBlockedChannel = useMemo(() => {
-    return activeVideo?.channelTitle?.toLowerCase().includes('bein') || false;
-  }, [activeVideo]);
+      // Minimize Toggle Forced
+      if (mappings.player?.player_minimize?.includes(key)) {
+        e.preventDefault();
+        setIsMinimized(!isMinimized);
+      }
+    };
+    window.addEventListener("keydown", handleForcedKeys, true);
+    return () => window.removeEventListener("keydown", handleForcedKeys, true);
+  }, [isActive, gridMode, isMinimized, setGridMode, setIsMinimized]);
 
   useEffect(() => {
     setMounted(true);
@@ -70,69 +114,7 @@ export function GlobalVideoPlayer() {
       tag.src = "https://www.youtube.com/iframe_api";
       document.body.appendChild(tag);
     }
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (!isActive || isMinimized) return;
-      
-      const activeEl = document.activeElement as HTMLElement;
-      const isInControls = activeEl?.closest('.player-controls-bar');
-      const isInGrid = activeEl?.closest('.player-playlist-grid');
-      const key = e.key;
-
-      const isDown = key === "ArrowDown" || key === "8";
-      const isUp = key === "ArrowUp" || key === "2";
-
-      if (isDown) {
-        if (isInControls) {
-          e.preventDefault();
-          if (gridMode === 'hidden') setGridMode('partial');
-          else if (gridMode === 'partial') setGridMode('full');
-        } else if (isInGrid && gridMode === 'partial') {
-          setGridMode('full');
-        }
-      }
-      
-      if (isUp || key === "Escape") {
-        if (gridMode !== 'hidden' && !isInControls) {
-          const navId = activeEl?.getAttribute('data-nav-id') || "";
-          const isFirstRow = navId.startsWith('player-playlist-item-') && parseInt(navId.split('-').pop() || "0") < 3;
-          
-          if (isFirstRow && isUp) {
-            e.preventDefault();
-            if (gridMode === 'full') setGridMode('partial');
-            else {
-              setGridMode('hidden');
-              setTimeout(() => {
-                const settingsBtn = document.querySelector('[data-nav-id="player-settings-toggle"]') as HTMLElement;
-                if (settingsBtn) settingsBtn.focus();
-              }, 100);
-            }
-          } else if (key === "Escape") {
-            setGridMode('hidden');
-          }
-        }
-        else if (key === "Escape") setIsFullScreen(false);
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isActive, isMinimized, gridMode, setIsFullScreen, setGridMode]);
-
-  const handleTouchStart = (e: React.TouchEvent) => { touchStart.current = e.touches[0].clientY; };
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (touchStart.current === null) return;
-    const diff = touchStart.current - e.changedTouches[0].clientY;
-    if (Math.abs(diff) > 60) {
-      if (diff > 0) {
-        if (gridMode === 'hidden') setGridMode('partial'); 
-        else if (gridMode === 'partial') setGridMode('full');
-      } else {
-        if (gridMode === 'full') setGridMode('partial'); 
-        else setGridMode('hidden');
-      }
-    }
-    touchStart.current = null;
-  };
+  }, []);
 
   const onPlayerStateChange = useCallback((event: any) => {
     const YT = (window as any).YT;
@@ -152,28 +134,37 @@ export function GlobalVideoPlayer() {
     if (!containerRef.current || !mounted || playerMode === 'web') return;
     const YT = (window as any).YT;
     if (!YT?.Player) return;
+    
+    const startFrom = Math.floor(videoProgress[videoId] || 0);
+
     if (playerRef.current?.loadVideoById) {
       if (lastIdRef.current === videoId) return;
       lastIdRef.current = videoId;
-      playerRef.current.loadVideoById({ videoId, startSeconds: Math.floor(videoProgress[videoId] || 0) });
+      playerRef.current.loadVideoById({ videoId, startSeconds: startFrom });
       return;
     }
+    
     lastIdRef.current = videoId;
     containerRef.current.innerHTML = '<div id="yt-stable-element"></div>';
     playerRef.current = new YT.Player('yt-stable-element', {
       height: '100%', width: '100%', videoId,
-      playerVars: { autoplay: 1, controls: 1, modestbranding: 1, rel: 0, playsinline: 1, origin: window.location.origin, enablejsapi: 1 },
+      playerVars: { 
+        autoplay: 1, controls: 1, modestbranding: 1, rel: 0, 
+        playsinline: 1, origin: window.location.origin, enablejsapi: 1,
+        start: startFrom
+      },
       events: { onReady: (e: any) => e.target.playVideo(), onStateChange: onPlayerStateChange }
     });
   }, [mounted, onPlayerStateChange, videoProgress, playerMode]); 
 
   useEffect(() => {
+    const currentYouTubeId = activeVideo ? activeVideo.id : null;
     if (currentYouTubeId && mounted && playerMode === 'api') {
       const YT = (window as any).YT;
       if (YT?.Player) initPlayer(currentYouTubeId);
       else (window as any).onYouTubeIframeAPIReady = () => initPlayer(currentYouTubeId);
     }
-  }, [currentYouTubeId, mounted, initPlayer, playerMode]);
+  }, [activeVideo, mounted, initPlayer, playerMode]);
 
   const handleClose = () => {
     if (playerRef.current?.destroy) try { playerRef.current.destroy(); } catch {}
@@ -193,13 +184,17 @@ export function GlobalVideoPlayer() {
         isFullScreen ? "inset-0 w-full h-full bg-black ring-0 border-0" : 
         "bottom-8 right-8 w-[50vw] h-[55vh] premium-glass rounded-[3.5rem] bg-black/95 border border-white/10"
       )}
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
     >
       <div className={cn("absolute inset-0 transition-opacity duration-700", isMinimized ? "opacity-0 pointer-events-none" : "opacity-100")}>
-        {currentYouTubeId ? (
+        {activeVideo ? (
           playerMode === 'api' ? <div ref={containerRef} className="w-full h-full bg-black" /> :
-          <iframe src={`https://www.youtube-nocookie.com/embed/${currentYouTubeId}?autoplay=1&controls=1&modestbranding=1&rel=0&playsinline=1&hl=ar&widget_referrer=https://www.youtube.com&origin=https://www.youtube.com`} className="w-full h-full border-none" allow="autoplay; encrypted-media; fullscreen" sandbox="allow-scripts allow-forms allow-same-origin allow-presentation allow-downloads" style={{ background: '#000' }} />
+          <iframe 
+            src={`https://www.youtube-nocookie.com/embed/${activeVideo.id}?autoplay=1&controls=1&modestbranding=1&rel=0&playsinline=1&hl=ar&widget_referrer=https://www.youtube.com&origin=https://www.youtube.com${startSeconds > 0 ? `&start=${startSeconds}` : ''}`} 
+            className="w-full h-full border-none" 
+            allow="autoplay; encrypted-media; fullscreen" 
+            sandbox="allow-scripts allow-forms allow-same-origin allow-presentation allow-downloads" 
+            style={{ background: '#000' }} 
+          />
         ) : (activeIptv?.url && <iframe key={activeIptv.stream_id} src={`${activeIptv.url}${activeIptv.url.includes('?') ? '&' : '?'}autoplay=1`} className="w-full h-full border-none" allow="autoplay; encrypted-media; fullscreen" sandbox="allow-scripts allow-forms allow-same-origin allow-presentation allow-downloads" style={{ background: '#000' }} />)}
       </div>
 
@@ -222,11 +217,9 @@ export function GlobalVideoPlayer() {
               </span>
             </div>
           </div>
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => setGridMode('hidden')} className="w-14 h-14 rounded-full bg-white/5 text-white focusable">
-              <X className="w-8 h-8" />
-            </Button>
-          </div>
+          <Button variant="ghost" size="icon" onClick={() => setGridMode('hidden')} className="w-14 h-14 rounded-full bg-white/5 text-white focusable">
+            <X className="w-8 h-8" />
+          </Button>
         </div>
         <div className="h-full overflow-y-auto no-scrollbar pb-40">
           <div className="grid grid-cols-3 gap-8">
@@ -247,20 +240,35 @@ export function GlobalVideoPlayer() {
       {isActive && (
         <div className={cn("fixed z-[5200] flex items-center transition-all duration-700 player-controls-bar", isFullScreen ? "left-10 bottom-10 scale-125 origin-bottom-left" : "right-12 bottom-12 scale-90")}>
           <div className="flex items-center gap-4">
-            <button onClick={handleClose} className="w-10 h-10 rounded-full bg-red-600/10 border border-red-600/30 text-red-500/80 flex items-center justify-center focusable cursor-pointer shadow-lg active:scale-90 transition-all backdrop-blur-md" tabIndex={0} data-nav-id="player-close-btn"><X className="w-5 h-5" /></button>
+            <button onClick={handleClose} className="w-10 h-10 rounded-full bg-red-600/10 border border-red-600/30 text-red-500/80 flex items-center justify-center focusable cursor-pointer shadow-lg active:scale-90 transition-all backdrop-blur-md relative" tabIndex={0} data-nav-id="player-close-btn">
+              <ShortcutBadge action="player_close" />
+              <X className="w-5 h-5" />
+            </button>
             <div className={cn("flex items-center bg-white/5 backdrop-blur-3xl p-2.5 rounded-full border border-white/10 shadow-2xl transition-all", isControlsExpanded ? "gap-3 px-4" : "px-2.5")} data-nav-id="player-controls-container">
               {!isControlsExpanded ? <button onClick={() => setIsControlsExpanded(true)} className="w-10 h-10 rounded-full bg-white/5 border border-white/5 text-white/60 flex items-center justify-center focusable cursor-pointer" tabIndex={0} data-nav-id="player-settings-toggle"><Settings className="w-6 h-6" /></button> : (
                 <>
                   <button onClick={() => setIsControlsExpanded(false)} className="w-9 h-9 rounded-full bg-white/5 text-white/20 flex items-center justify-center focusable cursor-pointer" tabIndex={0}><ChevronRight className="w-5 h-5" /></button>
-                  <button onClick={prevTrack} className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center focusable cursor-pointer" tabIndex={0}><ChevronRight className="w-5 h-5" /></button>
-                  <button onClick={nextTrack} className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center focusable cursor-pointer" tabIndex={0}><ChevronLeft className="w-5 h-5" /></button>
+                  <button onClick={prevTrack} className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center focusable cursor-pointer relative" tabIndex={0}>
+                    <ShortcutBadge action="player_prev" />
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
+                  <button onClick={nextTrack} className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center focusable cursor-pointer relative" tabIndex={0}>
+                    <ShortcutBadge action="player_next" />
+                    <ChevronLeft className="w-5 h-5" />
+                  </button>
                   <div className="w-px h-7 bg-white/10 mx-1" />
-                  {activeVideo && <button onClick={() => setPlayerMode(playerMode === 'api' ? 'web' : 'api')} className={cn("w-9 h-9 rounded-full flex items-center justify-center focusable cursor-pointer transition-colors", (playerMode === 'web' || isBlockedChannel) ? "bg-purple-600/40 text-purple-400" : "bg-white/5 text-white/40")} tabIndex={0}>{(playerMode === 'web' || isBlockedChannel) ? <Globe className="w-5 h-5" /> : <Youtube className="w-5 h-5" />}</button>}
-                  <button onClick={() => activeVideo && toggleSaveVideo(activeVideo)} className={cn("w-9 h-9 rounded-full flex items-center justify-center focusable cursor-pointer transition-colors", isSaved ? "bg-accent/40 text-accent shadow-glow" : "bg-white/5 text-white/40")} tabIndex={0}>{isSaved ? <BookmarkCheck className="w-5 h-5" /> : <Bookmark className="w-5 h-5" />}</button>
-                  <button onClick={toggleShowIslands} className={cn("w-9 h-9 rounded-full flex items-center justify-center focusable cursor-pointer transition-colors", showIslands ? "bg-emerald-500/40 text-emerald-400 shadow-glow" : "bg-white/5 text-white/40")} tabIndex={0}><Eye className="w-5 h-5" /></button>
-                  <button onClick={() => setGridMode(gridMode === 'hidden' ? 'partial' : gridMode === 'partial' ? 'full' : 'hidden')} className={cn("w-9 h-9 rounded-full flex items-center justify-center focusable cursor-pointer transition-colors", gridMode !== 'hidden' && "bg-primary/40 text-white")} tabIndex={0}><LayoutGrid className="w-5 h-5" /></button>
-                  <button onClick={() => setIsMinimized(true)} className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center focusable cursor-pointer" tabIndex={0}><Minimize2 className="w-5 h-5" /></button>
-                  <button onClick={() => setIsFullScreen(!isFullScreen)} className={cn("w-9 h-9 rounded-full flex items-center justify-center focusable cursor-pointer", isFullScreen && "bg-primary/40 shadow-glow")} tabIndex={0}><Monitor className="w-5 h-5" /></button>
+                  <button onClick={() => activeVideo && toggleSaveVideo(activeVideo)} className={cn("w-9 h-9 rounded-full flex items-center justify-center focusable cursor-pointer transition-colors relative", isSaved ? "bg-accent/40 text-accent shadow-glow" : "bg-white/5 text-white/40")} tabIndex={0}>
+                    <ShortcutBadge action="player_save" />
+                    {isSaved ? <BookmarkCheck className="w-5 h-5" /> : <Bookmark className="w-5 h-5" />}
+                  </button>
+                  <button onClick={() => setIsMinimized(!isMinimized)} className={cn("w-9 h-9 rounded-full flex items-center justify-center focusable cursor-pointer relative", isMinimized && "bg-orange-500/40 shadow-glow")} tabIndex={0} data-nav-id="player-min-toggle">
+                    <ShortcutBadge action="player_minimize" />
+                    {isMinimized ? <Maximize2 className="w-5 h-5" /> : <Minimize2 className="w-5 h-5" />}
+                  </button>
+                  <button onClick={() => setIsFullScreen(!isFullScreen)} className={cn("w-9 h-9 rounded-full flex items-center justify-center focusable cursor-pointer relative", isFullScreen && "bg-primary/40 shadow-glow")} tabIndex={0}>
+                    <ShortcutBadge action="player_fullscreen" />
+                    <Monitor className="w-5 h-5" />
+                  </button>
                 </>
               )}
             </div>

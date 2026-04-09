@@ -7,7 +7,6 @@ import { RefreshCw, Play, Clock, Star, Shuffle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { YouTubeChannel, YouTubeVideo, fetchChannelVideos } from "@/lib/youtube";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import Image from "next/image";
 import { useMediaStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -58,6 +57,8 @@ export function LatestVideosWidget({ channels }: Props) {
     return () => clearInterval(interval);
   }, [fetchLatest]);
 
+  const horizontalListClass = "w-full flex gap-4 px-8 pb-4 overflow-x-auto no-scrollbar scroll-smooth justify-start items-center";
+
   return (
     <Card className="border-none bg-zinc-900/50 rounded-[2.5rem] shadow-2xl overflow-hidden relative">
       <CardHeader className="p-8 flex flex-row items-center justify-between space-y-0 pb-4">
@@ -82,40 +83,36 @@ export function LatestVideosWidget({ channels }: Props) {
           </Button>
         </div>
       </CardHeader>
-      <CardContent className="p-8 pt-0">
+      <CardContent className="p-0">
         {channels.length === 0 ? (
-          <div className="py-12 text-center bg-white/5 rounded-[2rem] border border-dashed border-white/5"><p className="text-muted-foreground italic text-lg font-medium">جرس قنواتك في الميديا لتظهر هنا.</p></div>
+          <div className="py-12 mx-8 text-center bg-white/5 rounded-[2rem] border border-dashed border-white/5"><p className="text-muted-foreground italic text-lg font-medium">جرس قنواتك في الميديا لتظهر هنا.</p></div>
         ) : loading && videos.length === 0 ? (
-          <div className="flex gap-6 overflow-hidden">{[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-48 w-80 rounded-[2rem] bg-zinc-800 flex-shrink-0" />)}</div>
+          <div className="flex gap-6 overflow-hidden px-8 pb-8">{[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-48 w-80 rounded-[2rem] bg-zinc-800 flex-shrink-0" />)}</div>
         ) : (
-          <ScrollArea className="w-full whitespace-nowrap">
-            <div className="flex w-max gap-6 pb-4">
-              {videos.map((video, idx) => (
-                <div 
-                  key={video.id + idx} 
-                  className="w-80 group relative overflow-hidden bg-zinc-900/80 border-none rounded-[2rem] transition-all hover:scale-[1.02] cursor-pointer shadow-xl focusable" 
-                  // SMART BINDING: Pass the entire videos list as context
-                  onClick={() => setActiveVideo(video, videos)} 
-                  tabIndex={0}
-                  data-nav-id={`latest-video-${idx}`}
-                >
-                  <div className="aspect-video relative overflow-hidden">
-                    <Image src={video.thumbnail} alt={video.title} fill className="object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
-                    <div className="absolute inset-0 flex items-center justify-center"><div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-3xl flex items-center justify-center border border-white/20 opacity-0 group-hover:opacity-100 transition-all scale-75 group-hover:scale-100 shadow-2xl"><Play className="w-8 h-8 text-white fill-white ml-1" /></div></div>
-                  </div>
-                  <div className="p-5 space-y-2 text-right">
-                    <h3 className="font-bold text-base truncate text-white font-headline">{video.title}</h3>
-                    <div className="flex items-center justify-end gap-3 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                       <span className="text-white/40">{video.channelTitle}</span>
-                       <span className="opacity-30">•</span>
-                       <span className="flex items-center gap-1 text-accent"><Clock className="w-3 h-3" /> Latest</span>
-                    </div>
+          <div className={horizontalListClass} data-row-id="dash-row-latest-inner">
+            {videos.map((video, idx) => (
+              <div 
+                key={video.id + idx} 
+                className="w-80 group relative overflow-hidden bg-zinc-900/80 border-none rounded-[2rem] transition-all hover:scale-[1.02] cursor-pointer shadow-xl focusable shrink-0" 
+                onClick={() => setActiveVideo(video, videos)} 
+                tabIndex={0}
+                data-nav-id={`latest-video-${idx}`}
+              >
+                <div className="aspect-video relative overflow-hidden">
+                  <Image src={video.thumbnail} alt={video.title} fill className="object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                  <div className="absolute inset-0 flex items-center justify-center"><div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-3xl flex items-center justify-center border border-white/20 opacity-0 group-hover:opacity-100 transition-all scale-75 group-hover:scale-100 shadow-2xl"><Play className="w-8 h-8 text-white fill-white ml-1" /></div></div>
+                </div>
+                <div className="p-5 space-y-2 text-right">
+                  <h3 className="font-bold text-base truncate text-white font-headline">{video.title}</h3>
+                  <div className="flex items-center justify-end gap-3 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                     <span className="text-white/40">{video.channelTitle}</span>
+                     <span className="opacity-30">•</span>
+                     <span className="flex items-center gap-1 text-accent"><Clock className="w-3 h-3" /> Latest</span>
                   </div>
                 </div>
-              ))}
-            </div>
-            <ScrollBar orientation="horizontal" className="bg-white/5 h-2" />
-          </ScrollArea>
+              </div>
+            ))}
+          </div>
         )}
       </CardContent>
     </Card>

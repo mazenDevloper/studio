@@ -5,40 +5,29 @@ import { useState, useEffect, useMemo } from "react";
 import { useMediaStore, IptvChannel } from "@/lib/store";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Tv, List, ChevronRight, Loader2, Play, Search, X, Star, Zap, Link as LinkIcon, Save, GripVertical } from "lucide-react";
+import { Tv, List, ChevronRight, Loader2, X, Star, Zap, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { getIptvCategories, getIptvChannels } from "@/app/actions/iptv";
 import { cn } from "@/lib/utils";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { useToast } from "@/hooks/use-toast";
 
 export function IptvView() {
-  const { setActiveIptv, favoriteIptvChannels, toggleFavoriteIptvChannel, setIptvPlaylist, setFavoriteIptvChannels, saveIptvReorder, dockSide } = useMediaStore();
-  const { toast } = useToast();
+  const { setActiveIptv, favoriteIptvChannels, toggleFavoriteIptvChannel, dockSide } = useMediaStore();
   const [categories, setCategories] = useState<any[]>([]);
   const [channels, setChannels] = useState<IptvChannel[]>([]);
   const [selectedCat, setSelectedCat] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
-  const [isReordering, setIsReordering] = useState(false);
-  const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
-
-  const [isManualAddOpen, setIsManualAddOpen] = useState(false);
-  const [manualName, setManualName] = useState("");
-  const [manualUrl, setManualUrl] = useState("");
-  const [manualIcon, setManualIcon] = useState("");
 
   const isDockLeft = dockSide === 'left';
 
   useEffect(() => { 
     fetchCategories(); 
     setSelectedCat('direct');
+    // Default focus: first channel in favorites
+    setTimeout(() => {
+      const firstChannel = document.querySelector('[data-nav-id="iptv-channel-0"]') as HTMLElement;
+      firstChannel?.focus();
+    }, 800);
   }, []);
 
   useEffect(() => {
@@ -53,39 +42,26 @@ export function IptvView() {
       const data = await getIptvCategories();
       const directCat = { category_id: "direct", category_name: "القنوات المفضلة" };
       setCategories([directCat, ...(Array.isArray(data) ? data : [])]);
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
   const fetchChannels = async (catId: string) => {
-    if (catId === 'direct') { 
-      setChannels(Array.isArray(favoriteIptvChannels) ? favoriteIptvChannels : []); 
-      setSelectedCat(catId); 
-      return; 
-    }
-    setLoading(true);
-    setSelectedCat(catId);
+    if (catId === 'direct') { setChannels(Array.isArray(favoriteIptvChannels) ? favoriteIptvChannels : []); setSelectedCat(catId); return; }
+    setLoading(true); setSelectedCat(catId);
     try {
       const data = await getIptvChannels(catId);
       if (Array.isArray(data)) {
-        const transformed = data.map((ch: any) => ({
-          ...ch,
-          type: 'web',
-          url: `http://playstop.watch:2095/live/W87d737/Pd37qj34/${ch.stream_id}.m3u8`
-        }));
+        const transformed = data.map((ch: any) => ({ ...ch, type: 'web', url: `http://playstop.watch:2095/live/W87d737/Pd37qj34/${ch.stream_id}.m3u8` }));
         setChannels(transformed);
+        // AUTO-FOCUS: Focus first channel in category
+        setTimeout(() => { document.querySelector('[data-nav-id="iptv-channel-0"]')?.focus(); }, 300);
       }
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
-  const sortedAndFilteredChannels = useMemo(() => {
+  const filteredChannels = useMemo(() => {
     const list = Array.isArray(channels) ? channels : [];
-    return list.filter(c => 
-      c.name && c.name.toLowerCase().includes(search.toLowerCase())
-    );
+    return list.filter(c => c.name && c.name.toLowerCase().includes(search.toLowerCase()));
   }, [channels, search]);
 
   return (
@@ -110,7 +86,7 @@ export function IptvView() {
       </header>
 
       {!selectedCat ? (
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6 animate-in fade-in duration-700">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6 animate-in fade-in duration-700" data-row-id="iptv-categories">
           {loading ? (
             <div className="col-span-full py-40 flex justify-center"><Loader2 className="w-12 h-12 animate-spin text-emerald-500" /></div>
           ) : categories.map((cat, idx) => (
@@ -128,9 +104,9 @@ export function IptvView() {
       ) : (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
           <Input placeholder="ابحث عن قناة..." value={search} onChange={(e) => setSearch(e.target.value)} className="bg-white/5 border-white/10 h-20 rounded-[2rem] px-8 text-2xl text-white shadow-2xl search-input-quiet" data-nav-id="iptv-search-input" />
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-8">
-            {sortedAndFilteredChannels.map((ch, idx) => (
-              <div key={idx} onClick={() => { setActiveIptv(ch, sortedAndFilteredChannels); }} data-nav-id={`iptv-channel-${idx}`} className="group w-full aspect-square rounded-[2.8rem] bg-white/5 border-4 border-transparent hover:border-emerald-500 focusable cursor-pointer overflow-hidden relative shadow-2xl" tabIndex={0}>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-8" data-row-id="iptv-channels-grid">
+            {filteredChannels.map((ch, idx) => (
+              <div key={idx} onClick={() => { setActiveIptv(ch, filteredChannels); }} data-nav-id={`iptv-channel-${idx}`} className="group w-full aspect-square rounded-[2.8rem] bg-white/5 border-4 border-transparent hover:border-emerald-500 focusable cursor-pointer overflow-hidden relative shadow-2xl" tabIndex={0}>
                 {ch.stream_icon ? <img src={ch.stream_icon} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="" /> : <div className="w-full h-full flex items-center justify-center bg-zinc-900"><Tv className="w-14 h-14 text-white/10" /></div>}
                 <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-end p-4">
                   <span className="text-white text-xs font-black text-center truncate w-full">{ch.name}</span>
