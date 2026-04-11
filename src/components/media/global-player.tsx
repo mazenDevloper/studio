@@ -6,63 +6,17 @@ import { X, Monitor, ChevronDown, ChevronRight, ChevronLeft, Settings, LayoutGri
 import { cn, normalizeKey } from "@/lib/utils";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
-
-/**
- * Priorities HW TV Keys for display in badges with specific priorities for Colors and Numbers
- */
-function getPriorityKey(keys: string[]): string | null {
-  if (!keys || keys.length === 0) return null;
-  const hardwarePriority = ['Red', 'Green', 'Yellow', 'Blue', 'ChannelUp', 'ChannelDown', 'PageUp', 'PageDown', 'Back', 'Exit', '1', '3', '7', '9', '0', '2', '4', '5', '6', '8'];
-  const found = hardwarePriority.find(hw => keys.some(k => k.toLowerCase() === hw.toLowerCase()));
-  if (found) return found;
-  return keys[0];
-}
-
-function ShortcutBadge({ action }: { action: AppAction }) {
-  const { keyMappings } = useMediaStore();
-  const playerKeys = keyMappings.player?.[action] || [];
-  const globalKeys = keyMappings.global?.[action] || [];
-  const combined = Array.from(new Set([...playerKeys, ...globalKeys]));
-  
-  const displayKey = getPriorityKey(combined);
-  if (!displayKey) return null;
-  
-  const shortKey = displayKey.length > 4 ? displayKey.substring(0, 3) : displayKey;
-  
-  const colorClasses: Record<string, string> = {
-    'Red': 'bg-red-600 text-white',
-    'Green': 'bg-green-600 text-white',
-    'Yellow': 'bg-yellow-500 text-black',
-    'Blue': 'bg-blue-600 text-white',
-    '1': 'bg-zinc-800 text-white',
-    '3': 'bg-zinc-800 text-white',
-    '7': 'bg-zinc-800 text-white',
-    '9': 'bg-zinc-800 text-white',
-    '0': 'bg-zinc-800 text-white'
-  };
-  
-  const badgeClass = colorClasses[displayKey] || 'bg-white text-black';
-  
-  return (
-    <div className={cn(
-      "absolute -top-1 -left-1 text-[8px] font-black px-1 py-0.5 rounded shadow-glow z-20 uppercase border border-black/10 transition-all duration-300 grayscale-0 opacity-100",
-      badgeClass
-    )}>
-      {shortKey}
-    </div>
-  );
-}
+import { ShortcutBadge } from "@/components/layout/car-dock";
 
 export function GlobalVideoPlayer() {
   const { 
     activeVideo, activeIptv, isPlaying, isMinimized, isFullScreen, nextTrack, prevTrack,
     setActiveVideo, setActiveIptv, setIsPlaying, setIsMinimized, setIsFullScreen, updateVideoProgress,
     playlist, videoProgress, toggleSaveVideo, savedVideos, iptvPlaylist, playerMode, setPlayerMode,
-    showIslands, toggleShowIslands, gridMode, setGridMode
+    showIslands, toggleShowIslands, gridMode, setGridMode, isPlayerControlsExpanded, setIsPlayerControlsExpanded
   } = useMediaStore();
   
   const [mounted, setMounted] = useState(false);
-  const [isControlsExpanded, setIsControlsExpanded] = useState(false);
   const playerRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const lastIdRef = useRef<string | null>(null);
@@ -78,26 +32,22 @@ export function GlobalVideoPlayer() {
     return 0;
   }, [activeVideo?.id, videoProgress]);
 
-  // FORCED PLAYER CONTROL ACTIONS
   useEffect(() => {
     const handleForcedKeys = (e: KeyboardEvent) => {
       if (!isActive) return;
       const key = normalizeKey(e);
       const mappings = useMediaStore.getState().keyMappings;
       
-      // Close Forced
       if (mappings.player?.player_close?.includes(key) || mappings.global?.player_close?.includes(key)) {
         e.preventDefault();
         handleClose();
       }
       
-      // Playlist Toggle Forced
       if (mappings.player?.player_playlist?.includes(key)) {
         e.preventDefault();
         setGridMode(gridMode === 'hidden' ? 'full' : 'hidden');
       }
 
-      // Minimize Toggle Forced
       if (mappings.player?.player_minimize?.includes(key)) {
         e.preventDefault();
         setIsMinimized(!isMinimized);
@@ -170,6 +120,7 @@ export function GlobalVideoPlayer() {
     if (playerRef.current?.destroy) try { playerRef.current.destroy(); } catch {}
     playerRef.current = null; lastIdRef.current = null;
     setActiveVideo(null); setActiveIptv(null); setGridMode('hidden');
+    setIsPlayerControlsExpanded(false);
   };
 
   if (!mounted) return null;
@@ -241,32 +192,40 @@ export function GlobalVideoPlayer() {
         <div className={cn("fixed z-[5200] flex items-center transition-all duration-700 player-controls-bar", isFullScreen ? "left-10 bottom-10 scale-125 origin-bottom-left" : "right-12 bottom-12 scale-90")}>
           <div className="flex items-center gap-4">
             <button onClick={handleClose} className="w-10 h-10 rounded-full bg-red-600/10 border border-red-600/30 text-red-500/80 flex items-center justify-center focusable cursor-pointer shadow-lg active:scale-90 transition-all backdrop-blur-md relative" tabIndex={0} data-nav-id="player-close-btn">
-              <ShortcutBadge action="player_close" />
+              <ShortcutBadge action="player_close" className="-bottom-10 left-1/2 -translate-x-1/2" context="player" />
               <X className="w-5 h-5" />
             </button>
-            <div className={cn("flex items-center bg-white/5 backdrop-blur-3xl p-2.5 rounded-full border border-white/10 shadow-2xl transition-all", isControlsExpanded ? "gap-3 px-4" : "px-2.5")} data-nav-id="player-controls-container">
-              {!isControlsExpanded ? <button onClick={() => setIsControlsExpanded(true)} className="w-10 h-10 rounded-full bg-white/5 border border-white/5 text-white/60 flex items-center justify-center focusable cursor-pointer" tabIndex={0} data-nav-id="player-settings-toggle"><Settings className="w-6 h-6" /></button> : (
+            <div className={cn("flex items-center bg-white/5 backdrop-blur-3xl p-2.5 rounded-full border border-white/10 shadow-2xl transition-all", isPlayerControlsExpanded ? "gap-3 px-4" : "px-2.5")} data-nav-id="player-controls-container">
+              {!isPlayerControlsExpanded ? (
+                <button onClick={() => setIsPlayerControlsExpanded(true)} className="w-10 h-10 rounded-full bg-white/5 border border-white/5 text-white/60 flex items-center justify-center focusable cursor-pointer relative" tabIndex={0} data-nav-id="player-settings-toggle">
+                  <ShortcutBadge action="player_settings" className="-bottom-10 left-1/2 -translate-x-1/2" context="player" />
+                  <Settings className="w-6 h-6" />
+                </button>
+              ) : (
                 <>
-                  <button onClick={() => setIsControlsExpanded(false)} className="w-9 h-9 rounded-full bg-white/5 text-white/20 flex items-center justify-center focusable cursor-pointer" tabIndex={0}><ChevronRight className="w-5 h-5" /></button>
+                  <button onClick={() => setIsPlayerControlsExpanded(false)} className="w-9 h-9 rounded-full bg-white/5 text-white/20 flex items-center justify-center focusable cursor-pointer relative" tabIndex={0}>
+                    <ShortcutBadge action="player_settings" className="-bottom-10 left-1/2 -translate-x-1/2" context="player" />
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
                   <button onClick={prevTrack} className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center focusable cursor-pointer relative" tabIndex={0}>
-                    <ShortcutBadge action="player_prev" />
+                    <ShortcutBadge action="player_prev" className="-bottom-10 left-1/2 -translate-x-1/2" context="player" />
                     <ChevronRight className="w-5 h-5" />
                   </button>
                   <button onClick={nextTrack} className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center focusable cursor-pointer relative" tabIndex={0}>
-                    <ShortcutBadge action="player_next" />
+                    <ShortcutBadge action="player_next" className="-bottom-10 left-1/2 -translate-x-1/2" context="player" />
                     <ChevronLeft className="w-5 h-5" />
                   </button>
                   <div className="w-px h-7 bg-white/10 mx-1" />
                   <button onClick={() => activeVideo && toggleSaveVideo(activeVideo)} className={cn("w-9 h-9 rounded-full flex items-center justify-center focusable cursor-pointer transition-colors relative", isSaved ? "bg-accent/40 text-accent shadow-glow" : "bg-white/5 text-white/40")} tabIndex={0}>
-                    <ShortcutBadge action="player_save" />
+                    <ShortcutBadge action="player_save" className="-bottom-10 left-1/2 -translate-x-1/2" context="player" />
                     {isSaved ? <BookmarkCheck className="w-5 h-5" /> : <Bookmark className="w-5 h-5" />}
                   </button>
                   <button onClick={() => setIsMinimized(!isMinimized)} className={cn("w-9 h-9 rounded-full flex items-center justify-center focusable cursor-pointer relative", isMinimized && "bg-orange-500/40 shadow-glow")} tabIndex={0} data-nav-id="player-min-toggle">
-                    <ShortcutBadge action="player_minimize" />
+                    <ShortcutBadge action="player_minimize" className="-bottom-10 left-1/2 -translate-x-1/2" context="player" />
                     {isMinimized ? <Maximize2 className="w-5 h-5" /> : <Minimize2 className="w-5 h-5" />}
                   </button>
                   <button onClick={() => setIsFullScreen(!isFullScreen)} className={cn("w-9 h-9 rounded-full flex items-center justify-center focusable cursor-pointer relative", isFullScreen && "bg-primary/40 shadow-glow")} tabIndex={0}>
-                    <ShortcutBadge action="player_fullscreen" />
+                    <ShortcutBadge action="player_fullscreen" className="-bottom-10 left-1/2 -translate-x-1/2" context="player" />
                     <Monitor className="w-5 h-5" />
                   </button>
                 </>

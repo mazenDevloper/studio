@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { 
   Search, Plus, Loader2, X, List, 
-  Flame, Activity, RadioIcon, Trophy, Baby, ChevronRight, User, UserPlus, Youtube
+  Flame, Activity, RadioIcon, Trophy, Baby, ChevronRight, User, UserPlus, Youtube, Star
 } from "lucide-react";
 import { useMediaStore, YouTubeChannel, YouTubeVideo } from "@/lib/store";
 import { searchYouTubeChannels, fetchChannelVideos, searchYouTubeVideos } from "@/lib/youtube";
@@ -18,13 +18,13 @@ import { JSONBIN_MASTER_KEY } from "@/lib/constants";
 import { ShortcutBadge } from "@/components/layout/car-dock";
 
 /**
- * MediaView v23.0 - Sequential Flow & Add Channel at Top
+ * MediaView v38.0 - Added Quick Actions (Red for Delete, Yellow for Star).
  */
 export function MediaView() {
   const { 
     favoriteChannels, setActiveVideo, dockSide, isSidebarShrinked, setIsSidebarShrinked,
     selectedChannel, setSelectedChannel, channelVideos, setChannelVideos,
-    addChannel, favoriteIptvChannels, favoriteReciters, setActiveIptv
+    addChannel, favoriteIptvChannels, favoriteReciters, setActiveIptv, addReciter, removeReciter
   } = useMediaStore();
 
   const { toast } = useToast();
@@ -32,6 +32,12 @@ export function MediaView() {
   const [channelResults, setChannelResults] = useState<YouTubeChannel[]>([]);
   const [isSearchingChannels, setIsSearchingChannels] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  
+  const [isReciterAddOpen, setIsReciterAddOpen] = useState(false);
+  const [reciterSearchQuery, setReciterSearchQuery] = useState("");
+  const [reciterResults, setReciterResults] = useState<any[]>([]);
+  const [isSearchingReciters, setIsSearchingReciters] = useState(false);
+
   const [search, setSearch] = useState("");
   const [searchResults, setSearchResults] = useState<YouTubeVideo[]>([]);
   const [loading, setLoading] = useState(false);
@@ -55,6 +61,15 @@ export function MediaView() {
       setChannelResults(results || []);
     } finally { setIsSearchingChannels(false); }
   }, [channelSearchQuery]);
+
+  const handleReciterSearch = useCallback(async () => {
+    if (!reciterSearchQuery.trim()) return;
+    setIsSearchingReciters(true);
+    try {
+      const results = await searchYouTubeChannels(reciterSearchQuery);
+      setReciterResults(results || []);
+    } finally { setIsSearchingReciters(false); }
+  }, [reciterSearchQuery]);
 
   const interleavedLiveFeed = useMemo(() => {
     const ytItems = liveFromSubs.map(v => ({ ...v, feedType: 'youtube' }));
@@ -97,7 +112,7 @@ export function MediaView() {
     }
     fetchDiscoveryData();
     setIsSidebarShrinked(false);
-    setTimeout(() => (document.querySelector('[data-nav-id="subs-all"]') as HTMLElement)?.focus(), 500);
+    setTimeout(() => (document.querySelector('.active-nav-target') as HTMLElement || document.querySelector('[data-nav-id="subs-all"]') as HTMLElement)?.focus(), 500);
     return () => window.removeEventListener('resize', handleResize);
   }, [setIsSidebarShrinked]);
 
@@ -120,8 +135,6 @@ export function MediaView() {
       if (type === 'surah') {
         if (parts.length > 0 && (parts[parts.length-1].startsWith("سورة") || surahs.some(s => s.name_arabic.includes(parts[parts.length-1])))) parts.pop();
         parts.push("سورة " + val);
-        
-        // SEQ FLOW: After Surah, focus SEARCH BTN
         setTimeout(() => {
           const searchBtn = document.querySelector('[data-nav-id="search-btn"]') as HTMLElement;
           searchBtn?.focus();
@@ -130,8 +143,6 @@ export function MediaView() {
       } else {
         if (parts.length > 0 && allReciters.some(r => r.name.includes(parts[parts.length-1]))) parts.pop();
         parts.push(val);
-
-        // SEQ FLOW: After Reciter, focus FIRST SURAH
         setTimeout(() => {
           const firstSurah = document.querySelector('[data-nav-id^="q-surah-item-"]') as HTMLElement;
           firstSurah?.focus();
@@ -173,21 +184,23 @@ export function MediaView() {
     <div className={cn("h-screen flex bg-transparent transition-all duration-700 overflow-hidden relative", isDockLeft ? "flex-row" : "flex-row-reverse")}>
       <aside 
         className={cn(
-          "h-full z-[110] transition-all duration-500 ease-in-out premium-glass flex flex-col shrink-0 border-white/5 bg-black/40",
+          "h-full z-[110] transition-all duration-500 ease-in-out premium-glass flex flex-col shrink-0 border-white/5 bg-black/40 shadow-2xl",
           isSidebarShrinked ? "w-[8%]" : "w-[30%]",
           isDockLeft ? "border-r" : "border-l"
         )}
+        style={{ direction: isDockLeft ? 'ltr' : 'rtl' }}
       >
         <div className={cn("p-6 flex items-center justify-between border-b border-white/5", isSidebarShrinked && "justify-center px-2")}>
-          {!isSidebarShrinked && <h2 className="text-xl font-black text-white">الاشتراكات</h2>}
+          {!isSidebarShrinked && <h2 className="text-xl font-black text-white px-2">الاشتراكات</h2>}
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <button 
                 className={cn(
-                  "w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center transition-all focusable",
+                  "w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center transition-all",
                   isSidebarShrinked && "w-12 h-12"
                 )}
                 data-nav-id="subs-add-trigger"
+                tabIndex={-1}
               >
                 <Plus className="w-6 h-6 text-primary" />
               </button>
@@ -218,12 +231,10 @@ export function MediaView() {
         </div>
         <ScrollArea className="flex-1">
           <div className="py-4 flex flex-col gap-1">
-            {/* FIRST AT THE LIST: ADD TRIGGER */}
             <div 
-              onClick={() => setIsDialogOpen(true)} 
-              className={cn("flex items-center p-3 rounded-xl w-[90%] mx-auto gap-3 transition-all cursor-pointer focusable overflow-hidden relative border border-dashed border-white/10 mb-2", isSidebarShrinked && "justify-center p-2")} 
-              tabIndex={0} 
+              className={cn("flex items-center p-3 rounded-xl w-[90%] mx-auto gap-3 transition-all cursor-default overflow-hidden relative border border-dashed border-white/10 mb-2 opacity-40", isSidebarShrinked && "justify-center p-2")} 
               data-nav-id="subs-add-item"
+              tabIndex={-1}
             >
               <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-primary/10"><Plus className="w-5 h-5 text-primary" /></div>
               {!isSidebarShrinked && <h4 className="font-black text-sm truncate flex-1 text-right text-primary">إضافة قناة</h4>}
@@ -234,8 +245,29 @@ export function MediaView() {
               {!isSidebarShrinked && <span className="flex-1 text-right font-black text-sm">الكل</span>}
             </div>
             {favoriteChannels.map((ch, idx) => (
-              <div key={ch.channelid} onClick={() => { setSearchResults([]); setSelectedChannel(ch); }} className={cn("flex items-center p-3 rounded-xl w-[90%] mx-auto gap-3 transition-all cursor-pointer focusable overflow-hidden shrink-0", selectedChannel?.channelid === ch.channelid ? "bg-primary text-white shadow-glow active-nav-target" : "hover:bg-white/5 text-white/60", isSidebarShrinked && "justify-center p-2")} tabIndex={0} data-nav-id={`subs-${idx + 1}`}>
-                <div className="w-9 h-9 rounded-xl overflow-hidden border border-white/10 shrink-0"><img src={ch.image} alt="" className="w-full h-full object-cover" /></div>
+              <div 
+                key={ch.channelid} 
+                onClick={() => { setSearchResults([]); setSelectedChannel(ch); }} 
+                className={cn(
+                  "flex items-center p-3 rounded-xl w-[90%] mx-auto gap-3 transition-all cursor-pointer focusable overflow-hidden shrink-0 group/channel relative", 
+                  selectedChannel?.channelid === ch.channelid ? "bg-primary text-white shadow-glow active-nav-target" : "hover:bg-white/5 text-white/60", 
+                  isSidebarShrinked && "justify-center p-2"
+                )} 
+                tabIndex={0} 
+                data-nav-id={`subs-${idx + 1}`}
+                data-type="channel"
+                data-id={ch.channelid}
+              >
+                {!isSidebarShrinked && (
+                  <>
+                    <ShortcutBadge action="delete_item" className="-top-2 -right-2 opacity-0 group-hover/channel:opacity-100 group-focus/channel:opacity-100 transition-opacity" />
+                    <ShortcutBadge action="toggle_star" className="-top-2 -left-2 opacity-0 group-hover/channel:opacity-100 group-focus/channel:opacity-100 transition-opacity" />
+                  </>
+                )}
+                <div className="w-9 h-9 rounded-xl overflow-hidden border border-white/10 shrink-0 relative">
+                  <img src={ch.image} alt="" className="full h-full object-cover" />
+                  {ch.starred && <div className="absolute top-0 right-0 w-3 h-3 bg-yellow-500 rounded-full flex items-center justify-center shadow-glow"><Star className="w-2 h-2 text-black fill-current" /></div>}
+                </div>
                 {!isSidebarShrinked && <h4 className="font-black text-sm truncate flex-1 text-right">{ch.name}</h4>}
               </div>
             ))}
@@ -259,9 +291,51 @@ export function MediaView() {
             <section className="space-y-6" data-row-id="media-row-reciters">
               <div className="flex items-center justify-between px-8"><h2 className="text-xl font-black text-white/60 uppercase tracking-widest">القراء والمبدعون</h2></div>
               <div className={horizontalListClass}>
+                <Dialog open={isReciterAddOpen} onOpenChange={setIsReciterAddOpen}>
+                  <DialogTrigger asChild>
+                    <button 
+                      data-nav-id="q-reciter-add"
+                      className="flex flex-col items-center justify-center gap-2 px-4 py-4 rounded-[2.5rem] bg-primary/10 border-2 border-dashed border-primary/30 text-primary hover:bg-primary/20 transition-all focusable shrink-0 min-w-[140px] h-[180px]"
+                    >
+                      <div className="w-20 h-20 rounded-full flex items-center justify-center bg-primary/20 shadow-glow">
+                        <Plus className="w-10 h-10" />
+                      </div>
+                      <span className="text-xs font-black uppercase">إضافة قارئ</span>
+                    </button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-4xl bg-zinc-950 border-white/10 rounded-[3rem] p-0 shadow-2xl z-[5000]">
+                    <div className="p-8 border-b border-white/10">
+                      <h2 className="text-xl font-black text-white">إضافة قارئ جديد</h2>
+                      <div className="flex gap-4 mt-6">
+                        <Input placeholder="اسم القارئ..." value={reciterSearchQuery} onChange={(e) => setReciterSearchQuery(e.target.value)} className="h-12 bg-white/5 rounded-xl px-6 text-right flex-1" />
+                        <button onClick={handleReciterSearch} className="h-12 w-12 bg-primary rounded-xl flex items-center justify-center focusable"><Search className="w-5 h-5" /></button>
+                      </div>
+                    </div>
+                    <ScrollArea className="max-h-[50vh] p-8">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {reciterResults.map(r => (
+                          <div key={r.channelid} className="flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/5 focusable cursor-pointer" onClick={() => { addReciter(r); setIsReciterAddOpen(false); }}>
+                            <img src={r.image} alt="" className="w-10 h-10 rounded-full object-cover" />
+                            <span className="flex-1 text-right font-bold text-white truncate text-sm">{r.name}</span>
+                            <div className="bg-primary text-white text-[8px] font-black px-3 py-1.5 rounded-full uppercase">إضافة</div>
+                          </div>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  </DialogContent>
+                </Dialog>
+
                 {allReciters.map((r, i) => (
-                  <button key={i} onClick={() => handleAutocomplete(r.name, 'reciter')} data-nav-id={`q-reciter-item-${i}`} className="flex flex-col items-center gap-2 px-4 py-4 rounded-[2.5rem] bg-white/5 border border-white/10 text-white hover:bg-emerald-600/20 transition-all focusable shrink-0 min-w-[140px] relative">
+                  <button 
+                    key={i} 
+                    onClick={() => handleAutocomplete(r.name, 'reciter')} 
+                    data-nav-id={`q-reciter-item-${i}`} 
+                    data-type="reciter"
+                    data-id={r.channelid}
+                    className="flex flex-col items-center gap-2 px-4 py-4 rounded-[2.5rem] bg-white/5 border border-white/10 text-white hover:bg-emerald-600/20 transition-all focusable shrink-0 min-w-[140px] relative group/reciter"
+                  >
                     {i === 0 && <ShortcutBadge action="focus_reciters" className="-bottom-3 -left-3" />}
+                    <ShortcutBadge action="delete_item" className="-top-2 -right-2 opacity-0 group-hover/reciter:opacity-100 group-focus/reciter:opacity-100 transition-opacity" />
                     <div className="w-28 h-28 rounded-full overflow-hidden border-2 border-emerald-500/30 shadow-2xl">{r.image ? <img src={r.image} className="w-full h-full object-cover" alt="" /> : <div className="w-full h-full flex items-center justify-center bg-emerald-500/10"><User className="w-12 h-12 text-emerald-400" /></div>}</div>
                     <span className="text-sm font-black truncate max-w-[120px]">{r.name}</span>
                   </button>
@@ -314,7 +388,12 @@ export function MediaView() {
             <section className="space-y-6 pb-20" data-row-id="media-row-kids">
               <div className="flex items-center justify-between px-8"><h2 className="text-2xl font-black text-white flex items-center gap-3"><Baby className="w-6 h-6 text-pink-400" /> مكتبة الأطفال</h2></div>
               <div className={horizontalListClass}>
-                {kidsHub.map((v, i) => (<div key={i} onClick={() => setActiveVideo(v, kidsHub)} className="group relative overflow-hidden bg-zinc-900/80 rounded-[2.5rem] transition-all cursor-pointer focusable shadow-2xl shrink-0 w-80" tabIndex={0} data-nav-id={`video-kids-item-${i}`}><div className="aspect-video relative"><img src={v.thumbnail} alt="" className="w-full h-full object-cover" /></div><div className="p-5 text-right"><h3 className="font-bold text-sm truncate text-white">{v.title}</h3></div></div>))}
+                {kidsHub.map((v, i) => (
+                  <div key={i} onClick={() => setActiveVideo(v, kidsHub)} className="group relative overflow-hidden bg-zinc-900/80 rounded-[2.5rem] transition-all cursor-pointer focusable shadow-2xl shrink-0 w-80" tabIndex={0} data-nav-id={`video-kids-item-${i}`}>
+                    <div className="aspect-video relative"><img src={v.thumbnail} alt="" className="w-full h-full object-cover" /></div>
+                    <div className="p-5 text-right"><h3 className="font-bold text-sm truncate text-white">{v.title}</h3></div>
+                  </div>
+                ))}
               </div>
             </section>
           </>

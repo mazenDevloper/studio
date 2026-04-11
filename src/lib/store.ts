@@ -84,7 +84,7 @@ export type AppAction =
   | 'nav_up' | 'nav_down' | 'nav_left' | 'nav_right' | 'nav_ok' | 'nav_back'
   | 'toggle_star' | 'delete_item'
   | 'goto_home' | 'goto_media' | 'goto_quran' | 'goto_hihi2' | 'goto_iptv' | 'goto_football' | 'goto_settings'
-  | 'player_next' | 'player_prev' | 'player_save' | 'player_fullscreen' | 'player_playlist' | 'player_minimize' | 'player_close'
+  | 'player_next' | 'player_prev' | 'player_save' | 'player_fullscreen' | 'player_playlist' | 'player_minimize' | 'player_close' | 'player_settings'
   | 'focus_search' | 'focus_reciters' | 'focus_surahs'
   | 'goto_tab_appearance' | 'goto_tab_prayers' | 'goto_tab_reminders' | 'goto_tab_buttonmap';
 
@@ -118,6 +118,7 @@ interface MediaState {
   isPlaying: boolean;
   isMinimized: boolean;
   isFullScreen: boolean;
+  isPlayerControlsExpanded: boolean;
   gridMode: 'hidden' | 'partial' | 'full';
   dockSide: 'left' | 'right';
   showIslands: boolean;
@@ -125,6 +126,7 @@ interface MediaState {
   wallPlateType: 'moon' | 'manuscript' | null;
   wallPlateData: any | null;
   playerMode: 'api' | 'web';
+  isAltModeActive: boolean; 
   
   videoResults: YouTubeVideo[];
   selectedChannel: YouTubeChannel | null;
@@ -177,6 +179,7 @@ interface MediaState {
   setIsPlaying: (playing: boolean) => void;
   setIsMinimized: (minimized: boolean) => void;
   setIsFullScreen: (fullScreen: boolean) => void;
+  setIsPlayerControlsExpanded: (expanded: boolean) => void;
   setGridMode: (mode: 'hidden' | 'partial' | 'full') => void;
   setIsSidebarShrinked: (shrinked: boolean) => void;
   setWallPlate: (type: 'moon' | 'manuscript' | null, data?: any) => void;
@@ -184,6 +187,7 @@ interface MediaState {
   setDockSide: (side: 'left' | 'right') => void;
   toggleShowIslands: () => void;
   setPlayerMode: (mode: 'api' | 'web') => void;
+  toggleAltMode: () => void;
   
   setVideoResults: (results: YouTubeVideo[]) => void;
   setSelectedChannel: (channel: YouTubeChannel | null) => void;
@@ -222,23 +226,26 @@ const DEFAULT_GLOBAL_MAPPINGS: Record<string, string[]> = {
   nav_right: ['ArrowRight', '6'], 
   nav_ok: ['Enter', '5'], 
   nav_back: ['Backspace', '0', 'Escape', 'Back'],
-  goto_home: ['h', '1'], 
+  goto_home: ['h', '9'], 
   goto_media: ['m', '3'], 
   goto_quran: ['q', '7'], 
-  goto_hihi2: ['f', '9'], 
+  goto_hihi2: ['f', '1'], 
   goto_iptv: ['i', 'Red'], 
   goto_football: ['t', 'Green'], 
   goto_settings: ['p', 'Yellow'],
+  delete_item: ['Red'],
+  toggle_star: ['Yellow']
 };
 
 const DEFAULT_PLAYER_MAPPINGS: Record<string, string[]> = {
-  player_next: ['n', 'ChannelUp', 'PageUp'],
+  player_next: ['n', '7'],
   player_prev: ['b', 'ChannelDown', 'PageDown'],
-  player_save: ['v', 'Blue'],
-  player_fullscreen: ['z'],
-  player_close: ['x'],
+  player_save: ['v', 'Yellow'],
+  player_fullscreen: ['Red'],
+  player_close: ['Info'],
   player_playlist: ['l'],
-  player_minimize: ['m']
+  player_minimize: ['Green'],
+  player_settings: ['Sub']
 };
 
 const DEFAULT_CONTEXT_MAPPINGS: Record<string, Record<string, string[]>> = {
@@ -288,6 +295,7 @@ export const useMediaStore = create<MediaState>()(
       favoriteIptvChannels: [],
       favoriteReciters: [],
       iptvFormat: 'm3u8',
+      iptvFormat: 'm3u8',
       iptvPlaylist: [],
       iptvPlaylistIndex: 0,
       prayerTimes: prayerTimesData,
@@ -316,6 +324,7 @@ export const useMediaStore = create<MediaState>()(
       isPlaying: false,
       isMinimized: false,
       isFullScreen: false,
+      isPlayerControlsExpanded: false,
       gridMode: 'hidden',
       dockSide: 'left',
       showIslands: true,
@@ -323,6 +332,7 @@ export const useMediaStore = create<MediaState>()(
       wallPlateType: null,
       wallPlateData: null,
       playerMode: 'api',
+      isAltModeActive: false,
       
       videoResults: [],
       selectedChannel: null,
@@ -713,6 +723,7 @@ export const useMediaStore = create<MediaState>()(
       setIsPlaying: (playing) => set({ isPlaying: playing }),
       setIsMinimized: (minimized) => set({ isMinimized: minimized, isFullScreen: false }),
       setIsFullScreen: (fullScreen) => set({ isFullScreen: fullScreen, isMinimized: false }),
+      setIsPlayerControlsExpanded: (expanded) => set({ isPlayerControlsExpanded: expanded }),
       setGridMode: (mode) => set({ gridMode: mode }),
       setIsSidebarShrinked: (shrinked) => set({ isSidebarShrinked: shrinked }),
       setWallPlate: (type, data) => set({ wallPlateType: type, wallPlateData: data }),
@@ -731,10 +742,11 @@ export const useMediaStore = create<MediaState>()(
       setSelectedChannel: (channel) => set({ selectedChannel: channel }),
       setChannelVideos: (videos) => set({ channelVideos: videos }),
       resetMediaView: () => set({ videoResults: [], selectedChannel: null, channelVideos: [] }),
+      toggleAltMode: () => set((state) => ({ isAltModeActive: !state.isAltModeActive })),
     }),
     {
       name: "drivecast-master-v20",
-      partialize: (state) => ({ videoProgress: state.videoProgress, dockSide: state.dockSide, showIslands: state.showIslands, playerMode: state.playerMode }),
+      partialize: (state) => ({ videoProgress: state.videoProgress, dockSide: state.dockSide, showIslands: state.showIslands, playerMode: state.playerMode, isAltModeActive: state.isAltModeActive }),
     }
   )
 );

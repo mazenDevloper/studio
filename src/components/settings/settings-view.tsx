@@ -4,7 +4,7 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { useMediaStore, Reminder, Manuscript, AppAction, MappingContext } from "@/lib/store";
 import { 
-  Settings, Bell, Trash2, Edit2, Trophy, Star, Plus, Monitor, ImageIcon, Type as TypeIcon, Palette, Upload, Save, Timer, Keyboard, MousePointer2, X as LucideX, Clock, MapPin, CheckCircle2, Play, Circle, Search, User, BookOpen
+  Settings, Bell, Trash2, Edit2, Trophy, Star, Plus, Monitor, ImageIcon, Type as TypeIcon, Palette, Upload, Save, Timer, Keyboard, MousePointer2, X as LucideX, Clock, MapPin, CheckCircle2, Play, Circle, Search, User, BookOpen, Info, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Zap
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,12 +19,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ShortcutBadge } from "@/components/layout/car-dock";
 import Image from "next/image";
 
+/**
+ * SettingsView v39.0 - Lighter numeric remote shapes.
+ */
 export function SettingsView() {
   const { 
     addReminder, updateReminder, removeReminder, reminders,
     mapSettings, updateMapSettings, prayerSettings, updatePrayerSetting,
     customManuscripts, addManuscript, removeManuscript,
-    keyMappings, setKeyMapping, removeSpecificKeyMapping, clearKeyMappings
+    keyMappings, setKeyMapping, removeSpecificKeyMapping, clearKeyMappings,
+    isAltModeActive, toggleAltMode
   } = useMediaStore();
   
   const { toast } = useToast();
@@ -36,6 +40,13 @@ export function SettingsView() {
   const [newReminder, setNewReminder] = useState<Partial<Reminder>>({
     label: "", relativePrayer: "manual", manualTime: "12:00", offsetMinutes: 0, color: "text-blue-400", iconType: "bell"
   });
+
+  const manualSelectionKeys = [
+    'Red', 'Green', 'Yellow', 'Blue', 'Sub', 'Back', 'Exit', 
+    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+    'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter',
+    'Info', 'Text', 'Settings', 'PageUp', 'PageDown'
+  ];
 
   useEffect(() => {
     if (!mappingAction) return;
@@ -50,8 +61,15 @@ export function SettingsView() {
     return () => window.removeEventListener("keydown", handleKeyDown, true);
   }, [mappingAction, setKeyMapping, toast]);
 
+  const handleManualKeySelect = (key: string) => {
+    if (!mappingAction) return;
+    setKeyMapping(mappingAction.context, mappingAction.action, key);
+    setMappingAction(null);
+    toast({ title: "تم البرمجة", description: `تم تعيين [${key}] بنجاح.` });
+  };
+
   const handleAddReminder = () => {
-    if (!newReminder.label) { toast({ variant: "destructive", title: "خطأ", description: "يرجى إدخال وصف للتذكير" }); return; }
+    if (!newReminder.label) { toast({ variant: "destructive", title: "خطأ", description: "يرجى إدخل وصف للتذكير" }); return; }
     addReminder({
       id: Date.now().toString(),
       label: newReminder.label!,
@@ -70,7 +88,7 @@ export function SettingsView() {
     goto_hihi2: "فتح Hihi2", goto_iptv: "فتح البث المباشر", goto_football: "فتح مركز كووورة",
     goto_settings: "فتح الإعدادات", player_next: "التالي", player_prev: "السابق",
     player_fullscreen: "تبديل الشاشة", player_close: "إغلاق المشغل", player_save: "حفظ الفيديو",
-    player_playlist: "إظهار/إخفاء القائمة", player_minimize: "تصغير/تكبير المشغل",
+    player_playlist: "إظهار/إخفاء القائمة", player_minimize: "تصغير/تكبير المشغل", player_settings: "قائمة أزرار المشغل",
     focus_search: "تحديد شريط البحث", focus_reciters: "تحديد قائمة القراء", focus_surahs: "تحديد قائمة السور",
     goto_tab_appearance: "تاب المظهر", goto_tab_prayers: "تاب الصلوات", 
     goto_tab_reminders: "تاب التذكيرات", goto_tab_buttonmap: "تاب الأزرار",
@@ -82,15 +100,55 @@ export function SettingsView() {
     media: "الميديا", quran: "القرآن", football: "كووورة", iptv: "البث المباشر", settings: "الإعدادات"
   };
 
+  const RemoteKeyShape = ({ name }: { name: string }) => {
+    const isColor = ['Red', 'Green', 'Yellow', 'Blue'].includes(name);
+    const isNumber = /^\d$/.test(name);
+    return (
+      <div className={cn(
+        "px-4 py-2 flex flex-col items-center justify-center transition-all duration-500 min-w-[60px]",
+        isColor ? "rounded-[0.6rem] border-t border-white/20 h-[40px]" : "rounded-full border-2 border-zinc-600 h-[50px] w-[50px]",
+        name === 'Red' && "bg-red-600 shadow-[0_0_15px_rgba(220,38,38,0.6)]",
+        name === 'Green' && "bg-green-600 shadow-[0_0_15px_rgba(22,163,74,0.6)]",
+        name === 'Yellow' && "bg-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.6)] text-black border-t-black/10",
+        name === 'Blue' && "bg-blue-600 shadow-[0_0_15px_rgba(37,99,235,0.6)]",
+        !isColor && "bg-zinc-800 shadow-2xl text-accent"
+      )}>
+        <span className={cn(
+          "text-[6px] font-black uppercase tracking-tighter opacity-60 mb-0.5",
+          name === 'Yellow' ? "text-black" : "text-white"
+        )}>زر</span>
+        <span className={cn(
+          "text-[9px] font-black uppercase tracking-widest",
+          name === 'Yellow' ? "text-black" : "text-white"
+        )}>{name}</span>
+      </div>
+    );
+  };
+
   return (
     <div className="p-12 space-y-12 max-w-7xl mx-auto pb-40 text-right dir-rtl">
       {mappingAction && (
-        <div className="fixed inset-0 z-[1000] bg-black/90 backdrop-blur-3xl flex items-center justify-center">
-          <div className="text-center space-y-8 p-12 bg-white/5 rounded-[3rem] border border-white/10 shadow-glow">
-            <Keyboard className="w-24 h-24 text-primary mx-auto animate-bounce" />
-            <h2 className="text-4xl font-black text-white">برمجة زر جديد للسياق: {contexts[mappingAction.context]}</h2>
-            <p className="text-xl text-primary font-bold">اضغط الآن على الزر المطلوب تعيينه</p>
-            <Button variant="ghost" onClick={() => setMappingAction(null)} className="text-white/40 focusable h-14 px-8 rounded-2xl">إلغاء العملية</Button>
+        <div className="fixed inset-0 z-[1000] bg-black/95 backdrop-blur-3xl flex items-center justify-center p-10">
+          <div className="w-full max-w-5xl space-y-8 p-12 bg-white/5 rounded-[3rem] border border-white/10 shadow-glow text-center">
+            <Keyboard className="w-20 h-20 text-primary mx-auto animate-bounce" />
+            <div className="space-y-2">
+              <h2 className="text-4xl font-black text-white">برمجة زر جديد للسياق: {contexts[mappingAction.context]}</h2>
+              <p className="text-xl text-primary font-bold">اضغط الآن على الزر المطلوب من الريموت أو اختر من القائمة أدناه</p>
+            </div>
+
+            <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3 pt-8 border-t border-white/10">
+              {manualSelectionKeys.map(k => (
+                <button 
+                  key={k} 
+                  onClick={() => handleManualKeySelect(k)}
+                  className="h-12 rounded-xl bg-white/5 border border-white/10 text-white text-xs font-black hover:bg-primary hover:text-white transition-all focusable"
+                >
+                  {k}
+                </button>
+              ))}
+            </div>
+
+            <Button variant="ghost" onClick={() => setMappingAction(null)} className="text-white/40 focusable h-14 px-8 rounded-2xl mt-8">إلغاء العملية</Button>
           </div>
         </div>
       )}
@@ -122,7 +180,7 @@ export function SettingsView() {
 
         <TabsContent value="appearance" className="space-y-12">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <Card className="premium-glass p-8 space-y-8 bg-white/5 border-white/10 grid-item" tabIndex={0} data-nav-id="settings-appearance-card">
+            <Card className="premium-glass p-8 space-y-8 bg-white/5 border-white/10 grid-item" tabIndex={0}>
               <CardTitle className="text-2xl font-black text-white flex items-center gap-3"><Monitor className="w-6 h-6 text-primary" />عرض الشاشة</CardTitle>
               <div className="space-y-8">
                 <div className="space-y-4">
@@ -133,9 +191,16 @@ export function SettingsView() {
                   <div className="space-y-1"><h4 className="text-lg font-bold text-white">خلفية لوحة الأذكار</h4><p className="text-xs text-white/40">إظهار الصور خلف النصوص في الداشبورد</p></div>
                   <Switch checked={mapSettings.showManuscriptBg} onCheckedChange={(v) => updateMapSettings({ showManuscriptBg: v })} />
                 </div>
+                <div className="flex items-center justify-between p-6 bg-blue-600/10 rounded-2xl border border-blue-600/20">
+                  <div className="space-y-1">
+                    <h4 className="text-lg font-bold text-white flex items-center gap-2">المود البديل (الملاحة الرقمية) <Zap className="w-4 h-4 text-yellow-500" /></h4>
+                    <p className="text-xs text-white/40">تحويل الأسهم إلى أرقام 2,8,4,6 (تفعيل عبر زر Sub)</p>
+                  </div>
+                  <Switch checked={isAltModeActive} onCheckedChange={toggleAltMode} />
+                </div>
               </div>
             </Card>
-            <Card className="premium-glass p-8 space-y-8 bg-white/5 border-white/10 grid-item" tabIndex={0} data-nav-id="settings-manuscript-card">
+            <Card className="premium-glass p-8 space-y-8 bg-white/5 border-white/10 grid-item" tabIndex={0}>
               <CardTitle className="text-2xl font-black text-white flex items-center gap-3"><ImageIcon className="w-6 h-6 text-primary" />إضافة محتوى للوحة</CardTitle>
               <div className="space-y-6">
                 <div className="flex gap-4">
@@ -154,7 +219,7 @@ export function SettingsView() {
         <TabsContent value="prayers" className="space-y-8 animate-in fade-in duration-700">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {prayerSettings.map((p, idx) => (
-              <Card key={p.id} className="bg-white/5 border-white/10 p-8 rounded-[2.5rem] focusable grid-item" tabIndex={0} data-nav-id={`prayer-setting-${idx}`}>
+              <Card key={p.id} className="bg-white/5 border-white/10 p-8 rounded-[2.5rem] focusable grid-item" tabIndex={0}>
                 <div className="flex items-center justify-between mb-8">
                   <div className="flex items-center gap-4"><div className="w-12 h-12 rounded-2xl bg-primary/20 flex items-center justify-center border border-primary/20"><Timer className="w-6 h-6 text-primary" /></div><div><h3 className="text-xl font-black text-white">{p.name}</h3><p className="text-xs text-white/40 uppercase tracking-widest">Prayer Config</p></div></div>
                   <Switch checked={p.showCountdown} onCheckedChange={(v) => updatePrayerSetting(p.id, { showCountdown: v })} />
@@ -175,7 +240,7 @@ export function SettingsView() {
         </TabsContent>
 
         <TabsContent value="reminders" className="space-y-12 animate-in fade-in duration-700">
-          <Card className="bg-white/5 border-white/10 p-8 rounded-[3rem] focusable grid-item" tabIndex={0} data-nav-id="reminders-add-card">
+          <Card className="bg-white/5 border-white/10 p-8 rounded-[3rem] focusable grid-item" tabIndex={0}>
             <CardTitle className="text-2xl font-black text-white flex items-center gap-4 mb-8"><Bell className="w-8 h-8 text-primary" />إضافة تذكير مخصص</CardTitle>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               <Input placeholder="وصف التذكير..." value={newReminder.label} onChange={(e) => setNewReminder({ ...newReminder, label: e.target.value })} className="h-14 bg-black/40 border-white/10 rounded-xl px-6 text-white text-right" />
@@ -236,7 +301,7 @@ export function SettingsView() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {Object.keys(actionLabels).map((action, idx) => (
-              <div key={action} className="p-6 bg-black/40 rounded-[2rem] border border-white/5 flex flex-col gap-4 focusable grid-item" tabIndex={0} data-nav-id={`action-map-${idx}`}>
+              <div key={action} className="p-6 bg-black/40 rounded-[2rem] border border-white/5 flex flex-col gap-4 focusable grid-item" tabIndex={0}>
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-black text-white/80">{actionLabels[action]}</span>
                   <div className="flex gap-2">
@@ -244,15 +309,15 @@ export function SettingsView() {
                     <button onClick={() => clearKeyMappings(selectedContext, action as AppAction)} className="w-10 h-10 rounded-full bg-red-500/10 text-red-500 border border-red-500/20 flex items-center justify-center focusable"><Trash2 className="w-5 h-5" /></button>
                   </div>
                 </div>
-                <div className="flex flex-wrap gap-2 min-h-[40px]">
+                <div className="flex flex-wrap gap-3 min-h-[40px] pt-2">
                   {(keyMappings[selectedContext]?.[action] || []).map((key, kIdx) => (
-                    <div key={kIdx} className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-accent text-xs font-black uppercase tracking-widest flex items-center gap-3 animate-in fade-in zoom-in-90 group/key">
-                      {key}
+                    <div key={kIdx} className="relative group/key">
+                      <RemoteKeyShape name={key} />
                       <button 
                         onClick={(e) => { e.stopPropagation(); removeSpecificKeyMapping(selectedContext, action as AppAction, key); }} 
-                        className="text-white/20 hover:text-red-500 transition-colors focusable rounded-full p-1"
+                        className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full p-1 opacity-0 group-hover/key:opacity-100 transition-opacity focusable"
                       >
-                        <LucideX className="w-3.5 h-3.5" />
+                        <LucideX className="w-3 h-3" />
                       </button>
                     </div>
                   ))}
