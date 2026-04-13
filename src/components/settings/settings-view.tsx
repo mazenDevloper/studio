@@ -17,16 +17,14 @@ import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ShortcutBadge } from "@/components/layout/car-dock";
+import { convertTo12Hour } from "@/lib/constants";
 import Image from "next/image";
 
-/**
- * SettingsView v39.0 - Lighter numeric remote shapes.
- */
 export function SettingsView() {
   const { 
     addReminder, updateReminder, removeReminder, reminders,
     mapSettings, updateMapSettings, prayerSettings, updatePrayerSetting,
-    customManuscripts, addManuscript, removeManuscript,
+    customManuscripts, addManuscript, removeManuscript, prayerTimes,
     keyMappings, setKeyMapping, removeSpecificKeyMapping, clearKeyMappings,
     isAltModeActive, toggleAltMode
   } = useMediaStore();
@@ -100,9 +98,19 @@ export function SettingsView() {
     media: "الميديا", quran: "القرآن", football: "كووورة", iptv: "البث المباشر", settings: "الإعدادات"
   };
 
+  const currentDayTimes = useMemo(() => {
+    if (!prayerTimes?.length) return null;
+    const now = new Date();
+    const day = now.getDate().toString().padStart(2, '0');
+    return prayerTimes.find(pt => pt.date.endsWith(`-${day}`)) || prayerTimes[0];
+  }, [prayerTimes]);
+
   const RemoteKeyShape = ({ name }: { name: string }) => {
     const isColor = ['Red', 'Green', 'Yellow', 'Blue'].includes(name);
     const isNumber = /^\d$/.test(name);
+    const isHardware = ['Sub', 'Info', 'Back', 'Exit'].includes(name);
+    const isWhite = !isColor && !isNumber && !isHardware;
+
     return (
       <div className={cn(
         "px-4 py-2 flex flex-col items-center justify-center transition-all duration-500 min-w-[60px]",
@@ -111,15 +119,16 @@ export function SettingsView() {
         name === 'Green' && "bg-green-600 shadow-[0_0_15px_rgba(22,163,74,0.6)]",
         name === 'Yellow' && "bg-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.6)] text-black border-t-black/10",
         name === 'Blue' && "bg-blue-600 shadow-[0_0_15px_rgba(37,99,235,0.6)]",
-        !isColor && "bg-zinc-800 shadow-2xl text-accent"
+        isWhite && "bg-white text-black border-white shadow-glow h-[50px] w-[50px] rounded-full",
+        (isNumber || isHardware) && !isWhite && "bg-zinc-800 shadow-2xl text-accent"
       )}>
         <span className={cn(
-          "text-[6px] font-black uppercase tracking-tighter opacity-60 mb-0.5",
-          name === 'Yellow' ? "text-black" : "text-white"
+          "text-[6.5px] font-black uppercase tracking-tighter opacity-80 mb-0.5",
+          (name === 'Yellow' || isWhite) ? "text-black" : "text-white"
         )}>زر</span>
         <span className={cn(
           "text-[9px] font-black uppercase tracking-widest",
-          name === 'Yellow' ? "text-black" : "text-white"
+          (name === 'Yellow' || isWhite) ? "text-black" : "text-white"
         )}>{name}</span>
       </div>
     );
@@ -200,19 +209,51 @@ export function SettingsView() {
                 </div>
               </div>
             </Card>
-            <Card className="premium-glass p-8 space-y-8 bg-white/5 border-white/10 grid-item" tabIndex={0}>
-              <CardTitle className="text-2xl font-black text-white flex items-center gap-3"><ImageIcon className="w-6 h-6 text-primary" />إضافة محتوى للوحة</CardTitle>
-              <div className="space-y-6">
-                <div className="flex gap-4">
-                  <Input placeholder="نص المخطوطة أو رابط الصورة..." value={manuscriptInput} onChange={(e) => setManuscriptInput(e.target.value)} className="h-14 bg-black/40 border-white/10 rounded-xl px-6 text-white text-right flex-1" />
-                  <Button onClick={() => { if(manuscriptInput) { addManuscript({ id: Date.now().toString(), type: manuscriptType, content: manuscriptInput }); setManuscriptInput(""); toast({title: "تمت الإضافة"}); } }} className="h-14 w-14 bg-primary rounded-xl focusable"><Plus className="w-6 h-6" /></Button>
+            
+            <div className="flex flex-col gap-8">
+              <Card className="premium-glass p-8 space-y-8 bg-white/5 border-white/10 grid-item" tabIndex={0}>
+                <CardTitle className="text-2xl font-black text-white flex items-center gap-3"><ImageIcon className="w-6 h-6 text-primary" />إضافة محتوى للوحة</CardTitle>
+                <div className="space-y-6">
+                  <div className="flex gap-4">
+                    <Input placeholder="نص المخطوطة أو رابط الصورة..." value={manuscriptInput} onChange={(e) => setManuscriptInput(e.target.value)} className="h-14 bg-black/40 border-white/10 rounded-xl px-6 text-white text-right flex-1" />
+                    <Button onClick={() => { if(manuscriptInput) { addManuscript({ id: Date.now().toString(), type: manuscriptType, content: manuscriptInput }); setManuscriptInput(""); toast({title: "تمت الإضافة"}); } }} className="h-14 w-14 bg-primary rounded-xl focusable"><Plus className="w-6 h-6" /></Button>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant={manuscriptType === 'text' ? 'default' : 'outline'} onClick={() => setManuscriptType('text')} className="flex-1 rounded-xl h-12 focusable">نصي</Button>
+                    <Button variant={manuscriptType === 'image' ? 'default' : 'outline'} onClick={() => setManuscriptType('image')} className="flex-1 rounded-xl h-12 focusable">صورة</Button>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <Button variant={manuscriptType === 'text' ? 'default' : 'outline'} onClick={() => setManuscriptType('text')} className="flex-1 rounded-xl h-12 focusable">نصي</Button>
-                  <Button variant={manuscriptType === 'image' ? 'default' : 'outline'} onClick={() => setManuscriptType('image')} className="flex-1 rounded-xl h-12 focusable">صورة</Button>
-                </div>
-              </div>
-            </Card>
+              </Card>
+
+              <Card className="premium-glass p-8 bg-white/5 border-white/10 grid-item" tabIndex={0}>
+                <CardTitle className="text-2xl font-black text-white flex items-center gap-3 mb-6"><ImageIcon className="w-6 h-6 text-primary" />إدارة اللوحات الحالية</CardTitle>
+                <ScrollArea className="h-64 pr-4">
+                  <div className="grid grid-cols-1 gap-4">
+                    {customManuscripts.map((m) => (
+                      <div key={m.id} className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/10 group">
+                        <div className="flex items-center gap-4 min-w-0">
+                          {m.type === 'text' ? (
+                            <span className="font-calligraphy text-lg text-white truncate max-w-[200px]">{m.content}</span>
+                          ) : (
+                            <div className="w-12 h-12 rounded-lg overflow-hidden border border-white/10 shrink-0">
+                              <img src={m.content} className="w-full h-full object-cover" alt="" />
+                            </div>
+                          )}
+                        </div>
+                        <Button variant="ghost" size="icon" onClick={() => { removeManuscript(m.id); toast({title: "تم الحذف"}); }} className="text-white/20 hover:text-red-500 hover:bg-red-500/10 rounded-full focusable">
+                          <Trash2 className="w-5 h-5" />
+                        </Button>
+                      </div>
+                    ))}
+                    {customManuscripts.length === 0 && (
+                      <div className="py-12 text-center opacity-20">
+                        <p className="text-xs font-black uppercase tracking-widest">لا توجد مخطوطات حالياً</p>
+                      </div>
+                    )}
+                  </div>
+                </ScrollArea>
+              </Card>
+            </div>
           </div>
         </TabsContent>
 
@@ -248,13 +289,11 @@ export function SettingsView() {
                 <SelectTrigger className="h-14 bg-black/40 border-white/10 rounded-xl px-6 text-white text-right"><SelectValue /></SelectTrigger>
                 <SelectContent className="bg-zinc-900 border-white/10 text-white dir-rtl">
                   <SelectItem value="manual">وقت يدوي</SelectItem>
-                  <SelectItem value="fajr">الفجر</SelectItem>
-                  <SelectItem value="sunrise">الشروق</SelectItem>
-                  <SelectItem value="duha">الضحى</SelectItem>
-                  <SelectItem value="dhuhr">الظهر</SelectItem>
-                  <SelectItem value="asr">العصر</SelectItem>
-                  <SelectItem value="maghrib">المغرب</SelectItem>
-                  <SelectItem value="isha">العشاء</SelectItem>
+                  {prayerSettings.map(p => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name} ({currentDayTimes ? convertTo12Hour(currentDayTimes[p.id === 'duha' ? 'sunrise' : p.id]) : '--:--'})
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               {newReminder.relativePrayer === 'manual' ? (
@@ -275,7 +314,9 @@ export function SettingsView() {
                   </div>
                   <div>
                     <h4 className="font-bold text-white">{rem.label}</h4>
-                    <p className="text-xs text-white/40">{rem.relativePrayer === 'manual' ? rem.manualTime : `مرتبط بـ ${rem.relativePrayer}`}</p>
+                    <p className="text-xs text-white/40">
+                      {rem.relativePrayer === 'manual' ? rem.manualTime : `مرتبط بـ ${prayerSettings.find(p=>p.id===rem.relativePrayer)?.name || rem.relativePrayer}`}
+                    </p>
                   </div>
                 </div>
                 <Button variant="ghost" size="icon" onClick={() => removeReminder(rem.id)} className="text-white/20 hover:text-red-500 rounded-full focusable">

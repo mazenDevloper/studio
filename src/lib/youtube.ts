@@ -29,8 +29,7 @@ export interface YouTubeVideo {
 const youtubeCache: Record<string, { data: any, timestamp: number }> = {};
 const CACHE_TTL = 1000 * 60 * 60 * 4;
 
-const BLACKLIST_KEY = 'yt_blacklist_v26';
-const ROTATION_INDEX_KEY = 'yt_last_index_v26';
+const BLACKLIST_KEY = 'yt_blacklist_v49';
 
 function getBlacklist(): Record<string, number> {
   if (typeof window === 'undefined') return {};
@@ -46,6 +45,13 @@ function getBlacklist(): Record<string, number> {
   } catch { return {}; }
 }
 
+function addToBlacklist(index: number) {
+  if (typeof window === 'undefined') return;
+  const blacklist = getBlacklist();
+  blacklist[index.toString()] = Date.now() + (1000 * 60 * 60 * 24); // Blacklist for 24 hours
+  localStorage.setItem(BLACKLIST_KEY, JSON.stringify(blacklist));
+}
+
 async function fetchWithRotation(endpoint: string, params: Record<string, string>) {
   const queryParams = new URLSearchParams(params);
   const cacheKey = `${endpoint}?${queryParams.toString()}`;
@@ -55,28 +61,46 @@ async function fetchWithRotation(endpoint: string, params: Record<string, string
   }
   
   const totalKeys = YT_KEYS_POOL.length;
-  let startIndex = Math.floor(Math.random() * totalKeys);
+  // Use a sequential but rotated start index to visit EVERY key
+  const startIndex = 0; 
   const blacklist = getBlacklist();
-  let attempts = 0;
 
-  while (attempts < totalKeys) {
+  for (let attempts = 0; attempts < totalKeys; attempts++) {
     const activeIndex = (startIndex + attempts) % totalKeys;
-    if (blacklist[activeIndex.toString()] && Object.keys(blacklist).length < totalKeys) { attempts++; continue; }
+    
+    if (blacklist[activeIndex.toString()]) {
+      continue;
+    }
 
     const key = YT_KEYS_POOL[activeIndex];
     const url = `https://www.googleapis.com/youtube/v3/${endpoint}?${queryParams.toString()}&key=${key}`;
     
     try {
-      const response = await fetch(url);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 1500); // 1.5s ultra-fast timeout
+      
+      const response = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      
       const data = await response.json();
+      
       if (response.ok) {
         youtubeCache[cacheKey] = { data, timestamp: Date.now() };
         return data;
       }
-      if (response.status === 403 || response.status === 429) attempts++;
-      else attempts++;
-    } catch { attempts++; }
+      
+      // Blacklist immediately on quota or permission error and try next key instantly
+      if (response.status === 403 || response.status === 429) {
+        console.warn(`YouTube Key ${activeIndex} exhausted (${response.status}). Trying next key in pool...`);
+        addToBlacklist(activeIndex);
+        continue; 
+      }
+    } catch (e) {
+      // Network error or timeout, skip to next key immediately
+      continue;
+    }
   }
+  
   return null;
 }
 
@@ -102,12 +126,10 @@ export async function searchYouTubeVideos(query: string, limit = 20): Promise<Yo
     isLive: v.snippet.liveBroadcastContent === 'live' || v.snippet.liveBroadcastContent === 'upcoming'
   }));
 
-  // Ensure LIVE is ALWAYS FIRST
   return results.sort((a, b) => (a.isLive === b.isLive) ? 0 : a.isLive ? -1 : 1);
 }
 
 export async function fetchChannelVideos(channelId: string, limit = 15): Promise<YouTubeVideo[]> {
-  // Parallel fetch for speed
   const [liveSearchData, chanData] = await Promise.all([
     fetchWithRotation('search', { part: 'snippet', channelId, eventType: 'live', type: 'video', maxResults: '2' }),
     fetchWithRotation('channels', { part: 'contentDetails,snippet', id: channelId })

@@ -1,8 +1,8 @@
 
 "use client";
 
-import { useMediaStore, AppAction, MappingContext } from "@/lib/store";
-import { X, Monitor, ChevronDown, ChevronRight, ChevronLeft, Settings, LayoutGrid, Bookmark, BookmarkCheck, Globe, Youtube, Eye, Maximize2, Minimize2, Play, Pause, FastForward, Rewind } from "lucide-react";
+import { useMediaStore } from "@/lib/store";
+import { X, Monitor, ChevronRight, ChevronLeft, Settings, LayoutGrid, Bookmark, BookmarkCheck, Youtube, Maximize2, Minimize2 } from "lucide-react";
 import { cn, normalizeKey } from "@/lib/utils";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
@@ -12,8 +12,8 @@ export function GlobalVideoPlayer() {
   const { 
     activeVideo, activeIptv, isPlaying, isMinimized, isFullScreen, nextTrack, prevTrack,
     setActiveVideo, setActiveIptv, setIsPlaying, setIsMinimized, setIsFullScreen, updateVideoProgress,
-    playlist, videoProgress, toggleSaveVideo, savedVideos, iptvPlaylist, playerMode, setPlayerMode,
-    showIslands, toggleShowIslands, gridMode, setGridMode, isPlayerControlsExpanded, setIsPlayerControlsExpanded
+    playlist, videoProgress, toggleSaveVideo, savedVideos, iptvPlaylist, playerMode,
+    gridMode, setGridMode, isPlayerControlsExpanded, setIsPlayerControlsExpanded
   } = useMediaStore();
   
   const [mounted, setMounted] = useState(false);
@@ -25,12 +25,13 @@ export function GlobalVideoPlayer() {
   const isActive = !!(activeVideo || activeIptv);
   const isSaved = activeVideo ? savedVideos.some(v => v.id === activeVideo.id) : false;
 
+  // Smart Resume: Only for saved videos
   const startSeconds = useMemo(() => {
-    if (activeVideo?.id && videoProgress[activeVideo.id]) {
+    if (activeVideo?.id && isSaved && videoProgress[activeVideo.id]) {
       return Math.floor(videoProgress[activeVideo.id]);
     }
     return 0;
-  }, [activeVideo?.id, videoProgress]);
+  }, [activeVideo?.id, isSaved, videoProgress]);
 
   useEffect(() => {
     const handleForcedKeys = (e: KeyboardEvent) => {
@@ -85,12 +86,10 @@ export function GlobalVideoPlayer() {
     const YT = (window as any).YT;
     if (!YT?.Player) return;
     
-    const startFrom = Math.floor(videoProgress[videoId] || 0);
-
     if (playerRef.current?.loadVideoById) {
       if (lastIdRef.current === videoId) return;
       lastIdRef.current = videoId;
-      playerRef.current.loadVideoById({ videoId, startSeconds: startFrom });
+      playerRef.current.loadVideoById({ videoId, startSeconds });
       return;
     }
     
@@ -101,11 +100,11 @@ export function GlobalVideoPlayer() {
       playerVars: { 
         autoplay: 1, controls: 1, modestbranding: 1, rel: 0, 
         playsinline: 1, origin: window.location.origin, enablejsapi: 1,
-        start: startFrom
+        start: startSeconds
       },
       events: { onReady: (e: any) => e.target.playVideo(), onStateChange: onPlayerStateChange }
     });
-  }, [mounted, onPlayerStateChange, videoProgress, playerMode]); 
+  }, [mounted, onPlayerStateChange, startSeconds, playerMode]); 
 
   useEffect(() => {
     const currentYouTubeId = activeVideo ? activeVideo.id : null;
@@ -158,19 +157,10 @@ export function GlobalVideoPlayer() {
       >
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-primary/20 flex items-center justify-center border border-primary/20">
-              <LayoutGrid className="w-7 h-7 text-primary" />
-            </div>
-            <div className="flex flex-col">
-              <h2 className="text-3xl font-black text-white tracking-tighter">قائمة التشغيل الذكية</h2>
-              <span className="text-[10px] text-white/40 uppercase font-bold tracking-[0.3em]">
-                {gridMode === 'full' ? 'Full View Sync' : 'Partial Context View'}
-              </span>
-            </div>
+            <div className="w-12 h-12 rounded-2xl bg-primary/20 flex items-center justify-center border border-primary/20"><LayoutGrid className="w-7 h-7 text-primary" /></div>
+            <div className="flex flex-col"><h2 className="text-3xl font-black text-white tracking-tighter">قائمة التشغيل الذكية</h2><span className="text-[10px] text-white/40 uppercase font-bold tracking-[0.3em]">{gridMode === 'full' ? 'Full View Sync' : 'Partial Context View'}</span></div>
           </div>
-          <Button variant="ghost" size="icon" onClick={() => setGridMode('hidden')} className="w-14 h-14 rounded-full bg-white/5 text-white focusable">
-            <X className="w-8 h-8" />
-          </Button>
+          <Button variant="ghost" size="icon" onClick={() => setGridMode('hidden')} className="w-14 h-14 rounded-full bg-white/5 text-white focusable"><X className="w-8 h-8" /></Button>
         </div>
         <div className="h-full overflow-y-auto no-scrollbar pb-40">
           <div className="grid grid-cols-3 gap-8">
@@ -203,31 +193,13 @@ export function GlobalVideoPlayer() {
                 </button>
               ) : (
                 <>
-                  <button onClick={() => setIsPlayerControlsExpanded(false)} className="w-9 h-9 rounded-full bg-white/5 text-white/20 flex items-center justify-center focusable cursor-pointer relative" tabIndex={0}>
-                    <ShortcutBadge action="player_settings" className="-bottom-10 left-1/2 -translate-x-1/2" context="player" />
-                    <ChevronRight className="w-5 h-5" />
-                  </button>
-                  <button onClick={prevTrack} className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center focusable cursor-pointer relative" tabIndex={0}>
-                    <ShortcutBadge action="player_prev" className="-bottom-10 left-1/2 -translate-x-1/2" context="player" />
-                    <ChevronRight className="w-5 h-5" />
-                  </button>
-                  <button onClick={nextTrack} className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center focusable cursor-pointer relative" tabIndex={0}>
-                    <ShortcutBadge action="player_next" className="-bottom-10 left-1/2 -translate-x-1/2" context="player" />
-                    <ChevronLeft className="w-5 h-5" />
-                  </button>
+                  <button onClick={() => setIsPlayerControlsExpanded(false)} className="w-9 h-9 rounded-full bg-white/5 text-white/20 flex items-center justify-center focusable cursor-pointer relative" tabIndex={0}><ShortcutBadge action="player_settings" className="-bottom-10 left-1/2 -translate-x-1/2" context="player" /><ChevronRight className="w-5 h-5" /></button>
+                  <button onClick={prevTrack} className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center focusable cursor-pointer relative" tabIndex={0}><ShortcutBadge action="player_prev" className="-bottom-10 left-1/2 -translate-x-1/2" context="player" /><ChevronRight className="w-5 h-5" /></button>
+                  <button onClick={nextTrack} className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center focusable cursor-pointer relative" tabIndex={0}><ShortcutBadge action="player_next" className="-bottom-10 left-1/2 -translate-x-1/2" context="player" /><ChevronLeft className="w-5 h-5" /></button>
                   <div className="w-px h-7 bg-white/10 mx-1" />
-                  <button onClick={() => activeVideo && toggleSaveVideo(activeVideo)} className={cn("w-9 h-9 rounded-full flex items-center justify-center focusable cursor-pointer transition-colors relative", isSaved ? "bg-accent/40 text-accent shadow-glow" : "bg-white/5 text-white/40")} tabIndex={0}>
-                    <ShortcutBadge action="player_save" className="-bottom-10 left-1/2 -translate-x-1/2" context="player" />
-                    {isSaved ? <BookmarkCheck className="w-5 h-5" /> : <Bookmark className="w-5 h-5" />}
-                  </button>
-                  <button onClick={() => setIsMinimized(!isMinimized)} className={cn("w-9 h-9 rounded-full flex items-center justify-center focusable cursor-pointer relative", isMinimized && "bg-orange-500/40 shadow-glow")} tabIndex={0} data-nav-id="player-min-toggle">
-                    <ShortcutBadge action="player_minimize" className="-bottom-10 left-1/2 -translate-x-1/2" context="player" />
-                    {isMinimized ? <Maximize2 className="w-5 h-5" /> : <Minimize2 className="w-5 h-5" />}
-                  </button>
-                  <button onClick={() => setIsFullScreen(!isFullScreen)} className={cn("w-9 h-9 rounded-full flex items-center justify-center focusable cursor-pointer relative", isFullScreen && "bg-primary/40 shadow-glow")} tabIndex={0}>
-                    <ShortcutBadge action="player_fullscreen" className="-bottom-10 left-1/2 -translate-x-1/2" context="player" />
-                    <Monitor className="w-5 h-5" />
-                  </button>
+                  <button onClick={() => activeVideo && toggleSaveVideo(activeVideo)} className={cn("w-9 h-9 rounded-full flex items-center justify-center focusable cursor-pointer transition-colors relative", isSaved ? "bg-accent/40 text-accent shadow-glow" : "bg-white/5 text-white/40")} tabIndex={0}><ShortcutBadge action="player_save" className="-bottom-10 left-1/2 -translate-x-1/2" context="player" />{isSaved ? <BookmarkCheck className="w-5 h-5" /> : <Bookmark className="w-5 h-5" />}</button>
+                  <button onClick={() => setIsMinimized(!isMinimized)} className={cn("w-9 h-9 rounded-full flex items-center justify-center focusable cursor-pointer relative", isMinimized && "bg-orange-500/40 shadow-glow")} tabIndex={0} data-nav-id="player-min-toggle"><ShortcutBadge action="player_minimize" className="-bottom-10 left-1/2 -translate-x-1/2" context="player" />{isMinimized ? <Maximize2 className="w-5 h-5" /> : <Minimize2 className="w-5 h-5" />}</button>
+                  <button onClick={() => setIsFullScreen(!isFullScreen)} className={cn("w-9 h-9 rounded-full flex items-center justify-center focusable cursor-pointer relative", isFullScreen && "bg-primary/40 shadow-glow")} tabIndex={0}><ShortcutBadge action="player_fullscreen" className="-bottom-10 left-1/2 -translate-x-1/2" context="player" /><Monitor className="w-5 h-5" /></button>
                 </>
               )}
             </div>

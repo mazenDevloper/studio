@@ -27,9 +27,7 @@ function getPriorityKey(keys: string[]): string | null {
 }
 
 /**
- * Tactical Remote Badge v39.0 - Adjusted scaling and lighter numeric style
- * - Car Dock: 1.45x
- * - Player: 1.15x
+ * Tactical Remote Badge v54.0 - Maximum Contrast & Scaled Visibility
  */
 export function ShortcutBadge({ action, className, context = 'default' }: { action: AppAction, className?: string, context?: 'dock' | 'player' | 'default' }) {
   const pathname = usePathname();
@@ -68,6 +66,8 @@ export function ShortcutBadge({ action, className, context = 'default' }: { acti
   
   const isColor = ['Red', 'Green', 'Yellow', 'Blue'].includes(displayKey);
   const isNumber = /^\d$/.test(displayKey);
+  const isHardware = ['Sub', 'Info', 'Back', 'Exit'].includes(displayKey);
+  const isWhiteButton = !isColor && !isNumber && !isHardware;
 
   const scale = context === 'dock' ? 1.45 : context === 'player' ? 1.15 : 1.0;
   
@@ -75,14 +75,14 @@ export function ShortcutBadge({ action, className, context = 'default' }: { acti
     <div 
       className={cn(
         "absolute z-[200] flex items-center justify-center transition-all duration-500",
-        context === 'dock' ? "-bottom-4 -left-4" : "-bottom-4 -left-4",
+        "-bottom-4 -left-4",
         isColor ? "rounded-[0.6rem]" : "rounded-full",
         displayKey === 'Red' && "bg-red-600 shadow-[0_0_15px_rgba(220,38,38,0.8)] border-t border-white/20",
         displayKey === 'Green' && "bg-green-600 shadow-[0_0_15px_rgba(22,163,74,0.8)] border-t border-white/20",
         displayKey === 'Yellow' && "bg-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.8)] border-t border-black/10",
         displayKey === 'Blue' && "bg-blue-600 shadow-[0_0_15px_rgba(37,99,235,0.8)] border-t border-white/20",
-        (isNumber || ['Sub', 'Info', 'Back', 'Exit'].includes(displayKey)) && "bg-zinc-800 border-2 border-zinc-600 shadow-2xl",
-        !isColor && !isNumber && !['Sub', 'Info', 'Back', 'Exit'].includes(displayKey) && "bg-white text-black shadow-glow",
+        (isNumber || isHardware) && "bg-zinc-800 border-2 border-zinc-600 shadow-2xl",
+        isWhiteButton && "bg-white text-black shadow-glow border-2 border-white",
         className
       )}
       style={{
@@ -92,13 +92,13 @@ export function ShortcutBadge({ action, className, context = 'default' }: { acti
     >
       <div className="flex flex-col items-center leading-none" style={{ transform: `scale(${scale * 0.85})` }}>
         <span className={cn(
-          "font-black uppercase tracking-tighter opacity-60 mb-0.5",
-          displayKey === 'Yellow' ? "text-black" : "text-white"
-        )} style={{ fontSize: '6px' }}>زر</span>
+          "font-black uppercase tracking-tighter mb-0.5",
+          (displayKey === 'Yellow' || isWhiteButton) ? "text-black" : "text-white"
+        )} style={{ fontSize: '7.5px' }}>زر</span>
         <span className={cn(
           "font-black tracking-tight",
-          displayKey === 'Yellow' ? "text-black" : "text-white"
-        )} style={{ fontSize: '8.5px' }}>{shortKey}</span>
+          (displayKey === 'Yellow' || isWhiteButton) ? "text-black" : "text-white"
+        )} style={{ fontSize: '10px' }}>{shortKey}</span>
       </div>
     </div>
   );
@@ -141,7 +141,7 @@ export function CarDock() {
               <ShortcutBadge action={app.action} context="dock" />
               <div className={cn(
                 "transition-all duration-500 flex items-center justify-center", 
-                isActive ? "text-blue-400 drop-shadow-[0_0_10px_rgba(96,165,250,0.8)]" : "text-white opacity-60"
+                isActive ? "text-blue-400 drop-shadow-[0_0_10px_rgba(96,165,250,0.8)]" : "text-white"
               )}>
                 <app.icon className="w-6 h-6 md:w-7 md:h-7" />
               </div>

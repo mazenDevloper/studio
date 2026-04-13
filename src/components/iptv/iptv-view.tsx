@@ -5,13 +5,18 @@ import { useState, useEffect, useMemo } from "react";
 import { useMediaStore, IptvChannel } from "@/lib/store";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Tv, List, ChevronRight, Loader2, X, Star, Zap, Search } from "lucide-react";
+import { Tv, List, ChevronRight, Loader2, X, Star, Zap, Search, ArrowRightLeft } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { getIptvCategories, getIptvChannels } from "@/app/actions/iptv";
 import { cn } from "@/lib/utils";
+import { ShortcutBadge } from "@/components/layout/car-dock";
 
 export function IptvView() {
-  const { setActiveIptv, favoriteIptvChannels, toggleFavoriteIptvChannel, dockSide } = useMediaStore();
+  const { 
+    setActiveIptv, favoriteIptvChannels, toggleFavoriteIptvChannel, dockSide, pickedUpId, setPickedUpId,
+    isReorderMode, reorderIptvChannelTo, toggleReorderMode
+  } = useMediaStore();
+  
   const [categories, setCategories] = useState<any[]>([]);
   const [channels, setChannels] = useState<IptvChannel[]>([]);
   const [selectedCat, setSelectedCat] = useState<string | null>(null);
@@ -23,7 +28,6 @@ export function IptvView() {
   useEffect(() => { 
     fetchCategories(); 
     setSelectedCat('direct');
-    // Default focus: first channel in favorites
     setTimeout(() => {
       const firstChannel = document.querySelector('[data-nav-id="iptv-channel-0"]') as HTMLElement;
       firstChannel?.focus();
@@ -35,6 +39,27 @@ export function IptvView() {
       setChannels(Array.isArray(favoriteIptvChannels) ? favoriteIptvChannels : []);
     }
   }, [favoriteIptvChannels, selectedCat]);
+
+  // Drag and Drop Logic
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    if (!isReorderMode || selectedCat !== 'direct') return;
+    e.dataTransfer.setData("id", id);
+    setPickedUpId(id);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    if (!isReorderMode || selectedCat !== 'direct') return;
+    e.preventDefault();
+  };
+
+  const handleDrop = (e: React.DragEvent, targetId: string) => {
+    if (!isReorderMode || selectedCat !== 'direct') return;
+    e.preventDefault();
+    const sourceId = e.dataTransfer.getData("id");
+    if (sourceId === targetId) return;
+    reorderIptvChannelTo(sourceId, targetId);
+    setPickedUpId(null);
+  };
 
   const fetchCategories = async () => {
     setLoading(true);
@@ -53,7 +78,6 @@ export function IptvView() {
       if (Array.isArray(data)) {
         const transformed = data.map((ch: any) => ({ ...ch, type: 'web', url: `http://playstop.watch:2095/live/W87d737/Pd37qj34/${ch.stream_id}.m3u8` }));
         setChannels(transformed);
-        // AUTO-FOCUS: Focus first channel in category
         setTimeout(() => { document.querySelector('[data-nav-id="iptv-channel-0"]')?.focus(); }, 300);
       }
     } finally { setLoading(false); }
@@ -74,6 +98,16 @@ export function IptvView() {
           <p className="text-white/40 text-xs font-bold uppercase tracking-widest mr-1">Premium Live Feed Hub</p>
         </div>
         <div className="flex gap-4">
+          {selectedCat === 'direct' && (
+            <Button 
+              onClick={toggleReorderMode} 
+              variant={isReorderMode ? "default" : "outline"} 
+              className={cn("rounded-full focusable h-12 px-6 relative", isReorderMode ? "bg-yellow-500 text-black shadow-glow" : "bg-white/5")}
+            >
+              <ShortcutBadge action="toggle_reorder" className="-bottom-3 -left-3" />
+              <ArrowRightLeft className="w-4 h-4 ml-2" /> {isReorderMode ? "إيقاف الترتيب" : "ترتيب المفضلة"}
+            </Button>
+          )}
           <Button onClick={() => fetchChannels('direct')} variant="outline" className={cn("rounded-full focusable h-12 px-6", selectedCat === 'direct' ? "bg-emerald-500 text-black shadow-glow" : "bg-white/5")} data-nav-id="iptv-fav-toggle">
             <Zap className="w-4 h-4 ml-2" /> المفضلة
           </Button>
@@ -106,7 +140,32 @@ export function IptvView() {
           <Input placeholder="ابحث عن قناة..." value={search} onChange={(e) => setSearch(e.target.value)} className="bg-white/5 border-white/10 h-20 rounded-[2rem] px-8 text-2xl text-white shadow-2xl search-input-quiet" data-nav-id="iptv-search-input" />
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-8" data-row-id="iptv-channels-grid">
             {filteredChannels.map((ch, idx) => (
-              <div key={idx} onClick={() => { setActiveIptv(ch, filteredChannels); }} data-nav-id={`iptv-channel-${idx}`} className="group w-full aspect-square rounded-[2.8rem] bg-white/5 border-4 border-transparent hover:border-emerald-500 focusable cursor-pointer overflow-hidden relative shadow-2xl" tabIndex={0}>
+              <div 
+                key={idx} 
+                draggable={isReorderMode && selectedCat === 'direct'}
+                onDragStart={(e) => handleDragStart(e, ch.stream_id)}
+                onDragOver={handleDragOver}
+                onDrop={(e) => handleDrop(e, ch.stream_id)}
+                onClick={() => { 
+                  if (isReorderMode) {
+                    setPickedUpId(pickedUpId === ch.stream_id ? null : ch.stream_id);
+                  } else {
+                    setActiveIptv(ch, filteredChannels); 
+                  }
+                }} 
+                data-nav-id={`iptv-channel-${idx}`} data-type="iptv" data-id={ch.stream_id} 
+                className={cn(
+                  "group w-full aspect-square rounded-[2.8rem] bg-white/5 border-4 focusable cursor-pointer overflow-hidden relative shadow-2xl transition-all", 
+                  pickedUpId === ch.stream_id ? "border-accent animate-pulse scale-105 z-50 bg-accent/20" : "border-transparent hover:border-emerald-500",
+                  isReorderMode && selectedCat === 'direct' && "cursor-move"
+                )} 
+                tabIndex={0}
+              >
+                {isReorderMode && selectedCat === 'direct' && (
+                  <div className="absolute top-4 left-4 w-8 h-8 bg-black/60 rounded-full flex items-center justify-center border border-accent/40 shadow-glow z-50">
+                    <ArrowRightLeft className={cn("w-5 h-5 text-accent", pickedUpId === ch.stream_id && "animate-bounce")} />
+                  </div>
+                )}
                 {ch.stream_icon ? <img src={ch.stream_icon} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="" /> : <div className="w-full h-full flex items-center justify-center bg-zinc-900"><Tv className="w-14 h-14 text-white/10" /></div>}
                 <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-end p-4">
                   <span className="text-white text-xs font-black text-center truncate w-full">{ch.name}</span>
@@ -115,6 +174,7 @@ export function IptvView() {
                   onClick={(e) => { e.stopPropagation(); toggleFavoriteIptvChannel(ch); }}
                   className={cn("absolute top-4 right-4 w-10 h-10 rounded-full flex items-center justify-center transition-all", favoriteIptvChannels.some(c => c.stream_id === ch.stream_id) ? "bg-yellow-500 text-black" : "bg-black/60 text-white/40")}
                 >
+                  <ShortcutBadge action="delete_item" className="-top-2 -right-2 opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity" />
                   <Star className={cn("w-5 h-5", favoriteIptvChannels.some(c => c.stream_id === ch.stream_id) && "fill-current")} />
                 </button>
               </div>

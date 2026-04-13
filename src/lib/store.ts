@@ -14,6 +14,7 @@ import {
   JSONBIN_MANUSCRIPTS_BIN_ID,
   JSONBIN_MATCHES_SCHEDULE_BIN_ID,
   JSONBIN_CLUBS_CACHE_BIN_ID,
+  JSONBIN_POPULAR_RECITERS_BIN_ID,
   prayerTimesData
 } from "./constants";
 
@@ -77,12 +78,11 @@ export interface FavoriteTeam {
   logo: string;
 }
 
-// Context-aware Action Types
 export type MappingContext = 'global' | 'player' | 'dashboard' | 'media' | 'quran' | 'football' | 'iptv' | 'settings';
 
 export type AppAction = 
   | 'nav_up' | 'nav_down' | 'nav_left' | 'nav_right' | 'nav_ok' | 'nav_back'
-  | 'toggle_star' | 'delete_item'
+  | 'toggle_star' | 'delete_item' | 'toggle_reorder'
   | 'goto_home' | 'goto_media' | 'goto_quran' | 'goto_hihi2' | 'goto_iptv' | 'goto_football' | 'goto_settings'
   | 'player_next' | 'player_prev' | 'player_save' | 'player_fullscreen' | 'player_playlist' | 'player_minimize' | 'player_close' | 'player_settings'
   | 'focus_search' | 'focus_reciters' | 'focus_surahs'
@@ -127,6 +127,10 @@ interface MediaState {
   wallPlateData: any | null;
   playerMode: 'api' | 'web';
   isAltModeActive: boolean; 
+  isReorderMode: boolean;
+  
+  pickedUpId: string | null;
+  setPickedUpId: (id: string | null) => void;
   
   videoResults: YouTubeVideo[];
   selectedChannel: YouTubeChannel | null;
@@ -140,8 +144,12 @@ interface MediaState {
   setFavoriteReciters: (reciters: YouTubeChannel[]) => void;
   addChannel: (channel: YouTubeChannel) => void;
   removeChannel: (channelid: string) => void;
+  reorderChannel: (fromId: string, direction: 'prev' | 'next') => void;
+  reorderChannelTo: (fromId: string, toId: string) => void;
   addReciter: (channel: YouTubeChannel) => void;
   removeReciter: (channelid: string) => void;
+  reorderReciter: (fromId: string, direction: 'prev' | 'next') => void;
+  reorderReciterTo: (fromId: string, toId: string) => void;
   toggleSaveVideo: (video: YouTubeVideo) => void;
   removeVideo: (id: string) => void;
   toggleStarChannel: (channelid: string) => void;
@@ -161,6 +169,8 @@ interface MediaState {
   toggleBelledMatch: (matchId: string) => void;
   skipMatch: (matchId: string) => void;
   toggleFavoriteIptvChannel: (channel: IptvChannel) => void;
+  reorderIptvChannel: (fromId: string, direction: 'prev' | 'next') => void;
+  reorderIptvChannelTo: (fromId: string, toId: string) => void;
   setIptvPlaylist: (channels: IptvChannel[], index: number) => void;
   nextIptvChannel: () => void;
   prevIptvChannel: () => void;
@@ -188,6 +198,7 @@ interface MediaState {
   toggleShowIslands: () => void;
   setPlayerMode: (mode: 'api' | 'web') => void;
   toggleAltMode: () => void;
+  toggleReorderMode: () => void;
   
   setVideoResults: (results: YouTubeVideo[]) => void;
   setSelectedChannel: (channel: YouTubeChannel | null) => void;
@@ -234,7 +245,8 @@ const DEFAULT_GLOBAL_MAPPINGS: Record<string, string[]> = {
   goto_football: ['t', 'Green'], 
   goto_settings: ['p', 'Yellow'],
   delete_item: ['Red'],
-  toggle_star: ['Yellow']
+  toggle_star: ['Yellow'],
+  toggle_reorder: ['Blue']
 };
 
 const DEFAULT_PLAYER_MAPPINGS: Record<string, string[]> = {
@@ -282,6 +294,18 @@ const DEFAULT_PRAYER_SETTINGS: PrayerSetting[] = [
   { id: 'isha', name: 'العشاء', offsetMinutes: 0, showCountdown: true, countdownWindow: 20, showCountup: true, countupWindow: 25, iqamahDuration: 20 },
 ];
 
+const INITIAL_IPTV_FAVORITES: IptvChannel[] = [
+  {
+    name: "beIN Sports 1 HD",
+    stream_id: "2001",
+    stream_icon: "https://i.pinimg.com/736x/8e/8e/8e/8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e.jpg",
+    category_id: "direct",
+    starred: true,
+    type: 'web',
+    url: "http://playstop.watch:2095/live/W87d737/Pd37qj34/2001.m3u8"
+  }
+];
+
 export const useMediaStore = create<MediaState>()(
   persist(
     (set, get) => ({
@@ -292,9 +316,8 @@ export const useMediaStore = create<MediaState>()(
       favoriteLeagueIds: [307, 39, 2, 140, 135],
       belledMatchIds: [],
       skippedMatchIds: [],
-      favoriteIptvChannels: [],
+      favoriteIptvChannels: INITIAL_IPTV_FAVORITES,
       favoriteReciters: [],
-      iptvFormat: 'm3u8',
       iptvFormat: 'm3u8',
       iptvPlaylist: [],
       iptvPlaylistIndex: 0,
@@ -332,7 +355,10 @@ export const useMediaStore = create<MediaState>()(
       wallPlateType: null,
       wallPlateData: null,
       playerMode: 'api',
-      isAltModeActive: false,
+      isAltModeActive: true, 
+      isReorderMode: false,
+      pickedUpId: null,
+      setPickedUpId: (id) => set({ pickedUpId: id }),
       
       videoResults: [],
       selectedChannel: null,
@@ -355,6 +381,7 @@ export const useMediaStore = create<MediaState>()(
           customWallBackgrounds: state.customWallBackgrounds,
           customManuscriptColors: state.customManuscriptColors,
           keyMappings: state.keyMappings,
+          isAltModeActive: state.isAltModeActive,
           favoriteReciters: state.favoriteReciters
         };
         await updateBin(JSONBIN_MASTER_BIN_ID, data);
@@ -376,7 +403,7 @@ export const useMediaStore = create<MediaState>()(
       fetchClubsFromCache: async (leagueId: string) => {
         set({ isClubsLoading: true });
         try {
-          const res = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_CLUBS_CACHE_BIN_ID}/latest?nocache=${Date.now()}`, {
+          const res = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_CLUBS_CACHE_BIN_ID}/latest`, {
             headers: { 'X-Master-Key': JSONBIN_MASTER_KEY }
           });
           if (res.ok) {
@@ -407,7 +434,7 @@ export const useMediaStore = create<MediaState>()(
 
       fetchPrayerTimes: async () => {
         try {
-          const res = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_PRAYER_TIMES_BIN_ID}/latest?nocache=${Date.now()}`, {
+          const res = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_PRAYER_TIMES_BIN_ID}/latest`, {
             headers: { 'X-Master-Key': JSONBIN_MASTER_KEY }
           });
           if (res.ok) {
@@ -419,7 +446,7 @@ export const useMediaStore = create<MediaState>()(
 
       fetchManuscripts: async () => {
         try {
-          const res = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_MANUSCRIPTS_BIN_ID}/latest?nocache=${Date.now()}`, {
+          const res = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_MANUSCRIPTS_BIN_ID}/latest`, {
             headers: { 'X-Master-Key': JSONBIN_MASTER_KEY }
           });
           if (res.ok) {
@@ -450,10 +477,32 @@ export const useMediaStore = create<MediaState>()(
         });
       },
 
+      reorderChannel: (id, direction) => set((state) => {
+        const list = [...state.favoriteChannels];
+        const idx = list.findIndex(c => c.channelid === id);
+        if (idx === -1) return state;
+        const nextIdx = direction === 'next' ? idx + 1 : idx - 1;
+        if (nextIdx < 0 || nextIdx >= list.length) return state;
+        [list[idx], list[nextIdx]] = [list[nextIdx], list[idx]];
+        setTimeout(() => updateBin(JSONBIN_CHANNELS_BIN_ID, list), 500);
+        return { favoriteChannels: list };
+      }),
+
+      reorderChannelTo: (fromId, toId) => set((state) => {
+        const list = [...state.favoriteChannels];
+        const fromIdx = list.findIndex(c => c.channelid === fromId);
+        const toIdx = list.findIndex(c => c.channelid === toId);
+        if (fromIdx === -1 || toIdx === -1) return state;
+        const [moved] = list.splice(fromIdx, 1);
+        list.splice(toIdx, 0, moved);
+        setTimeout(() => updateBin(JSONBIN_CHANNELS_BIN_ID, list), 500);
+        return { favoriteChannels: list };
+      }),
+
       addReciter: (reciter) => {
         set((state) => {
           const newList = [...state.favoriteReciters.filter(r => r.channelid !== reciter.channelid), reciter];
-          setTimeout(() => get().syncMasterBin(), 100);
+          setTimeout(() => updateBin(JSONBIN_POPULAR_RECITERS_BIN_ID, newList), 100);
           return { favoriteReciters: newList };
         });
       },
@@ -461,10 +510,32 @@ export const useMediaStore = create<MediaState>()(
       removeReciter: (channelid) => {
         set((state) => {
           const newList = state.favoriteReciters.filter(r => r.channelid !== channelid);
-          setTimeout(() => get().syncMasterBin(), 100);
+          setTimeout(() => updateBin(JSONBIN_POPULAR_RECITERS_BIN_ID, newList), 100);
           return { favoriteReciters: newList };
         });
       },
+
+      reorderReciter: (id, direction) => set((state) => {
+        const list = [...state.favoriteReciters];
+        const idx = list.findIndex(r => r.channelid === id);
+        if (idx === -1) return state;
+        const nextIdx = direction === 'next' ? idx + 1 : idx - 1;
+        if (nextIdx < 0 || nextIdx >= list.length) return state;
+        [list[idx], list[nextIdx]] = [list[nextIdx], list[idx]];
+        setTimeout(() => updateBin(JSONBIN_POPULAR_RECITERS_BIN_ID, list), 500);
+        return { favoriteReciters: list };
+      }),
+
+      reorderReciterTo: (fromId, toId) => set((state) => {
+        const list = [...state.favoriteReciters];
+        const fromIdx = list.findIndex(r => r.channelid === fromId);
+        const toIdx = list.findIndex(r => r.channelid === toId);
+        if (fromIdx === -1 || toIdx === -1) return state;
+        const [moved] = list.splice(fromIdx, 1);
+        list.splice(toIdx, 0, moved);
+        setTimeout(() => updateBin(JSONBIN_POPULAR_RECITERS_BIN_ID, list), 500);
+        return { favoriteReciters: list };
+      }),
 
       toggleSaveVideo: (video) => {
         set((state) => {
@@ -551,6 +622,28 @@ export const useMediaStore = create<MediaState>()(
           return { favoriteIptvChannels: newList };
         });
       },
+
+      reorderIptvChannel: (id, direction) => set((state) => {
+        const list = [...state.favoriteIptvChannels];
+        const idx = list.findIndex(c => c.stream_id === id);
+        if (idx === -1) return state;
+        const nextIdx = direction === 'next' ? idx + 1 : idx - 1;
+        if (nextIdx < 0 || nextIdx >= list.length) return state;
+        [list[idx], list[nextIdx]] = [list[nextIdx], list[idx]];
+        setTimeout(() => updateBin(JSONBIN_IPTV_FAVS_BIN_ID, list), 500);
+        return { favoriteIptvChannels: list };
+      }),
+
+      reorderIptvChannelTo: (fromId, toId) => set((state) => {
+        const list = [...state.favoriteIptvChannels];
+        const fromIdx = list.findIndex(c => c.stream_id === fromId);
+        const toIdx = list.findIndex(c => c.stream_id === toId);
+        if (fromIdx === -1 || toIdx === -1) return state;
+        const [moved] = list.splice(fromIdx, 1);
+        list.splice(toIdx, 0, moved);
+        setTimeout(() => updateBin(JSONBIN_IPTV_FAVS_BIN_ID, list), 500);
+        return { favoriteIptvChannels: list };
+      }),
 
       addManuscript: (manuscript) => set((state) => {
         const newList = [...state.customManuscripts, manuscript];
@@ -657,6 +750,8 @@ export const useMediaStore = create<MediaState>()(
       setAiSuggestions: (suggestions) => set({ aiSuggestions: suggestions }),
       
       setActiveVideo: (video, context) => {
+        const state = get();
+        if (state.isReorderMode) return; 
         if (video) {
           const playlist = context && context.length > 0 ? context : [video];
           const idx = playlist.findIndex(v => v.id === video.id);
@@ -677,6 +772,7 @@ export const useMediaStore = create<MediaState>()(
 
       setActiveIptv: (channel, context) => {
         const state = get();
+        if (state.isReorderMode) return; 
         if (!channel) {
           set({ activeIptv: null, isPlaying: false, isMinimized: false, isFullScreen: false, gridMode: 'hidden' });
           return;
@@ -743,22 +839,44 @@ export const useMediaStore = create<MediaState>()(
       setChannelVideos: (videos) => set({ channelVideos: videos }),
       resetMediaView: () => set({ videoResults: [], selectedChannel: null, channelVideos: [] }),
       toggleAltMode: () => set((state) => ({ isAltModeActive: !state.isAltModeActive })),
+      toggleReorderMode: () => set((state) => ({ isReorderMode: !state.isReorderMode, pickedUpId: null })),
     }),
     {
-      name: "drivecast-master-v20",
-      partialize: (state) => ({ videoProgress: state.videoProgress, dockSide: state.dockSide, showIslands: state.showIslands, playerMode: state.playerMode, isAltModeActive: state.isAltModeActive }),
+      name: "drivecast-master-v25",
+      partialize: (state) => ({ videoProgress: state.videoProgress, dockSide: state.dockSide, showIslands: state.showIslands, playerMode: state.playerMode, isAltModeActive: state.isAltModeActive, isReorderMode: state.isReorderMode }),
     }
   )
 );
 
+/**
+ * Universal Sync Engine v54.0 - Ultra-Resilient Staggered Fetch
+ */
 if (typeof window !== "undefined") {
+  const fetchWithRetry = async (binId: string, retries = 2) => {
+    for (let i = 0; i <= retries; i++) {
+      try {
+        const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, { 
+          headers: { 'X-Master-Key': JSONBIN_MASTER_KEY } 
+        });
+        if (res.ok) {
+          const json = await res.json();
+          return json.record;
+        }
+        if (res.status === 429) {
+          // Staggered wait on rate limit
+          await new Promise(r => setTimeout(r, 1000 * (i + 1)));
+        }
+      } catch (e) {
+        if (i === retries) throw e;
+      }
+    }
+    return null;
+  };
+
   const syncWithBins = async () => {
     try {
-      const fetchBin = async (binId: string) => {
-        const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest?nocache=${Date.now()}`, { headers: { 'X-Master-Key': JSONBIN_MASTER_KEY } });
-        return res.ok ? (await res.json()).record : null;
-      };
-      const masterData = await fetchBin(JSONBIN_MASTER_BIN_ID);
+      // 1. Fetch Master Config (Staggered)
+      const masterData = await fetchWithRetry(JSONBIN_MASTER_BIN_ID);
       if (masterData) {
         const incoming = masterData.keyMappings || {};
         const safe = { ...DEFAULT_CONTEXT_MAPPINGS };
@@ -779,18 +897,57 @@ if (typeof window !== "undefined") {
           customWallBackgrounds: masterData.customWallBackgrounds || [],
           customManuscriptColors: masterData.customManuscriptColors || ['#ffffff', '#FFD700', '#C0C0C0'],
           keyMappings: safe,
-          favoriteReciters: masterData.favoriteReciters || []
+          isAltModeActive: masterData.isAltModeActive !== undefined ? masterData.isAltModeActive : true
         });
       }
-      const [channels, saved, iptv, prayerRes, manuscripts] = await Promise.all([
-        fetchBin(JSONBIN_CHANNELS_BIN_ID), fetchBin(JSONBIN_SAVED_VIDEOS_BIN_ID), fetchBin(JSONBIN_IPTV_FAVS_BIN_ID), fetchBin(JSONBIN_PRAYER_TIMES_BIN_ID), fetchBin(JSONBIN_MANUSCRIPTS_BIN_ID)
-      ]);
+
+      // 2. Fetch specific bins with 100ms delay between each to avoid rate limits
+      const wait = (ms: number) => new Promise(r => setTimeout(r, ms));
+
+      const channels = await fetchWithRetry(JSONBIN_CHANNELS_BIN_ID);
       if (Array.isArray(channels)) useMediaStore.setState({ favoriteChannels: channels });
+      else if (channels?.channels) useMediaStore.setState({ favoriteChannels: channels.channels });
+
+      await wait(100);
+      const saved = await fetchWithRetry(JSONBIN_SAVED_VIDEOS_BIN_ID);
       if (Array.isArray(saved)) useMediaStore.setState({ savedVideos: saved });
-      if (Array.isArray(iptv)) useMediaStore.setState({ favoriteIptvChannels: iptv.map((ch: any) => ({ ...ch, type: 'web', url: ch.url || `http://playstop.watch:2095/live/W87d737/Pd37qj34/${ch.stream_id}.m3u8` })) });
+      else if (saved?.videos) useMediaStore.setState({ savedVideos: saved.videos });
+
+      await wait(100);
+      const iptv = await fetchWithRetry(JSONBIN_IPTV_FAVS_BIN_ID);
+      if (iptv) {
+        const list = Array.isArray(iptv) ? iptv : (iptv.favorites || []);
+        const mergedIptv = list.length > 0 ? list : INITIAL_IPTV_FAVORITES;
+        useMediaStore.setState({ 
+          favoriteIptvChannels: mergedIptv.map((ch: any) => ({ 
+            ...ch, 
+            type: 'web', 
+            url: ch.url || `http://playstop.watch:2095/live/W87d737/Pd37qj34/${ch.stream_id}.m3u8` 
+          })) 
+        });
+      }
+
+      await wait(100);
+      const prayerRes = await fetchWithRetry(JSONBIN_PRAYER_TIMES_BIN_ID);
       if (Array.isArray(prayerRes)) useMediaStore.setState({ prayerTimes: prayerRes });
-      if (manuscripts) useMediaStore.setState({ customManuscripts: Array.isArray(manuscripts) ? manuscripts : (manuscripts.manuscripts || []) });
-    } catch (e) { console.error(e); }
+
+      await wait(100);
+      const manuscripts = await fetchWithRetry(JSONBIN_MANUSCRIPTS_BIN_ID);
+      if (manuscripts) {
+        const list = Array.isArray(manuscripts) ? manuscripts : (manuscripts.manuscripts || []);
+        useMediaStore.setState({ customManuscripts: list });
+      }
+
+      await wait(100);
+      const reciters = await fetchWithRetry(JSONBIN_POPULAR_RECITERS_BIN_ID);
+      if (Array.isArray(reciters)) useMediaStore.setState({ favoriteReciters: reciters });
+      else if (reciters?.reciters) useMediaStore.setState({ favoriteReciters: reciters.reciters });
+
+    } catch (e) { 
+      console.error("Universal Sync Failed:", e); 
+    }
   };
+
+  // Run initial sync after 1s
   setTimeout(syncWithBins, 1000);
 }

@@ -99,32 +99,55 @@ export function LiveMatchIsland() {
     const list: ReminderItem[] = [];
     const totalCurrentSecs = (now.getHours() * 3600) + (now.getMinutes() * 60) + now.getSeconds();
 
-    // 1. Prayer Time Reminders
     if (prayerTimes?.length) {
-      const pData = prayerTimes.find(p => p.date.endsWith(`-${now.getDate().toString().padStart(2, '0')}`)) || prayerTimes[0];
+      const day = now.getDate().toString().padStart(2, '0');
+      const dateStr = now.toISOString().split('T')[0];
+      const pData = prayerTimes.find(p => p.date === dateStr) || 
+                    prayerTimes.find(p => p.date.endsWith(`-${day}`)) || 
+                    prayerTimes[0];
+      
       for (const setting of prayerSettings) {
         let refTime = pData[setting.id as keyof typeof pData];
+        let baseMinutesOffset = setting.offsetMinutes;
+
+        if (setting.id === 'duha') {
+          refTime = pData['sunrise'];
+          baseMinutesOffset += 15;
+        }
+
         if (!refTime) continue;
-        const baseMinutes = tToM(refTime) + setting.offsetMinutes;
+
+        const baseMinutes = tToM(refTime) + baseMinutesOffset;
         const azanSecs = baseMinutes * 60;
         let aDiff = azanSecs - totalCurrentSecs;
         if (aDiff < -43200) aDiff += 86400;
-        
+
         if (aDiff > 0 && aDiff < (setting.countdownWindow * 60)) {
           list.push({ id: `azan-${setting.id}`, name: setting.name, diff: aDiff, isWithinWindow: true, type: 'azan' });
         }
       }
     }
 
-    // 2. Custom Reminders from Settings
     for (const rem of reminders) {
       let targetSecs = 0;
       if (rem.relativePrayer === 'manual' && rem.manualTime) {
         targetSecs = tToM(rem.manualTime) * 60;
       } else if (prayerTimes?.length) {
-        const pData = prayerTimes.find(p => p.date.endsWith(`-${now.getDate().toString().padStart(2, '0')}`)) || prayerTimes[0];
+        const day = now.getDate().toString().padStart(2, '0');
+        const dateStr = now.toISOString().split('T')[0];
+        const pData = prayerTimes.find(p => p.date === dateStr) || 
+                      prayerTimes.find(p => p.date.endsWith(`-${day}`)) || 
+                      prayerTimes[0];
+        
         let refTime = pData[rem.relativePrayer as keyof typeof pData];
-        if (refTime) targetSecs = (tToM(refTime) + rem.offsetMinutes) * 60;
+        let extraOffset = rem.offsetMinutes;
+
+        if (rem.relativePrayer === 'duha') {
+          refTime = pData['sunrise'];
+          extraOffset += 15;
+        }
+
+        if (refTime) targetSecs = (tToM(refTime) + extraOffset) * 60;
       }
 
       if (targetSecs > 0) {
@@ -189,6 +212,8 @@ export function LiveMatchIsland() {
       {subtext && <span className="font-black text-white/40 uppercase tracking-widest absolute" style={{ fontSize: '1rem', bottom: '-11px' }}>{subtext}</span>}
     </div>
   );
+
+  if (!isCountdownActive && !activeGoal) return null;
 
   return (
     <div className={cn(

@@ -6,25 +6,26 @@ export const FOOTBALL_API_KEY = '2f79edc60ed7f63aa4af1feea0f1ff2c';
 export const FOOTBALL_API_BASE_URL = 'https://v3.football.api-sports.io';
  
 export const YT_KEYS_POOL = [
-  "AIzaSyABJ0ChF7XVsXeppoLS9VBIxNJglc-0rB0", 
-  "AIzaSyDb4_3-IBy5ZPsIwlkv81z3EDS9Tue98n4", 
-  "AIzaSyBWsvSFb6VNx89VOzjP0-zq7sWgShfiWjE", 
-  "AIzaSyATzZbuYsLdQq-S8zFih3hkgtZVpS0bcN8",
-  "AIzaSyCDk0lSml9gAvvsgBoWKvVToiFaxWlTZEw",
-  "AIzaSyCcB-bW1b1bSu3hzROVhSbRT-D894zHYeg",
-  "AIzaSyAjdVZ2Rodp6ZVEF1pZT195kAtGELolxSI",
-  "AIzaSyDULoFJLWNIO9hn0u8siLz-BzTi7eM-CX4",
-  "AIzaSyBYThRM6tVnzgFgdHOUAN6DN8jQd54OKeg",
-  "AIzaSyB7QdfI0br5BfP71hOr36hz2dRWG_l0G8k",
-  "AIzaSyBdhcRo-EsvIduedQd-jFHfrEj9NeiP7pU",
-  "AIzaSyBLrMA6plsSZtqg2iY9Z1N1fJAHNmgGxos",
-  "AIzaSyCaqMPtn-egmEQk7XmTel--xsXV1Xbdp7o",
-  "AIzaSyDj4w1H3Is_rmTLhl40zER7AgYhT_tKASo",
-  "AIzaSyBeTHs25EsKeDFtIS5kq8iDATz-2c8hBrI",
-  "AIzaSyBbhRcFh-u3bWcG8sPLNnOl5r_lMG8q7Zs",
-  "AIzaSyBYCIeFqlTv1xn53rHRTIv0_0rLIGf9t2Q",
+  "AIzaSyCxfbZmguW3qxgKfxjs4o9OsXTbnCuRMoc", // Newest Key - Priority 1
+  "AIzaSyCDXmW0Jzhv93uYjk9xfgxCS2061jqWaaY",
   "AIzaSyAuyQADaB5SzwebqRMaG_AfkKRyB-uBL3c",
-  "AIzaSyCDXmW0Jzhv93uYjk9xfgxCS2061jqWaaY"
+  "AIzaSyB7QdfI0br5BfP71hOr36hz2dRWG_l0G8k",
+  "AIzaSyBbhRcFh-u3bWcG8sPLNnOl5r_lMG8q7Zs",
+  "AIzaSyBeTHs25EsKeDFtIS5kq8iDATz-2c8hBrI",
+  "AIzaSyDj4w1H3Is_rmTLhl40zER7AgYhT_tKASo",
+  "AIzaSyCaqMPtn-egmEQk7XmTel--xsXV1Xbdp7o",
+  "AIzaSyBLrMA6plsSZtqg2iY9Z1N1fJAHNmgGxos",
+  "AIzaSyBdhcRo-EsvIduedQd-jFHfrEj9NeiP7pU",
+  "AIzaSyB7QdfI0br5BfP71hOr36hz2dRWG_l0G8k",
+  "AIzaSyBYThRM6tVnzgFgdHOUAN6DN8jQd54OKeg",
+  "AIzaSyDULoFJLWNIO9hn0u8siLz-BzTi7eM-CX4",
+  "AIzaSyAjdVZ2Rodp6ZVEF1pZT195kAtGELolxSI",
+  "AIzaSyCcB-bW1b1bSu3hzROVhSbRT-D894zHYeg",
+  "AIzaSyCDk0lSml9gAvvsgBoWKvVToiFaxWlTZEw",
+  "AIzaSyATzZbuYsLdQq-S8zFih3hkgtZVpS0bcN8",
+  "AIzaSyBWsvSFb6VNx89VOzjP0-zq7sWgShfiWjE",
+  "AIzaSyDb4_3-IBy5ZPsIwlkv81z3EDS9Tue98n4",
+  "AIzaSyABJ0ChF7XVsXeppoLS9VBIxNJglc-0rB0"
 ];
 
 export const JSONBIN_MASTER_KEY = '$2a$10$SYrYv.ct8hiMU9YeUxEQ.ecRkOrTqs.TDchJRV3wW.aKJnDXy2oVy';
