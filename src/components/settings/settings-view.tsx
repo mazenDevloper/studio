@@ -1,14 +1,14 @@
 
 "use client";
 
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useMediaStore, Reminder, Manuscript, AppAction, MappingContext } from "@/lib/store";
 import { 
-  Settings, Bell, Trash2, Edit2, Trophy, Star, Plus, Monitor, ImageIcon, Type as TypeIcon, Palette, Upload, Save, Timer, Keyboard, MousePointer2, X as LucideX, Clock, MapPin, CheckCircle2, Play, Circle, Search, User, BookOpen, Info, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Zap
+  Settings, Bell, Trash2, Edit2, Plus, Monitor, ImageIcon, Palette, Keyboard, X as LucideX, Clock, CheckCircle2, Timer, Zap, Eye
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
@@ -18,15 +18,15 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ShortcutBadge } from "@/components/layout/car-dock";
 import { convertTo12Hour } from "@/lib/constants";
-import Image from "next/image";
 
 export function SettingsView() {
   const { 
-    addReminder, updateReminder, removeReminder, reminders,
+    addReminder, removeReminder, reminders,
     mapSettings, updateMapSettings, prayerSettings, updatePrayerSetting,
     customManuscripts, addManuscript, removeManuscript, prayerTimes,
     keyMappings, setKeyMapping, removeSpecificKeyMapping, clearKeyMappings,
-    isAltModeActive, toggleAltMode
+    isAltModeActive, toggleAltMode, customWallBackgrounds, addCustomWallBackground, removeCustomWallBackground,
+    autoHideIsland, setAutoHideIsland
   } = useMediaStore();
   
   const { toast } = useToast();
@@ -34,6 +34,7 @@ export function SettingsView() {
   const [selectedContext, setSelectedContext] = useState<MappingContext>('global');
   const [manuscriptInput, setManuscriptInput] = useState("");
   const [manuscriptType, setManuscriptType] = useState<'text' | 'image'>('text');
+  const [bgInput, setBgInput] = useState("");
 
   const [newReminder, setNewReminder] = useState<Partial<Reminder>>({
     label: "", relativePrayer: "manual", manualTime: "12:00", offsetMinutes: 0, color: "text-blue-400", iconType: "bell"
@@ -105,34 +106,21 @@ export function SettingsView() {
     return prayerTimes.find(pt => pt.date.endsWith(`-${day}`)) || prayerTimes[0];
   }, [prayerTimes]);
 
-  const RemoteKeyShape = ({ name }: { name: string }) => {
-    const isColor = ['Red', 'Green', 'Yellow', 'Blue'].includes(name);
-    const isNumber = /^\d$/.test(name);
-    const isHardware = ['Sub', 'Info', 'Back', 'Exit'].includes(name);
-    const isWhite = !isColor && !isNumber && !isHardware;
+  const wallPresets = [
+    "https://images.unsplash.com/photo-1578301978693-85fa9c0320b9?q=80&w=2000",
+    "https://images.unsplash.com/photo-1594911772125-07fc7a2d8d9f?q=80&w=2000",
+    "https://images.unsplash.com/photo-1519817650390-64a93db51149?q=80&w=2000",
+    "https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=2000",
+    "https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=2000"
+  ];
 
-    return (
-      <div className={cn(
-        "px-4 py-2 flex flex-col items-center justify-center transition-all duration-500 min-w-[60px]",
-        isColor ? "rounded-[0.6rem] border-t border-white/20 h-[40px]" : "rounded-full border-2 border-zinc-600 h-[50px] w-[50px]",
-        name === 'Red' && "bg-red-600 shadow-[0_0_15px_rgba(220,38,38,0.6)]",
-        name === 'Green' && "bg-green-600 shadow-[0_0_15px_rgba(22,163,74,0.6)]",
-        name === 'Yellow' && "bg-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.6)] text-black border-t-black/10",
-        name === 'Blue' && "bg-blue-600 shadow-[0_0_15px_rgba(37,99,235,0.6)]",
-        isWhite && "bg-white text-black border-white shadow-glow h-[50px] w-[50px] rounded-full",
-        (isNumber || isHardware) && !isWhite && "bg-zinc-800 shadow-2xl text-accent"
-      )}>
-        <span className={cn(
-          "text-[6.5px] font-black uppercase tracking-tighter opacity-80 mb-0.5",
-          (name === 'Yellow' || isWhite) ? "text-black" : "text-white"
-        )}>زر</span>
-        <span className={cn(
-          "text-[9px] font-black uppercase tracking-widest",
-          (name === 'Yellow' || isWhite) ? "text-black" : "text-white"
-        )}>{name}</span>
-      </div>
-    );
-  };
+  const allBackgrounds = useMemo(() => {
+    const list = [...wallPresets];
+    customWallBackgrounds.forEach(url => {
+      if (!list.includes(url)) list.push(url);
+    });
+    return list;
+  }, [customWallBackgrounds]);
 
   return (
     <div className="p-12 space-y-12 max-w-7xl mx-auto pb-40 text-right dir-rtl">
@@ -189,26 +177,77 @@ export function SettingsView() {
 
         <TabsContent value="appearance" className="space-y-12">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <Card className="premium-glass p-8 space-y-8 bg-white/5 border-white/10 grid-item" tabIndex={0}>
-              <CardTitle className="text-2xl font-black text-white flex items-center gap-3"><Monitor className="w-6 h-6 text-primary" />عرض الشاشة</CardTitle>
-              <div className="space-y-8">
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center"><span className="text-sm font-black text-white/60">مقياس الواجهة الذكي</span><span className="text-primary font-black">{Math.round((mapSettings.displayScale ?? 1.0) * 100)}%</span></div>
-                  <Slider value={[mapSettings.displayScale ?? 1.0]} min={0.5} max={1.5} step={0.05} onValueChange={([v]) => updateMapSettings({ displayScale: v })} />
-                </div>
-                <div className="flex items-center justify-between p-6 bg-white/5 rounded-2xl border border-white/5">
-                  <div className="space-y-1"><h4 className="text-lg font-bold text-white">خلفية لوحة الأذكار</h4><p className="text-xs text-white/40">إظهار الصور خلف النصوص في الداشبورد</p></div>
-                  <Switch checked={mapSettings.showManuscriptBg} onCheckedChange={(v) => updateMapSettings({ showManuscriptBg: v })} />
-                </div>
-                <div className="flex items-center justify-between p-6 bg-blue-600/10 rounded-2xl border border-blue-600/20">
-                  <div className="space-y-1">
-                    <h4 className="text-lg font-bold text-white flex items-center gap-2">المود البديل (الملاحة الرقمية) <Zap className="w-4 h-4 text-yellow-500" /></h4>
-                    <p className="text-xs text-white/40">تحويل الأسهم إلى أرقام 2,8,4,6 (تفعيل عبر زر Sub)</p>
+            <div className="flex flex-col gap-8">
+              <Card className="premium-glass p-8 space-y-8 bg-white/5 border-white/10 grid-item" tabIndex={0}>
+                <CardTitle className="text-2xl font-black text-white flex items-center gap-3"><Monitor className="w-6 h-6 text-primary" />عرض الشاشة</CardTitle>
+                <div className="space-y-8">
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center"><span className="text-sm font-black text-white/60">مقياس الواجهة الذكي</span><span className="text-primary font-black">{Math.round((mapSettings.displayScale ?? 1.0) * 100)}%</span></div>
+                    <Slider value={[mapSettings.displayScale ?? 1.0]} min={0.5} max={1.5} step={0.05} onValueChange={([v]) => updateMapSettings({ displayScale: v })} />
                   </div>
-                  <Switch checked={isAltModeActive} onCheckedChange={toggleAltMode} />
+                  <div className="flex items-center justify-between p-6 bg-white/5 rounded-2xl border border-white/5">
+                    <div className="space-y-1"><h4 className="text-lg font-bold text-white">خلفية لوحة الأذكار</h4><p className="text-xs text-white/40">إظهار الصور خلف النصوص في الداشبورد</p></div>
+                    <Switch checked={mapSettings.showManuscriptBg} onCheckedChange={(v) => updateMapSettings({ showManuscriptBg: v })} />
+                  </div>
+                  <div className="flex items-center justify-between p-6 bg-blue-600/10 rounded-2xl border border-blue-600/20">
+                    <div className="space-y-1">
+                      <h4 className="text-lg font-bold text-white flex items-center gap-2">المود البديل (الملاحة الرقمية) <Zap className="w-4 h-4 text-yellow-500" /></h4>
+                      <p className="text-xs text-white/40">تحويل الأسهم إلى أرقام 2,8,4,6 (تفعيل عبر زر Sub)</p>
+                    </div>
+                    <Switch checked={isAltModeActive} onCheckedChange={toggleAltMode} />
+                  </div>
+                  <div className="flex items-center justify-between p-6 bg-emerald-600/10 rounded-2xl border border-emerald-600/20">
+                    <div className="space-y-1">
+                      <h4 className="text-lg font-bold text-white flex items-center gap-2">الجزيرة التفاعلية الذكية <Eye className="w-4 h-4 text-accent" /></h4>
+                      <p className="text-xs text-white/40">إخفاء الجزيرة تلقائياً عند عدم وجود تنبيهات نشطة</p>
+                    </div>
+                    <Switch checked={autoHideIsland} onCheckedChange={(v) => { setAutoHideIsland(v); toast({title: v ? "تفعيل الإخفاء التلقائي" : "إلغاء الإخفاء التلقائي"}); }} />
+                  </div>
                 </div>
-              </div>
-            </Card>
+              </Card>
+
+              <Card className="premium-glass p-8 space-y-8 bg-white/5 border-white/10 grid-item" tabIndex={0}>
+                <CardTitle className="text-2xl font-black text-white flex items-center gap-3"><Palette className="w-6 h-6 text-primary" />خلفية اللوحة الكبيرة</CardTitle>
+                <div className="space-y-6">
+                  <div className="flex gap-4">
+                    <Input 
+                      placeholder="رابط صورة خلفية جديدة..." 
+                      value={bgInput} 
+                      onChange={(e) => setBgInput(e.target.value)} 
+                      className="h-14 bg-black/40 border-white/10 rounded-xl px-6 text-white text-right flex-1" 
+                    />
+                    <Button onClick={() => { if(bgInput) { addCustomWallBackground(bgInput); updateMapSettings({ manuscriptBgUrl: bgInput }); setBgInput(""); toast({title: "تمت إضافة الخلفية"}); } }} className="h-14 w-14 bg-primary rounded-xl focusable"><Plus className="w-6 h-6" /></Button>
+                  </div>
+                  <div className="grid grid-cols-3 gap-4">
+                    {allBackgrounds.map((url, i) => (
+                      <div 
+                        key={i} 
+                        onClick={() => updateMapSettings({ manuscriptBgUrl: url })}
+                        className={cn(
+                          "aspect-video rounded-xl overflow-hidden cursor-pointer border-2 transition-all group relative",
+                          mapSettings.manuscriptBgUrl === url ? "border-primary shadow-glow scale-105" : "border-transparent opacity-60 hover:opacity-100"
+                        )}
+                      >
+                        <img src={url} className="w-full h-full object-cover" alt="" />
+                        {mapSettings.manuscriptBgUrl === url && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-primary/20">
+                            <CheckCircle2 className="w-8 h-8 text-white drop-shadow-lg" />
+                          </div>
+                        )}
+                        {!wallPresets.includes(url) && (
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); removeCustomWallBackground(url); toast({title: "تم حذف الخلفية"}); }}
+                            className="absolute top-2 right-2 w-6 h-6 bg-red-600 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <LucideX className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </Card>
+            </div>
             
             <div className="flex flex-col gap-8">
               <Card className="premium-glass p-8 space-y-8 bg-white/5 border-white/10 grid-item" tabIndex={0}>
@@ -227,15 +266,15 @@ export function SettingsView() {
 
               <Card className="premium-glass p-8 bg-white/5 border-white/10 grid-item" tabIndex={0}>
                 <CardTitle className="text-2xl font-black text-white flex items-center gap-3 mb-6"><ImageIcon className="w-6 h-6 text-primary" />إدارة اللوحات الحالية</CardTitle>
-                <ScrollArea className="h-64 pr-4">
+                <ScrollArea className="h-[450px] pr-4">
                   <div className="grid grid-cols-1 gap-4">
                     {customManuscripts.map((m) => (
                       <div key={m.id} className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/10 group">
                         <div className="flex items-center gap-4 min-w-0">
                           {m.type === 'text' ? (
-                            <span className="font-calligraphy text-lg text-white truncate max-w-[200px]">{m.content}</span>
+                            <span className="font-calligraphy text-lg text-white truncate max-w-[300px]">{m.content}</span>
                           ) : (
-                            <div className="w-12 h-12 rounded-lg overflow-hidden border border-white/10 shrink-0">
+                            <div className="w-16 h-16 rounded-lg overflow-hidden border border-white/10 shrink-0">
                               <img src={m.content} className="w-full h-full object-cover" alt="" />
                             </div>
                           )}
@@ -259,7 +298,7 @@ export function SettingsView() {
 
         <TabsContent value="prayers" className="space-y-8 animate-in fade-in duration-700">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {prayerSettings.map((p, idx) => (
+            {prayerSettings.map((p) => (
               <Card key={p.id} className="bg-white/5 border-white/10 p-8 rounded-[2.5rem] focusable grid-item" tabIndex={0}>
                 <div className="flex items-center justify-between mb-8">
                   <div className="flex items-center gap-4"><div className="w-12 h-12 rounded-2xl bg-primary/20 flex items-center justify-center border border-primary/20"><Timer className="w-6 h-6 text-primary" /></div><div><h3 className="text-xl font-black text-white">{p.name}</h3><p className="text-xs text-white/40 uppercase tracking-widest">Prayer Config</p></div></div>
@@ -341,7 +380,7 @@ export function SettingsView() {
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {Object.keys(actionLabels).map((action, idx) => (
+            {Object.keys(actionLabels).map((action) => (
               <div key={action} className="p-6 bg-black/40 rounded-[2rem] border border-white/5 flex flex-col gap-4 focusable grid-item" tabIndex={0}>
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-black text-white/80">{actionLabels[action]}</span>
@@ -353,12 +392,22 @@ export function SettingsView() {
                 <div className="flex flex-wrap gap-3 min-h-[40px] pt-2">
                   {(keyMappings[selectedContext]?.[action] || []).map((key, kIdx) => (
                     <div key={kIdx} className="relative group/key">
-                      <RemoteKeyShape name={key} />
+                      <div className={cn(
+                        "px-4 py-2 flex flex-col items-center justify-center min-w-[60px] rounded-full border-2 border-zinc-600 bg-zinc-800",
+                        ['Red', 'Green', 'Yellow', 'Blue'].includes(key) && "rounded-[0.6rem] border-t border-white/20",
+                        key === 'Red' && "bg-red-600",
+                        key === 'Green' && "bg-green-600",
+                        key === 'Yellow' && "bg-yellow-500 text-black",
+                        !['Red', 'Green', 'Yellow', 'Blue', 'Sub', 'Info', 'Back', 'Exit'].includes(key) && !/^\d$/.test(key) && "bg-white text-black border-white"
+                      )}>
+                        <span className="text-[6.5px] font-black uppercase tracking-tighter opacity-80 mb-0.5">زر</span>
+                        <span className="text-[9px] font-black uppercase tracking-widest">{key}</span>
+                      </div>
                       <button 
                         onClick={(e) => { e.stopPropagation(); removeSpecificKeyMapping(selectedContext, action as AppAction, key); }} 
                         className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full p-1 opacity-0 group-hover/key:opacity-100 transition-opacity focusable"
                       >
-                        <LucideX className="w-3 h-3" />
+                        <LucideX className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   ))}

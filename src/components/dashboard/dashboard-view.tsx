@@ -69,16 +69,31 @@ export function DashboardView() {
             )}
             {wallPlateType === 'manuscript' && (
               <div className="relative w-full h-full flex items-center justify-center">
-                {mapSettings.showManuscriptBg && (
-                  <div className="absolute inset-0 z-0">
-                    <Image src={mapSettings.manuscriptBgUrl} alt="Wall Background" fill className="object-cover" priority />
-                  </div>
-                )}
-                <div className="relative z-10 w-full h-full flex items-center justify-center px-10">
+                <div className="absolute inset-0 z-0">
+                  <Image 
+                    src={mapSettings.manuscriptBgUrl || "https://images.unsplash.com/photo-1578301978693-85fa9c0320b9?q=80&w=2000"} 
+                    alt="Wall Background" 
+                    fill 
+                    className="object-cover opacity-90" 
+                    priority 
+                  />
+                  <div className="absolute inset-0 backdrop-blur-sm" />
+                </div>
+                <div className="relative z-10 w-full h-full flex items-center justify-center px-10 md:px-20">
                   {wallPlateData?.type === 'text' ? (
-                    <p className="w-full text-7xl md:text-9xl font-calligraphy text-center text-white">{wallPlateData.content}</p>
+                    <div className="flex flex-col items-center justify-center w-full max-w-[95vw]">
+                      <p className="text-6xl md:text-8xl lg:text-[12rem] font-calligraphy text-center text-white leading-[1.1] drop-shadow-[0_0_60px_rgba(255,255,255,0.8)] animate-in zoom-in-95 duration-1000 whitespace-pre-wrap break-words">
+                        {wallPlateData.content}
+                      </p>
+                    </div>
                   ) : (
-                    <img src={wallPlateData.content} className="max-h-[95vh] w-auto object-contain" alt="Manuscript" />
+                    <div className="relative w-full h-full flex items-center justify-center p-4">
+                      <img 
+                        src={wallPlateData.content} 
+                        className="max-w-[95%] max-h-[90vh] object-contain drop-shadow-[0_0_80px_rgba(255,255,255,0.6)] animate-in zoom-in-95 duration-1000" 
+                        alt="Manuscript" 
+                      />
+                    </div>
                   ) }
                 </div>
               </div>

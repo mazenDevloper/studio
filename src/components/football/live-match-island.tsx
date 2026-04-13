@@ -25,7 +25,7 @@ interface GoalEvent {
 export function LiveMatchIsland() {
   const { 
     favoriteTeams, prayerTimes, prayerSettings, reminders, belledMatchIds, 
-    showIslands, toggleShowIslands, skippedMatchIds, skipMatch, activeVideo 
+    showIslands, toggleShowIslands, skippedMatchIds, skipMatch, activeVideo, autoHideIsland
   } = useMediaStore();
 
   const [topMatches, setTopMatches] = useState<Match[]>([]);
@@ -213,7 +213,9 @@ export function LiveMatchIsland() {
     </div>
   );
 
-  if (!isCountdownActive && !activeGoal) return null;
+  // Auto-hide logic: Only return null if autoHideIsland is true AND there is no active event
+  const isIdle = !isCountdownActive && !activeGoal;
+  if (autoHideIsland && isIdle) return null;
 
   return (
     <div className={cn(

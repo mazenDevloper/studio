@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { 
   Search, Plus, Loader2, X, List, 
-  Flame, Activity, RadioIcon, Trophy, Baby, ChevronRight, User, Youtube, Star, ArrowRightLeft, Mic
+  Flame, Activity, RadioIcon, Trophy, Baby, ChevronRight, User, Youtube, Star, ArrowRightLeft, Mic, Play, Clock
 } from "lucide-react";
 import { useMediaStore, YouTubeChannel, YouTubeVideo } from "@/lib/store";
 import { searchYouTubeChannels, fetchChannelVideos, searchYouTubeVideos } from "@/lib/youtube";
@@ -42,6 +42,8 @@ export function MediaView() {
   const [surahs, setSurahs] = useState<any[]>([]);
   const [latestFromSubs, setLatestFromSubs] = useState<YouTubeVideo[]>([]);
   const [liveFromSubs, setLiveFavorites] = useState<YouTubeVideo[]>([]);
+  const [starredVideos, setStarredVideos] = useState<YouTubeVideo[]>([]);
+  const [isStarredLoading, setIsStarredLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [windowWidth, setWindowWidth] = useState(0);
@@ -54,6 +56,29 @@ export function MediaView() {
 
   const isSmallScreen = windowWidth > 0 && windowWidth < 968;
   const isDockLeft = dockSide === 'left';
+
+  const starredChannels = useMemo(() => {
+    return favoriteChannels.filter(c => c.starred);
+  }, [favoriteChannels]);
+
+  const fetchStarredVideos = useCallback(async () => {
+    if (starredChannels.length === 0) { setStarredVideos([]); return; }
+    setIsStarredLoading(true);
+    try {
+      const videoPromises = starredChannels.map(c => fetchChannelVideos(c.channelid, 8));
+      const results = await Promise.all(videoPromises);
+      const allVideos: YouTubeVideo[] = [];
+      results.forEach(list => allVideos.push(...list));
+      const sorted = allVideos.sort((a, b) => {
+        const dateA = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
+        const dateB = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
+        return dateB - dateA;
+      });
+      setStarredVideos(sorted);
+    } catch (e) { console.error(e); } finally { setIsStarredLoading(false); }
+  }, [starredChannels]);
+
+  useEffect(() => { fetchStarredVideos(); }, [fetchStarredVideos]);
 
   const handleDragStart = (e: React.DragEvent, id: string, type: 'channel' | 'reciter') => {
     if (!isReorderMode) return;
@@ -263,6 +288,7 @@ export function MediaView() {
       <main className="flex-1 overflow-y-auto no-scrollbar relative pt-10 pb-40 space-y-12 px-12" style={{ direction: 'rtl' }}>
         {!showIsolatedView ? (
           <>
+            {/* 1. شريط البحث */}
             <section className="space-y-8" data-row-id="media-row-search">
               <div className="flex flex-col gap-4">
                 <div className="flex justify-start">
@@ -290,6 +316,124 @@ export function MediaView() {
                 </div>
               </div>
             </section>
+
+            {/* 2. القراء والمبدعون */}
+            <section className="space-y-6" data-row-id="media-row-reciters">
+              <div className="flex items-center justify-between px-8"><h2 className="text-xl font-black text-white/60 uppercase tracking-widest">القراء والمبدعون</h2></div>
+              <div className={horizontalListClass}>
+                <Dialog open={isReciterAddOpen} onOpenChange={setIsReciterAddOpen}>
+                  <DialogTrigger asChild>
+                    <button data-nav-id="q-reciter-add" className="flex flex-col items-center justify-center gap-2 px-4 py-4 rounded-[2.2rem] bg-primary/10 border-2 border-dashed border-primary/30 text-primary hover:bg-primary/20 transition-all focusable shrink-0 min-w-[130px] h-[160px]">
+                      <div className="w-16 h-16 rounded-full flex items-center justify-center bg-primary/20 shadow-glow"><Plus className="w-8 h-8" /></div>
+                      <span className="text-[10px] font-black uppercase">إضافة قارئ</span>
+                    </button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-4xl bg-zinc-950 border-white/10 rounded-[3rem] p-0 shadow-2xl z-[5000]">
+                    <div className="p-8 border-b border-white/10">
+                      <h2 className="text-xl font-black text-white text-right">إضافة قارئ جديد</h2>
+                      <div className="flex gap-4 mt-6">
+                        <Input placeholder="اسم القارئ..." value={reciterSearchQuery} onChange={(e) => setReciterSearchQuery(e.target.value)} className="h-12 bg-white/5 rounded-xl px-6 text-right flex-1" />
+                        <button onClick={handleReciterSearch} className="h-12 w-12 bg-primary rounded-xl flex items-center justify-center focusable"><Search className="w-5 h-5" /></button>
+                      </div>
+                    </div>
+                    <ScrollArea className="max-h-[50vh] p-8">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {reciterResults.map(r => (
+                          <div key={r.channelid} className="flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/5 focusable cursor-pointer" onClick={() => { addReciter(r); setIsReciterAddOpen(false); }}>
+                            <img src={r.image} alt="" className="w-10 h-10 rounded-full object-cover" />
+                            <span className="flex-1 text-right font-bold text-white truncate text-sm">{r.name}</span>
+                            <div className="bg-primary text-white text-[8px] font-black px-3 py-1.5 rounded-full uppercase">إضافة</div>
+                          </div>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  </DialogContent>
+                </Dialog>
+
+                {favoriteReciters.map((r, i) => (
+                  <button 
+                    key={r.channelid} 
+                    draggable={isReorderMode}
+                    onDragStart={(e) => handleDragStart(e, r.channelid, 'reciter')}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => handleDrop(e, r.channelid)}
+                    onClick={() => { 
+                      if (isReorderMode) setPickedUpId(pickedUpId === r.channelid ? null : r.channelid);
+                      else handleAutocomplete(r.name, 'reciter'); 
+                    }} 
+                    data-type="reciter" data-id={r.channelid}
+                    className={cn(
+                      "flex flex-col items-center gap-2 px-4 py-4 rounded-[2.2rem] bg-white/5 border-4 transition-all focusable shrink-0 min-w-[130px] relative",
+                      pickedUpId === r.channelid ? "border-accent scale-105" : "border-transparent hover:bg-emerald-600/20"
+                    )}
+                    tabIndex={0} data-nav-id={`q-reciter-item-${i}`}
+                  >
+                    <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-emerald-500/30 shadow-2xl relative">
+                      {r.image ? <img src={r.image} className="w-full h-full object-cover" alt="" /> : <div className="w-full h-full flex items-center justify-center bg-emerald-500/10"><User className="w-10 h-10 text-emerald-400" /></div>}
+                      {isReorderMode && <div className="absolute inset-0 bg-black/60 flex items-center justify-center"><ArrowRightLeft className="w-6 h-6 text-accent" /></div>}
+                    </div>
+                    <span className="text-xs font-black truncate max-w-[110px] text-white">{r.name}</span>
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            {/* 3. السور والآيات */}
+            <section className="space-y-6" data-row-id="media-row-surahs">
+              <div className="flex items-center justify-between px-8"><h2 className="text-xl font-black text-white/60 uppercase tracking-widest">السور والآيات</h2></div>
+              <div className={horizontalListClass}>
+                {surahs.map((s, i) => (
+                  <button key={i} onClick={() => handleAutocomplete(s.name_arabic, 'surah')} data-nav-id={`q-surah-item-${i}`} className="px-6 py-3 rounded-full bg-white/5 border border-white/10 text-white font-bold text-lg hover:bg-blue-600/20 transition-all focusable shrink-0 relative">
+                    {s.name_arabic}
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            {/* 4. الترددات المجرسة - فيديوهات أحدث ما في القنوات المجرسة */}
+            {starredChannels.length > 0 && (
+              <section className="space-y-6 animate-in fade-in slide-in-from-top-4 duration-700" data-row-id="media-row-starred">
+                <div className="flex items-center justify-between px-8">
+                  <h2 className="text-2xl font-black text-white flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-yellow-500 flex items-center justify-center shadow-glow">
+                      <Star className="w-6 h-6 text-black fill-current" />
+                    </div>
+                    الترددات المجرسة
+                    <span className="text-[10px] text-white/20 uppercase tracking-widest mr-2 font-bold opacity-50">Latest Hub</span>
+                  </h2>
+                </div>
+                <div className={horizontalListClass}>
+                  {isStarredLoading && starredVideos.length === 0 ? (
+                    [1, 2, 3, 4].map(i => <div key={i} className="h-44 w-72 rounded-[2rem] bg-zinc-800 animate-pulse shrink-0" />)
+                  ) : starredVideos.map((video, idx) => (
+                    <div 
+                      key={video.id + idx} 
+                      className="w-72 group relative overflow-hidden bg-zinc-900/80 border-none rounded-[2rem] transition-all hover:scale-[1.02] cursor-pointer shadow-xl focusable shrink-0" 
+                      onClick={() => setActiveVideo(video, starredVideos)} 
+                      tabIndex={0}
+                      data-nav-id={`starred-video-${idx}`}
+                    >
+                      <div className="aspect-video relative overflow-hidden">
+                        <img src={video.thumbnail} alt={video.title} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="w-14 h-14 rounded-full bg-white/20 backdrop-blur-3xl flex items-center justify-center border border-white/20 opacity-0 group-hover:opacity-100 transition-all scale-75 group-hover:scale-100 shadow-2xl">
+                            <Play className="w-7 h-7 text-white fill-white ml-1" />
+                          </div>
+                        </div>
+                      </div>
+                      <div className="p-4 space-y-1 text-right">
+                        <h3 className="font-bold text-sm truncate text-white font-headline">{video.title}</h3>
+                        <div className="flex items-center justify-end gap-2 text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
+                           <span className="text-white/40">{video.channelTitle}</span>
+                           <span className="opacity-30">•</span>
+                           <span className="flex items-center gap-1 text-accent"><Clock className="w-2.5 h-2.5" /> Latest</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
 
             {isSmallScreen && (
               <section className="space-y-6" data-row-id="media-row-subscriptions-grid">
@@ -347,94 +491,23 @@ export function MediaView() {
                       tabIndex={0}
                       data-nav-id={`grid-sub-${idx}`}
                     >
-                      <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-white/5 shadow-2xl relative">
+                      <div className="w-20 h-20 rounded-full overflow-hidden border-4 border-white/5 shadow-2xl relative">
                         <img src={ch.image} alt="" className="w-full h-full object-cover" />
-                        {ch.starred && <div className="absolute top-0 right-0 w-6 h-6 bg-yellow-500 rounded-full flex items-center justify-center shadow-glow"><Star className="w-4 h-4 text-black fill-current" /></div>}
-                        {isReorderMode && <div className="absolute inset-0 bg-black/60 flex items-center justify-center"><ArrowRightLeft className="w-10 h-10 text-accent" /></div>}
+                        {ch.starred && <div className="absolute top-0 right-0 w-5 h-5 bg-yellow-500 rounded-full flex items-center justify-center shadow-glow"><Star className="w-3 h-3 text-black fill-current" /></div>}
+                        {isReorderMode && <div className="absolute inset-0 bg-black/60 flex items-center justify-center"><ArrowRightLeft className="w-8 h-8 text-accent" /></div>}
                       </div>
-                      <span className="text-sm font-black text-white text-center truncate w-full">{ch.name}</span>
+                      <span className="text-xs font-black text-white text-center truncate w-full">{ch.name}</span>
                     </div>
                   ))}
                 </div>
               </section>
             )}
 
-            <section className="space-y-6" data-row-id="media-row-reciters">
-              <div className="flex items-center justify-between px-8"><h2 className="text-xl font-black text-white/60 uppercase tracking-widest">القراء والمبدعون</h2></div>
-              <div className={horizontalListClass}>
-                <Dialog open={isReciterAddOpen} onOpenChange={setIsReciterAddOpen}>
-                  <DialogTrigger asChild>
-                    <button data-nav-id="q-reciter-add" className="flex flex-col items-center justify-center gap-2 px-4 py-4 rounded-[2.5rem] bg-primary/10 border-2 border-dashed border-primary/30 text-primary hover:bg-primary/20 transition-all focusable shrink-0 min-w-[140px] h-[180px]">
-                      <div className="w-20 h-20 rounded-full flex items-center justify-center bg-primary/20 shadow-glow"><Plus className="w-10 h-10" /></div>
-                      <span className="text-xs font-black uppercase">إضافة قارئ</span>
-                    </button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-4xl bg-zinc-950 border-white/10 rounded-[3rem] p-0 shadow-2xl z-[5000]">
-                    <div className="p-8 border-b border-white/10">
-                      <h2 className="text-xl font-black text-white text-right">إضافة قارئ جديد</h2>
-                      <div className="flex gap-4 mt-6">
-                        <Input placeholder="اسم القارئ..." value={reciterSearchQuery} onChange={(e) => setReciterSearchQuery(e.target.value)} className="h-12 bg-white/5 rounded-xl px-6 text-right flex-1" />
-                        <button onClick={handleReciterSearch} className="h-12 w-12 bg-primary rounded-xl flex items-center justify-center focusable"><Search className="w-5 h-5" /></button>
-                      </div>
-                    </div>
-                    <ScrollArea className="max-h-[50vh] p-8">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {reciterResults.map(r => (
-                          <div key={r.channelid} className="flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/5 focusable cursor-pointer" onClick={() => { addReciter(r); setIsReciterAddOpen(false); }}>
-                            <img src={r.image} alt="" className="w-10 h-10 rounded-full object-cover" />
-                            <span className="flex-1 text-right font-bold text-white truncate text-sm">{r.name}</span>
-                            <div className="bg-primary text-white text-[8px] font-black px-3 py-1.5 rounded-full uppercase">إضافة</div>
-                          </div>
-                        ))}
-                      </div>
-                    </ScrollArea>
-                  </DialogContent>
-                </Dialog>
-
-                {favoriteReciters.map((r, i) => (
-                  <button 
-                    key={r.channelid} 
-                    draggable={isReorderMode}
-                    onDragStart={(e) => handleDragStart(e, r.channelid, 'reciter')}
-                    onDragOver={(e) => e.preventDefault()}
-                    onDrop={(e) => handleDrop(e, r.channelid)}
-                    onClick={() => { 
-                      if (isReorderMode) setPickedUpId(pickedUpId === r.channelid ? null : r.channelid);
-                      else handleAutocomplete(r.name, 'reciter'); 
-                    }} 
-                    data-type="reciter" data-id={r.channelid}
-                    className={cn(
-                      "flex flex-col items-center gap-2 px-4 py-4 rounded-[2.5rem] bg-white/5 border-4 transition-all focusable shrink-0 min-w-[140px] relative",
-                      pickedUpId === r.channelid ? "border-accent scale-105" : "border-transparent hover:bg-emerald-600/20"
-                    )}
-                    tabIndex={0} data-nav-id={`q-reciter-item-${i}`}
-                  >
-                    <div className="w-28 h-28 rounded-full overflow-hidden border-2 border-emerald-500/30 shadow-2xl relative">
-                      {r.image ? <img src={r.image} className="w-full h-full object-cover" alt="" /> : <div className="w-full h-full flex items-center justify-center bg-emerald-500/10"><User className="w-12 h-12 text-emerald-400" /></div>}
-                      {isReorderMode && <div className="absolute inset-0 bg-black/60 flex items-center justify-center"><ArrowRightLeft className="w-8 h-8 text-accent" /></div>}
-                    </div>
-                    <span className="text-sm font-black truncate max-w-[120px] text-white">{r.name}</span>
-                  </button>
-                ))}
-              </div>
-            </section>
-
-            <section className="space-y-6" data-row-id="media-row-surahs">
-              <div className="flex items-center justify-between px-8"><h2 className="text-xl font-black text-white/60 uppercase tracking-widest">السور والآيات</h2></div>
-              <div className={horizontalListClass}>
-                {surahs.map((s, i) => (
-                  <button key={i} onClick={() => handleAutocomplete(s.name_arabic, 'surah')} data-nav-id={`q-surah-item-${i}`} className="px-6 py-3 rounded-full bg-white/5 border border-white/10 text-white font-bold text-lg hover:bg-blue-600/20 transition-all focusable shrink-0 relative">
-                    {s.name_arabic}
-                  </button>
-                ))}
-              </div>
-            </section>
-
             <section className="space-y-6" data-row-id="media-row-live">
               <div className="flex items-center justify-between px-8"><h2 className="text-2xl font-black text-white flex items-center gap-3"><RadioIcon className="w-6 h-6 text-red-600" /> البث المباشر الموحد</h2></div>
               <div className={horizontalListClass}>
                 {interleavedLiveFeed.map((item: any, i: number) => (
-                  <div key={i} onClick={() => item.feedType === 'iptv' ? setActiveIptv(item) : setActiveVideo(item)} className={cn("group relative overflow-hidden bg-zinc-900/80 border-4 rounded-[2.5rem] transition-all cursor-pointer shadow-2xl focusable shrink-0 w-80", item.feedType === 'iptv' ? "border-emerald-600/40" : "border-red-600/40")} tabIndex={0} data-nav-id={`video-live-item-${i}`}><div className="aspect-video relative"><img src={item.stream_icon || item.thumbnail} alt="" className="w-full h-full object-cover" /></div><div className="p-5 text-right"><h3 className="font-bold text-sm truncate text-white">{item.name || item.title}</h3></div></div>
+                  <div key={i} onClick={() => item.feedType === 'iptv' ? setActiveIptv(item) : setActiveVideo(item)} className={cn("group relative overflow-hidden bg-zinc-900/80 border-4 rounded-[2.5rem] transition-all cursor-pointer shadow-2xl focusable shrink-0 w-72", item.feedType === 'iptv' ? "border-emerald-600/40" : "border-red-600/40")} tabIndex={0} data-nav-id={`video-live-item-${i}`}><div className="aspect-video relative"><img src={item.stream_icon || item.thumbnail} alt="" className="w-full h-full object-cover" /></div><div className="p-4 text-right"><h3 className="font-bold text-xs truncate text-white">{item.name || item.title}</h3></div></div>
                 ))}
               </div>
             </section>
@@ -442,7 +515,7 @@ export function MediaView() {
             <section className="space-y-6" data-row-id="media-row-latest">
               <div className="flex items-center justify-between px-8"><h2 className="text-2xl font-black text-white flex items-center gap-3"><Activity className="w-6 h-6 text-primary" /> أحدث الفيديوهات</h2></div>
               <div className={horizontalListClass}>
-                {latestFromSubs.map((v, i) => (<div key={i} onClick={() => setActiveVideo(v, latestFromSubs)} className="group relative overflow-hidden bg-zinc-900/80 rounded-[2.5rem] transition-all cursor-pointer focusable shadow-2xl shrink-0 w-80" tabIndex={0} data-nav-id={`video-latest-item-${i}`}><div className="aspect-video relative"><img src={v.thumbnail} alt="" className="w-full h-full object-cover" /></div><div className="p-5 text-right"><h3 className="font-bold text-sm truncate text-white">{v.title}</h3></div></div>))}
+                {latestFromSubs.map((v, i) => (<div key={i} onClick={() => setActiveVideo(v, latestFromSubs)} className="group relative overflow-hidden bg-zinc-900/80 rounded-[2.5rem] transition-all cursor-pointer focusable shadow-2xl shrink-0 w-72" tabIndex={0} data-nav-id={`video-latest-item-${i}`}><div className="aspect-video relative"><img src={v.thumbnail} alt="" className="w-full h-full object-cover" /></div><div className="p-4 text-right"><h3 className="font-bold text-xs truncate text-white">{v.title}</h3></div></div>))}
               </div>
             </section>
           </>

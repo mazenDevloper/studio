@@ -122,6 +122,7 @@ interface MediaState {
   gridMode: 'hidden' | 'partial' | 'full';
   dockSide: 'left' | 'right';
   showIslands: boolean;
+  autoHideIsland: boolean;
   isSidebarShrinked: boolean;
   wallPlateType: 'moon' | 'manuscript' | null;
   wallPlateData: any | null;
@@ -196,6 +197,7 @@ interface MediaState {
   toggleDockSide: () => void;
   setDockSide: (side: 'left' | 'right') => void;
   toggleShowIslands: () => void;
+  setAutoHideIsland: (val: boolean) => void;
   setPlayerMode: (mode: 'api' | 'web') => void;
   toggleAltMode: () => void;
   toggleReorderMode: () => void;
@@ -351,6 +353,7 @@ export const useMediaStore = create<MediaState>()(
       gridMode: 'hidden',
       dockSide: 'left',
       showIslands: true,
+      autoHideIsland: true,
       isSidebarShrinked: false,
       wallPlateType: null,
       wallPlateData: null,
@@ -382,7 +385,8 @@ export const useMediaStore = create<MediaState>()(
           customManuscriptColors: state.customManuscriptColors,
           keyMappings: state.keyMappings,
           isAltModeActive: state.isAltModeActive,
-          favoriteReciters: state.favoriteReciters
+          favoriteReciters: state.favoriteReciters,
+          autoHideIsland: state.autoHideIsland
         };
         await updateBin(JSONBIN_MASTER_BIN_ID, data);
       },
@@ -834,6 +838,7 @@ export const useMediaStore = create<MediaState>()(
         set({ dockSide: side });
       },
       toggleShowIslands: () => set((state) => ({ showIslands: !state.showIslands })),
+      setAutoHideIsland: (val) => set({ autoHideIsland: val }),
       setVideoResults: (results) => set({ videoResults: results }),
       setSelectedChannel: (channel) => set({ selectedChannel: channel }),
       setChannelVideos: (videos) => set({ channelVideos: videos }),
@@ -843,7 +848,7 @@ export const useMediaStore = create<MediaState>()(
     }),
     {
       name: "drivecast-master-v25",
-      partialize: (state) => ({ videoProgress: state.videoProgress, dockSide: state.dockSide, showIslands: state.showIslands, playerMode: state.playerMode, isAltModeActive: state.isAltModeActive, isReorderMode: state.isReorderMode }),
+      partialize: (state) => ({ videoProgress: state.videoProgress, dockSide: state.dockSide, showIslands: state.showIslands, playerMode: state.playerMode, isAltModeActive: state.isAltModeActive, isReorderMode: state.isReorderMode, autoHideIsland: state.autoHideIsland }),
     }
   )
 );
@@ -897,7 +902,8 @@ if (typeof window !== "undefined") {
           customWallBackgrounds: masterData.customWallBackgrounds || [],
           customManuscriptColors: masterData.customManuscriptColors || ['#ffffff', '#FFD700', '#C0C0C0'],
           keyMappings: safe,
-          isAltModeActive: masterData.isAltModeActive !== undefined ? masterData.isAltModeActive : true
+          isAltModeActive: masterData.isAltModeActive !== undefined ? masterData.isAltModeActive : true,
+          autoHideIsland: masterData.autoHideIsland !== undefined ? masterData.autoHideIsland : true
         });
       }
 
