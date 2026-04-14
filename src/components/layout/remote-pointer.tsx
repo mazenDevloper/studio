@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useRef } from "react";
 import { normalizeKey } from "@/lib/utils";
 import { usePathname, useRouter } from "next/navigation";
 import { useMediaStore, AppAction, MappingContext } from "@/lib/store";
@@ -9,14 +9,18 @@ import { init } from "@noriginmedia/norigin-spatial-navigation";
 import { useToast } from "@/hooks/use-toast";
 
 /**
- * Smart Engine v47.0 - Professional Interaction & Rescue Focus
- * Optimized capture logic for reordering and rescue focus.
+ * Smart Engine v76.0 - Strict Sequential Navigation (1-2-3)
+ * Corrected transition: Dock (1) <-> Sidebar (2) <-> Content (3)
+ * Transition to content is now consistent with layout flow.
  */
 export function RemotePointer() {
   const pathname = usePathname();
   const router = useRouter();
   const { toast } = useToast();
   
+  const touchStartX = useRef<number>(0);
+  const touchEndX = useRef<number>(0);
+
   const { 
     wallPlateType, setWallPlate, dockSide, isFullScreen, isMinimized, 
     activeVideo, activeIptv, setIsSidebarShrinked, isPlayerControlsExpanded, setIsPlayerControlsExpanded,
@@ -33,35 +37,75 @@ export function RemotePointer() {
   const isAction = useCallback((key: string, action: AppAction) => {
     const mappings = useMediaStore.getState().keyMappings;
     const isPlayerActive = (activeVideo || activeIptv) && isFullScreen && !isMinimized;
-    
     const normalizedKey = key.toLowerCase();
-    const restrictedKeys = ['red', 'green', 'yellow', 'blue', 'sub', '7', '9'];
-    const protectedKeys = ['1', '3', '0'];
-
-    if (protectedKeys.includes(normalizedKey)) {
-      return mappings.global?.[action]?.some(m => m.toLowerCase() === normalizedKey);
-    }
-
-    if (isPlayerActive) {
-      if (mappings.player?.[action]?.some(m => m.toLowerCase() === normalizedKey)) return true;
-      if (restrictedKeys.includes(normalizedKey)) return false;
-    }
 
     const screenMap: Record<string, string> = { 
       '/': 'dashboard', '/media': 'media', '/quran': 'quran', 
       '/football': 'football', '/iptv': 'iptv', '/settings': 'settings' 
     };
-    const pageCtx = screenMap[pathname];
-    if (pageCtx && mappings[pageCtx]?.[action]?.some(m => m.toLowerCase() === normalizedKey)) return true;
+    const pageCtx = screenMap[pathname] || 'global';
 
-    return mappings.global?.[action]?.some(m => m.toLowerCase() === normalizedKey);
+    // Priority 1: Player Context
+    if (isPlayerActive) {
+      if (mappings.player?.[action]?.some(k => k.toLowerCase() === normalizedKey)) {
+        return true;
+      }
+      const isReservedByPlayer = Object.values(mappings.player || {}).some(keys => 
+        Array.isArray(keys) && keys.some(k => k.toLowerCase() === normalizedKey)
+      );
+      if (isReservedByPlayer) return false;
+    }
+
+    // Priority 2: Screen/Page Context
+    if (pageCtx !== 'global' && mappings[pageCtx]?.[action]?.some(k => k.toLowerCase() === normalizedKey)) {
+      return true;
+    }
+
+    // Priority 3: Global Context
+    return mappings.global?.[action]?.some(k => k.toLowerCase() === normalizedKey) ?? false;
   }, [pathname, activeVideo, activeIptv, isFullScreen, isMinimized]);
+
+  const handleSwipe = useCallback(() => {
+    const distance = touchStartX.current - touchEndX.current;
+    const threshold = 100;
+    
+    if (Math.abs(distance) < threshold) return;
+
+    const activeEl = document.activeElement as HTMLElement;
+    const isScrollable = activeEl && (activeEl.scrollHeight > activeEl.clientHeight || activeEl.scrollWidth > activeEl.clientWidth);
+    if (isScrollable && activeEl.tagName !== 'BODY') return;
+
+    const apps = ["/", "/media", "/quran", "/hihi2", "/iptv", "/football", "/settings"];
+    const currentIndex = apps.indexOf(pathname);
+
+    if (distance > threshold) {
+      const nextIndex = (currentIndex + 1) % apps.length;
+      router.push(apps[nextIndex]);
+    } else if (distance < -threshold) {
+      const prevIndex = (currentIndex - 1 + apps.length) % apps.length;
+      router.push(apps[prevIndex]);
+    }
+  }, [pathname, router]);
+
+  useEffect(() => {
+    const onTouchStart = (e: TouchEvent) => { touchStartX.current = e.changedTouches[0].screenX; };
+    const onTouchEnd = (e: TouchEvent) => { 
+      touchEndX.current = e.changedTouches[0].screenX; 
+      handleSwipe();
+    };
+    window.addEventListener('touchstart', onTouchStart);
+    window.addEventListener('touchend', onTouchEnd);
+    return () => {
+      window.removeEventListener('touchstart', onTouchStart);
+      window.removeEventListener('touchend', onTouchEnd);
+    };
+  }, [handleSwipe]);
 
   const getZone = (el: HTMLElement) => {
     const id = el.getAttribute('data-nav-id') || "";
-    if (id.startsWith('dock-')) return 1;
-    if (id.startsWith('subs-') || id === 'reciter-all' || (id.startsWith('reciter-') && !id.includes('item') && !id.includes('q-'))) return 2;
-    return 3;
+    if (id.startsWith('dock-')) return 1; // Dock
+    if (id.startsWith('subs-') || id === 'reciter-all' || (id.startsWith('reciter-') && !id.includes('item') && !id.includes('q-'))) return 2; // Sidebar
+    return 3; // Content
   };
 
   const navigate = useCallback((direction: string) => {
@@ -74,7 +118,6 @@ export function RemotePointer() {
 
     let current = document.activeElement as HTMLElement;
     
-    // RESCUE FOCUS: If nothing is focused or focused element is invalid
     if (!current || current === document.body || !current.classList.contains("focusable")) {
       const rescue = document.querySelector('[data-nav-id="media-reorder-toggle"]') as HTMLElement ||
                      document.querySelector('.active-nav-target') as HTMLElement || 
@@ -83,47 +126,32 @@ export function RemotePointer() {
       return;
     }
 
-    // REORDER LOGIC: Intercept arrows to reorder instead of navigate
     if (pickedUpId) {
       const type = current.getAttribute('data-type');
       const isRTL = document.documentElement.dir === 'rtl';
-      
       if (type === 'channel' || type === 'reciter' || type === 'iptv') {
-        const movePrev = isRTL 
-          ? (direction === 'ArrowRight' || direction === 'ArrowUp')
-          : (direction === 'ArrowLeft' || direction === 'ArrowUp');
-          
-        const moveNext = isRTL 
-          ? (direction === 'ArrowLeft' || direction === 'ArrowDown')
-          : (direction === 'ArrowRight' || direction === 'ArrowDown');
-
-        if (type === 'channel') {
-          if (movePrev) reorderChannel(pickedUpId, 'prev');
-          if (moveNext) reorderChannel(pickedUpId, 'next');
-        } else if (type === 'reciter') {
-          if (movePrev) reorderReciter(pickedUpId, 'prev');
-          if (moveNext) reorderReciter(pickedUpId, 'next');
-        } else if (type === 'iptv') {
-          if (movePrev) reorderIptvChannel(pickedUpId, 'prev');
-          if (moveNext) reorderIptvChannel(pickedUpId, 'next');
-        }
+        const movePrev = isRTL ? (direction === 'ArrowRight' || direction === 'ArrowUp') : (direction === 'ArrowLeft' || direction === 'ArrowUp');
+        const moveNext = isRTL ? (direction === 'ArrowLeft' || direction === 'ArrowDown') : (direction === 'ArrowRight' || direction === 'ArrowDown');
+        if (type === 'channel') { if (movePrev) reorderChannel(pickedUpId, 'prev'); if (moveNext) reorderChannel(pickedUpId, 'next'); }
+        else if (type === 'reciter') { if (movePrev) reorderReciter(pickedUpId, 'prev'); if (moveNext) reorderReciter(pickedUpId, 'next'); }
+        else if (type === 'iptv') { if (movePrev) reorderIptvChannel(pickedUpId, 'prev'); if (moveNext) reorderIptvChannel(pickedUpId, 'next'); }
       }
       return;
     }
 
     const currentRect = current.getBoundingClientRect();
     const currentZone = getZone(current);
-    
     const isVertical = direction === "ArrowUp" || direction === "ArrowDown";
     const isHorizontal = direction === "ArrowLeft" || direction === "ArrowRight";
-
-    const towardDock = dockSide === 'left' ? "ArrowRight" : "ArrowLeft";
-    const towardContent = dockSide === 'left' ? "ArrowLeft" : "ArrowRight";
+    
+    const towardDock = dockSide === 'left' ? "ArrowLeft" : "ArrowRight";
+    const towardContent = dockSide === 'left' ? "ArrowRight" : "ArrowLeft";
 
     let minDistance = Infinity;
     let next: HTMLElement | null = null;
     const currentRowId = current.closest('[data-row-id]')?.getAttribute('data-row-id');
 
+    // First attempt: Move within the SAME zone
     for (const el of focusables) {
       if (el === current || getZone(el) !== currentZone) continue;
       if (isHorizontal && currentZone === 3) {
@@ -142,34 +170,30 @@ export function RemotePointer() {
       if (d < minDistance) { minDistance = d; next = el; }
     }
 
+    // Second attempt: Jump between zones (Sequential 1-2-3)
     if (!next && isHorizontal) {
       if (direction === towardContent) {
         if (currentZone === 1) {
-          const targetZone = (pathname === '/media' || pathname === '/quran') ? 2 : 3;
-          next = focusables.find(el => getZone(el) === targetZone && el.classList.contains('active-nav-target')) ||
-                 focusables.find(el => getZone(el) === targetZone);
-          if (next && targetZone === 3) setIsSidebarShrinked(true);
+          // Dock (1) -> Sidebar (2)
+          next = focusables.find(el => getZone(el) === 2);
+          if (next) setIsSidebarShrinked(false);
         }
         else if (currentZone === 2) {
-          next = focusables.find(el => getZone(el) === 3 && (el.getAttribute('data-nav-id')?.includes('item') || el.getAttribute('data-nav-id')?.includes('grid'))) ||
+          // Sidebar (2) -> Content (3)
+          next = focusables.find(el => getZone(el) === 3 && el.classList.contains('active-nav-target')) ||
                  focusables.find(el => getZone(el) === 3);
           if (next) setIsSidebarShrinked(true);
         }
       }
       else if (direction === towardDock) {
         if (currentZone === 3) {
-          if (pathname === '/') {
-            next = document.querySelector(`[data-nav-id="dock-Home"]`) as HTMLElement;
-          } else if (pathname === '/media' || pathname === '/quran') {
-            next = focusables.find(el => getZone(el) === 2 && el.classList.contains('active-nav-target')) ||
-                   focusables.find(el => getZone(el) === 2);
-            if (next) setIsSidebarShrinked(false);
-            else next = document.querySelector(`[data-nav-id^="dock-"]`) as HTMLElement;
-          } else {
-            next = document.querySelector(`[data-nav-id^="dock-"]`) as HTMLElement;
-          }
+          // Content (3) -> Sidebar (2)
+          next = focusables.find(el => getZone(el) === 2);
+          if (next) setIsSidebarShrinked(false);
         } else if (currentZone === 2) {
+          // Sidebar (2) -> Dock (1)
           next = document.querySelector(`[data-nav-id^="dock-"]`) as HTMLElement;
+          if (next) setIsSidebarShrinked(true);
         }
       }
     }
@@ -181,80 +205,34 @@ export function RemotePointer() {
     const handleKeyDown = (e: KeyboardEvent) => {
       const activeEl = document.activeElement as HTMLElement;
       let key = normalizeKey(e); 
-      
       if (activeEl?.tagName === 'INPUT' && !activeEl.classList.contains('focusable')) { 
         if (e.key === "Enter" || e.key === "Escape") { activeEl.blur(); return; }
         return; 
       }
 
-      if (key === 'Sub') {
-        e.preventDefault();
-        toggleAltMode();
-        toast({ title: useMediaStore.getState().isAltModeActive ? "تفعيل المود البديل" : "إيقاف المود البديل", description: useMediaStore.getState().isAltModeActive ? "الملاحة عبر الأرقام نشطة" : "العودة للمود القياسي" });
-        return;
-      }
-
-      // Alt Mode: Numbers act as arrows
+      if (key === 'Sub') { e.preventDefault(); toggleAltMode(); return; }
       if (isAltModeActive) {
-        if (key === '2') key = 'ArrowUp';
-        else if (key === '8') key = 'ArrowDown';
-        else if (key === '4') key = 'ArrowLeft';
-        else if (key === '6') key = 'ArrowRight';
-        else if (key === '5') key = 'Enter';
+        if (key === '2') key = 'ArrowUp'; else if (key === '8') key = 'ArrowDown'; else if (key === '4') key = 'ArrowLeft'; else if (key === '6') key = 'ArrowRight'; else if (key === '5') key = 'Enter';
       }
       
-      if (isAction(key, 'toggle_reorder')) {
-        e.preventDefault();
-        toggleReorderMode();
-        toast({ title: useMediaStore.getState().isReorderMode ? "تفعيل وضع الترتيب" : "إيقاف وضع الترتيب", description: useMediaStore.getState().isReorderMode ? "يمكنك الآن تحريك العناصر" : "تم حفظ الترتيب الجديد" });
-        return;
-      }
-
+      if (isAction(key, 'toggle_reorder')) { e.preventDefault(); toggleReorderMode(); return; }
       if (isAction(key, 'delete_item')) {
         const type = activeEl.getAttribute('data-type');
         const id = activeEl.getAttribute('data-id');
-        if (type === 'channel' && id) {
-          removeChannel(id);
-          toast({ title: "تم الحذف", description: "تم إزالة القناة من المفضلة" });
-        } else if (type === 'reciter' && id) {
-          removeReciter(id);
-          toast({ title: "تم الحذف", description: "تم إزالة القارئ من القائمة" });
-        } else if (type === 'iptv' && id) {
-          toggleStarChannel(id);
-          toast({ title: "تم الحذف", description: "تم إزالة القناة من المفضلة" });
-        } else if (activeEl.getAttribute('data-nav-id')?.startsWith('saved-video-')) {
+        if (type === 'channel' && id) removeChannel(id);
+        else if (type === 'reciter' && id) removeReciter(id);
+        else if (type === 'iptv' && id) toggleStarChannel(id);
+        else if (activeEl.getAttribute('data-nav-id')?.startsWith('saved-video-')) {
           const videoId = activeEl.getAttribute('data-video-id');
           if (videoId) removeVideo(videoId);
-        }
-      }
-
-      if (isAction(key, 'toggle_star')) {
-        const type = activeEl.getAttribute('data-type');
-        const id = activeEl.getAttribute('data-id');
-        if (type === 'channel' && id) {
-          toggleStarChannel(id);
-          const isStarred = !favoriteChannels.find(c => c.channelid === id)?.starred;
-          toast({ title: isStarred ? "تم التمييز" : "إزالة التمييز", description: isStarred ? "ستظهر القناة في الترددات المجرسة" : "تمت الإزالة من الترددات المجرسة" });
         }
       }
 
       if (isAction(key, 'nav_back')) {
         e.preventDefault();
         if (wallPlateType) { setWallPlate(null); return; }
-        if (!activeEl || activeEl === document.body || !activeEl.classList.contains("focusable")) {
-          const rescue = document.querySelector('.active-nav-target') || document.querySelector('.focusable');
-          (rescue as HTMLElement)?.focus(); return;
-        }
         const currentZone = getZone(activeEl);
-        if (currentZone === 3 && (pathname === '/media' || pathname === '/quran')) {
-          setIsSidebarShrinked(false);
-          const next = document.querySelector('.active-nav-target[data-nav-id^="subs-"]') as HTMLElement || 
-                       document.querySelector('[data-nav-id="subs-all"]') as HTMLElement;
-          if (next) next.focus();
-          else { (document.querySelector(`[data-nav-id^="dock-"]`) as HTMLElement)?.focus(); }
-          return;
-        }
-        if (currentZone === 2) {
+        if (currentZone === 2 || currentZone === 3) {
           const appName = ["Media", "Quran", "Hihi2", "IPTV", "Football", "Settings"].find(a => pathname.toLowerCase().includes(a.toLowerCase())) || "Home";
           (document.querySelector(`[data-nav-id="dock-${appName}"]`) as HTMLElement)?.focus();
           return;
@@ -262,15 +240,6 @@ export function RemotePointer() {
         if (pathname !== '/') { router.back(); return; }
         return;
       }
-
-      if (isAction(key, 'focus_search')) {
-        e.preventDefault();
-        const searchInput = document.querySelector('[data-nav-id="search-input"]') as HTMLElement;
-        if (searchInput) { searchInput.focus(); searchInput.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
-        return;
-      }
-
-      if (isAction(key, 'player_settings')) { e.preventDefault(); setIsPlayerControlsExpanded(!isPlayerControlsExpanded); return; }
 
       if (isAction(key, 'goto_home')) { e.preventDefault(); router.push('/'); return; }
       if (isAction(key, 'goto_media')) { e.preventDefault(); router.push('/media'); return; }
@@ -290,28 +259,10 @@ export function RemotePointer() {
           const type = activeEl.getAttribute('data-type');
           if ((type === 'channel' || type === 'reciter' || type === 'iptv') && isReorderMode) {
             const id = activeEl.getAttribute('data-id');
-            if (id) {
-              e.preventDefault();
-              e.stopPropagation();
-              if (pickedUpId === id) {
-                setPickedUpId(null);
-                toast({ title: "تم التثبيت", description: "تم تحديث ترتيب العناصر" });
-              } else {
-                setPickedUpId(id);
-                toast({ title: "تم التحديد للتحريك", description: "استخدم الأسهم لتغيير الموضع" });
-              }
-              return;
-            }
+            if (id) { e.preventDefault(); e.stopPropagation(); setPickedUpId(pickedUpId === id ? null : id); return; }
           }
-          
-          // In reorder mode, non-captured items shouldn't play
-          if (isReorderMode && !type) {
-             e.preventDefault();
-             return;
-          }
-
-          e.preventDefault();
-          activeEl.click();
+          if (isReorderMode && !type) { e.preventDefault(); return; }
+          e.preventDefault(); activeEl.click();
         }
       }
     };

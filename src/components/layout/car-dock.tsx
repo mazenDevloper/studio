@@ -27,83 +27,50 @@ function getPriorityKey(keys: string[]): string | null {
 }
 
 /**
- * Tactical Remote Badge v54.0 - Maximum Contrast & Scaled Visibility
+ * Tactical Remote Badge v54.0
  */
 export function ShortcutBadge({ action, className, context = 'default' }: { action: AppAction, className?: string, context?: 'dock' | 'player' | 'default' }) {
   const pathname = usePathname();
   const { keyMappings, activeVideo, activeIptv, isFullScreen, isMinimized } = useMediaStore();
-  
   const isPlayerActive = (activeVideo || activeIptv) && isFullScreen && !isMinimized;
-  const protectedKeys = ['1', '3', '0'];
-
+  
   const screenMap: Record<string, MappingContext> = { 
     '/': 'dashboard', '/media': 'media', '/quran': 'quran', 
     '/football': 'football', '/iptv': 'iptv', '/settings': 'settings' 
   };
   const pageCtx = screenMap[pathname] || 'global';
 
-  const playerKeys = keyMappings.player?.[action] || [];
-  const pageKeys = keyMappings[pageCtx]?.[action] || [];
-  const globalKeys = keyMappings.global?.[action] || [];
-
   let keys: string[] = [];
-
   if (isPlayerActive) {
-    if (playerKeys.length > 0) {
-      keys = playerKeys;
-    } else {
-      const fallbackKeys = [...pageKeys, ...globalKeys];
-      keys = fallbackKeys.filter(k => protectedKeys.includes(k.toLowerCase()));
-    }
+    keys = keyMappings.player?.[action] || [];
   } else {
-    keys = pageKeys.length > 0 ? pageKeys : globalKeys;
+    keys = keyMappings[pageCtx]?.[action] || keyMappings.global?.[action] || [];
   }
 
   const displayKey = getPriorityKey(keys);
   if (!displayKey) return null;
   
   const shortKey = displayKey.length > 5 ? displayKey.substring(0, 4) : displayKey;
-  
   const isColor = ['Red', 'Green', 'Yellow', 'Blue'].includes(displayKey);
   const isNumber = /^\d$/.test(displayKey);
   const isHardware = ['Sub', 'Info', 'Back', 'Exit'].includes(displayKey);
   const isWhiteButton = !isColor && !isNumber && !isHardware;
-
   const scale = context === 'dock' ? 1.45 : context === 'player' ? 1.15 : 1.0;
   
   return (
-    <div 
-      className={cn(
-        "absolute z-[200] flex items-center justify-center transition-all duration-500",
-        "-bottom-4 -left-4",
-        isColor ? "rounded-[0.6rem]" : "rounded-full",
-        displayKey === 'Red' && "bg-red-600 shadow-[0_0_15px_rgba(220,38,38,0.8)] border-t border-white/20",
-        displayKey === 'Green' && "bg-green-600 shadow-[0_0_15px_rgba(22,163,74,0.8)] border-t border-white/20",
-        displayKey === 'Yellow' && "bg-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.8)] border-t border-black/10",
-        displayKey === 'Blue' && "bg-blue-600 shadow-[0_0_15px_rgba(37,99,235,0.8)] border-t border-white/20",
-        (isNumber || isHardware) && "bg-zinc-800 border-2 border-zinc-600 shadow-2xl",
-        isWhiteButton && "bg-white text-black shadow-glow border-2 border-white",
-        className
-      )}
-      style={{
-        width: isColor ? `${36 * scale}px` : `${30 * scale}px`,
-        height: isColor ? `${26 * scale}px` : `${30 * scale}px`,
-      }}
-    >
+    <div className={cn("absolute z-[200] flex items-center justify-center transition-all duration-500 -bottom-4 -left-4", isColor ? "rounded-[0.6rem]" : "rounded-full", displayKey === 'Red' && "bg-red-600 shadow-[0_0_15px_rgba(220,38,38,0.8)]", displayKey === 'Green' && "bg-green-600 shadow-[0_0_15px_rgba(22,163,74,0.8)]", displayKey === 'Yellow' && "bg-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.8)]", displayKey === 'Blue' && "bg-blue-600 shadow-[0_0_15px_rgba(37,99,235,0.8)]", (isNumber || isHardware) && "bg-zinc-800 border-2 border-zinc-600 shadow-2xl", isWhiteButton && "bg-white text-black shadow-glow", className)} style={{ width: isColor ? `${36 * scale}px` : `${30 * scale}px`, height: isColor ? `${26 * scale}px` : `${30 * scale}px` }}>
       <div className="flex flex-col items-center leading-none" style={{ transform: `scale(${scale * 0.85})` }}>
-        <span className={cn(
-          "font-black uppercase tracking-tighter mb-0.5",
-          (displayKey === 'Yellow' || isWhiteButton) ? "text-black" : "text-white"
-        )} style={{ fontSize: '7.5px' }}>زر</span>
-        <span className={cn(
-          "font-black tracking-tight",
-          (displayKey === 'Yellow' || isWhiteButton) ? "text-black" : "text-white"
-        )} style={{ fontSize: '10px' }}>{shortKey}</span>
+        <span className={cn("font-black uppercase tracking-tighter mb-0.5", (displayKey === 'Yellow' || isWhiteButton) ? "text-black" : "text-white")} style={{ fontSize: '7.5px' }}>زر</span>
+        <span className={cn("font-black tracking-tight", (displayKey === 'Yellow' || isWhiteButton) ? "text-black" : "text-white")} style={{ fontSize: '10px' }}>{shortKey}</span>
       </div>
     </div>
   );
 }
 
+/**
+ * CarDock v72.0 - Always Side docked by default for cockpit feel.
+ * Responsive: Sidebar at all sizes, adjusted width for mobile.
+ */
 export function CarDock() {
   const pathname = usePathname();
   const router = useRouter();
@@ -121,11 +88,11 @@ export function CarDock() {
 
   return (
     <div className={cn(
-      "fixed z-[150] transition-all duration-700",
-      "bottom-0 left-0 right-0 h-20 bg-black/80 backdrop-blur-3xl border-t border-white/5 flex flex-row items-center justify-around px-4 md:fixed md:top-0 md:h-screen md:w-20 md:flex-col md:py-6 md:gap-0",
-      dockSide === 'left' ? "md:left-0 md:border-r" : "md:right-0 md:border-l"
+      "fixed top-0 bottom-0 z-[150] transition-all duration-700 bg-black/80 backdrop-blur-3xl flex flex-col py-6 border-white/5",
+      "w-16 min-[968px]:w-20",
+      dockSide === 'left' ? "left-0 border-r" : "right-0 border-l"
     )}>
-      <div className="flex flex-row md:flex-col items-center flex-1 justify-around md:justify-start">
+      <div className="flex flex-col items-center flex-1 justify-start gap-2">
         {apps.map((app) => {
           const isActive = pathname === app.href;
           return (
@@ -134,26 +101,21 @@ export function CarDock() {
               onClick={() => { if (pathname === '/media' && app.href === '/media') resetMediaView(); router.push(app.href); }}
               data-nav-id={`dock-${app.name}`}
               className={cn(
-                "w-12 h-12 md:w-14 md:h-14 rounded-[1.5rem] flex items-center justify-center transition-all relative focusable outline-none mb-1 md:mb-3",
+                "w-12 h-12 min-[968px]:w-14 min-[968px]:h-14 rounded-[1.5rem] flex items-center justify-center transition-all relative focusable outline-none mb-3",
                 isActive ? "bg-blue-600/10 shadow-[0_0_30px_rgba(37,99,235,0.2)] border border-blue-500/20 z-50 scale-110" : "bg-transparent"
               )}
             >
               <ShortcutBadge action={app.action} context="dock" />
-              <div className={cn(
-                "transition-all duration-500 flex items-center justify-center", 
-                isActive ? "text-blue-400 drop-shadow-[0_0_10px_rgba(96,165,250,0.8)]" : "text-white"
-              )}>
-                <app.icon className="w-6 h-6 md:w-7 md:h-7" />
+              <div className={cn("transition-all duration-500 flex items-center justify-center", isActive ? "text-blue-400 drop-shadow-[0_0_10px_rgba(96,165,250,0.8)]" : "text-white")}>
+                <app.icon className="w-6 h-6 min-[968px]:w-7 min-[968px]:h-7" />
               </div>
             </button>
           );
         })}
       </div>
-      <div className="hidden md:flex mt-auto flex-col items-center gap-2">
-        <button onClick={toggleDockSide} data-nav-id="dock-action-toggle" className="w-12 h-12 rounded-full bg-white/5 border border-white/10 text-white focusable flex items-center justify-center relative"><ArrowRightLeft className="w-6 h-6" /></button>
-        <button onClick={() => router.back()} data-nav-id="dock-action-back" className="w-12 h-12 rounded-full bg-white/5 border border-white/10 text-white focusable flex items-center justify-center relative">
-          <ArrowLeft className="w-6 h-6" />
-        </button>
+      <div className="flex mt-auto flex-col items-center gap-3">
+        <button onClick={toggleDockSide} data-nav-id="dock-action-toggle" className="w-10 h-10 min-[968px]:w-12 min-[968px]:h-12 rounded-full bg-white/5 border border-white/10 text-white focusable flex items-center justify-center relative"><ArrowRightLeft className="w-5 h-5 min-[968px]:w-6 min-[968px]:h-6" /></button>
+        <button onClick={() => router.back()} data-nav-id="dock-action-back" className="w-10 h-10 min-[968px]:w-12 min-[968px]:h-12 rounded-full bg-white/5 border border-white/10 text-white focusable flex items-center justify-center relative"><ArrowLeft className="w-5 h-5 min-[968px]:w-6 min-[968px]:h-6" /></button>
       </div>
     </div>
   );

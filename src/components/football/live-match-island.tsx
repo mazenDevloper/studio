@@ -8,12 +8,13 @@ import { useMediaStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { X, Eye, EyeOff, Bell, Clock, Timer } from "lucide-react";
 
-interface ReminderItem {
+interface AlertItem {
   id: string;
   name: string;
   diff: number;
-  isWithinWindow: boolean;
-  type: 'azan' | 'custom';
+  type: 'azan' | 'iqamah' | 'reminder';
+  color: string;
+  isExpired?: boolean;
 }
 
 interface GoalEvent {
@@ -22,17 +23,20 @@ interface GoalEvent {
   teamLogo: string;
 }
 
+/**
+ * Split Interactive Island v78.0
+ * Logic: Supports prayer-linked expiration for reminders.
+ */
 export function LiveMatchIsland() {
   const { 
     favoriteTeams, prayerTimes, prayerSettings, reminders, belledMatchIds, 
-    showIslands, toggleShowIslands, skippedMatchIds, skipMatch, activeVideo, autoHideIsland
+    showIslands, toggleShowIslands, skippedMatchIds, skipMatch, autoHideIsland
   } = useMediaStore();
 
   const [topMatches, setTopMatches] = useState<Match[]>([]);
   const [now, setNow] = useState(new Date());
   const [activeGoal, setActiveGoal] = useState<GoalEvent | null>(null);
   const prevScoresRef = useRef<Record<string, { home: number, away: number }>>({});
-  const [overrideMatchId, setOverrideMatchId] = useState<string | null>(null);
   const lastFetchRef = useRef<number>(0);
 
   useEffect(() => {
@@ -71,9 +75,7 @@ export function LiveMatchIsland() {
         }
       }
       setTopMatches(matches || []);
-    } catch (e) {
-      console.error("Island Fetch Error:", e);
-    }
+    } catch (e) { console.error("Island Fetch Error:", e); }
   }, [favoriteTeams, belledMatchIds, topMatches]);
 
   useEffect(() => { fetchMatches(true); }, []);
@@ -88,15 +90,8 @@ export function LiveMatchIsland() {
     return h * 60 + m;
   };
 
-  const formatCountdown = (diffSeconds: number) => {
-    const absSecs = Math.abs(diffSeconds);
-    const m = Math.floor((absSecs % 3600) / 60);
-    const s = absSecs % 60;
-    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-  };
-
-  const processedReminders = useMemo(() => {
-    const list: ReminderItem[] = [];
+  const activeAlerts = useMemo(() => {
+    const list: AlertItem[] = [];
     const totalCurrentSecs = (now.getHours() * 3600) + (now.getMinutes() * 60) + now.getSeconds();
 
     if (prayerTimes?.length) {
@@ -108,53 +103,58 @@ export function LiveMatchIsland() {
       
       for (const setting of prayerSettings) {
         let refTime = pData[setting.id as keyof typeof pData];
-        let baseMinutesOffset = setting.offsetMinutes;
-
-        if (setting.id === 'duha') {
-          refTime = pData['sunrise'];
-          baseMinutesOffset += 15;
-        }
-
+        if (setting.id === 'duha') refTime = pData['sunrise'];
         if (!refTime) continue;
 
-        const baseMinutes = tToM(refTime) + baseMinutesOffset;
+        const baseMinutes = tToM(refTime) + (setting.id === 'duha' ? 15 : 0) + setting.offsetMinutes;
         const azanSecs = baseMinutes * 60;
         let aDiff = azanSecs - totalCurrentSecs;
         if (aDiff < -43200) aDiff += 86400;
 
         if (aDiff > 0 && aDiff < (setting.countdownWindow * 60)) {
-          list.push({ id: `azan-${setting.id}`, name: setting.name, diff: aDiff, isWithinWindow: true, type: 'azan' });
+          list.push({ id: `azan-${setting.id}`, name: setting.name, diff: aDiff, type: 'azan', color: 'text-accent' });
+        } 
+        else if (aDiff <= 0 && setting.iqamahDuration > 0 && Math.abs(aDiff) < (setting.iqamahDuration * 60)) {
+          list.push({ id: `iqamah-${setting.id}`, name: `إقامة ${setting.name}`, diff: aDiff, type: 'iqamah', color: 'text-emerald-400' });
         }
       }
-    }
 
-    for (const rem of reminders) {
-      let targetSecs = 0;
-      if (rem.relativePrayer === 'manual' && rem.manualTime) {
-        targetSecs = tToM(rem.manualTime) * 60;
-      } else if (prayerTimes?.length) {
-        const day = now.getDate().toString().padStart(2, '0');
-        const dateStr = now.toISOString().split('T')[0];
-        const pData = prayerTimes.find(p => p.date === dateStr) || 
-                      prayerTimes.find(p => p.date.endsWith(`-${day}`)) || 
-                      prayerTimes[0];
-        
-        let refTime = pData[rem.relativePrayer as keyof typeof pData];
-        let extraOffset = rem.offsetMinutes;
-
-        if (rem.relativePrayer === 'duha') {
-          refTime = pData['sunrise'];
-          extraOffset += 15;
+      for (const rem of reminders) {
+        let targetSecs = 0;
+        if (rem.relativePrayer === 'manual' && rem.manualTime) {
+          targetSecs = tToM(rem.manualTime) * 60;
+        } else {
+          let refTime = pData[rem.relativePrayer as keyof typeof pData];
+          if (rem.relativePrayer === 'duha') refTime = pData['sunrise'];
+          if (refTime) targetSecs = (tToM(refTime) + (rem.relativePrayer === 'duha' ? 15 : 0) + rem.offsetMinutes) * 60;
         }
 
-        if (refTime) targetSecs = (tToM(refTime) + extraOffset) * 60;
-      }
+        if (targetSecs > 0) {
+          let diff = targetSecs - totalCurrentSecs;
+          if (diff < -43200) diff += 86400;
+          
+          if (diff > 0 && diff < (rem.countdownWindow * 60)) {
+            list.push({ id: rem.id, name: rem.label, diff, type: 'reminder', color: rem.color });
+          }
+          else if (diff <= 0) {
+            let isExpired = false;
+            // SMART EXPIRY: Linked to next prayer or duration
+            if (rem.expiryType === 'prayer' && rem.expiryPrayer) {
+              const expTime = pData[rem.expiryPrayer as keyof typeof pData];
+              if (expTime) {
+                const expSecs = tToM(expTime) * 60;
+                let expDiff = expSecs - totalCurrentSecs;
+                if (expDiff < -43200) expDiff += 86400;
+                if (expDiff <= 0) isExpired = true;
+              }
+            } else {
+              if (Math.abs(diff) >= (rem.countupWindow * 60)) isExpired = true;
+            }
 
-      if (targetSecs > 0) {
-        let diff = targetSecs - totalCurrentSecs;
-        if (diff < -43200) diff += 86400;
-        if (diff > 0 && diff < (rem.countdownWindow * 60)) {
-          list.push({ id: rem.id, name: rem.label, diff, isWithinWindow: true, type: 'custom' });
+            if (!isExpired) {
+              list.push({ id: rem.id, name: rem.label, diff, type: 'reminder', color: rem.color, isExpired: true });
+            }
+          }
         }
       }
     }
@@ -162,12 +162,7 @@ export function LiveMatchIsland() {
     return list.sort((a, b) => Math.abs(a.diff) - Math.abs(b.diff));
   }, [now, prayerTimes, prayerSettings, reminders]);
 
-  const closestRem = processedReminders.length > 0 ? processedReminders[0] : null;
-  const isCountdownActive = closestRem?.isWithinWindow;
-
-  useEffect(() => {
-    if (isCountdownActive && !showIslands) toggleShowIslands();
-  }, [isCountdownActive, showIslands, toggleShowIslands]);
+  const hasActiveAlert = activeAlerts.length > 0;
 
   const sortedMatches = useMemo(() => {
     return topMatches
@@ -176,23 +171,24 @@ export function LiveMatchIsland() {
         const aBelled = belledMatchIds.includes(a.id);
         const bBelled = belledMatchIds.includes(b.id);
         if (aBelled !== bBelled) return aBelled ? -1 : 1;
-        
         const aIsFav = favoriteTeams.some(t => t.id === a.homeTeamId || t.id === a.awayTeamId);
         const bIsFav = favoriteTeams.some(t => t.id === b.homeTeamId || t.id === b.awayTeamId);
         if (aIsFav !== bIsFav) return aIsFav ? -1 : 1;
-
-        const statusWeight: Record<string, number> = { live: 0, upcoming: 1, finished: 2 };
-        return (statusWeight[a.status] || 0) - (statusWeight[b.status] || 0);
+        return (a.status === 'live' ? 0 : 1) - (b.status === 'live' ? 0 : 1);
       });
   }, [topMatches, skippedMatchIds, favoriteTeams, belledMatchIds]);
 
-  const mainMatch = useMemo(() => {
-    if (overrideMatchId) return sortedMatches.find(m => m.id === overrideMatchId) || sortedMatches[0];
-    return sortedMatches[0];
-  }, [sortedMatches, overrideMatchId]);
+  const mainMatch = sortedMatches[0];
 
-  const GlassNumber = ({ text, size = '3rem', id, subtext, colorClass }: { text: string, size?: string, id: string, subtext?: string, colorClass?: string }) => (
-    <div className="relative w-full h-full flex flex-col items-center justify-center">
+  const formatCountdown = (diffSeconds: number) => {
+    const absSecs = Math.abs(diffSeconds);
+    const m = Math.floor((absSecs % 3600) / 60);
+    const s = absSecs % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
+  const GlassNumber = ({ text, size = '3rem', id, colorClass }: { text: string, size?: string, id: string, colorClass?: string }) => (
+    <div className="relative w-full h-full flex items-center justify-center">
       <svg className="w-full h-full overflow-visible" viewBox="0 0 200 60">
         <defs>
           <linearGradient id={`textFill-${id}`} x1="0%" y1="0%" x2="100%" y2="100%">
@@ -200,114 +196,60 @@ export function LiveMatchIsland() {
             <stop offset="100%" stopColor="rgba(255,255,255,0.15)" />
           </linearGradient>
         </defs>
-        <text 
-          x="50%" y="50%" textAnchor="middle" dominantBaseline="central" 
-          className={cn("font-black tabular-nums tracking-tighter", colorClass)} 
-          style={{ fontSize: size }} 
-          fill={colorClass ? "currentColor" : `url(#textFill-${id})`}
-        >
-          {text}
-        </text>
+        <text x="50%" y="50%" textAnchor="middle" dominantBaseline="central" className={cn("font-black tabular-nums tracking-tighter", colorClass)} style={{ fontSize: size }} fill={colorClass ? "currentColor" : `url(#textFill-${id})`}>{text}</text>
       </svg>
-      {subtext && <span className="font-black text-white/40 uppercase tracking-widest absolute" style={{ fontSize: '1rem', bottom: '-11px' }}>{subtext}</span>}
     </div>
   );
 
-  // Auto-hide logic: Only return null if autoHideIsland is true AND there is no active event
-  const isIdle = !isCountdownActive && !activeGoal;
-  if (autoHideIsland && isIdle) return null;
+  if (autoHideIsland && !hasActiveAlert && !activeGoal) return null;
 
   return (
-    <div className={cn(
-      "fixed top-6 left-1/2 -translate-x-1/2 z-[10001] flex flex-col items-center gap-4 pointer-events-none scale-110 dir-rtl transition-all duration-700",
-      showIslands ? "translate-y-0 opacity-100" : "-translate-y-20 opacity-0"
-    )}>
+    <div className={cn("fixed top-6 left-1/2 -translate-x-1/2 z-[10001] flex flex-col items-center gap-4 pointer-events-none scale-110 dir-rtl transition-all duration-700", (showIslands || hasActiveAlert) ? "translate-y-0 opacity-100" : "-translate-y-20 opacity-0")}>
       <div className="flex items-start gap-4">
-        <div onClick={toggleShowIslands} className="pointer-events-auto shadow-2xl w-[3.5rem] h-[3.5rem] rounded-full flex items-center justify-center premium-glass cursor-pointer active:scale-90 transition-all border border-white/10">
-          {(showIslands || isCountdownActive) ? <Eye className="w-5 h-5 text-accent" /> : <EyeOff className="w-5 h-5 text-white/20" />}
+        <div onClick={toggleShowIslands} className="pointer-events-auto shadow-2xl w-[3.5rem] h-[3.5rem] rounded-full flex items-center justify-center premium-glass cursor-pointer border border-white/10 active:scale-90 transition-all">
+          {showIslands ? <Eye className="w-5 h-5 text-accent" /> : <EyeOff className="w-5 h-5 text-white/20" />}
         </div>
 
-        {(showIslands || isCountdownActive) && (
-          <>
-            {closestRem && !activeGoal && (
-              <div className="pointer-events-auto shadow-2xl relative overflow-hidden premium-glass w-[18rem] h-[3.5rem] rounded-[2.5rem] animate-in slide-in-from-top-4 flex items-center px-4 gap-3">
-                <div className={cn("w-8 h-8 rounded-full flex items-center justify-center shrink-0", closestRem.type === 'azan' ? "bg-accent/20" : "bg-primary/20")}>
-                  {closestRem.type === 'azan' ? <Clock className="w-4 h-4 text-accent" /> : <Bell className="w-4 h-4 text-primary" />}
+        {showIslands && (
+          <div className="flex items-center gap-3">
+            {activeAlerts.map((alert) => (
+              <div key={alert.id} className="pointer-events-auto premium-glass min-w-[12rem] h-[3.5rem] rounded-[2.5rem] flex items-center px-4 gap-3 animate-in slide-in-from-top-4 border border-white/10">
+                <div className={cn("w-8 h-8 rounded-full flex items-center justify-center shrink-0", alert.type === 'azan' ? "bg-accent/20" : alert.type === 'iqamah' ? "bg-emerald-400/20" : "bg-primary/20")}>
+                  {alert.type === 'azan' ? <Clock className="w-4 h-4 text-accent" /> : alert.type === 'iqamah' ? <Timer className="w-4 h-4 text-emerald-400" /> : <Bell className="w-4 h-4 text-primary" />}
                 </div>
-                <div className="relative z-10 flex-1 flex flex-col items-center justify-center">
-                  <span className="text-[0.8rem] font-black text-white/80 uppercase truncate max-w-[120px]">{closestRem.name}</span>
-                  <div className="h-8 w-full">
-                    <GlassNumber text={`-${formatCountdown(closestRem.diff)}`} id="rem-full" size="2.4rem" />
-                  </div>
+                <div className="flex-1 flex flex-col items-center justify-center">
+                  <span className="text-[0.8rem] font-black text-white/80 uppercase truncate max-w-[100px] leading-none mb-1">{alert.name}</span>
+                  {!alert.isExpired && (
+                    <div className="h-8 w-full"><GlassNumber text={`${alert.diff >= 0 ? "-" : "+"}${formatCountdown(alert.diff)}`} id={`alert-${alert.id}`} size="2.2rem" colorClass={alert.color} /></div>
+                  )}
                 </div>
               </div>
-            )}
+            ))}
 
             {activeGoal && (
-              <div className="pointer-events-auto bg-zinc-950/90 rounded-[2.5rem] shadow-glow w-[38rem] h-[3.5rem] overflow-hidden relative border border-primary/40 flex items-center px-6 gap-6 animate-in fade-in zoom-in-95 duration-500 premium-glass">
+              <div className="pointer-events-auto bg-zinc-950/90 rounded-[2.5rem] w-[30rem] h-[3.5rem] flex items-center px-6 gap-6 animate-in fade-in zoom-in-95 border border-primary/40 shadow-glow">
                 <img src={activeGoal.teamLogo} className="w-10 h-10 object-contain" alt="" />
                 <span className="text-xl font-black text-white uppercase">{activeGoal.teamName}</span>
-                <div className="flex-1 h-full flex items-center justify-center"><span className="text-4xl font-black italic text-transparent bg-clip-text bg-gradient-to-r from-primary via-white to-primary uppercase">GOAAAL!</span></div>
+                <span className="text-4xl font-black italic text-transparent bg-clip-text bg-gradient-to-r from-primary via-white to-primary uppercase">GOAAAL!</span>
               </div>
             )}
 
             {!activeGoal && mainMatch && (
-              <div className="flex items-center gap-2">
-                <div className="pointer-events-auto rounded-[2.5rem] shadow-2xl w-[18rem] h-[3.5rem] overflow-hidden relative group premium-glass">
-                  <button onClick={(e) => { e.stopPropagation(); skipMatch(mainMatch.id); }} className="absolute top-1 left-1 z-[100] w-6 h-6 rounded-full bg-black/40 text-white/40 hover:text-white flex items-center justify-center opacity-0 group-hover:opacity-100"><X className="w-3.5 h-3.5" /></button>
-                  <div className="relative z-10 h-full w-full flex items-center justify-center overflow-hidden">
-                    <div className="absolute inset-0 flex items-center justify-between px-2" style={{ background: 'linear-gradient(0deg, black 5%, transparent)' }}>
-                      <img src={mainMatch.homeLogo} className="h-full w-auto object-contain scale-[1.5] translate-x-4" alt="" />
-                      <img src={mainMatch.awayLogo} className="h-full w-auto object-contain scale-[1.5] -translate-x-4" alt="" />
-                    </div>
-                    <div className="relative w-full h-full z-20 flex flex-col items-center justify-center" style={{ background: 'linear-gradient(-1deg, black, transparent)' }}>
-                      {mainMatch.status === 'live' && (
-                        <div className="absolute top-1 left-1/2 -translate-x-1/2 z-30">
-                          <span className="text-[12px] font-black text-primary bg-black/80 px-3 py-0.5 rounded-full border border-primary/20">
-                            {mainMatch.minute}'
-                          </span>
-                        </div>
-                      )}
-                      <GlassNumber text={mainMatch.status === 'upcoming' ? mainMatch.startTime : `${mainMatch.score?.away}-${mainMatch.score?.home}`} id={`match-main`} subtext={mainMatch.league} />
-                    </div>
-                  </div>
+              <div className="pointer-events-auto premium-glass w-[18rem] h-[3.5rem] rounded-[2.5rem] overflow-hidden relative group border border-white/10 shadow-2xl">
+                <button onClick={(e) => { e.stopPropagation(); skipMatch(mainMatch.id); }} className="absolute top-1 left-1 z-50 w-6 h-6 rounded-full bg-black/40 text-white/40 opacity-0 group-hover:opacity-100 flex items-center justify-center"><X className="w-3 h-3" /></button>
+                <div className="absolute inset-0 flex items-center justify-between px-2 overflow-hidden opacity-40">
+                  <img src={mainMatch.homeLogo} className="h-full scale-150 translate-x-4" alt="" />
+                  <img src={mainMatch.awayLogo} className="h-full scale-150 -translate-x-4" alt="" />
+                </div>
+                <div className="relative z-10 h-full flex flex-col items-center justify-center">
+                  {mainMatch.status === 'live' && <span className="absolute top-1 text-[10px] font-black text-primary bg-black/60 px-2 rounded-full border border-primary/20">{mainMatch.minute}'</span>}
+                  <GlassNumber text={mainMatch.status === 'upcoming' ? mainMatch.startTime : `${mainMatch.score?.away}-${mainMatch.score?.home}`} id="main-match" />
                 </div>
               </div>
             )}
-          </>
+          </div>
         )}
       </div>
-
-      {showIslands && sortedMatches.length > 1 && !activeGoal && (
-        <div className="flex items-center gap-2 animate-in slide-in-from-top-2 duration-700">
-          {sortedMatches.slice(1, 8).map((match) => {
-            const isFavoriteMatch = favoriteTeams.some(t => t.id === match.homeTeamId || t.id === match.awayTeamId);
-            return (
-              <div 
-                key={match.id} onClick={() => setOverrideMatchId(match.id)}
-                className={cn(
-                  "pointer-events-auto w-14 h-14 rounded-full flex items-center justify-center premium-glass cursor-pointer border-2 transition-all relative overflow-hidden",
-                  belledMatchIds.includes(match.id) ? "border-accent" : "border-white/10"
-                )}
-              >
-                <img src={match.homeLogo} className="w-full h-full object-contain opacity-40 absolute inset-0" alt="" />
-                {match.status === 'live' && (
-                  <div className="absolute top-0 right-0 left-0 flex justify-center z-30">
-                    <span className="text-[14px] font-black text-primary bg-black/80 px-2 py-0.5 rounded-full border border-primary/20 shadow-xl">{match.minute}'</span>
-                  </div>
-                )}
-                {match.status !== 'upcoming' ? (
-                  <div className="relative z-10 flex items-center justify-center scale-110">
-                    <GlassNumber text={`${match.score?.away}-${match.score?.home}`} id={`mini-score-${match.id}`} size="4.5rem" colorClass={isFavoriteMatch ? "text-emerald-400" : "text-white"} />
-                  </div>
-                ) : (
-                  <img src={match.homeLogo} className="w-8 h-8 object-contain relative z-10" alt="" />
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
     </div>
   );
 }

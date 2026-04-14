@@ -2,7 +2,7 @@
 "use client";
 
 import { useMediaStore } from "@/lib/store";
-import { X, Monitor, ChevronRight, ChevronLeft, Settings, LayoutGrid, Bookmark, BookmarkCheck, Youtube, Maximize2, Minimize2 } from "lucide-react";
+import { X, Monitor, ChevronRight, ChevronLeft, Settings, LayoutGrid, Bookmark, BookmarkCheck, Youtube, Maximize2, Minimize2, Eye, EyeOff } from "lucide-react";
 import { cn, normalizeKey } from "@/lib/utils";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,8 @@ export function GlobalVideoPlayer() {
     activeVideo, activeIptv, isPlaying, isMinimized, isFullScreen, nextTrack, prevTrack,
     setActiveVideo, setActiveIptv, setIsPlaying, setIsMinimized, setIsFullScreen, updateVideoProgress,
     playlist, videoProgress, toggleSaveVideo, savedVideos, iptvPlaylist, playerMode,
-    gridMode, setGridMode, isPlayerControlsExpanded, setIsPlayerControlsExpanded
+    gridMode, setGridMode, isPlayerControlsExpanded, setIsPlayerControlsExpanded,
+    showIslands, toggleShowIslands
   } = useMediaStore();
   
   const [mounted, setMounted] = useState(false);
@@ -25,7 +26,6 @@ export function GlobalVideoPlayer() {
   const isActive = !!(activeVideo || activeIptv);
   const isSaved = activeVideo ? savedVideos.some(v => v.id === activeVideo.id) : false;
 
-  // Smart Resume: Only for saved videos
   const startSeconds = useMemo(() => {
     if (activeVideo?.id && isSaved && videoProgress[activeVideo.id]) {
       return Math.floor(videoProgress[activeVideo.id]);
@@ -33,30 +33,63 @@ export function GlobalVideoPlayer() {
     return 0;
   }, [activeVideo?.id, isSaved, videoProgress]);
 
+  // STABILIZED KEY LISTENER v78.0
   useEffect(() => {
     const handleForcedKeys = (e: KeyboardEvent) => {
       if (!isActive) return;
       const key = normalizeKey(e);
       const mappings = useMediaStore.getState().keyMappings;
       
-      if (mappings.player?.player_close?.includes(key) || mappings.global?.player_close?.includes(key)) {
+      // Close Logic
+      if (mappings.player?.player_close?.includes(key)) {
         e.preventDefault();
         handleClose();
+        return;
       }
       
+      // Playlist Toggle
       if (mappings.player?.player_playlist?.includes(key)) {
         e.preventDefault();
         setGridMode(gridMode === 'hidden' ? 'full' : 'hidden');
+        return;
       }
 
+      // Minimize Toggle
       if (mappings.player?.player_minimize?.includes(key)) {
         e.preventDefault();
         setIsMinimized(!isMinimized);
+        return;
+      }
+
+      // Next/Prev Tracks
+      if (mappings.player?.player_next?.includes(key)) {
+        e.preventDefault();
+        nextTrack();
+        return;
+      }
+      if (mappings.player?.player_prev?.includes(key)) {
+        e.preventDefault();
+        prevTrack();
+        return;
+      }
+
+      // Save Video
+      if (mappings.player?.player_save?.includes(key)) {
+        e.preventDefault();
+        if (activeVideo) toggleSaveVideo(activeVideo);
+        return;
+      }
+
+      // Settings Toggle
+      if (mappings.player?.player_settings?.includes(key)) {
+        e.preventDefault();
+        setIsPlayerControlsExpanded(!isPlayerControlsExpanded);
+        return;
       }
     };
     window.addEventListener("keydown", handleForcedKeys, true);
     return () => window.removeEventListener("keydown", handleForcedKeys, true);
-  }, [isActive, gridMode, isMinimized, setGridMode, setIsMinimized]);
+  }, [isActive, gridMode, isMinimized, isPlayerControlsExpanded, activeVideo, nextTrack, prevTrack, setGridMode, setIsMinimized, toggleSaveVideo, setIsPlayerControlsExpanded]);
 
   useEffect(() => {
     setMounted(true);
@@ -197,6 +230,9 @@ export function GlobalVideoPlayer() {
                   <button onClick={prevTrack} className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center focusable cursor-pointer relative" tabIndex={0}><ShortcutBadge action="player_prev" className="-bottom-10 left-1/2 -translate-x-1/2" context="player" /><ChevronRight className="w-5 h-5" /></button>
                   <button onClick={nextTrack} className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center focusable cursor-pointer relative" tabIndex={0}><ShortcutBadge action="player_next" className="-bottom-10 left-1/2 -translate-x-1/2" context="player" /><ChevronLeft className="w-5 h-5" /></button>
                   <div className="w-px h-7 bg-white/10 mx-1" />
+                  <button onClick={toggleShowIslands} className={cn("w-9 h-9 rounded-full flex items-center justify-center focusable cursor-pointer transition-colors relative", showIslands ? "bg-accent/40 text-accent" : "bg-white/5 text-white/40")} tabIndex={0} data-nav-id="player-island-toggle">
+                    {showIslands ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
+                  </button>
                   <button onClick={() => activeVideo && toggleSaveVideo(activeVideo)} className={cn("w-9 h-9 rounded-full flex items-center justify-center focusable cursor-pointer transition-colors relative", isSaved ? "bg-accent/40 text-accent shadow-glow" : "bg-white/5 text-white/40")} tabIndex={0}><ShortcutBadge action="player_save" className="-bottom-10 left-1/2 -translate-x-1/2" context="player" />{isSaved ? <BookmarkCheck className="w-5 h-5" /> : <Bookmark className="w-5 h-5" />}</button>
                   <button onClick={() => setIsMinimized(!isMinimized)} className={cn("w-9 h-9 rounded-full flex items-center justify-center focusable cursor-pointer relative", isMinimized && "bg-orange-500/40 shadow-glow")} tabIndex={0} data-nav-id="player-min-toggle"><ShortcutBadge action="player_minimize" className="-bottom-10 left-1/2 -translate-x-1/2" context="player" />{isMinimized ? <Maximize2 className="w-5 h-5" /> : <Minimize2 className="w-5 h-5" />}</button>
                   <button onClick={() => setIsFullScreen(!isFullScreen)} className={cn("w-9 h-9 rounded-full flex items-center justify-center focusable cursor-pointer relative", isFullScreen && "bg-primary/40 shadow-glow")} tabIndex={0}><ShortcutBadge action="player_fullscreen" className="-bottom-10 left-1/2 -translate-x-1/2" context="player" /><Monitor className="w-5 h-5" /></button>

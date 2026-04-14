@@ -6,9 +6,8 @@ import { cn } from "@/lib/utils";
 import React from "react";
 
 /**
- * MainLayoutShell handles the dynamic layout adjustments based on the dock position.
- * Applies SMART ZOOM only to the content area (80% default).
- * Optimized to remove ghost space on the opposite side of the dock.
+ * MainLayoutShell v77.0 - Opposite Spacer Position
+ * The spacer is now on the OPPOSITE side of the dock for a balanced layout.
  */
 export function MainLayoutShell({ children }: { children: React.ReactNode }) {
   const { dockSide, mapSettings } = useMediaStore();
@@ -20,12 +19,14 @@ export function MainLayoutShell({ children }: { children: React.ReactNode }) {
     <div className="flex flex-col w-full h-full overflow-hidden transition-all duration-700 bg-black">
       <div className={cn(
         "flex flex-1 overflow-hidden relative",
-        dockSide === 'left' ? "flex-row" : "flex-row-reverse"
+        // Flipped: If dock is left, flex-row-reverse puts spacer on the right.
+        // If dock is right, flex-row puts spacer on the left.
+        dockSide === 'left' ? "flex-row-reverse" : "flex-row"
       )}>
-        {/* Dock Gutter Spacer - ALWAYS on the dock side */}
+        {/* Dock Gutter Spacer - Now aligned with the opposite side of the Dock */}
         <div className="hidden md:block md:w-20 shrink-0 h-full transition-all duration-700 bg-transparent" />
         
-        {/* Main content area with INDEPENDENT ZOOM - Now truly expands to the other edge */}
+        {/* Main content area with INDEPENDENT ZOOM */}
         <div 
           className="flex-1 overflow-auto relative h-full safe-p-bottom no-scrollbar"
           style={{ 
@@ -35,8 +36,6 @@ export function MainLayoutShell({ children }: { children: React.ReactNode }) {
         >
           {children}
         </div>
-
-        {/* The other side is now EMPTY, allowing content to touch the screen edge */}
       </div>
     </div>
   );

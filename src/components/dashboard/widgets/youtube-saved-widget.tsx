@@ -6,9 +6,11 @@ import { Bookmark, Play, Trash2, Clock, Activity } from "lucide-react";
 import { useMediaStore } from "@/lib/store";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
+/**
+ * YouTubeSavedWidget v72.0 - Ensured rendering logic
+ */
 export function YouTubeSavedWidget() {
   const { savedVideos, removeVideo, setActiveVideo } = useMediaStore();
 
@@ -33,11 +35,11 @@ export function YouTubeSavedWidget() {
           <span className="text-xs text-muted-foreground uppercase tracking-widest ml-2 font-bold opacity-50">Saved Feed</span>
         </CardTitle>
         <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 bg-white/5 rounded-full border border-white/5">
-          {savedVideos.length} فيديو
+          {savedVideos?.length || 0} فيديو
         </span>
       </CardHeader>
       <CardContent className="p-0">
-        {savedVideos.length === 0 ? (
+        {!savedVideos || savedVideos.length === 0 ? (
           <div className="py-12 mx-8 text-center bg-white/5 rounded-[2rem] border border-dashed border-white/5">
             <p className="text-muted-foreground italic text-lg font-medium">لا توجد فيديوهات محفوظة حالياً.</p>
           </div>
@@ -50,6 +52,7 @@ export function YouTubeSavedWidget() {
                 onClick={() => setActiveVideo(video, savedVideos)}
                 tabIndex={0}
                 data-nav-id={`saved-video-${idx}`}
+                data-video-id={video.id}
               >
                 <div className="aspect-video relative overflow-hidden">
                   <Image src={video.thumbnail} alt={video.title} fill className="object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
@@ -77,7 +80,7 @@ export function YouTubeSavedWidget() {
                     <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-black/40">
                       <div 
                         className="h-full bg-accent shadow-[0_0_12px_hsl(var(--accent))]" 
-                        style={{ width: `${Math.min(100, (video.progress / 3600) * 100)}%` }}
+                        style={{ width: `${Math.min(100, (video.progress / (parseInt(video.duration || '3600')) || 3600) * 100)}%` }}
                       />
                     </div>
                   )}

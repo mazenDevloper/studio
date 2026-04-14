@@ -10,8 +10,8 @@ import Autoplay from "embla-carousel-autoplay";
 import Image from "next/image";
 
 /**
- * ActiveAzkarWidget v59.0 - Optimized Clarity View
- * Removed black overlay completely for zero-crop pure background.
+ * ActiveAzkarWidget v63.0 - Zero Padding Content
+ * Pure visual impact with no borders or gaps.
  */
 export function ActiveAzkarWidget() {
   const customManuscripts = useMediaStore(state => state.customManuscripts);
@@ -36,7 +36,7 @@ export function ActiveAzkarWidget() {
 
   return (
     <div 
-      className="h-full w-full rounded-[2.5rem] border border-white/10 flex flex-col relative overflow-hidden group focusable outline-none bg-black"
+      className="h-full w-full rounded-[2.5rem] border border-white/10 flex flex-col relative overflow-hidden group focusable outline-none bg-black p-0 m-0"
       tabIndex={0}
       data-supports-wallplate="true"
       data-nav-id="active-azkar-container"
@@ -47,12 +47,12 @@ export function ActiveAzkarWidget() {
         </div>
       )}
       
-      <div className="relative z-20 flex-1 flex flex-col items-center justify-center overflow-hidden no-scrollbar">
+      <div className="relative z-20 flex-1 flex flex-col items-center justify-center overflow-hidden no-scrollbar p-0 m-0">
         <div className="w-full h-full overflow-hidden no-scrollbar" ref={emblaRef}>
-          <div className="flex h-full">
+          <div className="flex h-full p-0 m-0">
             {customManuscripts?.length > 0 ? (
               customManuscripts.map((item, i) => (
-                <div key={item.id || i} className="flex-[0_0_100%] min-w-0 h-full flex items-center justify-center cursor-pointer relative" onClick={() => togglePause()}>
+                <div key={item.id || i} className="flex-[0_0_100%] min-w-0 h-full flex items-center justify-center cursor-pointer relative p-0 m-0" onClick={() => togglePause()}>
                   <button 
                     className="absolute top-6 left-6 w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/20 transition-all z-50 focusable opacity-0 group-hover:opacity-100 group-focus:opacity-100"
                     onClick={(e) => { e.stopPropagation(); setWallPlate('manuscript', item); }}
@@ -61,16 +61,16 @@ export function ActiveAzkarWidget() {
                     <Maximize2 className="w-6 h-6" />
                   </button>
 
-                  <div className="animate-in fade-in zoom-in-95 duration-1000 w-full flex justify-center px-8 md:px-12">
+                  <div className="animate-in fade-in zoom-in-95 duration-1000 w-full h-full flex justify-center items-center p-0 m-0">
                     {item.type === 'text' ? (
-                      <p className="w-full text-5xl md:text-7xl lg:text-8xl font-calligraphy text-white leading-tight drop-shadow-[0_0_30px_rgba(255,255,255,0.9)] text-center tracking-wide whitespace-pre-wrap break-words">
+                      <p className="w-full text-5xl md:text-7xl lg:text-8xl font-calligraphy text-white leading-tight drop-shadow-[0_0_30px_rgba(255,255,255,0.9)] text-center tracking-wide whitespace-pre-wrap break-words px-4">
                         {item.content}
                       </p>
                     ) : (
                       <img 
                         src={item.content} 
                         alt="Manuscript"
-                        className="max-h-[90%] max-w-[95%] object-contain brightness-0 invert drop-shadow-[0_0_80px_rgba(255,255,255,1)]"
+                        className="h-full w-full object-contain brightness-0 invert drop-shadow-[0_0_80px_rgba(255,255,255,1)] p-0 m-0"
                       />
                     )}
                   </div>
@@ -84,7 +84,7 @@ export function ActiveAzkarWidget() {
               ))
             ) : (
               <div className="flex-[0_0_100%] flex items-center justify-center opacity-20">
-                <p className="text-white font-black uppercase tracking-widest text-xs">أضف مخطوطات من الإعدادات</p>
+                <p className="text-white font-black uppercase tracking-widest text-xs">أضف محتوى من الإعدادات</p>
               </div>
             )}
           </div>

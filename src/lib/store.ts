@@ -31,6 +31,8 @@ export interface Reminder {
   completed: boolean;
   color: string;
   iconType: 'play' | 'bell' | 'circle';
+  expiryType?: 'duration' | 'prayer';
+  expiryPrayer?: string;
 }
 
 export interface PrayerSetting {
@@ -86,7 +88,7 @@ export type AppAction =
   | 'goto_home' | 'goto_media' | 'goto_quran' | 'goto_hihi2' | 'goto_iptv' | 'goto_football' | 'goto_settings'
   | 'player_next' | 'player_prev' | 'player_save' | 'player_fullscreen' | 'player_playlist' | 'player_minimize' | 'player_close' | 'player_settings'
   | 'focus_search' | 'focus_reciters' | 'focus_surahs'
-  | 'goto_tab_appearance' | 'goto_tab_prayers' | 'goto_tab_reminders' | 'goto_tab_buttonmap';
+  | 'goto_tab_appearance' | 'goto_tab_prayers' | 'goto_tab_reminders' | 'goto_tab_manuscripts' | 'goto_tab_buttonmap';
 
 interface MediaState {
   favoriteChannels: YouTubeChannel[];
@@ -238,28 +240,28 @@ const DEFAULT_GLOBAL_MAPPINGS: Record<string, string[]> = {
   nav_left: ['ArrowLeft', '4'], 
   nav_right: ['ArrowRight', '6'], 
   nav_ok: ['Enter', '5'], 
-  nav_back: ['Backspace', '0', 'Escape', 'Back'],
-  goto_home: ['h', '9'], 
-  goto_media: ['m', '3'], 
-  goto_quran: ['q', '7'], 
-  goto_hihi2: ['f', '1'], 
-  goto_iptv: ['i', 'Red'], 
-  goto_football: ['t', 'Green'], 
-  goto_settings: ['p', 'Yellow'],
+  nav_back: ['Backspace', 'Escape', 'Back'],
+  goto_home: ['H', '1'], 
+  goto_media: ['M', '3'], 
+  goto_quran: ['Q', '7'], 
+  goto_hihi2: ['F', '9'], 
+  goto_iptv: ['0'], 
+  goto_football: ['T'], 
+  goto_settings: ['SETTINGS'],
   delete_item: ['Red'],
   toggle_star: ['Yellow'],
   toggle_reorder: ['Blue']
 };
 
 const DEFAULT_PLAYER_MAPPINGS: Record<string, string[]> = {
-  player_next: ['n', '7'],
-  player_prev: ['b', 'ChannelDown', 'PageDown'],
-  player_save: ['v', 'Yellow'],
-  player_fullscreen: ['Red'],
-  player_close: ['Info'],
-  player_playlist: ['l'],
-  player_minimize: ['Green'],
-  player_settings: ['Sub']
+  player_next: ['ChannelUp', '3'],
+  player_prev: ['PageDown', '1'],
+  player_save: ['3'],
+  player_fullscreen: [], 
+  player_close: ['Red'],
+  player_playlist: ['Blue'],
+  player_minimize: ['M', 'Green'],
+  player_settings: ['Yellow']
 };
 
 const DEFAULT_CONTEXT_MAPPINGS: Record<string, Record<string, string[]>> = {
@@ -282,7 +284,8 @@ const DEFAULT_CONTEXT_MAPPINGS: Record<string, Record<string, string[]>> = {
     goto_tab_appearance: ['1'],
     goto_tab_prayers: ['2'],
     goto_tab_reminders: ['3'],
-    goto_tab_buttonmap: ['4']
+    goto_tab_manuscripts: ['4'],
+    goto_tab_buttonmap: ['5']
   }
 };
 
@@ -385,7 +388,6 @@ export const useMediaStore = create<MediaState>()(
           customManuscriptColors: state.customManuscriptColors,
           keyMappings: state.keyMappings,
           isAltModeActive: state.isAltModeActive,
-          favoriteReciters: state.favoriteReciters,
           autoHideIsland: state.autoHideIsland
         };
         await updateBin(JSONBIN_MASTER_BIN_ID, data);
@@ -443,9 +445,15 @@ export const useMediaStore = create<MediaState>()(
           });
           if (res.ok) {
             const data = await res.json();
-            if (Array.isArray(data.record)) set({ prayerTimes: data.record });
+            const record = data.record || data;
+            if (Array.isArray(record)) {
+              set({ prayerTimes: record });
+            } else {
+              if (record.prayers) set({ prayerTimes: record.prayers });
+              if (record.backgrounds) set({ customWallBackgrounds: record.backgrounds });
+            }
           }
-        } catch (e) { console.error(e); }
+        } catch (e) { console.error("Prayer/Backgrounds Bin Fetch Error:", e); }
       },
 
       fetchManuscripts: async () => {
@@ -461,9 +469,9 @@ export const useMediaStore = create<MediaState>()(
         } catch (e) { console.error(e); }
       },
 
-      setFavoriteChannels: (channels) => set({ favoriteChannels: channels }),
-      setFavoriteIptvChannels: (channels) => set({ favoriteIptvChannels: channels }),
-      setFavoriteReciters: (reciters) => set({ favoriteReciters: reciters }),
+      setFavoriteChannels: (channels) => set({ favoriteChannels: Array.isArray(channels) ? channels : [] }),
+      setFavoriteIptvChannels: (channels) => set({ favoriteIptvChannels: Array.isArray(channels) ? channels : [] }),
+      setFavoriteReciters: (reciters) => set({ favoriteReciters: Array.isArray(reciters) ? reciters : [] }),
 
       addChannel: (channel) => {
         set((state) => {
@@ -682,7 +690,7 @@ export const useMediaStore = create<MediaState>()(
       }),
 
       removeCustomManuscriptColor: (color) => set((state) => {
-        const newList = state.customManuscriptColors.filter(c => c !== color);
+        let newList = state.customManuscriptColors.filter(c => c !== color);
         setTimeout(() => get().syncMasterBin(), 100);
         return { customManuscriptColors: newList };
       }),
@@ -726,10 +734,12 @@ export const useMediaStore = create<MediaState>()(
         const currentMappings = { ...state.keyMappings };
         if (!currentMappings[context]) currentMappings[context] = {};
         
-        const currentKeys = Array.isArray(currentMappings[context][action]) ? currentMappings[context][action] : [];
+        let currentKeys = Array.isArray(currentMappings[context][action]) ? [...currentMappings[context][action]] : [];
         if (currentKeys.includes(key)) return state;
         
-        currentMappings[context][action] = [...currentKeys, key].slice(-2);
+        currentKeys.push(key);
+        currentMappings[context][action] = currentKeys.slice(-2);
+        
         setTimeout(() => get().syncMasterBin(), 100);
         return { keyMappings: currentMappings };
       }),
@@ -854,106 +864,90 @@ export const useMediaStore = create<MediaState>()(
 );
 
 /**
- * Universal Sync Engine v54.0 - Ultra-Resilient Staggered Fetch
+ * Super Turbo Priority Sync v78.0 - Robust Multi-Wave Logic
  */
 if (typeof window !== "undefined") {
-  const fetchWithRetry = async (binId: string, retries = 2) => {
-    for (let i = 0; i <= retries; i++) {
-      try {
-        const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, { 
-          headers: { 'X-Master-Key': JSONBIN_MASTER_KEY } 
-        });
-        if (res.ok) {
-          const json = await res.json();
-          return json.record;
-        }
-        if (res.status === 429) {
-          // Staggered wait on rate limit
-          await new Promise(r => setTimeout(r, 1000 * (i + 1)));
-        }
-      } catch (e) {
-        if (i === retries) throw e;
-      }
-    }
-    return null;
-  };
-
-  const syncWithBins = async () => {
+  const turboSync = async () => {
     try {
-      // 1. Fetch Master Config (Staggered)
-      const masterData = await fetchWithRetry(JSONBIN_MASTER_BIN_ID);
-      if (masterData) {
-        const incoming = masterData.keyMappings || {};
-        const safe = { ...DEFAULT_CONTEXT_MAPPINGS };
-        Object.keys(incoming).forEach(ctx => {
-          if (typeof incoming[ctx] === 'object') {
-            safe[ctx] = { ...safe[ctx], ...incoming[ctx] };
+      const priorityBins = [
+        { id: JSONBIN_CHANNELS_BIN_ID, key: 'channels' },
+        { id: JSONBIN_POPULAR_RECITERS_BIN_ID, key: 'reciters' },
+        { id: JSONBIN_IPTV_FAVS_BIN_ID, key: 'iptv' }
+      ];
+      
+      const backgroundBins = [
+        { id: JSONBIN_MASTER_BIN_ID, key: 'master' },
+        { id: JSONBIN_SAVED_VIDEOS_BIN_ID, key: 'saved' },
+        { id: JSONBIN_PRAYER_TIMES_BIN_ID, key: 'prayers' }, // Single Source for Prayers & Backgrounds
+        { id: JSONBIN_MANUSCRIPTS_BIN_ID, key: 'manuscripts' }
+      ];
+
+      // Wave 1: Channels & Essentials
+      priorityBins.forEach(async (b) => {
+        try {
+          const r = await fetch(`https://api.jsonbin.io/v3/b/${b.id}/latest`, { headers: { 'X-Master-Key': JSONBIN_MASTER_KEY } });
+          const res = await r.json();
+          const data = res.record || res || [];
+          const safeArray = Array.isArray(data) ? data : [];
+          
+          if (b.key === 'channels') useMediaStore.setState({ favoriteChannels: safeArray });
+          if (b.key === 'reciters') useMediaStore.setState({ favoriteReciters: safeArray });
+          if (b.key === 'iptv') useMediaStore.setState({ favoriteIptvChannels: safeArray.length > 0 ? safeArray : INITIAL_IPTV_FAVORITES });
+        } catch (e) { console.error(`Wave 1 Error [${b.key}]:`, e); }
+      });
+
+      // Wave 2: Master Settings & Prayers
+      backgroundBins.forEach(async (b) => {
+        try {
+          const r = await fetch(`https://api.jsonbin.io/v3/b/${b.id}/latest`, { headers: { 'X-Master-Key': JSONBIN_MASTER_KEY } });
+          const res = await r.json();
+          const data = res.record || res || {};
+          const key = b.key;
+
+          if (key === 'master') {
+            const m = data;
+            const safe = { ...DEFAULT_CONTEXT_MAPPINGS };
+            if (m.keyMappings) {
+              Object.keys(m.keyMappings).forEach(ctx => { 
+                if (typeof m.keyMappings[ctx] === 'object') {
+                  safe[ctx] = { ...DEFAULT_CONTEXT_MAPPINGS[ctx], ...m.keyMappings[ctx] }; 
+                }
+              });
+            }
+            useMediaStore.setState({
+              favoriteTeams: m.favoriteTeams || [],
+              favoriteLeagueIds: m.favoriteLeagueIds || [307, 39, 2, 140, 135],
+              belledMatchIds: m.belledMatchIds || [],
+              skippedMatchIds: m.skippedMatchIds || [],
+              prayerSettings: m.prayerSettings || DEFAULT_PRAYER_SETTINGS,
+              reminders: m.reminders || [],
+              mapSettings: { ...useMediaStore.getState().mapSettings, ...m.mapSettings },
+              videoProgress: m.videoProgress || {},
+              customWallBackgrounds: m.customWallBackgrounds || [],
+              customManuscriptColors: m.customManuscriptColors || ['#ffffff', '#FFD700', '#C0C0C0'],
+              keyMappings: safe,
+              isAltModeActive: m.isAltModeActive !== undefined ? m.isAltModeActive : true,
+              autoHideIsland: m.autoHideIsland !== undefined ? m.autoHideIsland : true
+            });
+          } else if (key === 'saved') {
+            useMediaStore.setState({ savedVideos: Array.isArray(data) ? data : (data.videos || []) });
+          } else if (key === 'prayers') {
+            const record = data;
+            if (Array.isArray(record)) {
+              useMediaStore.setState({ prayerTimes: record });
+            } else {
+              useMediaStore.setState({ 
+                prayerTimes: record.prayers || [],
+                customWallBackgrounds: record.backgrounds || useMediaStore.getState().customWallBackgrounds
+              });
+            }
+          } else if (key === 'manuscripts') {
+            const list = Array.isArray(data) ? data : (data.manuscripts || []);
+            useMediaStore.setState({ customManuscripts: list });
           }
-        });
-        useMediaStore.setState({
-          favoriteTeams: masterData.favoriteTeams || [],
-          favoriteLeagueIds: masterData.favoriteLeagueIds || [307, 39, 2, 140, 135],
-          belledMatchIds: masterData.belledMatchIds || [],
-          skippedMatchIds: masterData.skippedMatchIds || [],
-          prayerSettings: masterData.prayerSettings || DEFAULT_PRAYER_SETTINGS,
-          reminders: masterData.reminders || [],
-          mapSettings: masterData.mapSettings || useMediaStore.getState().mapSettings,
-          videoProgress: masterData.videoProgress || {},
-          customWallBackgrounds: masterData.customWallBackgrounds || [],
-          customManuscriptColors: masterData.customManuscriptColors || ['#ffffff', '#FFD700', '#C0C0C0'],
-          keyMappings: safe,
-          isAltModeActive: masterData.isAltModeActive !== undefined ? masterData.isAltModeActive : true,
-          autoHideIsland: masterData.autoHideIsland !== undefined ? masterData.autoHideIsland : true
-        });
-      }
-
-      // 2. Fetch specific bins with 100ms delay between each to avoid rate limits
-      const wait = (ms: number) => new Promise(r => setTimeout(r, ms));
-
-      const channels = await fetchWithRetry(JSONBIN_CHANNELS_BIN_ID);
-      if (Array.isArray(channels)) useMediaStore.setState({ favoriteChannels: channels });
-      else if (channels?.channels) useMediaStore.setState({ favoriteChannels: channels.channels });
-
-      await wait(100);
-      const saved = await fetchWithRetry(JSONBIN_SAVED_VIDEOS_BIN_ID);
-      if (Array.isArray(saved)) useMediaStore.setState({ savedVideos: saved });
-      else if (saved?.videos) useMediaStore.setState({ savedVideos: saved.videos });
-
-      await wait(100);
-      const iptv = await fetchWithRetry(JSONBIN_IPTV_FAVS_BIN_ID);
-      if (iptv) {
-        const list = Array.isArray(iptv) ? iptv : (iptv.favorites || []);
-        const mergedIptv = list.length > 0 ? list : INITIAL_IPTV_FAVORITES;
-        useMediaStore.setState({ 
-          favoriteIptvChannels: mergedIptv.map((ch: any) => ({ 
-            ...ch, 
-            type: 'web', 
-            url: ch.url || `http://playstop.watch:2095/live/W87d737/Pd37qj34/${ch.stream_id}.m3u8` 
-          })) 
-        });
-      }
-
-      await wait(100);
-      const prayerRes = await fetchWithRetry(JSONBIN_PRAYER_TIMES_BIN_ID);
-      if (Array.isArray(prayerRes)) useMediaStore.setState({ prayerTimes: prayerRes });
-
-      await wait(100);
-      const manuscripts = await fetchWithRetry(JSONBIN_MANUSCRIPTS_BIN_ID);
-      if (manuscripts) {
-        const list = Array.isArray(manuscripts) ? manuscripts : (manuscripts.manuscripts || []);
-        useMediaStore.setState({ customManuscripts: list });
-      }
-
-      await wait(100);
-      const reciters = await fetchWithRetry(JSONBIN_POPULAR_RECITERS_BIN_ID);
-      if (Array.isArray(reciters)) useMediaStore.setState({ favoriteReciters: reciters });
-      else if (reciters?.reciters) useMediaStore.setState({ favoriteReciters: reciters.reciters });
-
-    } catch (e) { 
-      console.error("Universal Sync Failed:", e); 
-    }
+        } catch (e) { console.error(`Wave 2 Error [${b.key}]:`, e); }
+      });
+    } catch (e) { console.error("Turbo Sync Failed:", e); }
   };
-
-  // Run initial sync after 1s
-  setTimeout(syncWithBins, 1000);
+  setTimeout(turboSync, 10);
 }
