@@ -2,6 +2,7 @@
 "use client";
 
 import { YT_KEYS_POOL } from "./constants";
+import { useMediaStore } from "./store";
 
 export interface YouTubeChannel {
   channelid: string;
@@ -29,7 +30,7 @@ export interface YouTubeVideo {
 const youtubeCache: Record<string, { data: any, timestamp: number }> = {};
 const CACHE_TTL = 1000 * 60 * 60 * 4;
 
-const BLACKLIST_KEY = 'yt_blacklist_v49';
+const BLACKLIST_KEY = 'yt_blacklist_v50';
 
 function getBlacklist(): Record<string, number> {
   if (typeof window === 'undefined') return {};
@@ -52,6 +53,16 @@ function addToBlacklist(index: number) {
   localStorage.setItem(BLACKLIST_KEY, JSON.stringify(blacklist));
 }
 
+function parseISO8601Duration(duration: string) {
+  const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+  if (!match) return "";
+  const hours = parseInt(match[1]) || 0;
+  const minutes = parseInt(match[2]) || 0;
+  const seconds = parseInt(match[3]) || 0;
+  if (hours > 0) return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+}
+
 async function fetchWithRotation(endpoint: string, params: Record<string, string>) {
   const queryParams = new URLSearchParams(params);
   const cacheKey = `${endpoint}?${queryParams.toString()}`;
@@ -61,14 +72,15 @@ async function fetchWithRotation(endpoint: string, params: Record<string, string
   }
   
   const totalKeys = YT_KEYS_POOL.length;
-  // Use a sequential but rotated start index to visit EVERY key
-  const startIndex = 0; 
   const blacklist = getBlacklist();
+  const setApiError = useMediaStore.getState().setApiError;
 
-  for (let attempts = 0; attempts < totalKeys; attempts++) {
-    const activeIndex = (startIndex + attempts) % totalKeys;
+  // Try each key twice to ensure maximum availability (Double-Pass Rotation)
+  for (let attempts = 0; attempts < totalKeys * 2; attempts++) {
+    const activeIndex = attempts % totalKeys;
     
-    if (blacklist[activeIndex.toString()]) {
+    // Only skip if blacklisted during the first pass
+    if (blacklist[activeIndex.toString()] && attempts < totalKeys) {
       continue;
     }
 
@@ -77,7 +89,7 @@ async function fetchWithRotation(endpoint: string, params: Record<string, string
     
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 1500); // 1.5s ultra-fast timeout
+      const timeoutId = setTimeout(() => controller.abort(), 5000); 
       
       const response = await fetch(url, { signal: controller.signal });
       clearTimeout(timeoutId);
@@ -86,21 +98,21 @@ async function fetchWithRotation(endpoint: string, params: Record<string, string
       
       if (response.ok) {
         youtubeCache[cacheKey] = { data, timestamp: Date.now() };
+        setApiError(null); 
         return data;
       }
       
-      // Blacklist immediately on quota or permission error and try next key instantly
       if (response.status === 403 || response.status === 429) {
-        console.warn(`YouTube Key ${activeIndex} exhausted (${response.status}). Trying next key in pool...`);
+        console.warn(`YouTube Key ${activeIndex} exhausted. Trying next...`);
         addToBlacklist(activeIndex);
         continue; 
       }
     } catch (e) {
-      // Network error or timeout, skip to next key immediately
       continue;
     }
   }
   
+  setApiError({ count: totalKeys, message: "تم فحص جميع المفاتيح وهي منتهية الصلاحية حالياً" });
   return null;
 }
 
@@ -115,6 +127,21 @@ export async function searchYouTubeVideos(query: string, limit = 20): Promise<Yo
 
   if (!data?.items) return [];
 
+  const videoIds = data.items.map((v: any) => v.id.videoId).filter(Boolean).join(',');
+  if (!videoIds) return [];
+
+  const detailsData = await fetchWithRotation('videos', { part: 'snippet,contentDetails', id: videoIds });
+  const detailsMap: Record<string, any> = {};
+
+  if (detailsData?.items) {
+    detailsData.items.forEach((v: any) => {
+      detailsMap[v.id] = {
+        duration: parseISO8601Duration(v.contentDetails.duration),
+        isLive: v.snippet.liveBroadcastContent === 'live' || v.snippet.liveBroadcastContent === 'upcoming'
+      };
+    });
+  }
+
   const results = data.items.map((v: any) => ({
     id: v.id.videoId,
     title: v.snippet.title,
@@ -123,8 +150,9 @@ export async function searchYouTubeVideos(query: string, limit = 20): Promise<Yo
     publishedAt: v.snippet.publishedAt,
     channelTitle: v.snippet.channelTitle,
     channelId: v.snippet.channelId,
-    isLive: v.snippet.liveBroadcastContent === 'live' || v.snippet.liveBroadcastContent === 'upcoming'
-  }));
+    duration: detailsMap[v.id.videoId]?.duration || "",
+    isLive: detailsMap[v.id.videoId]?.isLive || false
+  })).filter(v => v.id);
 
   return results.sort((a, b) => (a.isLive === b.isLive) ? 0 : a.isLive ? -1 : 1);
 }
@@ -146,7 +174,7 @@ export async function fetchChannelVideos(channelId: string, limit = 15): Promise
   const uploadIds = playlistData.items.map((i: any) => i.snippet.resourceId.videoId);
   const allUniqueIds = Array.from(new Set([...liveIds, ...uploadIds]));
 
-  const statsData = await fetchWithRotation('videos', { part: 'snippet,statistics', id: allUniqueIds.join(',') });
+  const statsData = await fetchWithRotation('videos', { part: 'snippet,statistics,contentDetails', id: allUniqueIds.join(',') });
   const statsMap: Record<string, any> = {};
   
   if (statsData?.items) {
@@ -157,7 +185,8 @@ export async function fetchChannelVideos(channelId: string, limit = 15): Promise
         title: v.snippet.title,
         description: v.snippet.description,
         thumbnail: v.snippet.thumbnails.high?.url || v.snippet.thumbnails.default?.url,
-        publishedAt: v.snippet.publishedAt
+        publishedAt: v.snippet.publishedAt,
+        duration: parseISO8601Duration(v.contentDetails.duration)
       };
     });
   }
@@ -171,31 +200,40 @@ export async function fetchChannelVideos(channelId: string, limit = 15): Promise
     channelTitle,
     channelId,
     isLive: statsMap[vidId]?.isLive || false,
-    viewCount: statsMap[vidId]?.viewCount || 0
+    viewCount: statsMap[vidId]?.viewCount || 0,
+    duration: statsMap[vidId]?.duration || ""
   })).sort((a, b) => (a.isLive === b.isLive) ? 0 : a.isLive ? -1 : 1);
 }
 
 export async function searchYouTubeChannels(query: string): Promise<YouTubeChannel[]> {
   if (!query) return [];
-  const searchData = await fetchWithRotation('search', { part: 'snippet', type: 'channel', maxResults: '8', q: query });
+  const searchData = await fetchWithRotation('search', { part: 'snippet', type: 'channel', maxResults: '12', q: query });
   if (!searchData?.items) return [];
   
-  const channelIds = searchData.items.map((item: any) => item.snippet.channelId).join(',');
+  const channelIds = searchData.items.map((item: any) => item.id.channelId || item.snippet.channelId).filter(Boolean).join(',');
+  if (!channelIds) return [];
+
   const statsData = await fetchWithRotation('channels', { part: 'snippet', id: channelIds });
   const statsMap: Record<string, any> = {};
   
   if (statsData?.items) {
     statsData.items.forEach((item: any) => {
-      statsMap[item.id] = { image: item.snippet.thumbnails.high?.url || item.snippet.thumbnails.default?.url };
+      statsMap[item.id] = { 
+        image: item.snippet.thumbnails.high?.url || item.snippet.thumbnails.default?.url,
+        title: item.snippet.title
+      };
     });
   }
   
-  return searchData.items.map((item: any) => ({
-    channelid: item.snippet.channelId,
-    name: item.snippet.title,
-    channeltitle: item.snippet.title,
-    image: statsMap[item.snippet.channelId]?.image || item.snippet.thumbnails.high?.url,
-    clickschannel: 0,
-    starred: false
-  }));
+  return searchData.items.map((item: any) => {
+    const cid = item.id.channelId || item.snippet.channelId;
+    return {
+      channelid: cid,
+      name: statsMap[cid]?.title || item.snippet.title,
+      channeltitle: statsMap[cid]?.title || item.snippet.title,
+      image: statsMap[cid]?.image || item.snippet.thumbnails.high?.url,
+      clickschannel: 0,
+      starred: false
+    };
+  });
 }

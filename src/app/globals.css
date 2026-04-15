@@ -99,6 +99,23 @@
   scrollbar-width: none;
 }
 
+/* Custom Scrollbar for Leanback Content Visibility */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 10px;
+  border: 2px solid rgba(0, 0, 0, 0.2);
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
 .shadow-glow {
   box-shadow: 0 0 35px #0088ff, 0 0 10px rgba(0, 136, 255, 0.5);
 }

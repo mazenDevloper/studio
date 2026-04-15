@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RefreshCw, Play, Clock, Star, Shuffle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -15,13 +15,33 @@ interface Props {
   channels: YouTubeChannel[];
 }
 
+/**
+ * LatestVideosWidget v98.0 - Hyper Quota Management System
+ * Fetches at: 06:00, 10:00, 16:00, 22:00
+ */
 export function LatestVideosWidget({ channels }: Props) {
   const { setActiveVideo, setPlaylist } = useMediaStore();
   const [videos, setVideos] = useState<YouTubeVideo[]>([]);
   const [loading, setLoading] = useState(false);
+  const lastFetchRef = useRef<number>(0);
 
-  const fetchLatest = useCallback(async () => {
+  const fetchLatest = useCallback(async (force = false) => {
     if (channels.length === 0) { setVideos([]); return; }
+    
+    const now = new Date();
+    const hour = now.getHours();
+    const minute = now.getMinutes();
+    const targetHours = [6, 10, 16, 22];
+    
+    // Quota Strategy Logic: Only fetch at specific windows unless forced
+    const isTargetWindow = targetHours.includes(hour) && minute < 10;
+    const timeSinceLast = Date.now() - lastFetchRef.current;
+    const fourHours = 4 * 60 * 60 * 1000;
+
+    if (!force && !isTargetWindow && timeSinceLast < fourHours && videos.length > 0) {
+      return; 
+    }
+
     setLoading(true);
     try {
       const videoPromises = channels.map(c => fetchChannelVideos(c.channelid));
@@ -44,16 +64,18 @@ export function LatestVideosWidget({ channels }: Props) {
       });
 
       setVideos([...firstVideos, ...sortedRemaining]);
+      lastFetchRef.current = Date.now();
     } catch (error) {
       console.error("Failed to fetch videos", error);
     } finally {
       setLoading(false);
     }
-  }, [channels]);
+  }, [channels, videos.length]);
 
   useEffect(() => {
     fetchLatest();
-    const interval = setInterval(fetchLatest, 6 * 60 * 60 * 1000);
+    // Check every minute for target quota window
+    const interval = setInterval(() => fetchLatest(), 60000);
     return () => clearInterval(interval);
   }, [fetchLatest]);
 
@@ -78,7 +100,7 @@ export function LatestVideosWidget({ channels }: Props) {
             <Shuffle className="w-5 h-5" />
             <span className="font-black text-xs uppercase tracking-widest">تشغيل الكل</span>
           </Button>
-          <Button variant="ghost" size="icon" onClick={fetchLatest} disabled={loading || channels.length === 0} className="rounded-full hover:bg-white/10 w-12 h-12 focusable">
+          <Button variant="ghost" size="icon" onClick={() => fetchLatest(true)} disabled={loading || channels.length === 0} className="rounded-full hover:bg-white/10 w-12 h-12 focusable">
             <RefreshCw className={cn("h-6 w-6", loading && "animate-spin")} />
           </Button>
         </div>
@@ -100,6 +122,9 @@ export function LatestVideosWidget({ channels }: Props) {
               >
                 <div className="aspect-video relative overflow-hidden">
                   <Image src={video.thumbnail} alt={video.title} fill className="object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                  
+                  {video.duration && <div className="absolute bottom-2 right-2 bg-black text-white text-[14px] px-3 py-1.5 rounded-lg font-black z-10 border border-white/20 shadow-2xl">{video.duration}</div>}
+                  
                   <div className="absolute inset-0 flex items-center justify-center"><div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-3xl flex items-center justify-center border border-white/20 opacity-0 group-hover:opacity-100 transition-all scale-75 group-hover:scale-100 shadow-2xl"><Play className="w-8 h-8 text-white fill-white ml-1" /></div></div>
                 </div>
                 <div className="p-5 space-y-2 text-right">

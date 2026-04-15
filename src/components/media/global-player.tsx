@@ -2,7 +2,7 @@
 "use client";
 
 import { useMediaStore } from "@/lib/store";
-import { X, Monitor, ChevronRight, ChevronLeft, Settings, LayoutGrid, Bookmark, BookmarkCheck, Youtube, Maximize2, Minimize2, Eye, EyeOff } from "lucide-react";
+import { X, Monitor, ChevronRight, ChevronLeft, Settings, LayoutGrid, Bookmark, BookmarkCheck, Youtube, Maximize2, Minimize2, Eye, EyeOff, Tv } from "lucide-react";
 import { cn, normalizeKey } from "@/lib/utils";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ export function GlobalVideoPlayer() {
     setActiveVideo, setActiveIptv, setIsPlaying, setIsMinimized, setIsFullScreen, updateVideoProgress,
     playlist, videoProgress, toggleSaveVideo, savedVideos, iptvPlaylist, playerMode,
     gridMode, setGridMode, isPlayerControlsExpanded, setIsPlayerControlsExpanded,
-    showIslands, toggleShowIslands
+    showIslands, toggleShowIslands, cyclePlayerMode, iptvSwitchingInfo
   } = useMediaStore();
   
   const [mounted, setMounted] = useState(false);
@@ -33,63 +33,23 @@ export function GlobalVideoPlayer() {
     return 0;
   }, [activeVideo?.id, isSaved, videoProgress]);
 
-  // STABILIZED KEY LISTENER v78.0
   useEffect(() => {
     const handleForcedKeys = (e: KeyboardEvent) => {
       if (!isActive) return;
       const key = normalizeKey(e);
       const mappings = useMediaStore.getState().keyMappings;
       
-      // Close Logic
-      if (mappings.player?.player_close?.includes(key)) {
-        e.preventDefault();
-        handleClose();
-        return;
-      }
-      
-      // Playlist Toggle
-      if (mappings.player?.player_playlist?.includes(key)) {
-        e.preventDefault();
-        setGridMode(gridMode === 'hidden' ? 'full' : 'hidden');
-        return;
-      }
-
-      // Minimize Toggle
-      if (mappings.player?.player_minimize?.includes(key)) {
-        e.preventDefault();
-        setIsMinimized(!isMinimized);
-        return;
-      }
-
-      // Next/Prev Tracks
-      if (mappings.player?.player_next?.includes(key)) {
-        e.preventDefault();
-        nextTrack();
-        return;
-      }
-      if (mappings.player?.player_prev?.includes(key)) {
-        e.preventDefault();
-        prevTrack();
-        return;
-      }
-
-      // Save Video
-      if (mappings.player?.player_save?.includes(key)) {
-        e.preventDefault();
-        if (activeVideo) toggleSaveVideo(activeVideo);
-        return;
-      }
-
-      // Settings Toggle
-      if (mappings.player?.player_settings?.includes(key)) {
-        e.preventDefault();
-        setIsPlayerControlsExpanded(!isPlayerControlsExpanded);
-        return;
-      }
+      if (mappings.player?.player_close?.includes(key)) { e.preventDefault(); handleClose(); return; }
+      if (mappings.player?.player_playlist?.includes(key)) { e.preventDefault(); setGridMode(gridMode === 'hidden' ? 'full' : 'hidden'); return; }
+      if (mappings.player?.player_minimize?.includes(key)) { e.preventDefault(); cyclePlayerMode(); return; }
+      if (mappings.player?.player_next?.includes(key)) { e.preventDefault(); nextTrack(); return; }
+      if (mappings.player?.player_prev?.includes(key)) { e.preventDefault(); prevTrack(); return; }
+      if (mappings.player?.player_save?.includes(key)) { e.preventDefault(); if (activeVideo) toggleSaveVideo(activeVideo); return; }
+      if (mappings.player?.player_settings?.includes(key)) { e.preventDefault(); setIsPlayerControlsExpanded(!isPlayerControlsExpanded); return; }
     };
     window.addEventListener("keydown", handleForcedKeys, true);
     return () => window.removeEventListener("keydown", handleForcedKeys, true);
-  }, [isActive, gridMode, isMinimized, isPlayerControlsExpanded, activeVideo, nextTrack, prevTrack, setGridMode, setIsMinimized, toggleSaveVideo, setIsPlayerControlsExpanded]);
+  }, [isActive, gridMode, isMinimized, isFullScreen, isPlayerControlsExpanded, activeVideo, nextTrack, prevTrack, setGridMode, cyclePlayerMode, toggleSaveVideo, setIsPlayerControlsExpanded]);
 
   useEffect(() => {
     setMounted(true);
@@ -181,6 +141,34 @@ export function GlobalVideoPlayer() {
         ) : (activeIptv?.url && <iframe key={activeIptv.stream_id} src={`${activeIptv.url}${activeIptv.url.includes('?') ? '&' : '?'}autoplay=1`} className="w-full h-full border-none" allow="autoplay; encrypted-media; fullscreen" sandbox="allow-scripts allow-forms allow-same-origin allow-presentation allow-downloads" style={{ background: '#000' }} />)}
       </div>
 
+      {/* IPTV SWITCHING RADAR v98.0 */}
+      {activeIptv && iptvSwitchingInfo && (
+        <div className="absolute top-10 left-1/2 -translate-x-1/2 z-[200] w-full max-w-4xl animate-in fade-in slide-in-from-top-10 duration-500">
+          <div className="flex items-center justify-center gap-8 bg-black/60 backdrop-blur-3xl p-8 rounded-[3.5rem] border border-white/10 shadow-[0_0_100px_rgba(0,0,0,0.8)]">
+            <div className="flex flex-col items-center gap-2 opacity-30 grayscale scale-75">
+              <div className="w-16 h-16 rounded-2xl overflow-hidden border border-white/10"><img src={iptvSwitchingInfo.prev?.stream_icon} className="w-full h-full object-cover" /></div>
+              <span className="text-[10px] font-black text-white truncate max-w-[80px]">{iptvSwitchingInfo.prev?.name}</span>
+            </div>
+
+            <div className="flex flex-col items-center gap-4 animate-in zoom-in-95 duration-500">
+              <div className="relative">
+                <div className="w-32 h-32 rounded-[2.5rem] overflow-hidden border-4 border-emerald-500 shadow-glow bg-black"><img src={iptvSwitchingInfo.current.stream_icon} className="w-full h-full object-cover" /></div>
+                <div className="absolute -top-3 -right-3 w-10 h-10 rounded-full bg-emerald-500 flex items-center justify-center shadow-lg"><Tv className="w-5 h-5 text-black" /></div>
+              </div>
+              <div className="text-center">
+                <h2 className="text-3xl font-black text-white tracking-tighter drop-shadow-lg">{iptvSwitchingInfo.current.name}</h2>
+                <span className="text-[10px] text-emerald-400 font-black uppercase tracking-[0.4em] mt-1 block">Live Transmission</span>
+              </div>
+            </div>
+
+            <div className="flex flex-col items-center gap-2 opacity-30 grayscale scale-75">
+              <div className="w-16 h-16 rounded-2xl overflow-hidden border border-white/10"><img src={iptvSwitchingInfo.next?.stream_icon} className="w-full h-full object-cover" /></div>
+              <span className="text-[10px] font-black text-white truncate max-w-[80px]">{iptvSwitchingInfo.next?.name}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div 
         className={cn(
           "absolute left-0 right-0 z-[100] bg-black/95 backdrop-blur-[80px] border-t border-white/10 transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] px-12 py-8 rounded-t-[3rem] overflow-hidden player-playlist-grid",
@@ -202,7 +190,11 @@ export function GlobalVideoPlayer() {
               const isActiveItem = activeIptv ? (activeIptv.stream_id === id) : (activeVideo?.id === id);
               return (
                 <div key={`pl-item-${id}-${i}`} onClick={() => { if (activeIptv) setActiveIptv(v, currentPlaylist); else setActiveVideo(v, currentPlaylist); setGridMode('hidden'); }} data-nav-id={`player-playlist-item-${i}`} className={cn("group rounded-[2.5rem] bg-white/5 p-5 transition-all focusable cursor-pointer border-4", isActiveItem ? "border-primary shadow-glow scale-105" : "border-transparent opacity-60 hover:opacity-100")} tabIndex={0}>
-                  <div className="aspect-video relative rounded-[1.8rem] overflow-hidden mb-4 shadow-2xl"><img src={activeIptv ? v.stream_icon : v.thumbnail} alt="" className="w-full h-full object-cover" />{isActiveItem && <div className="absolute inset-0 bg-primary/20 flex items-center justify-center"><div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center animate-pulse shadow-glow"><Youtube className="w-6 h-6 text-white" /></div></div>}</div>
+                  <div className="aspect-video relative rounded-[1.8rem] overflow-hidden mb-4 shadow-2xl">
+                    <img src={activeIptv ? v.stream_icon : v.thumbnail} alt="" className="w-full h-full object-cover" />
+                    {v.duration && <div className="absolute bottom-2 right-2 bg-black text-white text-[14px] px-3 py-1.5 rounded-lg font-black z-10 border border-white/20 shadow-2xl">{v.duration}</div>}
+                    {isActiveItem && <div className="absolute inset-0 bg-primary/20 flex items-center justify-center"><div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center animate-pulse shadow-glow"><Youtube className="w-6 h-6 text-white" /></div></div>}
+                  </div>
                   <h3 className="text-base font-black text-white line-clamp-2 px-2 uppercase tracking-tight leading-relaxed text-right">{activeIptv ? v.name : v.title}</h3>
                 </div>
               );
@@ -234,7 +226,7 @@ export function GlobalVideoPlayer() {
                     {showIslands ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
                   </button>
                   <button onClick={() => activeVideo && toggleSaveVideo(activeVideo)} className={cn("w-9 h-9 rounded-full flex items-center justify-center focusable cursor-pointer transition-colors relative", isSaved ? "bg-accent/40 text-accent shadow-glow" : "bg-white/5 text-white/40")} tabIndex={0}><ShortcutBadge action="player_save" className="-bottom-10 left-1/2 -translate-x-1/2" context="player" />{isSaved ? <BookmarkCheck className="w-5 h-5" /> : <Bookmark className="w-5 h-5" />}</button>
-                  <button onClick={() => setIsMinimized(!isMinimized)} className={cn("w-9 h-9 rounded-full flex items-center justify-center focusable cursor-pointer relative", isMinimized && "bg-orange-500/40 shadow-glow")} tabIndex={0} data-nav-id="player-min-toggle"><ShortcutBadge action="player_minimize" className="-bottom-10 left-1/2 -translate-x-1/2" context="player" />{isMinimized ? <Maximize2 className="w-5 h-5" /> : <Minimize2 className="w-5 h-5" />}</button>
+                  <button onClick={cyclePlayerMode} className={cn("w-9 h-9 rounded-full flex items-center justify-center focusable cursor-pointer relative", isMinimized && "bg-orange-500/40 shadow-glow")} tabIndex={0} data-nav-id="player-min-toggle"><ShortcutBadge action="player_minimize" className="-bottom-10 left-1/2 -translate-x-1/2" context="player" />{isMinimized ? <Maximize2 className="w-5 h-5" /> : <Minimize2 className="w-5 h-5" />}</button>
                   <button onClick={() => setIsFullScreen(!isFullScreen)} className={cn("w-9 h-9 rounded-full flex items-center justify-center focusable cursor-pointer relative", isFullScreen && "bg-primary/40 shadow-glow")} tabIndex={0}><ShortcutBadge action="player_fullscreen" className="-bottom-10 left-1/2 -translate-x-1/2" context="player" /><Monitor className="w-5 h-5" /></button>
                 </>
               )}

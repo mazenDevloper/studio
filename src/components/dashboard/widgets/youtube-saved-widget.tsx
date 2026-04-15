@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 /**
- * YouTubeSavedWidget v72.0 - Ensured rendering logic
+ * YouTubeSavedWidget v87.0 - Ultra Prominent Duration Badges
  */
 export function YouTubeSavedWidget() {
   const { savedVideos, removeVideo, setActiveVideo } = useMediaStore();
@@ -58,6 +58,8 @@ export function YouTubeSavedWidget() {
                   <Image src={video.thumbnail} alt={video.title} fill className="object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
                   
+                  {video.duration && <div className="absolute bottom-2 right-2 bg-black text-white text-[14px] px-3 py-1.5 rounded-lg font-black z-10 border border-white/20 shadow-2xl">{video.duration}</div>}
+
                   <Button
                     variant="destructive"
                     size="icon"
@@ -80,7 +82,7 @@ export function YouTubeSavedWidget() {
                     <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-black/40">
                       <div 
                         className="h-full bg-accent shadow-[0_0_12px_hsl(var(--accent))]" 
-                        style={{ width: `${Math.min(100, (video.progress / (parseInt(video.duration || '3600')) || 3600) * 100)}%` }}
+                        style={{ width: `${Math.min(100, (video.progress / (parseInt(video.duration?.includes(':') ? '3600' : (video.duration || '3600'))) || 3600) * 100)}%` }}
                       />
                     </div>
                   )}

@@ -6,7 +6,10 @@ export const FOOTBALL_API_KEY = '2f79edc60ed7f63aa4af1feea0f1ff2c';
 export const FOOTBALL_API_BASE_URL = 'https://v3.football.api-sports.io';
  
 export const YT_KEYS_POOL = [
-  "AIzaSyCxfbZmguW3qxgKfxjs4o9OsXTbnCuRMoc", // Newest Key - Priority 1
+  "AIzaSyBBr2Wszx3vI1CZ09FcKl40tp4e3RSTd84", 
+  "AIzaSyDaf2CQ2eAMzDYPjyPWwBGr2oP1jLdIK3Q", 
+  "AIzaSyChsEKkZ8H7_tEvaiylD0BIa5BsxxOjK24", 
+  "AIzaSyCxfbZmguW3qxgKfxjs4o9OsXTbnCuRMoc", 
   "AIzaSyCDXmW0Jzhv93uYjk9xfgxCS2061jqWaaY",
   "AIzaSyAuyQADaB5SzwebqRMaG_AfkKRyB-uBL3c",
   "AIzaSyB7QdfI0br5BfP71hOr36hz2dRWG_l0G8k",
@@ -16,7 +19,6 @@ export const YT_KEYS_POOL = [
   "AIzaSyCaqMPtn-egmEQk7XmTel--xsXV1Xbdp7o",
   "AIzaSyBLrMA6plsSZtqg2iY9Z1N1fJAHNmgGxos",
   "AIzaSyBdhcRo-EsvIduedQd-jFHfrEj9NeiP7pU",
-  "AIzaSyB7QdfI0br5BfP71hOr36hz2dRWG_l0G8k",
   "AIzaSyBYThRM6tVnzgFgdHOUAN6DN8jQd54OKeg",
   "AIzaSyDULoFJLWNIO9hn0u8siLz-BzTi7eM-CX4",
   "AIzaSyAjdVZ2Rodp6ZVEF1pZT195kAtGELolxSI",

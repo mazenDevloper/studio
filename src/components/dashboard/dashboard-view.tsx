@@ -26,7 +26,8 @@ const YouTubeSavedWidget = dynamic(() => import("./widgets/youtube-saved-widget"
 });
 
 /**
- * DashboardView v72.0 - Wall Mode No-Blur & Saved Content Fix
+ * DashboardView v99.0 - Full Leanback Standards
+ * Consistent 3-column layout across all screen sizes.
  */
 export function DashboardView() {
   const { 
@@ -35,16 +36,6 @@ export function DashboardView() {
   } = useMediaStore();
   
   const [api, setApi] = useState<CarouselApi>();
-  const [windowWidth, setWindowWidth] = useState(0);
-
-  useEffect(() => {
-    const handleResize = () => setWindowWidth(window.innerWidth);
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  const isWideScreen = windowWidth > 968;
 
   return (
     <div className="h-full w-full p-6 flex flex-col gap-8 relative overflow-y-auto pb-32 no-scrollbar bg-black">
@@ -74,7 +65,6 @@ export function DashboardView() {
                     className="object-cover opacity-90" 
                     priority 
                   />
-                  {/* Blur removed for Zero-Blur well mode */}
                 </div>
                 <div className="relative z-10 w-full h-full flex items-center justify-center px-0 m-0">
                   {wallPlateData?.type === 'text' ? (
@@ -99,17 +89,17 @@ export function DashboardView() {
         </div>
       )}
 
-      {/* Row 1: Top Widgets */}
-      <div className="grid grid-cols-1 min-[968px]:grid-cols-12 gap-6 min-h-[480px]" data-row-id="dash-row-1">
-        <div className="min-[968px]:col-span-4 rounded-[2.5rem] overflow-hidden relative shadow-2xl h-[480px] bg-black focusable p-0" tabIndex={0} data-nav-id="dash-col-0">
-          {isWideScreen ? <ActiveAzkarWidget /> : <MapWidget />}
+      {/* Row 1: Unified Grid - Always 3 Columns for Leanback Experience */}
+      <div className="grid grid-cols-12 gap-6 min-h-[480px]" data-row-id="dash-row-1">
+        <div className="col-span-4 rounded-[2.5rem] overflow-hidden relative shadow-2xl h-[480px] bg-black focusable p-0" tabIndex={0} data-nav-id="dash-col-0">
+          <ActiveAzkarWidget />
         </div>
 
-        <div className="min-[968px]:col-span-4 rounded-[2.5rem] relative flex items-center justify-center overflow-hidden h-[480px] shadow-2xl focusable bg-black outline-none active-nav-target" tabIndex={0} data-nav-id="dash-col-1">
+        <div className="col-span-4 rounded-[2.5rem] relative flex items-center justify-center overflow-hidden h-[480px] shadow-2xl focusable bg-black outline-none active-nav-target" tabIndex={0} data-nav-id="dash-col-1">
           <ReminderSummaryWidget />
         </div>
 
-        <div className="min-[968px]:col-span-4 flex flex-col gap-4 h-[480px] relative">
+        <div className="col-span-4 flex flex-col gap-4 h-[480px] relative">
           <div className="flex-1 relative overflow-hidden group bg-black rounded-[2.5rem] shadow-2xl focusable" tabIndex={0} data-nav-id="dash-col-2">
             <Carousel setApi={setApi} opts={{ loop: true }} className="w-full h-full">
               <CarouselContent className="h-full ml-0 overflow-hidden no-scrollbar">

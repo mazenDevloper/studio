@@ -68,13 +68,12 @@ export function ShortcutBadge({ action, className, context = 'default' }: { acti
 }
 
 /**
- * CarDock v72.0 - Always Side docked by default for cockpit feel.
- * Responsive: Sidebar at all sizes, adjusted width for mobile.
+ * CarDock v81.0 - Independent Dock Zoom
  */
 export function CarDock() {
   const pathname = usePathname();
   const router = useRouter();
-  const { dockSide, toggleDockSide, resetMediaView } = useMediaStore();
+  const { dockSide, toggleDockSide, resetMediaView, dockScale } = useMediaStore();
 
   const apps = [
     { name: "Home", href: "/", icon: LayoutDashboard, action: "goto_home" as AppAction },
@@ -87,11 +86,14 @@ export function CarDock() {
   ];
 
   return (
-    <div className={cn(
-      "fixed top-0 bottom-0 z-[150] transition-all duration-700 bg-black/80 backdrop-blur-3xl flex flex-col py-6 border-white/5",
-      "w-16 min-[968px]:w-20",
-      dockSide === 'left' ? "left-0 border-r" : "right-0 border-l"
-    )}>
+    <div 
+      className={cn(
+        "fixed top-0 bottom-0 z-[150] transition-all duration-700 bg-black/80 backdrop-blur-3xl flex flex-col py-6 border-white/5",
+        "w-16 min-[968px]:w-20",
+        dockSide === 'left' ? "left-0 border-r" : "right-0 border-l"
+      )}
+      style={{ zoom: dockScale || 1.0 }}
+    >
       <div className="flex flex-col items-center flex-1 justify-start gap-2">
         {apps.map((app) => {
           const isActive = pathname === app.href;

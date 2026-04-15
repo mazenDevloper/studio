@@ -24,8 +24,8 @@ interface GoalEvent {
 }
 
 /**
- * Split Interactive Island v78.0
- * Logic: Supports prayer-linked expiration for reminders.
+ * Split Interactive Island v81.0
+ * Logic: Advanced Reminder Expiry - Linked to Next Prayer or Custom Time.
  */
 export function LiveMatchIsland() {
   const { 
@@ -101,6 +101,15 @@ export function LiveMatchIsland() {
                     prayerTimes.find(p => p.date.endsWith(`-${day}`)) || 
                     prayerTimes[0];
       
+      const prayersArray = [
+        { id: 'fajr', time: pData.fajr },
+        { id: 'sunrise', time: pData.sunrise },
+        { id: 'dhuhr', time: pData.dhuhr },
+        { id: 'asr', time: pData.asr },
+        { id: 'maghrib', time: pData.maghrib },
+        { id: 'isha', time: pData.isha }
+      ];
+
       for (const setting of prayerSettings) {
         let refTime = pData[setting.id as keyof typeof pData];
         if (setting.id === 'duha') refTime = pData['sunrise'];
@@ -120,6 +129,7 @@ export function LiveMatchIsland() {
       }
 
       for (const rem of reminders) {
+        if (rem.completed) continue;
         let targetSecs = 0;
         if (rem.relativePrayer === 'manual' && rem.manualTime) {
           targetSecs = tToM(rem.manualTime) * 60;
@@ -130,30 +140,39 @@ export function LiveMatchIsland() {
         }
 
         if (targetSecs > 0) {
-          let diff = targetSecs - totalCurrentSecs;
-          if (diff < -43200) diff += 86400;
+          let startDiff = targetSecs - totalCurrentSecs;
+          if (startDiff < -43200) startDiff += 86400;
           
-          if (diff > 0 && diff < (rem.countdownWindow * 60)) {
-            list.push({ id: rem.id, name: rem.label, diff, type: 'reminder', color: rem.color });
-          }
-          else if (diff <= 0) {
-            let isExpired = false;
-            // SMART EXPIRY: Linked to next prayer or duration
-            if (rem.expiryType === 'prayer' && rem.expiryPrayer) {
-              const expTime = pData[rem.expiryPrayer as keyof typeof pData];
-              if (expTime) {
-                const expSecs = tToM(expTime) * 60;
-                let expDiff = expSecs - totalCurrentSecs;
-                if (expDiff < -43200) expDiff += 86400;
-                if (expDiff <= 0) isExpired = true;
-              }
-            } else {
-              if (Math.abs(diff) >= (rem.countupWindow * 60)) isExpired = true;
-            }
+          let isStarted = startDiff <= 0;
+          let isExpired = false;
 
-            if (!isExpired) {
-              list.push({ id: rem.id, name: rem.label, diff, type: 'reminder', color: rem.color, isExpired: true });
+          // Expiry Logic v81.0
+          if (rem.expiryType === 'prayer') {
+            let expTime = '';
+            if (rem.expiryValue === 'next') {
+              const currentMins = totalCurrentSecs / 60;
+              const nextP = prayersArray.find(p => tToM(p.time) > currentMins) || prayersArray[0];
+              expTime = nextP.time;
+            } else {
+              expTime = pData[rem.expiryValue as keyof typeof pData] || '';
             }
+            if (expTime) {
+              const expSecs = tToM(expTime) * 60;
+              let expDiff = expSecs - totalCurrentSecs;
+              if (expDiff < -43200) expDiff += 86400;
+              if (expDiff <= 0) isExpired = true;
+            }
+          } else if (rem.expiryType === 'manual' && rem.expiryValue) {
+            const expSecs = tToM(rem.expiryValue) * 60;
+            let expDiff = expSecs - totalCurrentSecs;
+            if (expDiff < -43200) expDiff += 86400;
+            if (expDiff <= 0) isExpired = true;
+          } else {
+            if (Math.abs(startDiff) >= (rem.countupWindow * 60)) isExpired = true;
+          }
+
+          if (!isExpired && (startDiff < (rem.countdownWindow * 60) || isStarted)) {
+            list.push({ id: rem.id, name: rem.label, diff: startDiff, type: 'reminder', color: rem.color, isExpired: isStarted });
           }
         }
       }
@@ -161,8 +180,6 @@ export function LiveMatchIsland() {
 
     return list.sort((a, b) => Math.abs(a.diff) - Math.abs(b.diff));
   }, [now, prayerTimes, prayerSettings, reminders]);
-
-  const hasActiveAlert = activeAlerts.length > 0;
 
   const sortedMatches = useMemo(() => {
     return topMatches
@@ -201,6 +218,7 @@ export function LiveMatchIsland() {
     </div>
   );
 
+  const hasActiveAlert = activeAlerts.length > 0;
   if (autoHideIsland && !hasActiveAlert && !activeGoal) return null;
 
   return (
@@ -219,9 +237,7 @@ export function LiveMatchIsland() {
                 </div>
                 <div className="flex-1 flex flex-col items-center justify-center">
                   <span className="text-[0.8rem] font-black text-white/80 uppercase truncate max-w-[100px] leading-none mb-1">{alert.name}</span>
-                  {!alert.isExpired && (
-                    <div className="h-8 w-full"><GlassNumber text={`${alert.diff >= 0 ? "-" : "+"}${formatCountdown(alert.diff)}`} id={`alert-${alert.id}`} size="2.2rem" colorClass={alert.color} /></div>
-                  )}
+                  <div className="h-8 w-full"><GlassNumber text={alert.isExpired ? "الآن" : `${alert.diff >= 0 ? "-" : "+"}${formatCountdown(alert.diff)}`} id={`alert-${alert.id}`} size="2.2rem" colorClass={alert.color} /></div>
                 </div>
               </div>
             ))}
