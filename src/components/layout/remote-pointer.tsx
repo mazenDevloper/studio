@@ -9,7 +9,7 @@ import { init } from "@noriginmedia/norigin-spatial-navigation";
 import { useToast } from "@/hooks/use-toast";
 
 /**
- * Smart Engine v100.0 - Context-Aware Return & Row Isolation
+ * Smart Engine v100.0 - Restricted Return & Strict Isolation
  */
 export function RemotePointer() {
   const pathname = usePathname();
@@ -82,18 +82,28 @@ export function RemotePointer() {
     const currentRect = current.getBoundingClientRect();
     const isVertical = direction === "ArrowUp" || direction === "ArrowDown";
     const currentContainerId = current.closest('[data-row-id]')?.getAttribute('data-row-id');
-    const isAtStartOfGrid = current.getAttribute('data-nav-id')?.includes('item-0') || current.classList.contains('grid-item') && current.getBoundingClientRect().left > window.innerWidth * 0.4;
 
-    // Return to Sidebar Logic (Contextual)
+    // Return to Sidebar Logic (Restricted to Edges only)
     const isMovingToSidebar = (dockSide === 'left' && direction === 'ArrowLeft') || (dockSide === 'right' && direction === 'ArrowRight');
     if (isMovingToSidebar && pathname === '/media' && !current.closest('aside')) {
-      let targetId = 'subs-1'; // Default to second channel
-      if (selectedChannel) {
-        const idx = favoriteChannels.findIndex(c => c.channelid === selectedChannel.channelid);
-        if (idx !== -1) targetId = `subs-${idx + 1}`;
+      const navId = current.getAttribute('data-nav-id') || '';
+      const isFirstInList = navId.includes('item-0') || navId.endsWith('-0');
+      const isGridItem = current.classList.contains('grid-item');
+      
+      // Visual Edge Check - only jump to sidebar if we are visually on the side of the sidebar
+      const isVisuallyAtEdge = dockSide === 'left' 
+        ? currentRect.left < window.innerWidth * 0.4 
+        : currentRect.right > window.innerWidth * 0.6;
+
+      if (isFirstInList || (isGridItem && isVisuallyAtEdge)) {
+        let targetId = 'subs-1'; // Default to second channel
+        if (selectedChannel) {
+          const idx = favoriteChannels.findIndex(c => c.channelid === selectedChannel.channelid);
+          if (idx !== -1) targetId = `subs-${idx + 1}`;
+        }
+        const sidebarTarget = document.querySelector(`[data-nav-id="${targetId}"]`) as HTMLElement;
+        if (sidebarTarget) { sidebarTarget.focus(); return; }
       }
-      const sidebarTarget = document.querySelector(`[data-nav-id="${targetId}"]`) as HTMLElement;
-      if (sidebarTarget) { sidebarTarget.focus(); return; }
     }
 
     let minDistance = Infinity;
@@ -119,8 +129,8 @@ export function RemotePointer() {
       if (direction === "ArrowDown" && dy <= 5) continue;
       if (direction === "ArrowUp" && dy >= -5) continue;
 
-      // Penalize orthogonal distance (dx when moving vertically, dy when moving horizontally)
-      const distWeight = isVertical ? (dx * dx * 50) + (dy * dy) : (dx * dx) + (dy * dy * 50);
+      // Penalize orthogonal distance heavily to keep navigation straight and avoid sidebar jumping
+      const distWeight = isVertical ? (dx * dx * 100) + (dy * dy) : (dx * dx) + (dy * dy * 100);
       const d = Math.sqrt(distWeight);
       
       if (d < minDistance) { minDistance = d; next = el; }
