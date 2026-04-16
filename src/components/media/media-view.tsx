@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/dialog";
 
 /**
- * AddContentModal - Leanback Unified Selection & Visual Scrolling Fix v99.0
+ * AddContentModal - Optimized for Leanback UI v100.0
  */
 function AddContentModal({ 
   type, 
@@ -56,7 +56,6 @@ function AddContentModal({
     }
   };
 
-  // Smart Selection: Auto-focus first result and ensure it's in view
   useEffect(() => {
     if (results.length > 0 && !loading && isOpen) {
       const timer = setTimeout(() => {
@@ -141,7 +140,7 @@ function AddContentModal({
 }
 
 /**
- * MediaView v99.0 - Strategic Leanback Mastery
+ * MediaView v100.0 - Isolated Levels Layout
  */
 export function MediaView() {
   const { 
@@ -172,7 +171,6 @@ export function MediaView() {
   const [isAddChannelOpen, setIsAddChannelOpen] = useState(false);
   const [isAddReciterOpen, setIsAddReciterOpen] = useState(false);
 
-  const inputRef = useRef<HTMLInputElement>(null);
   const isDockLeft = dockSide === 'left';
 
   const truncateName = (name: string) => {
@@ -187,10 +185,6 @@ export function MediaView() {
       .catch(e => console.error("Surahs Load Error:", e));
     
     setIsSidebarShrinked(false);
-    setTimeout(() => {
-      const allBtn = document.querySelector('[data-nav-id="q-reciter-add"]') as HTMLElement || document.querySelector('[data-nav-id="subs-all"]') as HTMLElement;
-      allBtn?.focus();
-    }, 500);
   }, [setIsSidebarShrinked]);
 
   const fetchFeeds = useCallback(async () => {
@@ -212,6 +206,7 @@ export function MediaView() {
         return !chan.includes('bein') && !title.includes('bein');
       };
 
+      // Reserve first 2 for Goal Writer
       if (writerResults.status === 'fulfilled' && Array.isArray(writerResults.value)) {
         mergedGoals.push(...writerResults.value.slice(0, 2));
       }
@@ -281,9 +276,8 @@ export function MediaView() {
   const handleReciterClick = (name: string) => {
     setSearch(name);
     setTimeout(() => {
-      const firstSurah = document.querySelector('[data-nav-id="surah-item-0"]') as HTMLElement;
-      firstSurah?.focus();
-      firstSurah?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const searchBtn = document.querySelector('[data-nav-id="search-btn"]') as HTMLElement;
+      searchBtn?.focus();
     }, 150);
   };
 
@@ -318,7 +312,7 @@ export function MediaView() {
     setIsSidebarShrinked(false);
   };
 
-  const horizontalListClass = "w-full flex gap-1.5 px-8 pb-1 overflow-x-auto no-scrollbar scroll-smooth justify-start items-center";
+  const horizontalListClass = "w-full flex gap-3 px-8 pb-4 overflow-x-auto no-scrollbar scroll-smooth justify-start items-center";
   const showIsolatedView = isIsolatedViewActive || !!selectedChannel || searchResults.length > 0;
 
   return (
@@ -381,51 +375,55 @@ export function MediaView() {
         </aside>
       )}
 
-      <main className="flex-1 overflow-y-auto custom-scrollbar relative pt-2 pb-40 space-y-2 px-8" style={{ direction: 'rtl' }}>
+      <main className="flex-1 overflow-y-auto custom-scrollbar relative pt-4 pb-40 space-y-12 px-8" style={{ direction: 'rtl' }}>
         {!showIsolatedView ? (
           <>
-            <section className="space-y-1" data-row-id="media-row-reciters">
-              <div className="flex items-center justify-between px-8"><h2 className="text-[10px] font-black text-white/40 uppercase tracking-widest">القراء والمبدعون</h2></div>
-              <div className={horizontalListClass}>
-                <button 
-                  onClick={() => setIsAddReciterOpen(true)}
-                  className="flex flex-col items-center gap-1 px-2 py-1.5 rounded-[1.2rem] transition-all focusable shrink-0 min-w-[80px] border-4 border-transparent hover:bg-emerald-600/20" 
-                  tabIndex={0} 
-                  data-nav-id="q-reciter-add"
-                >
-                  <div className="w-12 h-12 rounded-full flex items-center justify-center bg-emerald-500/10 border-2 border-dashed border-emerald-500/30 text-emerald-400 shadow-lg"><UserPlus className="w-6 h-6" /></div>
-                  <span className="text-[8px] font-black text-emerald-400/60 uppercase tracking-widest">إضافة</span>
-                </button>
-
-                {favoriteReciters && favoriteReciters.map((r, i) => (
-                  <button key={r.channelid} onClick={() => { if (isReorderMode) setPickedUpId(pickedUpId === r.channelid ? null : r.channelid); else handleReciterClick(r.name); }} data-type="reciter" data-id={r.channelid} className={cn("flex flex-col items-center gap-1 px-2 py-1.5 rounded-[1.2rem] transition-all focusable shrink-0 min-w-[80px] border-4", pickedUpId === r.channelid ? "border-accent scale-105" : "border-transparent hover:bg-emerald-600/20")} tabIndex={0} data-nav-id={`q-reciter-item-${i}`}>
-                    <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-emerald-500/30 relative">
-                      {r.image ? <img src={r.image} className="w-full h-full object-cover" alt="" /> : <User className="w-5 h-5 text-emerald-400" />}
-                      {isReorderMode && <div className="absolute inset-0 bg-black/60 flex items-center justify-center"><ArrowRightLeft className="w-3 h-3 text-accent" /></div>}
-                    </div>
-                    <span className="text-[8px] font-black truncate max-w-[70px] text-white block">{truncateName(r.name)}</span>
+            {/* Level 1: Reciters & Surahs (The Quran Peak) */}
+            <div className="space-y-6">
+              <section className="min-h-[120px]" data-row-id="media-row-reciters">
+                <div className="flex items-center justify-between px-8 mb-4"><h2 className="text-[10px] font-black text-white/40 uppercase tracking-widest">القراء والمبدعون</h2></div>
+                <div className={horizontalListClass}>
+                  <button 
+                    onClick={() => setIsAddReciterOpen(true)}
+                    className="flex flex-col items-center gap-2 px-3 py-2 rounded-[1.5rem] transition-all focusable shrink-0 min-w-[90px] border-4 border-transparent hover:bg-emerald-600/20" 
+                    tabIndex={0} 
+                    data-nav-id="q-reciter-add"
+                  >
+                    <div className="w-14 h-14 rounded-full flex items-center justify-center bg-emerald-500/10 border-2 border-dashed border-emerald-500/30 text-emerald-400 shadow-lg"><UserPlus className="w-7 h-7" /></div>
+                    <span className="text-[9px] font-black text-emerald-400/60 uppercase tracking-widest">إضافة</span>
                   </button>
-                ))}
-              </div>
-            </section>
 
-            <section className="space-y-1" data-row-id="media-row-surahs">
-              <div className={horizontalListClass}>
-                {surahs && surahs.map((s, i) => (
-                  <button key={i} onClick={() => handleSurahClick(s.name_arabic)} className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-white font-bold text-xs hover:bg-blue-600/20 focusable shrink-0 relative" tabIndex={0} data-nav-id={`surah-item-${i}`}>{s.name_arabic}</button>
-                ))}
-              </div>
-            </section>
+                  {favoriteReciters && favoriteReciters.map((r, i) => (
+                    <button key={r.channelid} onClick={() => { if (isReorderMode) setPickedUpId(pickedUpId === r.channelid ? null : r.channelid); else handleReciterClick(r.name); }} data-type="reciter" data-id={r.channelid} className={cn("flex flex-col items-center gap-2 px-3 py-2 rounded-[1.5rem] transition-all focusable shrink-0 min-w-[90px] border-4", pickedUpId === r.channelid ? "border-accent scale-105" : "border-transparent hover:bg-emerald-600/20")} tabIndex={0} data-nav-id={`q-reciter-item-${i}`}>
+                      <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-emerald-500/30 relative">
+                        {r.image ? <img src={r.image} className="w-full h-full object-cover" alt="" /> : <User className="w-6 h-6 text-emerald-400" />}
+                        {isReorderMode && <div className="absolute inset-0 bg-black/60 flex items-center justify-center"><ArrowRightLeft className="w-4 h-4 text-accent" /></div>}
+                      </div>
+                      <span className="text-[10px] font-black truncate max-w-[80px] text-white block">{truncateName(r.name)}</span>
+                    </button>
+                  ))}
+                </div>
+              </section>
 
+              <section className="min-h-[60px]" data-row-id="media-row-surahs">
+                <div className={horizontalListClass}>
+                  {surahs && surahs.map((s, i) => (
+                    <button key={i} onClick={() => handleSurahClick(s.name_arabic)} className="px-4 py-2 rounded-full bg-white/5 border border-white/10 text-white font-bold text-sm hover:bg-blue-600/20 focusable shrink-0 relative" tabIndex={0} data-nav-id={`surah-item-${i}`}>{s.name_arabic}</button>
+                  ))}
+                </div>
+              </section>
+            </div>
+
+            {/* API Status Section */}
             {apiError && (
-              <section className="mx-8 mt-4 animate-in fade-in slide-in-from-top-4 duration-700">
-                <div className="bg-red-600/10 border border-red-600/30 rounded-2xl p-4 flex items-center gap-4 shadow-[0_0_20px_rgba(220,38,38,0.1)]">
-                  <div className="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center shrink-0 shadow-glow">
-                    <AlertCircle className="w-6 h-6 text-white" />
+              <section className="mx-8 animate-in fade-in slide-in-from-top-4 duration-700">
+                <div className="bg-red-600/10 border border-red-600/30 rounded-[2rem] p-6 flex items-center gap-6 shadow-[0_0_20px_rgba(220,38,38,0.1)]">
+                  <div className="w-12 h-12 rounded-full bg-red-600 flex items-center justify-center shrink-0 shadow-glow">
+                    <AlertCircle className="w-7 h-7 text-white" />
                   </div>
                   <div className="flex flex-col">
-                    <h3 className="text-white font-black text-sm leading-none mb-1">خطأ في الاتصال بخدمة يوتيوب</h3>
-                    <p className="text-red-400/80 font-bold text-[11px] leading-tight">
+                    <h3 className="text-white font-black text-base leading-none mb-1">خطأ في الاتصال بخدمة يوتيوب</h3>
+                    <p className="text-red-400/80 font-bold text-xs leading-tight">
                       جميع مفاتيح اليوتيوب (عدد: {apiError.count}) تم فحصها مرتين وهي منتهية الصلاحية حالياً. يرجى التواصل مع الدعم الفني.
                     </p>
                   </div>
@@ -433,143 +431,164 @@ export function MediaView() {
               </section>
             )}
 
-            <section className="space-y-2 pt-4" data-row-id="media-row-search">
-              <div className="flex justify-start px-8"><Button onClick={toggleReorderMode} variant={isReorderMode ? "default" : "outline"} className={cn("rounded-full h-8 px-4 font-black text-xs relative", isReorderMode ? "bg-yellow-500 text-black shadow-glow" : "bg-white/5 border-white/10 text-white")}><ShortcutBadge action="toggle_reorder" className="-bottom-2 -left-2" /><ArrowRightLeft className="w-3 h-3 ml-1.5" /> {isReorderMode ? "إيقاف الترتيب" : "تفعيل الترتيب"}</Button></div>
-              <div className="flex items-center gap-1.5 w-full px-8">
+            {/* Level 2: Search & Reorder Controls */}
+            <section className="space-y-4 min-h-[100px]" data-row-id="media-row-search">
+              <div className="flex justify-start px-8"><Button onClick={toggleReorderMode} variant={isReorderMode ? "default" : "outline"} className={cn("rounded-full h-10 px-6 font-black text-sm relative", isReorderMode ? "bg-yellow-500 text-black shadow-glow" : "bg-white/5 border-white/10 text-white")}><ShortcutBadge action="toggle_reorder" className="-bottom-2 -left-2" /><ArrowRightLeft className="w-4 h-4 ml-2" /> {isReorderMode ? "إيقاف الترتيب" : "تفعيل الترتيب"}</Button></div>
+              <div className="flex items-center gap-3 w-full px-8">
                 <div className="flex-1 relative flex items-center">
-                  <Input ref={inputRef} placeholder="ابحث عن فيديوهات..." value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && performSearch()} className="h-12 bg-white/5 border-none rounded-[1.2rem] pr-6 text-base font-bold text-right focusable" data-nav-id="search-input" />
-                  <div className="absolute left-5 flex items-center gap-2"><Mic className="w-4 h-4 text-white/40 hover:text-primary cursor-pointer" /><Activity className="w-4 h-4 text-white/20" /></div>
+                  <Input placeholder="ابحث عن فيديوهات..." value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && performSearch()} className="h-14 bg-white/5 border-none rounded-[1.5rem] pr-8 text-lg font-bold text-right focusable" data-nav-id="search-input" />
+                  <div className="absolute left-6 flex items-center gap-3"><Mic className="w-5 h-5 text-white/40 hover:text-primary cursor-pointer" /><Activity className="w-5 h-5 text-white/20" /></div>
                 </div>
-                <button onClick={performSearch} className="h-12 px-5 rounded-[1.2rem] bg-red-600 text-white font-black text-sm shadow-glow focusable flex items-center shrink-0 relative" data-nav-id="search-btn"><Youtube className="w-4 h-4 ml-1.5" /> بحث</button>
+                <button onClick={performSearch} className="h-14 px-8 rounded-[1.5rem] bg-red-600 text-white font-black text-base shadow-glow focusable flex items-center shrink-0 relative" data-nav-id="search-btn"><Youtube className="w-5 h-5 ml-2" /> بحث</button>
               </div>
             </section>
 
-            {starredVideos.length > 0 && (
-              <section className="space-y-1" data-row-id="media-row-starred">
-                <div className="flex items-center justify-between px-8"><h2 className="text-[11px] font-black text-white flex items-center gap-1.5"><div className="w-5 h-5 rounded-lg bg-yellow-500 flex items-center justify-center"><Star className="w-3 h-3 text-black fill-current" /></div>الترددات المجرسة</h2></div>
-                <div className={horizontalListClass}>
-                  {isStarredLoading ? ([1, 2, 3].map(i => <div key={i} className="h-24 w-52 rounded-[1rem] bg-zinc-800 animate-pulse shrink-0" />)) : starredVideos.map((v, idx) => (
-                    <div key={v.id + idx} onClick={() => setActiveVideo(v, starredVideos)} className="w-52 group relative overflow-hidden bg-zinc-900/80 rounded-[1rem] transition-all hover:scale-[1.02] cursor-pointer shadow-xl focusable shrink-0" tabIndex={0} data-nav-id={`starred-video-${idx}`}>
-                      <div className="aspect-video relative overflow-hidden">
-                        <img src={v.thumbnail} alt="" className="w-full h-full object-cover opacity-80" />
-                        {v.duration && <div className="absolute bottom-2 right-2 bg-black text-white text-[14px] px-3 py-1.5 rounded-lg font-black z-10 border border-white/20 shadow-2xl">{v.duration}</div>}
-                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><Play className="w-6 h-6 text-white fill-white" /></div>
+            {/* Level 3: Starred Feed (الترددات المجرسة) */}
+            <section className="min-h-[220px]" data-row-id="media-row-starred">
+              {starredVideos.length > 0 ? (
+                <>
+                  <div className="flex items-center justify-between px-8 mb-4"><h2 className="text-sm font-black text-white flex items-center gap-2"><div className="w-6 h-6 rounded-lg bg-yellow-500 flex items-center justify-center"><Star className="w-4 h-4 text-black fill-current" /></div>الترددات المجرسة</h2></div>
+                  <div className={horizontalListClass}>
+                    {isStarredLoading ? ([1, 2, 3].map(i => <div key={i} className="h-32 w-64 rounded-[1.5rem] bg-zinc-800 animate-pulse shrink-0" />)) : starredVideos.map((v, idx) => (
+                      <div key={v.id + idx} onClick={() => setActiveVideo(v, starredVideos)} className="w-64 group relative overflow-hidden bg-zinc-900/80 rounded-[1.5rem] transition-all hover:scale-[1.02] cursor-pointer shadow-xl focusable shrink-0" tabIndex={0} data-nav-id={`starred-video-${idx}`}>
+                        <div className="aspect-video relative overflow-hidden">
+                          <img src={v.thumbnail} alt="" className="w-full h-full object-cover opacity-80" />
+                          {v.duration && <div className="absolute bottom-2 right-2 bg-black text-white text-[14px] px-3 py-1.5 rounded-lg font-black z-10 border border-white/20 shadow-2xl">{v.duration}</div>}
+                          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><Play className="w-8 h-8 text-white fill-white" /></div>
+                        </div>
+                        <div className="p-3 text-right"><h3 className="font-bold text-xs truncate text-white leading-none">{v.title}</h3></div>
                       </div>
-                      <div className="p-1.5 text-right"><h3 className="font-bold text-[9px] truncate text-white leading-none">{v.title}</h3></div>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
+                    ))}
+                  </div>
+                </>
+              ) : isStarredLoading ? (
+                <div className={horizontalListClass}>{[1, 2, 3].map(i => <div key={i} className="h-32 w-64 rounded-[1.5rem] bg-zinc-800 animate-pulse shrink-0" />)}</div>
+              ) : null}
+            </section>
 
-            {matchGoals.length > 0 && (
-              <section className="space-y-1" data-row-id="media-row-goals">
-                <div className="flex items-center justify-between px-8">
-                  <h2 className="text-[11px] font-black text-white flex items-center gap-1.5">
-                    <div className="w-5 h-5 rounded-lg bg-primary/20 flex items-center justify-center">
-                      <Goal className="w-3 h-3 text-primary" />
-                    </div>
-                    أهداف وملخصات مباريات اليوم (TOD حصرياً)
-                  </h2>
-                </div>
-                <div className={horizontalListClass}>
-                  {matchGoals.map((v, idx) => (
-                    <div key={v.id + idx} onClick={() => setActiveVideo(v, matchGoals)} className="w-52 group relative overflow-hidden bg-zinc-900/80 rounded-[1rem] transition-all hover:scale-[1.02] cursor-pointer shadow-xl focusable shrink-0" tabIndex={0} data-nav-id={`goal-video-${idx}`}>
-                      <div className="aspect-video relative overflow-hidden">
-                        <img src={v.thumbnail} alt="" className="w-full h-full object-cover opacity-80" />
-                        {v.duration && <div className="absolute bottom-2 right-2 bg-black text-white text-[14px] px-3 py-1.5 rounded-lg font-black z-10 border border-white/20 shadow-2xl">{v.duration}</div>}
-                        <div className="absolute inset-0 bg-primary/5" />
+            {/* Level 4: Goals Hub (Exclusive Kateb Al-Ahdaf) */}
+            <section className="min-h-[220px]" data-row-id="media-row-goals">
+              {matchGoals.length > 0 && (
+                <>
+                  <div className="flex items-center justify-between px-8 mb-4">
+                    <h2 className="text-sm font-black text-white flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-lg bg-primary/20 flex items-center justify-center">
+                        <Goal className="w-4 h-4 text-primary" />
                       </div>
-                      <div className="p-1.5 text-right">
-                        <h3 className="font-bold text-[9px] truncate text-white leading-none">{v.title}</h3>
-                        <span className="text-[7px] text-white/40 block mt-0.5">{v.channelTitle}</span>
+                      أهداف وملخصات مباريات اليوم
+                    </h2>
+                  </div>
+                  <div className={horizontalListClass}>
+                    {matchGoals.map((v, idx) => (
+                      <div key={v.id + idx} onClick={() => setActiveVideo(v, matchGoals)} className="w-64 group relative overflow-hidden bg-zinc-900/80 rounded-[1.5rem] transition-all hover:scale-[1.02] cursor-pointer shadow-xl focusable shrink-0" tabIndex={0} data-nav-id={`goal-video-${idx}`}>
+                        <div className="aspect-video relative overflow-hidden">
+                          <img src={v.thumbnail} alt="" className="w-full h-full object-cover opacity-80" />
+                          {v.duration && <div className="absolute bottom-2 right-2 bg-black text-white text-[14px] px-3 py-1.5 rounded-lg font-black z-10 border border-white/20 shadow-2xl">{v.duration}</div>}
+                          {idx < 2 && <div className="absolute top-2 left-2 bg-primary/80 text-white text-[8px] px-2 py-1 rounded-full font-black backdrop-blur-md">حصري كاتب الأهداف</div>}
+                        </div>
+                        <div className="p-3 text-right">
+                          <h3 className="font-bold text-xs truncate text-white leading-none">{v.title}</h3>
+                          <span className="text-[10px] text-white/40 block mt-1">{v.channelTitle}</span>
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
+                    ))}
+                  </div>
+                </>
+              )}
+            </section>
 
-            {kidsVideos.length > 0 && (
-              <section className="space-y-1" data-row-id="media-row-kids">
-                <div className="flex items-center justify-between px-8"><h2 className="text-[11px] font-black text-emerald-400 flex items-center gap-1.5"><Baby className="w-3.5 h-3.5" /> عالم الأطفال (ريان & كيدز)</h2></div>
-                <div className={horizontalListClass}>
-                  {isSpecializedLoading ? ([1, 2, 3].map(i => <div key={i} className="h-24 w-52 rounded-[1rem] bg-zinc-800 animate-pulse shrink-0" />)) : kidsVideos.map((v, idx) => (
-                    <div key={v.id + idx} onClick={() => setActiveVideo(v, kidsVideos)} className="w-52 group relative overflow-hidden bg-zinc-900/80 rounded-[1rem] transition-all hover:scale-[1.02] cursor-pointer shadow-xl focusable shrink-0" tabIndex={0} data-nav-id={`kids-video-${idx}`}>
-                      <div className="aspect-video relative overflow-hidden">
-                        <img src={v.thumbnail} alt="" className="w-full h-full object-cover opacity-80" />
-                        {v.duration && <div className="absolute bottom-2 right-2 bg-black text-white text-[14px] px-3 py-1.5 rounded-lg font-black z-10 border border-white/20 shadow-2xl">{v.duration}</div>}
+            {/* Level 5: Kids World */}
+            <section className="min-h-[220px]" data-row-id="media-row-kids">
+              {kidsVideos.length > 0 && (
+                <>
+                  <div className="flex items-center justify-between px-8 mb-4"><h2 className="text-sm font-black text-emerald-400 flex items-center gap-2"><Baby className="w-5 h-5" /> عالم الأطفال (ريان & كيدز)</h2></div>
+                  <div className={horizontalListClass}>
+                    {isSpecializedLoading ? ([1, 2, 3].map(i => <div key={i} className="h-32 w-64 rounded-[1.5rem] bg-zinc-800 animate-pulse shrink-0" />)) : kidsVideos.map((v, idx) => (
+                      <div key={v.id + idx} onClick={() => setActiveVideo(v, kidsVideos)} className="w-64 group relative overflow-hidden bg-zinc-900/80 rounded-[1.5rem] transition-all hover:scale-[1.02] cursor-pointer shadow-xl focusable shrink-0" tabIndex={0} data-nav-id={`kids-video-${idx}`}>
+                        <div className="aspect-video relative overflow-hidden">
+                          <img src={v.thumbnail} alt="" className="w-full h-full object-cover opacity-80" />
+                          {v.duration && <div className="absolute bottom-2 right-2 bg-black text-white text-[14px] px-3 py-1.5 rounded-lg font-black z-10 border border-white/20 shadow-2xl">{v.duration}</div>}
+                        </div>
+                        <div className="p-3 text-right"><h3 className="font-bold text-white leading-none text-xs truncate">{v.title}</h3></div>
                       </div>
-                      <div className="p-1.5 text-right"><h3 className="font-bold text-white leading-none text-[9px] truncate">{v.title}</h3></div>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
+                    ))}
+                  </div>
+                </>
+              )}
+            </section>
 
-            {latestPerSub.length > 0 && (
-              <section className="space-y-1" data-row-id="media-row-subs-timeline">
-                <div className="flex items-center justify-between px-8"><h2 className="text-[11px] font-black text-white flex items-center gap-1.5"><List className="w-3.5 h-3.5 text-primary" /> أحدث ما نشرته قنواتك</h2></div>
-                <div className={horizontalListClass}>
-                  {isSpecializedLoading ? ([1, 2, 3].map(i => <div key={i} className="h-24 w-52 rounded-[1rem] bg-zinc-800 animate-pulse shrink-0" />)) : latestPerSub.map((v, idx) => (
-                    <div key={v.id + idx} onClick={() => setActiveVideo(v, latestPerSub)} className="w-52 group relative overflow-hidden bg-zinc-900/80 rounded-[1rem] transition-all hover:scale-[1.02] cursor-pointer shadow-xl focusable shrink-0" tabIndex={0} data-nav-id={`sub-timeline-${idx}`}>
-                      <div className="aspect-video relative overflow-hidden">
-                        <img src={v.thumbnail} alt="" className="w-full h-full object-cover opacity-80" />
-                        {v.duration && !v.isLive && <div className="absolute bottom-2 right-2 bg-black text-white text-[14px] px-3 py-1.5 rounded-lg font-black z-10 border border-white/20 shadow-2xl">{v.duration}</div>}
-                        {v.isLive && <div className="absolute top-2 left-2 bg-red-600 px-1.5 py-0.5 rounded text-[8px] font-black animate-pulse">LIVE</div>}
-                      </div>
-                      <div className="p-1.5 text-right"><h3 className="font-bold text-[9px] truncate text-white leading-none">{v.title}</h3><span className="text-[7px] text-white/40 block mt-0.5">{v.channelTitle}</span></div>
+            {/* Final Levels: Timeline & Live */}
+            <div className="space-y-12">
+              <section className="min-h-[220px]" data-row-id="media-row-subs-timeline">
+                {latestPerSub.length > 0 && (
+                  <>
+                    <div className="flex items-center justify-between px-8 mb-4"><h2 className="text-sm font-black text-white flex items-center gap-2"><List className="w-5 h-5 text-primary" /> أحدث ما نشرته قنواتك</h2></div>
+                    <div className={horizontalListClass}>
+                      {latestPerSub.map((v, idx) => (
+                        <div key={v.id + idx} onClick={() => setActiveVideo(v, latestPerSub)} className="w-64 group relative overflow-hidden bg-zinc-900/80 rounded-[1.5rem] transition-all hover:scale-[1.02] cursor-pointer shadow-xl focusable shrink-0" tabIndex={0} data-nav-id={`sub-timeline-${idx}`}>
+                          <div className="aspect-video relative overflow-hidden">
+                            <img src={v.thumbnail} alt="" className="w-full h-full object-cover opacity-80" />
+                            {v.duration && !v.isLive && <div className="absolute bottom-2 right-2 bg-black text-white text-[14px] px-3 py-1.5 rounded-lg font-black z-10 border border-white/20 shadow-2xl">{v.duration}</div>}
+                            {v.isLive && <div className="absolute top-2 left-2 bg-red-600 px-2 py-1 rounded text-[10px] font-black animate-pulse">LIVE</div>}
+                          </div>
+                          <div className="p-3 text-right"><h3 className="font-bold text-xs truncate text-white leading-none">{v.title}</h3><span className="text-[10px] text-white/40 block mt-1">{v.channelTitle}</span></div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  </>
+                )}
               </section>
-            )}
 
-            {liveFromSubs.length > 0 && (
-              <section className="space-y-1" data-row-id="media-row-subs-live">
-                <div className="flex items-center justify-between px-8"><h2 className="text-[11px] font-black text-red-500 flex items-center gap-1.5"><RadioIcon className="w-3.5 h-3.5 animate-pulse" /> بث مباشر من اشتراكاتك</h2></div>
-                <div className={horizontalListClass}>
-                  {liveFromSubs.map((v, idx) => (
-                    <div key={v.id + idx} onClick={() => setActiveVideo(v, liveFromSubs)} className="w-52 group relative overflow-hidden bg-zinc-900/80 border-2 border-red-600/20 rounded-[1rem] transition-all cursor-pointer focusable shrink-0" tabIndex={0} data-nav-id={`sub-live-${idx}`}>
-                      <div className="aspect-video relative"><img src={v.thumbnail} alt="" className="w-full h-full object-cover" /><div className="absolute inset-0 bg-red-600/10" /></div>
-                      <div className="p-1.5 text-right"><h3 className="font-bold text-[8px] truncate text-white leading-none">{v.title}</h3></div>
+              <section className="min-h-[220px]" data-row-id="media-row-subs-live">
+                {liveFromSubs.length > 0 && (
+                  <>
+                    <div className="flex items-center justify-between px-8 mb-4"><h2 className="text-sm font-black text-red-500 flex items-center gap-2"><RadioIcon className="w-5 h-5 animate-pulse" /> بث مباشر من اشتراكاتك</h2></div>
+                    <div className={horizontalListClass}>
+                      {liveFromSubs.map((v, idx) => (
+                        <div key={v.id + idx} onClick={() => setActiveVideo(v, liveFromSubs)} className="w-64 group relative overflow-hidden bg-zinc-900/80 border-2 border-red-600/20 rounded-[1.5rem] transition-all cursor-pointer focusable shrink-0" tabIndex={0} data-nav-id={`sub-live-${idx}`}>
+                          <div className="aspect-video relative"><img src={v.thumbnail} alt="" className="w-full h-full object-cover" /><div className="absolute inset-0 bg-red-600/10" /></div>
+                          <div className="p-3 text-right"><h3 className="font-bold text-xs truncate text-white leading-none">{v.title}</h3></div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  </>
+                )}
               </section>
-            )}
 
-            {favoriteIptvChannels.length > 0 && (
-              <section className="space-y-1" data-row-id="media-row-live-general">
-                <div className="flex items-center justify-between px-8"><h2 className="text-[11px] font-black text-white flex items-center gap-1.5"><RadioIcon className="w-3.5 h-3.5 text-red-600" /> البث المباشر العام</h2></div>
-                <div className={horizontalListClass}>
-                  {favoriteIptvChannels.map((item: any, i: number) => (
-                    <div key={i} onClick={() => setActiveIptv(item)} className="group relative overflow-hidden bg-zinc-900/80 border-2 border-emerald-600/40 rounded-[1rem] transition-all cursor-pointer focusable shrink-0 w-52" tabIndex={0} data-nav-id={`video-live-item-${i}`}>
-                      <div className="aspect-video relative"><img src={item.stream_icon} alt="" className="w-full h-full object-cover" /></div>
-                      <div className="p-1.5 text-right"><h3 className="font-bold text-[8px] truncate text-white leading-none">{item.name}</h3></div>
+              <section className="min-h-[220px]" data-row-id="media-row-live-general">
+                {favoriteIptvChannels.length > 0 && (
+                  <>
+                    <div className="flex items-center justify-between px-8 mb-4"><h2 className="text-sm font-black text-white flex items-center gap-2"><RadioIcon className="w-5 h-5 text-red-600" /> البث المباشر العام</h2></div>
+                    <div className={horizontalListClass}>
+                      {favoriteIptvChannels.map((item: any, i: number) => (
+                        <div key={i} onClick={() => setActiveIptv(item)} className="group relative overflow-hidden bg-zinc-900/80 border-2 border-emerald-600/40 rounded-[1.5rem] transition-all cursor-pointer focusable shrink-0 w-64" tabIndex={0} data-nav-id={`video-live-item-${i}`}>
+                          <div className="aspect-video relative"><img src={item.stream_icon} alt="" className="w-full h-full object-cover" /></div>
+                          <div className="p-3 text-right"><h3 className="font-bold text-xs truncate text-white leading-none">{item.name}</h3></div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  </>
+                )}
               </section>
-            )}
+            </div>
           </>
         ) : (
-          <section className="space-y-2 animate-in slide-in-from-top-10 duration-700" data-row-id="media-row-isolated">
-            <div className="flex justify-between items-center sticky top-0 z-[120] bg-black/60 backdrop-blur-xl p-2 rounded-[1.2rem] border border-white/10">
-              <button onClick={resetView} className="h-9 px-5 rounded-full bg-red-600 text-white font-black text-xs shadow-glow focusable flex items-center gap-1.5 relative"><ChevronRight className="w-3.5 h-3.5" /><span>العودة</span></button>
-              <h2 className="text-base font-black text-white">{selectedChannel ? truncateName(selectedChannel.name) : `نتائج البحث: ${search}`}</h2>
+          <section className="space-y-6 animate-in slide-in-from-top-10 duration-700" data-row-id="media-row-isolated">
+            <div className="flex justify-between items-center sticky top-0 z-[120] bg-black/60 backdrop-blur-xl p-4 rounded-[2rem] border border-white/10">
+              <button onClick={resetView} className="h-12 px-8 rounded-full bg-red-600 text-white font-black text-sm shadow-glow focusable flex items-center gap-3 relative"><ChevronRight className="w-5 h-5" /><span>العودة</span></button>
+              <h2 className="text-xl font-black text-white">{selectedChannel ? truncateName(selectedChannel.name) : `نتائج البحث: ${search}`}</h2>
             </div>
             {loading ? (
               <div className="flex justify-center py-40"><Loader2 className="w-12 h-12 animate-spin text-primary" /></div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {(selectedChannel ? channelVideos : searchResults).map((v, i) => (
-                  <Card key={i} onClick={() => setActiveVideo(v, (selectedChannel ? channelVideos : searchResults))} className="group bg-white/5 border-none rounded-[1rem] transition-all hover:scale-[1.02] cursor-pointer focusable overflow-hidden shadow-2xl grid-item" tabIndex={0} data-nav-id={`video-grid-item-${i}`}>
+                  <Card key={i} onClick={() => setActiveVideo(v, (selectedChannel ? channelVideos : searchResults))} className="group bg-white/5 border-none rounded-[2rem] transition-all hover:scale-[1.02] cursor-pointer focusable overflow-hidden shadow-2xl grid-item" tabIndex={0} data-nav-id={`video-grid-item-${i}`}>
                     <div className="aspect-video relative">
                       <img src={v.thumbnail} alt="" className="w-full h-full object-cover" />
                       {v.duration && <div className="absolute bottom-2 right-2 bg-black text-white text-[14px] px-3 py-1.5 rounded-lg font-black z-10 border border-white/20 shadow-2xl">{v.duration}</div>}
                     </div>
-                    <CardContent className="p-1.5 text-right h-12 flex items-center justify-end"><h3 className="font-bold text-[9px] text-white line-clamp-2 leading-none">{v.title}</h3></CardContent>
+                    <CardContent className="p-4 text-right h-20 flex items-center justify-end"><h3 className="font-bold text-sm text-white line-clamp-2 leading-relaxed">{v.title}</h3></CardContent>
                   </Card>
                 ))}
               </div>

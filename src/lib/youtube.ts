@@ -75,11 +75,10 @@ async function fetchWithRotation(endpoint: string, params: Record<string, string
   const blacklist = getBlacklist();
   const setApiError = useMediaStore.getState().setApiError;
 
-  // Try each key twice to ensure maximum availability (Double-Pass Rotation)
+  // Double-Pass Rotation Logic
   for (let attempts = 0; attempts < totalKeys * 2; attempts++) {
     const activeIndex = attempts % totalKeys;
     
-    // Only skip if blacklisted during the first pass
     if (blacklist[activeIndex.toString()] && attempts < totalKeys) {
       continue;
     }

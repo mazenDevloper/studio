@@ -9,7 +9,7 @@ import { init } from "@noriginmedia/norigin-spatial-navigation";
 import { useToast } from "@/hooks/use-toast";
 
 /**
- * Smart Engine v99.0 - Full Leanback Scroll Logic
+ * Smart Engine v100.0 - Full Leanback Scroll & Vertical Prioritization
  */
 export function RemotePointer() {
   const pathname = usePathname();
@@ -84,9 +84,7 @@ export function RemotePointer() {
     }
 
     const currentRect = current.getBoundingClientRect();
-    const isHorizontal = direction === "ArrowLeft" || direction === "ArrowRight";
-    const towardDock = dockSide === 'left' ? "ArrowLeft" : "ArrowRight";
-    const towardContent = dockSide === 'left' ? "ArrowRight" : "ArrowLeft";
+    const isVertical = direction === "ArrowUp" || direction === "ArrowDown";
 
     let minDistance = Infinity;
     let next: HTMLElement | null = null;
@@ -97,11 +95,17 @@ export function RemotePointer() {
       const p1 = { x: currentRect.left + currentRect.width / 2, y: currentRect.top + currentRect.height / 2 };
       const p2 = { x: rect2.left + rect2.width / 2, y: rect2.top + rect2.height / 2 };
       const dx = p2.x - p1.x; const dy = p2.y - p1.y;
+      
       if (direction === "ArrowRight" && dx <= 5) continue;
       if (direction === "ArrowLeft" && dx >= -5) continue;
       if (direction === "ArrowDown" && dy <= 5) continue;
       if (direction === "ArrowUp" && dy >= -5) continue;
-      const d = Math.sqrt(dx*dx + dy*dy);
+
+      // Penalize orthogonal distance (dx when moving vertically, dy when moving horizontally)
+      // This keeps navigation within vertical blocks (like content vs sidebar) much tighter.
+      const distWeight = isVertical ? (dx * dx * 10) + (dy * dy) : (dx * dx) + (dy * dy * 10);
+      const d = Math.sqrt(distWeight);
+      
       if (d < minDistance) { minDistance = d; next = el; }
     }
 
