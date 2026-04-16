@@ -123,7 +123,7 @@ export function GlobalVideoPlayer() {
       className={cn(
         "fixed z-[9999] shadow-2xl transition-all duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] overflow-hidden",
         !isActive ? "top-[-9999px] left-[-9999px] opacity-0" : 
-        isMinimized ? "bottom-12 left-1/2 -translate-x-1/2 w-[500px] h-28 rounded-[2.5rem] premium-glass bg-black/40 border border-white/10" : 
+        isMinimized ? "bottom-12 left-1/2 -translate-x-1/2 w-[600px] h-28 rounded-[2.5rem] premium-glass bg-black/40 border border-white/10" : 
         isFullScreen ? "inset-0 w-full h-full bg-black ring-0 border-0" : 
         "bottom-8 right-8 w-[50vw] h-[55vh] premium-glass rounded-[3.5rem] bg-black/95 border border-white/10"
       )}
@@ -141,29 +141,59 @@ export function GlobalVideoPlayer() {
         ) : (activeIptv?.url && <iframe key={activeIptv.stream_id} src={`${activeIptv.url}${activeIptv.url.includes('?') ? '&' : '?'}autoplay=1`} className="w-full h-full border-none" allow="autoplay; encrypted-media; fullscreen" sandbox="allow-scripts allow-forms allow-same-origin allow-presentation allow-downloads" style={{ background: '#000' }} />)}
       </div>
 
-      {/* IPTV SWITCHING RADAR v98.0 */}
+      {isMinimized && (
+        <div className="absolute inset-0 flex items-center justify-between px-6 animate-in fade-in duration-500 gap-4">
+          <div className="w-16 h-16 rounded-2xl overflow-hidden border border-white/20 shrink-0 shadow-2xl relative bg-zinc-900/40">
+            <img 
+              src={activeVideo?.thumbnail || activeIptv?.stream_icon} 
+              className="w-full h-full object-cover" 
+              alt="Channel Logo" 
+            />
+            <div className="absolute inset-0 bg-gradient-to-tr from-black/40 to-transparent" />
+          </div>
+
+          <div className="flex items-center gap-4 flex-1 min-w-0">
+            <button onClick={prevTrack} className="w-12 h-12 rounded-full bg-white/5 border border-white/10 text-white flex items-center justify-center focusable shadow-lg active:scale-90 transition-all shrink-0"><ChevronRight className="w-7 h-7" /></button>
+            <div className="flex flex-col items-center text-center flex-1 min-w-0">
+              <span className="text-white font-black text-sm truncate w-full tracking-tighter drop-shadow-lg leading-none">{activeVideo?.title || activeIptv?.name}</span>
+              <span className="text-[10px] text-accent font-black uppercase tracking-[0.4em] opacity-80 mt-1">Live Transmission</span>
+            </div>
+            <button onClick={nextTrack} className="w-12 h-12 rounded-full bg-white/5 border border-white/10 text-white flex items-center justify-center focusable shadow-lg active:scale-90 transition-all shrink-0"><ChevronLeft className="w-7 h-7" /></button>
+          </div>
+
+          <div className="flex items-center gap-3 shrink-0">
+            <button onClick={() => setIsMinimized(false)} className="w-12 h-12 rounded-full bg-primary/20 text-primary border border-primary/20 flex items-center justify-center focusable shadow-glow active:scale-90 transition-all"><Maximize2 className="w-6 h-6" /></button>
+            <button onClick={handleClose} className="w-12 h-12 rounded-full bg-red-600/20 text-red-500 border border-red-600/20 flex items-center justify-center focusable shadow-lg active:scale-90 transition-all"><X className="w-6 h-6" /></button>
+          </div>
+        </div>
+      )}
+
       {activeIptv && iptvSwitchingInfo && (
-        <div className="absolute top-10 left-1/2 -translate-x-1/2 z-[200] w-full max-w-4xl animate-in fade-in slide-in-from-top-10 duration-500">
-          <div className="flex items-center justify-center gap-8 bg-black/60 backdrop-blur-3xl p-8 rounded-[3.5rem] border border-white/10 shadow-[0_0_100px_rgba(0,0,0,0.8)]">
-            <div className="flex flex-col items-center gap-2 opacity-30 grayscale scale-75">
-              <div className="w-16 h-16 rounded-2xl overflow-hidden border border-white/10"><img src={iptvSwitchingInfo.prev?.stream_icon} className="w-full h-full object-cover" /></div>
-              <span className="text-[10px] font-black text-white truncate max-w-[80px]">{iptvSwitchingInfo.prev?.name}</span>
-            </div>
-
-            <div className="flex flex-col items-center gap-4 animate-in zoom-in-95 duration-500">
+        <div className="absolute top-10 left-1/2 -translate-x-1/2 z-[200] w-full max-w-5xl animate-in fade-in slide-in-from-top-12 duration-700">
+          <div className="flex items-center justify-center gap-12 bg-black/60 backdrop-blur-[40px] p-10 rounded-[4rem] border border-white/10 shadow-[0_0_120px_rgba(0,0,0,0.9)]">
+            <div className="flex flex-col items-center gap-3 opacity-20 grayscale scale-75 transition-all duration-500">
               <div className="relative">
-                <div className="w-32 h-32 rounded-[2.5rem] overflow-hidden border-4 border-emerald-500 shadow-glow bg-black"><img src={iptvSwitchingInfo.current.stream_icon} className="w-full h-full object-cover" /></div>
-                <div className="absolute -top-3 -right-3 w-10 h-10 rounded-full bg-emerald-500 flex items-center justify-center shadow-lg"><Tv className="w-5 h-5 text-black" /></div>
+                <div className="w-20 h-20 rounded-2xl overflow-hidden border border-white/5 bg-zinc-900 shadow-xl"><img src={iptvSwitchingInfo.prev?.stream_icon} className="w-full h-full object-cover" /></div>
+                <div className="absolute -bottom-2 -right-2 bg-white/10 px-2 py-0.5 rounded-lg border border-white/5"><span className="text-[10px] font-black text-white/40">{iptvSwitchingInfo.prevNum}</span></div>
               </div>
-              <div className="text-center">
-                <h2 className="text-3xl font-black text-white tracking-tighter drop-shadow-lg">{iptvSwitchingInfo.current.name}</h2>
-                <span className="text-[10px] text-emerald-400 font-black uppercase tracking-[0.4em] mt-1 block">Live Transmission</span>
+              <span className="text-[11px] font-black text-white/30 truncate max-w-[100px]">{iptvSwitchingInfo.prev?.name}</span>
+            </div>
+            <div className="flex flex-col items-center gap-6 animate-in zoom-in-90 slide-in-from-bottom-2 duration-700">
+              <div className="relative">
+                <div className="w-40 h-40 rounded-[3rem] overflow-hidden border-4 border-emerald-500 shadow-[0_0_80px_rgba(16,185,129,0.5)] bg-black group-hover:scale-105 transition-transform duration-700"><img src={iptvSwitchingInfo.current.stream_icon} className="w-full h-full object-cover" /></div>
+                <div className="absolute -top-4 -right-4 w-14 h-14 rounded-full bg-emerald-500 flex items-center justify-center shadow-2xl border-4 border-black"><span className="text-xl font-black text-black">{iptvSwitchingInfo.currentNum}</span></div>
+              </div>
+              <div className="text-center space-y-1">
+                <h2 className="text-4xl font-black text-white tracking-tighter drop-shadow-[0_0_20px_rgba(255,255,255,0.4)]">{iptvSwitchingInfo.current.name}</h2>
+                <div className="flex items-center justify-center gap-3"><div className="h-1 w-8 bg-emerald-500/40 rounded-full" /><span className="text-[11px] text-emerald-400 font-black uppercase tracking-[0.5em]">Live Feed</span><div className="h-1 w-8 bg-emerald-500/40 rounded-full" /></div>
               </div>
             </div>
-
-            <div className="flex flex-col items-center gap-2 opacity-30 grayscale scale-75">
-              <div className="w-16 h-16 rounded-2xl overflow-hidden border border-white/10"><img src={iptvSwitchingInfo.next?.stream_icon} className="w-full h-full object-cover" /></div>
-              <span className="text-[10px] font-black text-white truncate max-w-[80px]">{iptvSwitchingInfo.next?.name}</span>
+            <div className="flex flex-col items-center gap-3 opacity-20 grayscale scale-75 transition-all duration-500">
+              <div className="relative">
+                <div className="w-20 h-20 rounded-2xl overflow-hidden border border-white/5 bg-zinc-900 shadow-xl"><img src={iptvSwitchingInfo.next?.stream_icon} className="w-full h-full object-cover" /></div>
+                <div className="absolute -bottom-2 -left-2 bg-white/10 px-2 py-0.5 rounded-lg border border-white/5"><span className="text-[10px] font-black text-white/40">{iptvSwitchingInfo.nextNum}</span></div>
+              </div>
+              <span className="text-[11px] font-black text-white/30 truncate max-w-[100px]">{iptvSwitchingInfo.next?.name}</span>
             </div>
           </div>
         </div>
@@ -203,31 +233,31 @@ export function GlobalVideoPlayer() {
         </div>
       </div>
 
-      {isActive && (
+      {isActive && !isMinimized && (
         <div className={cn("fixed z-[5200] flex items-center transition-all duration-700 player-controls-bar", isFullScreen ? "left-10 bottom-10 scale-125 origin-bottom-left" : "right-12 bottom-12 scale-90")}>
           <div className="flex items-center gap-4">
             <button onClick={handleClose} className="w-10 h-10 rounded-full bg-red-600/10 border border-red-600/30 text-red-500/80 flex items-center justify-center focusable cursor-pointer shadow-lg active:scale-90 transition-all backdrop-blur-md relative" tabIndex={0} data-nav-id="player-close-btn">
-              <ShortcutBadge action="player_close" className="-bottom-10 left-1/2 -translate-x-1/2" context="player" />
+              <ShortcutBadge action="player_close" className="-bottom-11 left-1/2 -translate-x-1/2" context="player" />
               <X className="w-5 h-5" />
             </button>
-            <div className={cn("flex items-center bg-white/5 backdrop-blur-3xl p-2.5 rounded-full border border-white/10 shadow-2xl transition-all", isPlayerControlsExpanded ? "gap-3 px-4" : "px-2.5")} data-nav-id="player-controls-container">
+            <div className={cn("flex items-center bg-white/5 backdrop-blur-3xl p-2.5 rounded-full border border-white/10 shadow-2xl transition-all overflow-visible", isPlayerControlsExpanded ? "w-[480px] justify-between px-6" : "w-auto px-2.5")} data-nav-id="player-controls-container">
               {!isPlayerControlsExpanded ? (
                 <button onClick={() => setIsPlayerControlsExpanded(true)} className="w-10 h-10 rounded-full bg-white/5 border border-white/5 text-white/60 flex items-center justify-center focusable cursor-pointer relative" tabIndex={0} data-nav-id="player-settings-toggle">
-                  <ShortcutBadge action="player_settings" className="-bottom-10 left-1/2 -translate-x-1/2" context="player" />
+                  <ShortcutBadge action="player_settings" className="-bottom-11 left-1/2 -translate-x-1/2" context="player" />
                   <Settings className="w-6 h-6" />
                 </button>
               ) : (
                 <>
-                  <button onClick={() => setIsPlayerControlsExpanded(false)} className="w-9 h-9 rounded-full bg-white/5 text-white/20 flex items-center justify-center focusable cursor-pointer relative" tabIndex={0}><ShortcutBadge action="player_settings" className="-bottom-10 left-1/2 -translate-x-1/2" context="player" /><ChevronRight className="w-5 h-5" /></button>
-                  <button onClick={prevTrack} className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center focusable cursor-pointer relative" tabIndex={0}><ShortcutBadge action="player_prev" className="-bottom-10 left-1/2 -translate-x-1/2" context="player" /><ChevronRight className="w-5 h-5" /></button>
-                  <button onClick={nextTrack} className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center focusable cursor-pointer relative" tabIndex={0}><ShortcutBadge action="player_next" className="-bottom-10 left-1/2 -translate-x-1/2" context="player" /><ChevronLeft className="w-5 h-5" /></button>
+                  <button onClick={() => setIsPlayerControlsExpanded(false)} className="w-9 h-9 rounded-full bg-white/5 text-white/20 flex items-center justify-center focusable cursor-pointer relative" tabIndex={0}><ShortcutBadge action="player_settings" className="-bottom-11 left-1/2 -translate-x-1/2" context="player" /><ChevronRight className="w-5 h-5" /></button>
+                  <button onClick={prevTrack} className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center focusable cursor-pointer relative" tabIndex={0}><ShortcutBadge action="player_prev" className="-bottom-11 left-1/2 -translate-x-1/2" context="player" /><ChevronRight className="w-5 h-5" /></button>
+                  <button onClick={nextTrack} className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center focusable cursor-pointer relative" tabIndex={0}><ShortcutBadge action="player_next" className="-bottom-11 left-1/2 -translate-x-1/2" context="player" /><ChevronLeft className="w-5 h-5" /></button>
                   <div className="w-px h-7 bg-white/10 mx-1" />
                   <button onClick={toggleShowIslands} className={cn("w-9 h-9 rounded-full flex items-center justify-center focusable cursor-pointer transition-colors relative", showIslands ? "bg-accent/40 text-accent" : "bg-white/5 text-white/40")} tabIndex={0} data-nav-id="player-island-toggle">
                     {showIslands ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
                   </button>
-                  <button onClick={() => activeVideo && toggleSaveVideo(activeVideo)} className={cn("w-9 h-9 rounded-full flex items-center justify-center focusable cursor-pointer transition-colors relative", isSaved ? "bg-accent/40 text-accent shadow-glow" : "bg-white/5 text-white/40")} tabIndex={0}><ShortcutBadge action="player_save" className="-bottom-10 left-1/2 -translate-x-1/2" context="player" />{isSaved ? <BookmarkCheck className="w-5 h-5" /> : <Bookmark className="w-5 h-5" />}</button>
-                  <button onClick={cyclePlayerMode} className={cn("w-9 h-9 rounded-full flex items-center justify-center focusable cursor-pointer relative", isMinimized && "bg-orange-500/40 shadow-glow")} tabIndex={0} data-nav-id="player-min-toggle"><ShortcutBadge action="player_minimize" className="-bottom-10 left-1/2 -translate-x-1/2" context="player" />{isMinimized ? <Maximize2 className="w-5 h-5" /> : <Minimize2 className="w-5 h-5" />}</button>
-                  <button onClick={() => setIsFullScreen(!isFullScreen)} className={cn("w-9 h-9 rounded-full flex items-center justify-center focusable cursor-pointer relative", isFullScreen && "bg-primary/40 shadow-glow")} tabIndex={0}><ShortcutBadge action="player_fullscreen" className="-bottom-10 left-1/2 -translate-x-1/2" context="player" /><Monitor className="w-5 h-5" /></button>
+                  <button onClick={() => activeVideo && toggleSaveVideo(activeVideo)} className={cn("w-9 h-9 rounded-full flex items-center justify-center focusable cursor-pointer transition-colors relative", isSaved ? "bg-accent/40 text-accent shadow-glow" : "bg-white/5 text-white/40")} tabIndex={0}><ShortcutBadge action="player_save" className="-bottom-11 left-1/2 -translate-x-1/2" context="player" />{isSaved ? <BookmarkCheck className="w-5 h-5" /> : <Bookmark className="w-5 h-5" />}</button>
+                  <button onClick={cyclePlayerMode} className={cn("w-9 h-9 rounded-full flex items-center justify-center focusable cursor-pointer relative", isMinimized && "bg-orange-500/40 shadow-glow")} tabIndex={0} data-nav-id="player-min-toggle"><ShortcutBadge action="player_minimize" className="-bottom-11 left-1/2 -translate-x-1/2" context="player" />{isMinimized ? <Maximize2 className="w-5 h-5" /> : <Minimize2 className="w-5 h-5" />}</button>
+                  <button onClick={() => setIsFullScreen(!isFullScreen)} className={cn("w-9 h-9 rounded-full flex items-center justify-center focusable cursor-pointer relative", isFullScreen && "bg-primary/40 shadow-glow")} tabIndex={0}><ShortcutBadge action="player_fullscreen" className="-bottom-11 left-1/2 -translate-x-1/2" context="player" /><Monitor className="w-5 h-5" /></button>
                 </>
               )}
             </div>

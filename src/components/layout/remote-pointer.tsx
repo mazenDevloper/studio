@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useCallback, useRef } from "react";
+import { useEffect, useCallback, useRef, useState } from "react";
 import { normalizeKey } from "@/lib/utils";
 import { usePathname, useRouter } from "next/navigation";
 import { useMediaStore, AppAction, MappingContext } from "@/lib/store";
@@ -9,7 +9,7 @@ import { init } from "@noriginmedia/norigin-spatial-navigation";
 import { useToast } from "@/hooks/use-toast";
 
 /**
- * Smart Engine v100.0 - Restricted Return & Strict Isolation
+ * Smart Engine v103.0 - Global Channel Shortcuts Support
  */
 export function RemotePointer() {
   const pathname = usePathname();
@@ -18,16 +18,31 @@ export function RemotePointer() {
   
   const { 
     wallPlateType, setWallPlate, dockSide, isFullScreen, isMinimized, 
-    activeVideo, activeIptv, selectedChannel,
+    activeVideo, activeIptv, selectedChannel, setActiveIptv,
     isAltModeActive, toggleAltMode, removeChannel, removeReciter, toggleStarChannel, favoriteChannels,
     pickedUpId, setPickedUpId, reorderChannel, reorderReciter, reorderIptvChannel, removeVideo,
-    isReorderMode, toggleReorderMode
+    isReorderMode, toggleReorderMode, setIsSidebarShrinked, isRecordingKey, favoriteIptvChannels
   } = useMediaStore();
+
+  const keyBufferRef = useRef<string>("");
+  const comboTimeoutRef = useRef<any>(null);
 
   useEffect(() => {
     try { init({ debug: false, visualDebug: false }); } 
     catch (e) { console.warn(e); }
   }, []);
+
+  useEffect(() => {
+    const handleFocusIn = (e: FocusEvent) => {
+      if (pathname !== '/media') return;
+      const target = e.target as HTMLElement;
+      const isInsideSidebar = target.closest('aside');
+      setIsSidebarShrinked(!isInsideSidebar);
+    };
+
+    window.addEventListener('focusin', handleFocusIn);
+    return () => window.removeEventListener('focusin', handleFocusIn);
+  }, [pathname, setIsSidebarShrinked]);
 
   const isAction = useCallback((key: string, action: AppAction) => {
     const mappings = useMediaStore.getState().keyMappings;
@@ -40,16 +55,21 @@ export function RemotePointer() {
     };
     const pageCtx = screenMap[pathname] || 'global';
 
+    const match = (keysArr: string[] | undefined) => {
+      if (!keysArr) return false;
+      return keysArr.some(k => k.toLowerCase() === normalizedKey);
+    };
+
     if (isPlayerActive) {
-      if (mappings.player?.[action]?.some(k => k.toLowerCase() === normalizedKey)) return true;
+      if (match(mappings.player?.[action])) return true;
       const isReservedByPlayer = Object.values(mappings.player || {}).some(keys => 
         Array.isArray(keys) && keys.some(k => k.toLowerCase() === normalizedKey)
       );
       if (isReservedByPlayer) return false;
     }
 
-    if (pageCtx !== 'global' && mappings[pageCtx]?.[action]?.some(k => k.toLowerCase() === normalizedKey)) return true;
-    return mappings.global?.[action]?.some(k => k.toLowerCase() === normalizedKey) ?? false;
+    if (pageCtx !== 'global' && match(mappings[pageCtx]?.[action])) return true;
+    return match(mappings.global?.[action]);
   }, [pathname, activeVideo, activeIptv, isFullScreen, isMinimized]);
 
   const navigate = useCallback((direction: string) => {
@@ -62,7 +82,7 @@ export function RemotePointer() {
 
     let current = document.activeElement as HTMLElement;
     if (!current || current === document.body || !current.classList.contains("focusable")) {
-      const rescue = document.querySelector('[data-nav-id="subs-all"]') as HTMLElement || focusables[0];
+      const rescue = document.querySelector('[data-nav-id="dash-col-1"]') as HTMLElement || focusables[0];
       rescue?.focus();
       return;
     }
@@ -83,20 +103,18 @@ export function RemotePointer() {
     const isVertical = direction === "ArrowUp" || direction === "ArrowDown";
     const currentContainerId = current.closest('[data-row-id]')?.getAttribute('data-row-id');
 
-    // Return to Sidebar Logic (Restricted to Edges only)
     const isMovingToSidebar = (dockSide === 'left' && direction === 'ArrowLeft') || (dockSide === 'right' && direction === 'ArrowRight');
     if (isMovingToSidebar && pathname === '/media' && !current.closest('aside')) {
       const navId = current.getAttribute('data-nav-id') || '';
       const isFirstInList = navId.includes('item-0') || navId.endsWith('-0');
       const isGridItem = current.classList.contains('grid-item');
       
-      // Visual Edge Check - only jump to sidebar if we are visually on the side of the sidebar
       const isVisuallyAtEdge = dockSide === 'left' 
         ? currentRect.left < window.innerWidth * 0.4 
         : currentRect.right > window.innerWidth * 0.6;
 
       if (isFirstInList || (isGridItem && isVisuallyAtEdge)) {
-        let targetId = 'subs-1'; // Default to second channel
+        let targetId = 'subs-1'; 
         if (selectedChannel) {
           const idx = favoriteChannels.findIndex(c => c.channelid === selectedChannel.channelid);
           if (idx !== -1) targetId = `subs-${idx + 1}`;
@@ -111,10 +129,8 @@ export function RemotePointer() {
 
     for (const el of focusables) {
       if (el === current) continue;
-      
       const nextContainerId = el.closest('[data-row-id]')?.getAttribute('data-row-id');
 
-      // STRICT ROW ISOLATION
       if (!isVertical && currentContainerId?.startsWith('media-row-')) {
         if (nextContainerId !== currentContainerId) continue;
       }
@@ -129,10 +145,8 @@ export function RemotePointer() {
       if (direction === "ArrowDown" && dy <= 5) continue;
       if (direction === "ArrowUp" && dy >= -5) continue;
 
-      // Penalize orthogonal distance heavily to keep navigation straight and avoid sidebar jumping
       const distWeight = isVertical ? (dx * dx * 100) + (dy * dy) : (dx * dx) + (dy * dy * 100);
       const d = Math.sqrt(distWeight);
-      
       if (d < minDistance) { minDistance = d; next = el; }
     }
 
@@ -145,17 +159,56 @@ export function RemotePointer() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const activeEl = document.activeElement as HTMLElement;
-      let key = normalizeKey(e); 
+      let rawKey = normalizeKey(e); 
+      
       if (activeEl?.tagName === 'INPUT' && !activeEl.classList.contains('focusable')) { 
         if (e.key === "Enter" || e.key === "Escape") { activeEl.blur(); return; }
         return; 
       }
-      if (key === 'Sub') { e.preventDefault(); toggleAltMode(); return; }
-      if (isAltModeActive) {
-        if (key === '2') key = 'ArrowUp'; else if (key === '8') key = 'ArrowDown'; else if (key === '4') key = 'ArrowLeft'; else if (key === '6') key = 'ArrowRight'; else if (key === '5') key = 'Enter';
+
+      if (rawKey === 'Sub') { e.preventDefault(); toggleAltMode(); return; }
+      
+      let finalKey = rawKey;
+      if (!isRecordingKey) {
+        if (keyBufferRef.current) {
+          finalKey = keyBufferRef.current + rawKey;
+          keyBufferRef.current = "";
+          if (comboTimeoutRef.current) clearTimeout(comboTimeoutRef.current);
+        } else if (['Red', 'Green', 'Yellow', 'Blue', '1', '3', '5', '7', '9'].includes(rawKey)) {
+          keyBufferRef.current = rawKey;
+          if (comboTimeoutRef.current) clearTimeout(comboTimeoutRef.current);
+          comboTimeoutRef.current = setTimeout(() => {
+            if (keyBufferRef.current === rawKey) {
+              keyBufferRef.current = "";
+            }
+          }, 2000);
+        }
       }
-      if (isAction(key, 'toggle_reorder')) { e.preventDefault(); toggleReorderMode(); return; }
-      if (isAction(key, 'delete_item')) {
+
+      // GLOBAL IPTV CHANNEL LAUNCH BY NUMBER
+      const possibleNum = parseInt(finalKey);
+      if (!isNaN(possibleNum) && possibleNum >= 11 && possibleNum <= 23 && !isRecordingKey) {
+        const favs = useMediaStore.getState().favoriteIptvChannels;
+        const targetIdx = favs.findIndex((_, idx) => {
+          let num = 11 + idx;
+          if (num >= 13) num++;
+          if (num >= 17) num++;
+          return num === possibleNum;
+        });
+        if (targetIdx !== -1) {
+          e.preventDefault();
+          setActiveIptv(favs[targetIdx], favs);
+          toast({ title: `تشغيل القناة ${possibleNum}`, description: favs[targetIdx].name });
+          return;
+        }
+      }
+
+      if (isAltModeActive) {
+        if (finalKey === '2') finalKey = 'ArrowUp'; else if (finalKey === '8') finalKey = 'ArrowDown'; else if (finalKey === '4') finalKey = 'ArrowLeft'; else if (finalKey === '6') finalKey = 'ArrowRight'; else if (finalKey === '5') finalKey = 'Enter';
+      }
+
+      if (isAction(finalKey, 'toggle_reorder')) { e.preventDefault(); toggleReorderMode(); return; }
+      if (isAction(finalKey, 'delete_item')) {
         const type = activeEl.getAttribute('data-type');
         const id = activeEl.getAttribute('data-id');
         if (type === 'channel' && id) removeChannel(id);
@@ -165,25 +218,30 @@ export function RemotePointer() {
           const videoId = activeEl.getAttribute('data-video-id');
           if (videoId) removeVideo(videoId);
         }
+        return;
       }
-      if (isAction(key, 'nav_back')) {
+
+      if (isAction(finalKey, 'nav_back')) {
         e.preventDefault();
         if (wallPlateType) { setWallPlate(null); return; }
         if (pathname !== '/') { router.back(); return; }
         return;
       }
-      if (isAction(key, 'goto_home')) { e.preventDefault(); router.push('/'); return; }
-      if (isAction(key, 'goto_media')) { e.preventDefault(); router.push('/media'); return; }
-      if (isAction(key, 'goto_quran')) { e.preventDefault(); router.push('/quran'); return; }
-      if (isAction(key, 'goto_hihi2')) { e.preventDefault(); router.push('/hihi2'); return; }
-      if (isAction(key, 'goto_iptv')) { e.preventDefault(); router.push('/iptv'); return; }
-      if (isAction(key, 'goto_football')) { e.preventDefault(); router.push('/football'); return; }
-      if (isAction(key, 'goto_settings')) { e.preventDefault(); router.push('/settings'); return; }
-      if (isAction(key, 'nav_up')) { e.preventDefault(); navigate("ArrowUp"); return; }
-      if (isAction(key, 'nav_down')) { e.preventDefault(); navigate("ArrowDown"); return; }
-      if (isAction(key, 'nav_left')) { e.preventDefault(); navigate("ArrowLeft"); return; }
-      if (isAction(key, 'nav_right')) { e.preventDefault(); navigate("ArrowRight"); return; }
-      if (isAction(key, 'nav_ok') || e.keyCode === 13) { 
+
+      if (isAction(finalKey, 'goto_home')) { e.preventDefault(); router.push('/'); return; }
+      if (isAction(finalKey, 'goto_media')) { e.preventDefault(); router.push('/media'); return; }
+      if (isAction(finalKey, 'goto_quran')) { e.preventDefault(); router.push('/quran'); return; }
+      if (isAction(finalKey, 'goto_hihi2')) { e.preventDefault(); router.push('/hihi2'); return; }
+      if (isAction(finalKey, 'goto_iptv')) { e.preventDefault(); router.push('/iptv'); return; }
+      if (isAction(finalKey, 'goto_football')) { e.preventDefault(); router.push('/football'); return; }
+      if (isAction(finalKey, 'goto_settings')) { e.preventDefault(); router.push('/settings'); return; }
+      
+      if (isAction(finalKey, 'nav_up')) { e.preventDefault(); navigate("ArrowUp"); return; }
+      if (isAction(finalKey, 'nav_down')) { e.preventDefault(); navigate("ArrowDown"); return; }
+      if (isAction(finalKey, 'nav_left')) { e.preventDefault(); navigate("ArrowLeft"); return; }
+      if (isAction(finalKey, 'nav_right')) { e.preventDefault(); navigate("ArrowRight"); return; }
+      
+      if (isAction(finalKey, 'nav_ok') || e.keyCode === 13) { 
         if (activeEl?.classList.contains("focusable")) {
           const type = activeEl.getAttribute('data-type');
           if ((type === 'channel' || type === 'reciter' || type === 'iptv') && isReorderMode) {
@@ -197,7 +255,7 @@ export function RemotePointer() {
     };
     window.addEventListener("keydown", handleKeyDown, true);
     return () => window.removeEventListener("keydown", handleKeyDown, true);
-  }, [navigate, isAction, wallPlateType, setWallPlate, router, pathname, isAltModeActive, toggleAltMode, toast, removeChannel, removeReciter, toggleStarChannel, pickedUpId, setPickedUpId, removeVideo, isReorderMode, toggleReorderMode]);
+  }, [navigate, isAction, wallPlateType, setWallPlate, router, pathname, isAltModeActive, toggleAltMode, toast, removeChannel, removeReciter, toggleStarChannel, pickedUpId, setPickedUpId, removeVideo, isReorderMode, toggleReorderMode, isRecordingKey, setActiveIptv]);
 
   return null;
 }

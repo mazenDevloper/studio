@@ -24,7 +24,8 @@ export function SettingsView() {
     customManuscripts, addManuscript, removeManuscript,
     keyMappings, setKeyMapping, removeSpecificKeyMapping,
     customWallBackgrounds, addCustomWallBackground, autoHideIsland, setAutoHideIsland,
-    displayScale, setDisplayScale, dockScale, setDockScale
+    displayScale, setDisplayScale, dockScale, setDockScale,
+    setIsRecordingKey
   } = useMediaStore();
   
   const { toast } = useToast();
@@ -34,6 +35,8 @@ export function SettingsView() {
   const [manuscriptType, setManuscriptType] = useState<'text' | 'image'>('text');
   const [selectedContext, setSelectedContext] = useState<MappingContext>('global');
   const [recordingAction, setRecordingAction] = useState<AppAction | null>(null);
+  const [recordingType, setRecordingType] = useState<'single' | 'combo'>('single');
+  const [firstKey, setFirstKey] = useState<string | null>(null);
 
   const [newReminder, setNewReminder] = useState<Partial<Reminder>>({
     label: "", relativePrayer: "manual", manualTime: "12:00", offsetMinutes: 0, color: "text-blue-400", iconType: "bell", countdownWindow: 15, countupWindow: 15, expiryType: 'prayer', expiryValue: 'next'
@@ -56,17 +59,39 @@ export function SettingsView() {
 
   useEffect(() => {
     if (!recordingAction) return;
+    setIsRecordingKey(true);
+    
     const handleKeyDown = (e: KeyboardEvent) => {
       e.preventDefault();
       e.stopPropagation();
       const key = normalizeKey(e);
-      setKeyMapping(selectedContext, recordingAction, key);
-      setRecordingAction(null);
-      toast({ title: "تم التعيين", description: `تم ربط الزر ${key} بنجاح` });
+      
+      if (recordingType === 'single') {
+        setKeyMapping(selectedContext, recordingAction, key);
+        setRecordingAction(null);
+        setIsRecordingKey(false);
+        toast({ title: "تم التعيين", description: `تم ربط الزر ${key} بنجاح` });
+      } else {
+        if (!firstKey) {
+          setFirstKey(key);
+          toast({ title: "الزر الأول مسجل", description: "اضغط الزر الثاني لإتمام المجموعة" });
+        } else {
+          const combo = firstKey + key;
+          setKeyMapping(selectedContext, recordingAction, combo);
+          setRecordingAction(null);
+          setFirstKey(null);
+          setIsRecordingKey(false);
+          toast({ title: "تم تعيين المجموعة", description: `تم ربط ${combo} بنجاح` });
+        }
+      }
     };
+    
     window.addEventListener("keydown", handleKeyDown, true);
-    return () => window.removeEventListener("keydown", handleKeyDown, true);
-  }, [recordingAction, selectedContext, setKeyMapping, toast]);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown, true);
+      setIsRecordingKey(false);
+    };
+  }, [recordingAction, selectedContext, setKeyMapping, toast, setIsRecordingKey, recordingType, firstKey]);
 
   const wallPresets = [
     "https://images.unsplash.com/photo-1578301978693-85fa9c0320b9?q=80&w=2000", 
@@ -191,20 +216,123 @@ export function SettingsView() {
           </div>
         </TabsContent>
 
-        <TabsContent value="prayers" className="space-y-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {prayerSettings.map(p => (
-              <Card key={p.id} className="bg-white/5 border-white/10 p-6 rounded-3xl space-y-6">
-                <div className="flex items-center justify-between"><h3 className="text-xl font-black text-white">{p.name}</h3><Clock className="w-5 h-5 text-primary" /></div>
-                <div className="space-y-4">
-                  <div className="space-y-2"><div className="flex justify-between text-xs text-white/40"><span>الإزاحة</span><span>{p.offsetMinutes} د</span></div><Slider value={[p.offsetMinutes]} min={-60} max={60} step={1} onValueChange={([v]) => updatePrayerSetting(p.id, { offsetMinutes: v })} /></div>
-                  {p.iqamahDuration !== undefined && (
-                    <div className="space-y-2"><div className="flex justify-between text-xs text-white/40"><span>وقت الإقامة</span><span>{p.iqamahDuration} د</span></div><Slider value={[p.iqamahDuration]} min={0} max={45} step={1} onValueChange={([v]) => updatePrayerSetting(p.id, { iqamahDuration: v })} /></div>
+        <TabsContent value="buttonmap" className="space-y-8">
+          <div className="flex items-center justify-between bg-zinc-900/40 p-8 rounded-[3rem] border border-white/5">
+            <div className="flex items-center gap-6">
+              <div className="w-14 h-14 rounded-2xl bg-primary/20 flex items-center justify-center border border-primary/20 shadow-glow">
+                <Keyboard className="w-8 h-8 text-primary" />
+              </div>
+              <h2 className="text-4xl font-black text-white tracking-tighter">تخصيص أزرار التحكم</h2>
+            </div>
+            
+            <div className="flex items-center gap-4">
+              <span className="text-white/40 font-bold">اختر السياق:</span>
+              <Select value={selectedContext} onValueChange={(v) => setSelectedContext(v as any)}>
+                <SelectTrigger className="w-64 h-14 bg-black/60 border-white/10 rounded-2xl px-6 text-white text-right focusable">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-zinc-950 border-white/10 text-white dir-rtl">
+                  {Object.entries(contextLabels).map(([val, label]) => (
+                    <SelectItem key={val} value={val}>{label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {Object.entries(keyMappings[selectedContext] || {}).map(([action, keys]) => (
+              <Card key={action} className="bg-zinc-900/20 border-none p-8 rounded-[2.5rem] flex flex-col gap-6 relative group overflow-hidden transition-all hover:bg-zinc-900/40">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xl font-black text-white truncate max-w-[180px]">
+                    {actionLabels[action as AppAction] || action}
+                  </h3>
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => { setRecordingAction(action as AppAction); setFirstKey(null); }}
+                      className={cn("w-10 h-10 rounded-full transition-all", recordingAction === action ? "bg-yellow-500 text-black animate-pulse shadow-glow" : "bg-blue-600/10 text-blue-400 border border-blue-500/20 hover:bg-blue-600 hover:text-white")}
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => useMediaStore.getState().clearKeyMappings(selectedContext, action as AppAction)}
+                      className="w-10 h-10 rounded-full bg-red-600/10 text-red-500 border border-red-500/20 hover:bg-red-600 hover:text-white"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                {recordingAction === action && (
+                  <div className="flex flex-col gap-3 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-2xl animate-in zoom-in-95">
+                    <span className="text-[10px] font-black text-yellow-500 uppercase tracking-widest">نوع البرمجة</span>
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); setRecordingType('single'); setFirstKey(null); }} 
+                        className={cn("px-4 py-2 rounded-xl text-xs font-black transition-all", recordingType === 'single' ? "bg-yellow-500 text-black" : "bg-white/5 text-white/40 border border-white/5")}
+                      >زر واحد</button>
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); setRecordingType('combo'); setFirstKey(null); }}
+                        className={cn("px-4 py-2 rounded-xl text-xs font-black transition-all", recordingType === 'combo' ? "bg-yellow-500 text-black" : "bg-white/5 text-white/40 border border-white/5")}
+                      >مجموعة (زرين)</button>
+                    </div>
+                    {recordingType === 'combo' && firstKey && (
+                      <div className="flex items-center gap-2 mt-1">
+                        <div className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
+                        <span className="text-[10px] text-white/60 font-bold">الزر الأول: {firstKey} ... اضغط الزر الثاني</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="flex flex-wrap gap-3">
+                  {Array.isArray(keys) && keys.length > 0 ? (
+                    keys.map(k => (
+                      <ActionKeyBadge key={k} k={k} action={action as AppAction} context={selectedContext} />
+                    ))
+                  ) : (
+                    <div className="h-12 flex items-center px-4 rounded-full bg-white/5 border border-dashed border-white/10">
+                      <span className="text-[10px] text-white/20 font-black uppercase tracking-widest">No Keys Map</span>
+                    </div>
+                  )}
+                  {recordingAction === action && !firstKey && (
+                    <div className="w-12 h-12 rounded-full border-2 border-dashed border-yellow-500 flex items-center justify-center animate-pulse">
+                      <Eye className="w-5 h-5 text-yellow-500" />
+                    </div>
                   )}
                 </div>
               </Card>
             ))}
           </div>
+        </TabsContent>
+
+        <TabsContent value="manuscripts" className="space-y-8">
+          <Card className="bg-white/5 border-white/10 p-8 rounded-[3rem]">
+            <CardTitle className="text-2xl font-black text-white flex items-center gap-4 mb-8"><BookOpen className="w-8 h-8 text-primary" />إضافة مخطوطة أو صورة</CardTitle>
+            <div className="flex gap-4 mb-8">
+              <Select value={manuscriptType} onValueChange={(v) => setManuscriptType(v as any)}>
+                <SelectTrigger className="w-40 h-14 bg-black/40 border-white/10 rounded-xl px-6 text-white text-right"><SelectValue /></SelectTrigger>
+                <SelectContent className="bg-zinc-950 border-white/10 text-white dir-rtl">
+                  <SelectItem value="text">نص</SelectItem>
+                  <SelectItem value="image">رابط صورة</SelectItem>
+                </SelectContent>
+              </Select>
+              <Input placeholder={manuscriptType === 'text' ? "أدخل النص هنا..." : "أدخل رابط الصورة..."} value={manuscriptInput} onChange={(e) => setManuscriptInput(e.target.value)} className="h-14 flex-1 bg-black/40 border-white/10 rounded-xl px-6 text-white text-right" />
+              <Button onClick={() => { if(manuscriptInput) { addManuscript({ id: Date.now().toString(), type: manuscriptType, content: manuscriptInput }); setManuscriptInput(""); toast({title: "تمت الإضافة"}); } }} className="h-14 px-8 bg-primary rounded-xl focusable"><Plus className="w-6 h-6 ml-2" />إضافة</Button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {customManuscripts.map((m) => (
+                <Card key={m.id} className="bg-white/5 border-white/10 p-6 rounded-2xl relative group overflow-hidden">
+                  {m.type === 'text' ? <p className="text-lg font-bold text-white text-center line-clamp-3">{m.content}</p> : <img src={m.content} className="h-32 w-full object-contain" alt="" />}
+                  <Button variant="destructive" size="icon" onClick={() => removeManuscript(m.id)} className="absolute top-2 right-2 w-8 h-8 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 className="w-4 h-4" /></Button>
+                </Card>
+              ))}
+            </div>
+          </Card>
         </TabsContent>
 
         <TabsContent value="reminders" className="space-y-8">
@@ -294,96 +422,15 @@ export function SettingsView() {
           </div>
         </TabsContent>
 
-        <TabsContent value="manuscripts" className="space-y-8">
-          <Card className="bg-white/5 border-white/10 p-8 rounded-[3rem]">
-            <CardTitle className="text-2xl font-black text-white flex items-center gap-4 mb-8"><BookOpen className="w-8 h-8 text-primary" />إضافة مخطوطة أو صورة</CardTitle>
-            <div className="flex gap-4 mb-8">
-              <Select value={manuscriptType} onValueChange={(v) => setManuscriptType(v as any)}>
-                <SelectTrigger className="w-40 h-14 bg-black/40 border-white/10 rounded-xl px-6 text-white text-right"><SelectValue /></SelectTrigger>
-                <SelectContent className="bg-zinc-950 border-white/10 text-white dir-rtl">
-                  <SelectItem value="text">نص</SelectItem>
-                  <SelectItem value="image">رابط صورة</SelectItem>
-                </SelectContent>
-              </Select>
-              <Input placeholder={manuscriptType === 'text' ? "أدخل النص هنا..." : "أدخل رابط الصورة..."} value={manuscriptInput} onChange={(e) => setManuscriptInput(e.target.value)} className="h-14 flex-1 bg-black/40 border-white/10 rounded-xl px-6 text-white text-right" />
-              <Button onClick={() => { if(manuscriptInput) { addManuscript({ id: Date.now().toString(), type: manuscriptType, content: manuscriptInput }); setManuscriptInput(""); toast({title: "تمت الإضافة"}); } }} className="h-14 px-8 bg-primary rounded-xl focusable"><Plus className="w-6 h-6 ml-2" />إضافة</Button>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {customManuscripts.map((m) => (
-                <Card key={m.id} className="bg-white/5 border-white/10 p-6 rounded-2xl relative group overflow-hidden">
-                  {m.type === 'text' ? <p className="text-lg font-bold text-white text-center line-clamp-3">{m.content}</p> : <img src={m.content} className="h-32 w-full object-contain" alt="" />}
-                  <Button variant="destructive" size="icon" onClick={() => removeManuscript(m.id)} className="absolute top-2 right-2 w-8 h-8 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 className="w-4 h-4" /></Button>
-                </Card>
-              ))}
-            </div>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="buttonmap" className="space-y-8">
-          <div className="flex items-center justify-between bg-zinc-900/40 p-8 rounded-[3rem] border border-white/5">
-            <div className="flex items-center gap-6">
-              <div className="w-14 h-14 rounded-2xl bg-primary/20 flex items-center justify-center border border-primary/20 shadow-glow">
-                <Keyboard className="w-8 h-8 text-primary" />
-              </div>
-              <h2 className="text-4xl font-black text-white tracking-tighter">تخصيص أزرار التحكم</h2>
-            </div>
-            
-            <div className="flex items-center gap-4">
-              <span className="text-white/40 font-bold">اختر السياق:</span>
-              <Select value={selectedContext} onValueChange={(v) => setSelectedContext(v as any)}>
-                <SelectTrigger className="w-64 h-14 bg-black/60 border-white/10 rounded-2xl px-6 text-white text-right focusable">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-zinc-950 border-white/10 text-white dir-rtl">
-                  {Object.entries(contextLabels).map(([val, label]) => (
-                    <SelectItem key={val} value={val}>{label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {Object.entries(keyMappings[selectedContext] || {}).map(([action, keys]) => (
-              <Card key={action} className="bg-zinc-900/20 border-none p-8 rounded-[2.5rem] flex flex-col gap-6 relative group overflow-hidden transition-all hover:bg-zinc-900/40">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xl font-black text-white truncate max-w-[180px]">
-                    {actionLabels[action as AppAction] || action}
-                  </h3>
-                  <div className="flex gap-2">
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={() => setRecordingAction(action as AppAction)}
-                      className={cn("w-10 h-10 rounded-full transition-all", recordingAction === action ? "bg-yellow-500 text-black animate-pulse shadow-glow" : "bg-blue-600/10 text-blue-400 border border-blue-500/20 hover:bg-blue-600 hover:text-white")}
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={() => useMediaStore.getState().clearKeyMappings(selectedContext, action as AppAction)}
-                      className="w-10 h-10 rounded-full bg-red-600/10 text-red-500 border border-red-500/20 hover:bg-red-600 hover:text-white"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap gap-3">
-                  {Array.isArray(keys) && keys.length > 0 ? (
-                    keys.map(k => (
-                      <ActionKeyBadge key={k} k={k} action={action as AppAction} context={selectedContext} />
-                    ))
-                  ) : (
-                    <div className="h-12 flex items-center px-4 rounded-full bg-white/5 border border-dashed border-white/10">
-                      <span className="text-[10px] text-white/20 font-black uppercase tracking-widest">No Keys Map</span>
-                    </div>
-                  )}
-                  {recordingAction === action && (
-                    <div className="w-12 h-12 rounded-full border-2 border-dashed border-yellow-500 flex items-center justify-center animate-pulse">
-                      <Eye className="w-5 h-5 text-yellow-500" />
-                    </div>
+        <TabsContent value="prayers" className="space-y-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {prayerSettings.map(p => (
+              <Card key={p.id} className="bg-white/5 border-white/10 p-6 rounded-3xl space-y-6">
+                <div className="flex items-center justify-between"><h3 className="text-xl font-black text-white">{p.name}</h3><Clock className="w-5 h-5 text-primary" /></div>
+                <div className="space-y-4">
+                  <div className="space-y-2"><div className="flex justify-between text-xs text-white/40"><span>الإزاحة</span><span>{p.offsetMinutes} د</span></div><Slider value={[p.offsetMinutes]} min={-60} max={60} step={1} onValueChange={([v]) => updatePrayerSetting(p.id, { offsetMinutes: v })} /></div>
+                  {p.iqamahDuration !== undefined && (
+                    <div className="space-y-2"><div className="flex justify-between text-xs text-white/40"><span>وقت الإقامة</span><span>{p.iqamahDuration} د</span></div><Slider value={[p.iqamahDuration]} min={0} max={45} step={1} onValueChange={([v]) => updatePrayerSetting(p.id, { iqamahDuration: v })} /></div>
                   )}
                 </div>
               </Card>

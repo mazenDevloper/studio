@@ -70,6 +70,7 @@ export interface IptvChannel {
   url?: string;
   type?: 'iptv' | 'web' | 'live';
   stream_type?: string;
+  displayNumber?: number;
 }
 
 export interface FavoriteTeam {
@@ -132,6 +133,7 @@ interface MediaState {
   isAltModeActive: boolean; 
   isReorderMode: boolean;
   apiError: { count: number, message: string } | null;
+  isRecordingKey: boolean;
   
   pickedUpId: string | null;
   setPickedUpId: (id: string | null) => void;
@@ -143,8 +145,8 @@ interface MediaState {
   clubsCache: any[];
   isClubsLoading: boolean;
 
-  iptvSwitchingInfo: { current: IptvChannel, next: IptvChannel | null, prev: IptvChannel | null } | null;
-  setIptvSwitchingInfo: (info: { current: IptvChannel, next: IptvChannel | null, prev: IptvChannel | null } | null) => void;
+  iptvSwitchingInfo: { current: IptvChannel, next: IptvChannel | null, prev: IptvChannel | null, currentNum: number, nextNum: number | null, prevNum: number | null } | null;
+  setIptvSwitchingInfo: (info: { current: IptvChannel, next: IptvChannel | null, prev: IptvChannel | null, currentNum: number, nextNum: number | null, prevNum: number | null } | null) => void;
   
   setFavoriteChannels: (channels: YouTubeChannel[]) => void;
   setFavoriteIptvChannels: (channels: IptvChannel[]) => void;
@@ -211,6 +213,7 @@ interface MediaState {
   toggleAltMode: () => void;
   toggleReorderMode: () => void;
   setApiError: (error: { count: number, message: string } | null) => void;
+  setIsRecordingKey: (val: boolean) => void;
   
   setVideoResults: (results: YouTubeVideo[]) => void;
   setSelectedChannel: (channel: YouTubeChannel | null) => void;
@@ -319,6 +322,16 @@ const INITIAL_IPTV_FAVORITES: IptvChannel[] = [
   }
 ];
 
+/**
+ * دالة ذكية لحساب رقم القناة بدءاً من 11 وتخطي 13 و 17
+ */
+const getDisplayNumber = (index: number) => {
+  let num = 11 + index;
+  if (num >= 13) num++; // Skip 13
+  if (num >= 17) num++; // Skip 17
+  return num;
+};
+
 export const useMediaStore = create<MediaState>()(
   persist(
     (set, get) => ({
@@ -373,6 +386,7 @@ export const useMediaStore = create<MediaState>()(
       isAltModeActive: true, 
       isReorderMode: false,
       apiError: null,
+      isRecordingKey: false,
       pickedUpId: null,
       setPickedUpId: (id) => set({ pickedUpId: id }),
       
@@ -843,7 +857,14 @@ export const useMediaStore = create<MediaState>()(
         set({ 
           iptvPlaylistIndex: nextIdx, 
           activeIptv: { ...channel, url: channel.url || `http://playstop.watch:2095/live/W87d737/Pd37qj34/${channel.stream_id}.m3u8`, type: 'web' },
-          iptvSwitchingInfo: { current: channel, next: state.iptvPlaylist[nextNextIdx], prev: state.iptvPlaylist[prevIdx] }
+          iptvSwitchingInfo: { 
+            current: channel, 
+            next: state.iptvPlaylist[nextNextIdx], 
+            prev: state.iptvPlaylist[prevIdx],
+            currentNum: getDisplayNumber(nextIdx),
+            nextNum: getDisplayNumber(nextNextIdx),
+            prevNum: getDisplayNumber(prevIdx)
+          }
         });
         setTimeout(() => set({ iptvSwitchingInfo: null }), 3000);
       },
@@ -858,7 +879,14 @@ export const useMediaStore = create<MediaState>()(
         set({ 
           iptvPlaylistIndex: prevIdx, 
           activeIptv: { ...channel, url: channel.url || `http://playstop.watch:2095/live/W87d737/Pd37qj34/${channel.stream_id}.m3u8`, type: 'web' },
-          iptvSwitchingInfo: { current: channel, next: state.iptvPlaylist[nextIdx], prev: state.iptvPlaylist[prevPrevIdx] }
+          iptvSwitchingInfo: { 
+            current: channel, 
+            next: state.iptvPlaylist[nextIdx], 
+            prev: state.iptvPlaylist[prevPrevIdx],
+            currentNum: getDisplayNumber(prevIdx),
+            nextNum: getDisplayNumber(nextIdx),
+            prevNum: getDisplayNumber(prevPrevIdx)
+          }
         });
         setTimeout(() => set({ iptvSwitchingInfo: null }), 3000);
       },
@@ -898,6 +926,7 @@ export const useMediaStore = create<MediaState>()(
       toggleAltMode: () => set((state) => ({ isAltModeActive: !state.isAltModeActive })),
       toggleReorderMode: () => set((state) => ({ isReorderMode: !state.isReorderMode, pickedUpId: null })),
       setApiError: (error) => set({ apiError: error }),
+      setIsRecordingKey: (val) => set({ isRecordingKey: val }),
     }),
     {
       name: "drivecast-master-v27",

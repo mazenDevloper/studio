@@ -5,6 +5,7 @@ import { LayoutDashboard, Radio, Settings, ArrowLeft, Trophy, ArrowRightLeft, Tv
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useMediaStore, AppAction, MappingContext } from "@/lib/store";
+import { useEffect, useState } from "react";
 
 const FootballBallIcon = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
@@ -68,12 +69,21 @@ export function ShortcutBadge({ action, className, context = 'default' }: { acti
 }
 
 /**
- * CarDock v81.0 - Independent Dock Zoom
+ * CarDock v100.0 - Universal Scaling
+ * Default dock scale is 1.0 for heights >= 1080.
  */
 export function CarDock() {
   const pathname = usePathname();
   const router = useRouter();
-  const { dockSide, toggleDockSide, resetMediaView, dockScale } = useMediaStore();
+  const { dockSide, toggleDockSide, resetMediaView, dockScale, setDockScale } = useMediaStore();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    if (typeof window !== 'undefined' && (dockScale === 1.0 || !dockScale)) {
+      setDockScale(1.0); // Default requirement for heights >= 1080
+    }
+  }, [dockScale, setDockScale]);
 
   const apps = [
     { name: "Home", href: "/", icon: LayoutDashboard, action: "goto_home" as AppAction },
@@ -92,7 +102,7 @@ export function CarDock() {
         "w-16 min-[968px]:w-20",
         dockSide === 'left' ? "left-0 border-r" : "right-0 border-l"
       )}
-      style={{ zoom: dockScale || 1.0 }}
+      style={{ zoom: mounted ? (dockScale || 1.0) : 1.0 }}
     >
       <div className="flex flex-col items-center flex-1 justify-start gap-2">
         {apps.map((app) => {

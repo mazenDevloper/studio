@@ -26,8 +26,8 @@ const YouTubeSavedWidget = dynamic(() => import("./widgets/youtube-saved-widget"
 });
 
 /**
- * DashboardView v99.0 - Full Leanback Standards
- * Consistent 3-column layout across all screen sizes.
+ * DashboardView v100.0 - Adaptive Leanback UI
+ * Auto-focuses on ReminderSummaryWidget (dash-col-1) on mount.
  */
 export function DashboardView() {
   const { 
@@ -36,6 +36,18 @@ export function DashboardView() {
   } = useMediaStore();
   
   const [api, setApi] = useState<CarouselApi>();
+
+  useEffect(() => {
+    // Smart Focus: Target the reminders widget immediately on load
+    const timer = setTimeout(() => {
+      const target = document.querySelector('[data-nav-id="dash-col-1"]') as HTMLElement;
+      if (target) {
+        target.focus();
+        target.classList.add('active-nav-target');
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
     <div className="h-full w-full p-6 flex flex-col gap-8 relative overflow-y-auto pb-32 no-scrollbar bg-black">
@@ -95,7 +107,7 @@ export function DashboardView() {
           <ActiveAzkarWidget />
         </div>
 
-        <div className="col-span-4 rounded-[2.5rem] relative flex items-center justify-center overflow-hidden h-[480px] shadow-2xl focusable bg-black outline-none active-nav-target" tabIndex={0} data-nav-id="dash-col-1">
+        <div className="col-span-4 rounded-[2.5rem] relative flex items-center justify-center overflow-hidden h-[480px] shadow-2xl focusable bg-black outline-none" tabIndex={0} data-nav-id="dash-col-1">
           <ReminderSummaryWidget />
         </div>
 
