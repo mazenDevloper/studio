@@ -6,6 +6,7 @@ export const FOOTBALL_API_KEY = '2f79edc60ed7f63aa4af1feea0f1ff2c';
 export const FOOTBALL_API_BASE_URL = 'https://v3.football.api-sports.io';
  
 export const YT_KEYS_POOL = [
+  "AIzaSyBiR5Aw4N5sawPfiBjx1YvnxCD4MQOTDUk",
   "AIzaSyD3gFYKChgOrYCrJeYP_zu6AolEh2ZEpvU",
   "AIzaSyBBr2Wszx3vI1CZ09FcKl40tp4e3RSTd84", 
   "AIzaSyDaf2CQ2eAMzDYPjyPWwBGr2oP1jLdIK3Q", 
@@ -28,7 +29,8 @@ export const YT_KEYS_POOL = [
   "AIzaSyATzZbuYsLdQq-S8zFih3hkgtZVpS0bcN8",
   "AIzaSyBWsvSFb6VNx89VOzjP0-zq7sWgShfiWjE",
   "AIzaSyDb4_3-IBy5ZPsIwlkv81z3EDS9Tue98n4",
-  "AIzaSyABJ0ChF7XVsXeppoLS9VBIxNJglc-0rB0"
+  "AIzaSyABJ0ChF7XVsXeppoLS9VBIxNJglc-0rB0",
+  "AIzaSyB3Rk_x-Xponn6i-PXuTgPr2wisD28GvuM"
 ];
 
 export const JSONBIN_MASTER_KEY = '$2a$10$SYrYv.ct8hiMU9YeUxEQ.ecRkOrTqs.TDchJRV3wW.aKJnDXy2oVy';

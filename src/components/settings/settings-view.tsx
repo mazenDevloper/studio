@@ -2,9 +2,9 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import { useMediaStore, Reminder, Manuscript, AppAction, MappingContext } from "@/lib/store";
+import { useMediaStore, Reminder, Manuscript, AppAction, MappingContext, IptvChannel } from "@/lib/store";
 import { 
-  Settings, Bell, Trash2, Edit2, Plus, Monitor, Palette, Keyboard, Clock, CheckCircle2, Save, BookOpen, LayoutGrid, Eye, Timer
+  Settings, Bell, Trash2, Edit2, Plus, Monitor, Palette, Keyboard, Clock, CheckCircle2, Save, BookOpen, LayoutGrid, Eye, Timer, Tv, ArrowRightLeft
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,10 @@ import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ShortcutBadge } from "@/components/layout/car-dock";
 
+/**
+ * SettingsView v106.0 - Hyper-Fast & Channel Management
+ * Expanded zoom slider max to 1.5 (150%) to support new defaults.
+ */
 export function SettingsView() {
   const { 
     addReminder, removeReminder, updateReminder, reminders,
@@ -25,7 +29,7 @@ export function SettingsView() {
     keyMappings, setKeyMapping, removeSpecificKeyMapping,
     customWallBackgrounds, addCustomWallBackground, autoHideIsland, setAutoHideIsland,
     displayScale, setDisplayScale, dockScale, setDockScale,
-    setIsRecordingKey
+    setIsRecordingKey, favoriteIptvChannels, toggleFavoriteIptvChannel, reorderIptvChannelTo
   } = useMediaStore();
   
   const { toast } = useToast();
@@ -42,9 +46,11 @@ export function SettingsView() {
     label: "", relativePrayer: "manual", manualTime: "12:00", offsetMinutes: 0, color: "text-blue-400", iconType: "bell", countdownWindow: 15, countupWindow: 15, expiryType: 'prayer', expiryValue: 'next'
   });
 
-  const handleEdit = (rem: Reminder) => {
-    setEditingId(editingId === rem.id ? null : rem.id);
-    setNewReminder({ ...rem });
+  const getDisplayNumber = (index: number) => {
+    let num = 11 + index;
+    if (num >= 13) num++;
+    if (num >= 17) num++;
+    return num;
   };
 
   const handleSaveReminder = () => {
@@ -55,6 +61,12 @@ export function SettingsView() {
     setEditingId(null);
     setNewReminder({ label: "", relativePrayer: "manual", manualTime: "12:00", offsetMinutes: 0, color: "text-blue-400", iconType: "bell", countdownWindow: 15, countupWindow: 15, expiryType: 'prayer', expiryValue: 'next' });
     toast({ title: "تم الحفظ" });
+  };
+
+  const handleEdit = (rem: Reminder) => {
+    setEditingId(rem.id);
+    setNewReminder(rem);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   useEffect(() => {
@@ -168,32 +180,39 @@ export function SettingsView() {
   };
 
   return (
-    <div className="p-12 space-y-12 max-w-7xl mx-auto pb-40 text-right dir-rtl">
+    <div className="p-12 space-y-12 max-w-7xl mx-auto pb-40 text-right dir-rtl transition-all duration-300">
       <header className="flex flex-col gap-4">
         <h1 className="text-6xl font-black text-white tracking-tighter flex items-center gap-6">مركز التحكم <Settings className="w-12 h-12 text-primary animate-spin-slow" /></h1>
         <p className="text-white/40 font-bold uppercase tracking-[0.6em] text-sm">System Configuration Hub</p>
       </header>
 
       <Tabs defaultValue="appearance" className="w-full">
-        <TabsList className="bg-white/5 p-1 rounded-full border border-white/10 h-16 mb-12 flex justify-around">
+        <TabsList className="bg-white/5 p-1 rounded-full border border-white/10 h-16 mb-12 flex justify-around overflow-x-auto no-scrollbar">
           <TabsTrigger value="appearance" className="rounded-full px-8 h-full font-bold focusable relative">المظهر</TabsTrigger>
           <TabsTrigger value="prayers" className="rounded-full px-8 h-full font-bold focusable relative">الصلوات</TabsTrigger>
           <TabsTrigger value="reminders" className="rounded-full px-8 h-full font-bold focusable relative">التذكيرات</TabsTrigger>
+          <TabsTrigger value="iptv_channels" className="rounded-full px-8 h-full font-bold focusable relative">قنوات البث</TabsTrigger>
           <TabsTrigger value="manuscripts" className="rounded-full px-8 h-full font-bold focusable relative">المخطوطات</TabsTrigger>
           <TabsTrigger value="buttonmap" className="rounded-full px-8 h-full font-bold focusable relative">الأزرار</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="appearance" className="space-y-12">
+        <TabsContent value="appearance" className="space-y-12 animate-in fade-in duration-300">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <Card className="premium-glass p-8 space-y-8 bg-white/5 border-white/10">
               <CardTitle className="text-2xl font-black text-white flex items-center gap-3"><Monitor className="w-6 h-6 text-primary" />عرض الشاشة</CardTitle>
               <div className="space-y-8">
                 <div className="space-y-4">
-                  <div className="flex justify-between items-center"><span className="text-sm font-black text-white/60">زوم المحتوى (لهذا الجهاز)</span><span className="text-primary font-black">{Math.round((displayScale ?? 0.8) * 100)}%</span></div>
-                  <Slider value={[displayScale ?? 0.8]} min={0.5} max={1.2} step={0.05} onValueChange={([v]) => setDisplayScale(v)} />
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-black text-white/60">زوم المحتوى (لهذا الجهاز)</span>
+                    <span className="text-primary font-black">{Math.round((displayScale ?? 0.8) * 100)}%</span>
+                  </div>
+                  <Slider value={[displayScale ?? 0.8]} min={0.5} max={1.5} step={0.05} onValueChange={([v]) => setDisplayScale(v)} />
                 </div>
                 <div className="space-y-4">
-                  <div className="flex justify-between items-center"><span className="text-sm font-black text-white/60">زوم شريط الأدوات (Car Dock)</span><span className="text-accent font-black">{Math.round((dockScale ?? 1.0) * 100)}%</span></div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-black text-white/60">زوم شريط الأدوات (Car Dock)</span>
+                    <span className="text-accent font-black">{Math.round((dockScale ?? 1.0) * 100)}%</span>
+                  </div>
                   <Slider value={[dockScale ?? 1.0]} min={0.5} max={1.5} step={0.05} onValueChange={([v]) => setDockScale(v)} />
                 </div>
                 <div className="flex items-center justify-between p-6 bg-white/5 rounded-2xl border border-white/5">
@@ -216,7 +235,84 @@ export function SettingsView() {
           </div>
         </TabsContent>
 
-        <TabsContent value="buttonmap" className="space-y-8">
+        <TabsContent value="iptv_channels" className="space-y-8 animate-in fade-in duration-300">
+          <Card className="bg-white/5 border-white/10 p-8 rounded-[3rem]">
+            <div className="flex items-center justify-between mb-10">
+              <div className="flex flex-col gap-1">
+                <CardTitle className="text-3xl font-black text-white flex items-center gap-4"><Tv className="w-8 h-8 text-emerald-500" />إدارة قنوات البث المباشر</CardTitle>
+                <p className="text-white/40 font-bold text-xs mr-12">تحكم بأرقام القنوات (11-23) عبر إعادة الترتيب</p>
+              </div>
+              <div className="bg-emerald-500/10 border border-emerald-500/20 px-6 py-3 rounded-2xl flex items-center gap-4">
+                <span className="text-xs font-black text-emerald-400 uppercase tracking-widest">عدد المفضلات:</span>
+                <span className="text-2xl font-black text-white">{favoriteIptvChannels.length}</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {favoriteIptvChannels.map((ch, idx) => (
+                <div 
+                  key={ch.stream_id} 
+                  className="bg-black/40 border border-white/5 p-6 rounded-[2.5rem] flex items-center justify-between group hover:border-emerald-500/40 transition-all duration-300"
+                >
+                  <div className="flex items-center gap-6">
+                    <div className="relative">
+                      <div className="w-14 h-14 rounded-2xl overflow-hidden border border-white/10 bg-zinc-900 shadow-xl">
+                        <img src={ch.stream_icon} className="w-full h-full object-cover" alt="" />
+                      </div>
+                      <div className="absolute -top-3 -right-3 w-10 h-10 rounded-full bg-emerald-500 border-4 border-black flex items-center justify-center shadow-glow">
+                        <span className="text-sm font-black text-black">{getDisplayNumber(idx)}</span>
+                      </div>
+                    </div>
+                    <div className="flex flex-col">
+                      <h4 className="font-black text-white truncate max-w-[150px]">{ch.name}</h4>
+                      <span className="text-[10px] text-white/30 font-bold uppercase tracking-tighter">رقم الاختصار: {getDisplayNumber(idx)}</span>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <div className="flex flex-col gap-1">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => reorderIptvChannelTo(ch.stream_id, favoriteIptvChannels[Math.max(0, idx - 1)].stream_id)}
+                        disabled={idx === 0}
+                        className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 text-white/40"
+                      >
+                        <Plus className="w-4 h-4 rotate-180" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => reorderIptvChannelTo(ch.stream_id, favoriteIptvChannels[Math.min(favoriteIptvChannels.length - 1, idx + 1)].stream_id)}
+                        disabled={idx === favoriteIptvChannels.length - 1}
+                        className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 text-white/40"
+                      >
+                        <Plus className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => toggleFavoriteIptvChannel(ch)}
+                      className="w-10 h-10 rounded-full bg-red-600/10 text-red-500 border border-red-600/20 hover:bg-red-600 hover:text-white"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+              
+              {favoriteIptvChannels.length === 0 && (
+                <div className="col-span-full py-20 flex flex-col items-center justify-center gap-4 opacity-20">
+                  <Tv className="w-20 h-20" />
+                  <p className="font-black text-xl">لا توجد قنوات مفضلة حالياً</p>
+                </div>
+              )}
+            </div>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="buttonmap" className="space-y-8 animate-in fade-in duration-300">
           <div className="flex items-center justify-between bg-zinc-900/40 p-8 rounded-[3rem] border border-white/5">
             <div className="flex items-center gap-6">
               <div className="w-14 h-14 rounded-2xl bg-primary/20 flex items-center justify-center border border-primary/20 shadow-glow">
@@ -260,7 +356,7 @@ export function SettingsView() {
                       variant="ghost" 
                       size="icon" 
                       onClick={() => useMediaStore.getState().clearKeyMappings(selectedContext, action as AppAction)}
-                      className="w-10 h-10 rounded-full bg-red-600/10 text-red-500 border border-red-500/20 hover:bg-red-600 hover:text-white"
+                      className="w-10 h-10 rounded-full bg-red-600/10 text-red-500 border border-red-600/20 hover:bg-red-600 hover:text-white"
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
@@ -310,7 +406,7 @@ export function SettingsView() {
           </div>
         </TabsContent>
 
-        <TabsContent value="manuscripts" className="space-y-8">
+        <TabsContent value="manuscripts" className="space-y-8 animate-in fade-in duration-300">
           <Card className="bg-white/5 border-white/10 p-8 rounded-[3rem]">
             <CardTitle className="text-2xl font-black text-white flex items-center gap-4 mb-8"><BookOpen className="w-8 h-8 text-primary" />إضافة مخطوطة أو صورة</CardTitle>
             <div className="flex gap-4 mb-8">
@@ -335,7 +431,7 @@ export function SettingsView() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="reminders" className="space-y-8">
+        <TabsContent value="reminders" className="space-y-8 animate-in fade-in duration-300">
           <Card className="bg-white/5 border-white/10 p-8 rounded-[3rem]">
             <CardTitle className="text-2xl font-black text-white flex items-center gap-4 mb-8">{editingId ? <Edit2 className="w-8 h-8 text-yellow-500" /> : <Bell className="w-8 h-8 text-primary" />}{editingId ? "تعديل التذكير" : "إضافة تذكير"}</CardTitle>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -403,7 +499,7 @@ export function SettingsView() {
               <Button onClick={handleSaveReminder} className="h-14 bg-primary text-white font-black text-lg rounded-xl shadow-glow focusable mt-auto"><Save className="w-6 h-6 ml-3" />{editingId ? "تحديث التذكير" : "إضافة التذكير"}</Button>
             </div>
           </Card>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
             {reminders.map((rem) => (
               <Card key={rem.id} className="bg-white/5 border-white/10 p-6 rounded-2xl flex items-center justify-between group">
                 <div className="flex items-center gap-4">
@@ -414,7 +510,7 @@ export function SettingsView() {
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <Button variant="ghost" size="icon" onClick={() => handleEdit(rem)} className={cn("rounded-full transition-all", editingId === rem.id ? "bg-yellow-500 text-black" : "text-white/20 hover:text-yellow-500")}><Edit2 className="w-5 h-5" /></Button>
+                  <Button variant="ghost" size="icon" onClick={() => handleEdit(rem)} className={cn("rounded-full transition-all", editingId === rem.id ? "bg-yellow-500 text-black" : "text-white/20 hover:text-yellow-500")}><Edit2 className="w-4 h-4" /></Button>
                   <Button variant="ghost" size="icon" onClick={() => removeReminder(rem.id)} className="text-white/20 hover:text-red-500 rounded-full"><Trash2 className="w-5 h-5" /></Button>
                 </div>
               </Card>
@@ -422,7 +518,7 @@ export function SettingsView() {
           </div>
         </TabsContent>
 
-        <TabsContent value="prayers" className="space-y-8">
+        <TabsContent value="prayers" className="space-y-8 animate-in fade-in duration-300">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {prayerSettings.map(p => (
               <Card key={p.id} className="bg-white/5 border-white/10 p-6 rounded-3xl space-y-6">

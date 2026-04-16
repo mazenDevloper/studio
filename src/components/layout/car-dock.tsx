@@ -59,7 +59,7 @@ export function ShortcutBadge({ action, className, context = 'default' }: { acti
   const scale = context === 'dock' ? 1.45 : context === 'player' ? 1.15 : 1.0;
   
   return (
-    <div className={cn("absolute z-[200] flex items-center justify-center transition-all duration-500 -bottom-4 -left-4", isColor ? "rounded-[0.6rem]" : "rounded-full", displayKey === 'Red' && "bg-red-600 shadow-[0_0_15px_rgba(220,38,38,0.8)]", displayKey === 'Green' && "bg-green-600 shadow-[0_0_15px_rgba(22,163,74,0.8)]", displayKey === 'Yellow' && "bg-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.8)]", displayKey === 'Blue' && "bg-blue-600 shadow-[0_0_15px_rgba(37,99,235,0.8)]", (isNumber || isHardware) && "bg-zinc-800 border-2 border-zinc-600 shadow-2xl", isWhiteButton && "bg-white text-black shadow-glow", className)} style={{ width: isColor ? `${36 * scale}px` : `${30 * scale}px`, height: isColor ? `${26 * scale}px` : `${30 * scale}px` }}>
+    <div className={cn("absolute z-[200] flex items-center justify-center transition-all duration-300 -bottom-4 -left-4", isColor ? "rounded-[0.6rem]" : "rounded-full", displayKey === 'Red' && "bg-red-600 shadow-[0_0_15px_rgba(220,38,38,0.8)]", displayKey === 'Green' && "bg-green-600 shadow-[0_0_15px_rgba(22,163,74,0.8)]", displayKey === 'Yellow' && "bg-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.8)]", displayKey === 'Blue' && "bg-blue-600 shadow-[0_0_15px_rgba(37,99,235,0.8)]", (isNumber || isHardware) && "bg-zinc-800 border-2 border-zinc-600 shadow-2xl", isWhiteButton && "bg-white text-black shadow-glow", className)} style={{ width: isColor ? `${36 * scale}px` : `${30 * scale}px`, height: isColor ? `${26 * scale}px` : `${30 * scale}px` }}>
       <div className="flex flex-col items-center leading-none" style={{ transform: `scale(${scale * 0.85})` }}>
         <span className={cn("font-black uppercase tracking-tighter mb-0.5", (displayKey === 'Yellow' || isWhiteButton) ? "text-black" : "text-white")} style={{ fontSize: '7.5px' }}>زر</span>
         <span className={cn("font-black tracking-tight", (displayKey === 'Yellow' || isWhiteButton) ? "text-black" : "text-white")} style={{ fontSize: '10px' }}>{shortKey}</span>
@@ -70,7 +70,7 @@ export function ShortcutBadge({ action, className, context = 'default' }: { acti
 
 /**
  * CarDock v100.0 - Universal Scaling
- * Default dock scale is 1.0 for heights >= 1080.
+ * Transition duration reduced to 300ms for snappier response.
  */
 export function CarDock() {
   const pathname = usePathname();
@@ -98,11 +98,11 @@ export function CarDock() {
   return (
     <div 
       className={cn(
-        "fixed top-0 bottom-0 z-[150] transition-all duration-700 bg-black/80 backdrop-blur-3xl flex flex-col py-6 border-white/5",
+        "fixed top-0 bottom-0 z-[150] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] bg-black/80 backdrop-blur-3xl flex flex-col py-6 border-white/5",
         "w-16 min-[968px]:w-20",
         dockSide === 'left' ? "left-0 border-r" : "right-0 border-l"
       )}
-      style={{ zoom: mounted ? (dockScale || 1.0) : 1.0 }}
+      style={{ zoom: mounted ? (dockScale || 1.0) : 1.0, willChange: 'transform' }}
     >
       <div className="flex flex-col items-center flex-1 justify-start gap-2">
         {apps.map((app) => {
@@ -113,12 +113,12 @@ export function CarDock() {
               onClick={() => { if (pathname === '/media' && app.href === '/media') resetMediaView(); router.push(app.href); }}
               data-nav-id={`dock-${app.name}`}
               className={cn(
-                "w-12 h-12 min-[968px]:w-14 min-[968px]:h-14 rounded-[1.5rem] flex items-center justify-center transition-all relative focusable outline-none mb-3",
+                "w-12 h-12 min-[968px]:w-14 min-[968px]:h-14 rounded-[1.5rem] flex items-center justify-center transition-all duration-300 relative focusable outline-none mb-3",
                 isActive ? "bg-blue-600/10 shadow-[0_0_30px_rgba(37,99,235,0.2)] border border-blue-500/20 z-50 scale-110" : "bg-transparent"
               )}
             >
               <ShortcutBadge action={app.action} context="dock" />
-              <div className={cn("transition-all duration-500 flex items-center justify-center", isActive ? "text-blue-400 drop-shadow-[0_0_10px_rgba(96,165,250,0.8)]" : "text-white")}>
+              <div className={cn("transition-all duration-300 flex items-center justify-center", isActive ? "text-blue-400 drop-shadow-[0_0_10px_rgba(96,165,250,0.8)]" : "text-white")}>
                 <app.icon className="w-6 h-6 min-[968px]:w-7 min-[968px]:h-7" />
               </div>
             </button>
@@ -132,3 +132,4 @@ export function CarDock() {
     </div>
   );
 }
+
