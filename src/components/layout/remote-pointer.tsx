@@ -9,20 +9,16 @@ import { init } from "@noriginmedia/norigin-spatial-navigation";
 import { useToast } from "@/hooks/use-toast";
 
 /**
- * Smart Engine v100.0 - Full Leanback Scroll & Vertical Prioritization
+ * Smart Engine v100.0 - Context-Aware Return & Row Isolation
  */
 export function RemotePointer() {
   const pathname = usePathname();
   const router = useRouter();
   const { toast } = useToast();
   
-  const touchStartX = useRef<number>(0);
-  const touchEndX = useRef<number>(0);
-  const touchTarget = useRef<HTMLElement | null>(null);
-
   const { 
     wallPlateType, setWallPlate, dockSide, isFullScreen, isMinimized, 
-    activeVideo, activeIptv, setIsSidebarShrinked, isPlayerControlsExpanded, setIsPlayerControlsExpanded,
+    activeVideo, activeIptv, selectedChannel,
     isAltModeActive, toggleAltMode, removeChannel, removeReciter, toggleStarChannel, favoriteChannels,
     pickedUpId, setPickedUpId, reorderChannel, reorderReciter, reorderIptvChannel, removeVideo,
     isReorderMode, toggleReorderMode
@@ -58,6 +54,7 @@ export function RemotePointer() {
 
   const navigate = useCallback((direction: string) => {
     if (wallPlateType) return;
+    const isRTL = document.documentElement.dir === 'rtl';
     const focusables = Array.from(document.querySelectorAll(".focusable")).filter(el => {
       if (el.tagName === 'INPUT' && !(el as HTMLInputElement).classList.contains('focusable')) return false;
       return true;
@@ -72,7 +69,6 @@ export function RemotePointer() {
 
     if (pickedUpId) {
       const type = current.getAttribute('data-type');
-      const isRTL = document.documentElement.dir === 'rtl';
       if (type === 'channel' || type === 'reciter' || type === 'iptv') {
         const movePrev = isRTL ? (direction === 'ArrowRight' || direction === 'ArrowUp') : (direction === 'ArrowLeft' || direction === 'ArrowUp');
         const moveNext = isRTL ? (direction === 'ArrowLeft' || direction === 'ArrowDown') : (direction === 'ArrowRight' || direction === 'ArrowDown');
@@ -85,12 +81,34 @@ export function RemotePointer() {
 
     const currentRect = current.getBoundingClientRect();
     const isVertical = direction === "ArrowUp" || direction === "ArrowDown";
+    const currentContainerId = current.closest('[data-row-id]')?.getAttribute('data-row-id');
+    const isAtStartOfGrid = current.getAttribute('data-nav-id')?.includes('item-0') || current.classList.contains('grid-item') && current.getBoundingClientRect().left > window.innerWidth * 0.4;
+
+    // Return to Sidebar Logic (Contextual)
+    const isMovingToSidebar = (dockSide === 'left' && direction === 'ArrowLeft') || (dockSide === 'right' && direction === 'ArrowRight');
+    if (isMovingToSidebar && pathname === '/media' && !current.closest('aside')) {
+      let targetId = 'subs-1'; // Default to second channel
+      if (selectedChannel) {
+        const idx = favoriteChannels.findIndex(c => c.channelid === selectedChannel.channelid);
+        if (idx !== -1) targetId = `subs-${idx + 1}`;
+      }
+      const sidebarTarget = document.querySelector(`[data-nav-id="${targetId}"]`) as HTMLElement;
+      if (sidebarTarget) { sidebarTarget.focus(); return; }
+    }
 
     let minDistance = Infinity;
     let next: HTMLElement | null = null;
 
     for (const el of focusables) {
       if (el === current) continue;
+      
+      const nextContainerId = el.closest('[data-row-id]')?.getAttribute('data-row-id');
+
+      // STRICT ROW ISOLATION
+      if (!isVertical && currentContainerId?.startsWith('media-row-')) {
+        if (nextContainerId !== currentContainerId) continue;
+      }
+
       const rect2 = el.getBoundingClientRect();
       const p1 = { x: currentRect.left + currentRect.width / 2, y: currentRect.top + currentRect.height / 2 };
       const p2 = { x: rect2.left + rect2.width / 2, y: rect2.top + rect2.height / 2 };
@@ -102,8 +120,7 @@ export function RemotePointer() {
       if (direction === "ArrowUp" && dy >= -5) continue;
 
       // Penalize orthogonal distance (dx when moving vertically, dy when moving horizontally)
-      // This keeps navigation within vertical blocks (like content vs sidebar) much tighter.
-      const distWeight = isVertical ? (dx * dx * 10) + (dy * dy) : (dx * dx) + (dy * dy * 10);
+      const distWeight = isVertical ? (dx * dx * 50) + (dy * dy) : (dx * dx) + (dy * dy * 50);
       const d = Math.sqrt(distWeight);
       
       if (d < minDistance) { minDistance = d; next = el; }
@@ -113,7 +130,7 @@ export function RemotePointer() {
       next.focus(); 
       next.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' }); 
     }
-  }, [wallPlateType, dockSide, pickedUpId, reorderChannel, reorderReciter, reorderIptvChannel]);
+  }, [wallPlateType, dockSide, pickedUpId, reorderChannel, reorderReciter, reorderIptvChannel, pathname, selectedChannel, favoriteChannels]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -170,7 +187,7 @@ export function RemotePointer() {
     };
     window.addEventListener("keydown", handleKeyDown, true);
     return () => window.removeEventListener("keydown", handleKeyDown, true);
-  }, [navigate, isAction, wallPlateType, setWallPlate, router, pathname, setIsSidebarShrinked, isPlayerControlsExpanded, setIsPlayerControlsExpanded, isAltModeActive, toggleAltMode, toast, dockSide, removeChannel, removeReciter, toggleStarChannel, favoriteChannels, pickedUpId, setPickedUpId, removeVideo, isReorderMode, toggleReorderMode]);
+  }, [navigate, isAction, wallPlateType, setWallPlate, router, pathname, isAltModeActive, toggleAltMode, toast, removeChannel, removeReciter, toggleStarChannel, pickedUpId, setPickedUpId, removeVideo, isReorderMode, toggleReorderMode]);
 
   return null;
 }

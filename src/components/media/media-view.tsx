@@ -206,7 +206,6 @@ export function MediaView() {
         return !chan.includes('bein') && !title.includes('bein');
       };
 
-      // Reserve first 2 for Goal Writer
       if (writerResults.status === 'fulfilled' && Array.isArray(writerResults.value)) {
         mergedGoals.push(...writerResults.value.slice(0, 2));
       }
@@ -329,11 +328,11 @@ export function MediaView() {
             {!isSidebarShrinked && <h2 className="text-[10px] font-black text-white/40 uppercase tracking-widest px-2">الاشتراكات</h2>}
             <button 
               onClick={() => setIsAddChannelOpen(true)}
-              className={cn("w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center transition-all focusable", isSidebarShrinked && "w-8 h-8")} 
+              className={cn("w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center transition-all focusable relative z-[150] shadow-glow border border-primary/20 hover:scale-110", isSidebarShrinked && "w-10 h-10")} 
               tabIndex={0}
               data-nav-id="subs-add-btn"
             >
-              <Plus className="w-3.5 h-3.5" />
+              <Plus className="w-5 h-5" />
             </button>
           </div>
           <div className="flex-1 overflow-y-auto custom-scrollbar py-1 flex flex-col gap-0.5">
@@ -378,9 +377,8 @@ export function MediaView() {
       <main className="flex-1 overflow-y-auto custom-scrollbar relative pt-4 pb-40 space-y-12 px-8" style={{ direction: 'rtl' }}>
         {!showIsolatedView ? (
           <>
-            {/* Level 1: Reciters & Surahs (The Quran Peak) */}
             <div className="space-y-6">
-              <section className="min-h-[120px]" data-row-id="media-row-reciters">
+              <section className="min-h-[140px]" data-row-id="media-row-reciters">
                 <div className="flex items-center justify-between px-8 mb-4"><h2 className="text-[10px] font-black text-white/40 uppercase tracking-widest">القراء والمبدعون</h2></div>
                 <div className={horizontalListClass}>
                   <button 
@@ -405,7 +403,7 @@ export function MediaView() {
                 </div>
               </section>
 
-              <section className="min-h-[60px]" data-row-id="media-row-surahs">
+              <section className="min-h-[80px]" data-row-id="media-row-surahs">
                 <div className={horizontalListClass}>
                   {surahs && surahs.map((s, i) => (
                     <button key={i} onClick={() => handleSurahClick(s.name_arabic)} className="px-4 py-2 rounded-full bg-white/5 border border-white/10 text-white font-bold text-sm hover:bg-blue-600/20 focusable shrink-0 relative" tabIndex={0} data-nav-id={`surah-item-${i}`}>{s.name_arabic}</button>
@@ -414,7 +412,6 @@ export function MediaView() {
               </section>
             </div>
 
-            {/* API Status Section */}
             {apiError && (
               <section className="mx-8 animate-in fade-in slide-in-from-top-4 duration-700">
                 <div className="bg-red-600/10 border border-red-600/30 rounded-[2rem] p-6 flex items-center gap-6 shadow-[0_0_20px_rgba(220,38,38,0.1)]">
@@ -431,7 +428,6 @@ export function MediaView() {
               </section>
             )}
 
-            {/* Level 2: Search & Reorder Controls */}
             <section className="space-y-4 min-h-[100px]" data-row-id="media-row-search">
               <div className="flex justify-start px-8"><Button onClick={toggleReorderMode} variant={isReorderMode ? "default" : "outline"} className={cn("rounded-full h-10 px-6 font-black text-sm relative", isReorderMode ? "bg-yellow-500 text-black shadow-glow" : "bg-white/5 border-white/10 text-white")}><ShortcutBadge action="toggle_reorder" className="-bottom-2 -left-2" /><ArrowRightLeft className="w-4 h-4 ml-2" /> {isReorderMode ? "إيقاف الترتيب" : "تفعيل الترتيب"}</Button></div>
               <div className="flex items-center gap-3 w-full px-8">
@@ -443,8 +439,7 @@ export function MediaView() {
               </div>
             </section>
 
-            {/* Level 3: Starred Feed (الترددات المجرسة) */}
-            <section className="min-h-[220px]" data-row-id="media-row-starred">
+            <section className="min-h-[240px]" data-row-id="media-row-starred">
               {starredVideos.length > 0 ? (
                 <>
                   <div className="flex items-center justify-between px-8 mb-4"><h2 className="text-sm font-black text-white flex items-center gap-2"><div className="w-6 h-6 rounded-lg bg-yellow-500 flex items-center justify-center"><Star className="w-4 h-4 text-black fill-current" /></div>الترددات المجرسة</h2></div>
@@ -466,18 +461,10 @@ export function MediaView() {
               ) : null}
             </section>
 
-            {/* Level 4: Goals Hub (Exclusive Kateb Al-Ahdaf) */}
-            <section className="min-h-[220px]" data-row-id="media-row-goals">
+            <section className="min-h-[240px]" data-row-id="media-row-goals">
               {matchGoals.length > 0 && (
                 <>
-                  <div className="flex items-center justify-between px-8 mb-4">
-                    <h2 className="text-sm font-black text-white flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-lg bg-primary/20 flex items-center justify-center">
-                        <Goal className="w-4 h-4 text-primary" />
-                      </div>
-                      أهداف وملخصات مباريات اليوم
-                    </h2>
-                  </div>
+                  <div className="flex items-center justify-between px-8 mb-4"><h2 className="text-sm font-black text-white flex items-center gap-2"><div className="w-6 h-6 rounded-lg bg-primary/20 flex items-center justify-center"><Goal className="w-4 h-4 text-primary" /></div>أهداف وملخصات مباريات اليوم</h2></div>
                   <div className={horizontalListClass}>
                     {matchGoals.map((v, idx) => (
                       <div key={v.id + idx} onClick={() => setActiveVideo(v, matchGoals)} className="w-64 group relative overflow-hidden bg-zinc-900/80 rounded-[1.5rem] transition-all hover:scale-[1.02] cursor-pointer shadow-xl focusable shrink-0" tabIndex={0} data-nav-id={`goal-video-${idx}`}>
@@ -486,10 +473,7 @@ export function MediaView() {
                           {v.duration && <div className="absolute bottom-2 right-2 bg-black text-white text-[14px] px-3 py-1.5 rounded-lg font-black z-10 border border-white/20 shadow-2xl">{v.duration}</div>}
                           {idx < 2 && <div className="absolute top-2 left-2 bg-primary/80 text-white text-[8px] px-2 py-1 rounded-full font-black backdrop-blur-md">حصري كاتب الأهداف</div>}
                         </div>
-                        <div className="p-3 text-right">
-                          <h3 className="font-bold text-xs truncate text-white leading-none">{v.title}</h3>
-                          <span className="text-[10px] text-white/40 block mt-1">{v.channelTitle}</span>
-                        </div>
+                        <div className="p-3 text-right"><h3 className="font-bold text-xs truncate text-white leading-none">{v.title}</h3><span className="text-[10px] text-white/40 block mt-1">{v.channelTitle}</span></div>
                       </div>
                     ))}
                   </div>
@@ -497,8 +481,7 @@ export function MediaView() {
               )}
             </section>
 
-            {/* Level 5: Kids World */}
-            <section className="min-h-[220px]" data-row-id="media-row-kids">
+            <section className="min-h-[240px]" data-row-id="media-row-kids">
               {kidsVideos.length > 0 && (
                 <>
                   <div className="flex items-center justify-between px-8 mb-4"><h2 className="text-sm font-black text-emerald-400 flex items-center gap-2"><Baby className="w-5 h-5" /> عالم الأطفال (ريان & كيدز)</h2></div>
@@ -517,9 +500,8 @@ export function MediaView() {
               )}
             </section>
 
-            {/* Final Levels: Timeline & Live */}
             <div className="space-y-12">
-              <section className="min-h-[220px]" data-row-id="media-row-subs-timeline">
+              <section className="min-h-[240px]" data-row-id="media-row-subs-timeline">
                 {latestPerSub.length > 0 && (
                   <>
                     <div className="flex items-center justify-between px-8 mb-4"><h2 className="text-sm font-black text-white flex items-center gap-2"><List className="w-5 h-5 text-primary" /> أحدث ما نشرته قنواتك</h2></div>
@@ -539,7 +521,7 @@ export function MediaView() {
                 )}
               </section>
 
-              <section className="min-h-[220px]" data-row-id="media-row-subs-live">
+              <section className="min-h-[240px]" data-row-id="media-row-subs-live">
                 {liveFromSubs.length > 0 && (
                   <>
                     <div className="flex items-center justify-between px-8 mb-4"><h2 className="text-sm font-black text-red-500 flex items-center gap-2"><RadioIcon className="w-5 h-5 animate-pulse" /> بث مباشر من اشتراكاتك</h2></div>
@@ -555,7 +537,7 @@ export function MediaView() {
                 )}
               </section>
 
-              <section className="min-h-[220px]" data-row-id="media-row-live-general">
+              <section className="min-h-[240px]" data-row-id="media-row-live-general">
                 {favoriteIptvChannels.length > 0 && (
                   <>
                     <div className="flex items-center justify-between px-8 mb-4"><h2 className="text-sm font-black text-white flex items-center gap-2"><RadioIcon className="w-5 h-5 text-red-600" /> البث المباشر العام</h2></div>
@@ -573,7 +555,7 @@ export function MediaView() {
             </div>
           </>
         ) : (
-          <section className="space-y-6 animate-in slide-in-from-top-10 duration-700" data-row-id="media-row-isolated">
+          <section className="space-y-6 animate-in slide-in-from-top-10 duration-700 min-h-[500px]" data-row-id="media-row-isolated">
             <div className="flex justify-between items-center sticky top-0 z-[120] bg-black/60 backdrop-blur-xl p-4 rounded-[2rem] border border-white/10">
               <button onClick={resetView} className="h-12 px-8 rounded-full bg-red-600 text-white font-black text-sm shadow-glow focusable flex items-center gap-3 relative"><ChevronRight className="w-5 h-5" /><span>العودة</span></button>
               <h2 className="text-xl font-black text-white">{selectedChannel ? truncateName(selectedChannel.name) : `نتائج البحث: ${search}`}</h2>
