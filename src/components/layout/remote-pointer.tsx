@@ -7,9 +7,10 @@ import { usePathname, useRouter } from "next/navigation";
 import { useMediaStore, AppAction, MappingContext } from "@/lib/store";
 import { init } from "@noriginmedia/norigin-spatial-navigation";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 /**
- * Smart Engine v103.0 - Global Channel Shortcuts Support
+ * Smart Engine v115.0 - Micro Feedback & Precision Navigation
  */
 export function RemotePointer() {
   const pathname = usePathname();
@@ -21,9 +22,11 @@ export function RemotePointer() {
     activeVideo, activeIptv, selectedChannel, setActiveIptv,
     isAltModeActive, toggleAltMode, removeChannel, removeReciter, toggleStarChannel, favoriteChannels,
     pickedUpId, setPickedUpId, reorderChannel, reorderReciter, reorderIptvChannel, removeVideo,
-    isReorderMode, toggleReorderMode, setIsSidebarShrinked, isRecordingKey, favoriteIptvChannels
+    isReorderMode, toggleReorderMode, setIsSidebarShrinked, isRecordingKey, favoriteIptvChannels,
+    displayScale, setDisplayScale
   } = useMediaStore();
 
+  const [pressedKey, setPressedKey] = useState<string | null>(null);
   const keyBufferRef = useRef<string>("");
   const comboTimeoutRef = useRef<any>(null);
 
@@ -101,26 +104,27 @@ export function RemotePointer() {
 
     const currentRect = current.getBoundingClientRect();
     const isVertical = direction === "ArrowUp" || direction === "ArrowDown";
-    const currentContainerId = current.closest('[data-row-id]')?.getAttribute('data-row-id');
-
     const isMovingToSidebar = (dockSide === 'left' && direction === 'ArrowLeft') || (dockSide === 'right' && direction === 'ArrowRight');
-    if (isMovingToSidebar && pathname === '/media' && !current.closest('aside')) {
-      const navId = current.getAttribute('data-nav-id') || '';
-      const isFirstInList = navId.includes('item-0') || navId.endsWith('-0');
-      const isGridItem = current.classList.contains('grid-item');
-      
-      const isVisuallyAtEdge = dockSide === 'left' 
-        ? currentRect.left < window.innerWidth * 0.4 
-        : currentRect.right > window.innerWidth * 0.6;
 
-      if (isFirstInList || (isGridItem && isVisuallyAtEdge)) {
-        let targetId = 'subs-1'; 
-        if (selectedChannel) {
-          const idx = favoriteChannels.findIndex(c => c.channelid === selectedChannel.channelid);
-          if (idx !== -1) targetId = `subs-${idx + 1}`;
+    // Precision Content -> Sidebar Navigation (Restricted Level 2)
+    if (pathname === '/media' && !current.closest('aside')) {
+      if (isVertical) {
+        // Strict Isolation: Vertical buttons stay within content in media view
+      } else if (isMovingToSidebar) {
+        const navId = current.getAttribute('data-nav-id') || '';
+        const isFirstItem = navId.endsWith('-0') || navId === 'reciter-add' || navId === 'surah-0' || navId === 'subs-all';
+        
+        if (isFirstItem) {
+          let targetId = 'subs-all'; 
+          if (selectedChannel) {
+            const idx = favoriteChannels.findIndex(c => c.channelid === selectedChannel.channelid);
+            if (idx !== -1) targetId = `subs-${idx + 1}`;
+          }
+          const sidebarTarget = document.querySelector(`[data-nav-id="${targetId}"]`) as HTMLElement;
+          if (sidebarTarget) { sidebarTarget.focus(); return; }
+        } else {
+          // Stay within content level if not on the very first element of a section
         }
-        const sidebarTarget = document.querySelector(`[data-nav-id="${targetId}"]`) as HTMLElement;
-        if (sidebarTarget) { sidebarTarget.focus(); return; }
       }
     }
 
@@ -129,11 +133,9 @@ export function RemotePointer() {
 
     for (const el of focusables) {
       if (el === current) continue;
-      const nextContainerId = el.closest('[data-row-id]')?.getAttribute('data-row-id');
-
-      if (!isVertical && currentContainerId?.startsWith('media-row-')) {
-        if (nextContainerId !== currentContainerId) continue;
-      }
+      
+      // Vertical Isolation Fix: Prevent vertical jump to sidebar in Media View
+      if (pathname === '/media' && isVertical && !current.closest('aside') && el.closest('aside')) continue;
 
       const rect2 = el.getBoundingClientRect();
       const p1 = { x: currentRect.left + currentRect.width / 2, y: currentRect.top + currentRect.height / 2 };
@@ -166,6 +168,9 @@ export function RemotePointer() {
         return; 
       }
 
+      setPressedKey(rawKey);
+      setTimeout(() => setPressedKey(null), 2000);
+
       if (rawKey === 'Sub') { e.preventDefault(); toggleAltMode(); return; }
       
       let finalKey = rawKey;
@@ -185,7 +190,6 @@ export function RemotePointer() {
         }
       }
 
-      // GLOBAL IPTV CHANNEL LAUNCH BY NUMBER
       const possibleNum = parseInt(finalKey);
       if (!isNaN(possibleNum) && possibleNum >= 11 && possibleNum <= 23 && !isRecordingKey) {
         const favs = useMediaStore.getState().favoriteIptvChannels;
@@ -205,6 +209,22 @@ export function RemotePointer() {
 
       if (isAltModeActive) {
         if (finalKey === '2') finalKey = 'ArrowUp'; else if (finalKey === '8') finalKey = 'ArrowDown'; else if (finalKey === '4') finalKey = 'ArrowLeft'; else if (finalKey === '6') finalKey = 'ArrowRight'; else if (finalKey === '5') finalKey = 'Enter';
+      }
+
+      if (isAction(finalKey, 'inc_zoom')) {
+        e.preventDefault();
+        const newScale = Math.min(1.5, (displayScale || 1.0) + 0.05);
+        setDisplayScale(newScale);
+        toast({ title: "تكبير الزوم", description: `${Math.round(newScale * 100)}%` });
+        return;
+      }
+
+      if (isAction(finalKey, 'dec_zoom')) {
+        e.preventDefault();
+        const newScale = Math.max(0.5, (displayScale || 1.0) - 0.05);
+        setDisplayScale(newScale);
+        toast({ title: "تصغير الزوم", description: `${Math.round(newScale * 100)}%` });
+        return;
       }
 
       if (isAction(finalKey, 'toggle_reorder')) { e.preventDefault(); toggleReorderMode(); return; }
@@ -255,7 +275,18 @@ export function RemotePointer() {
     };
     window.addEventListener("keydown", handleKeyDown, true);
     return () => window.removeEventListener("keydown", handleKeyDown, true);
-  }, [navigate, isAction, wallPlateType, setWallPlate, router, pathname, isAltModeActive, toggleAltMode, toast, removeChannel, removeReciter, toggleStarChannel, pickedUpId, setPickedUpId, removeVideo, isReorderMode, toggleReorderMode, isRecordingKey, setActiveIptv]);
+  }, [navigate, isAction, wallPlateType, setWallPlate, router, pathname, isAltModeActive, toggleAltMode, toast, removeChannel, removeReciter, toggleStarChannel, pickedUpId, setPickedUpId, removeVideo, isReorderMode, toggleReorderMode, isRecordingKey, setActiveIptv, displayScale, setDisplayScale]);
 
-  return null;
+  return (
+    <>
+      {pressedKey && (
+        <div className="fixed top-6 right-6 z-[10003] animate-in fade-in zoom-in duration-300">
+          <div className="bg-black/60 backdrop-blur-3xl px-3 py-1.5 rounded-xl border border-white/10 shadow-2xl flex items-center gap-2">
+            <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-[8px] font-black text-primary border border-primary/20">زر</div>
+            <span className="text-[10px] font-black text-white tracking-tighter uppercase">{pressedKey}</span>
+          </div>
+        </div>
+      )}
+    </>
+  );
 }

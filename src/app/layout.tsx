@@ -6,19 +6,18 @@ import { Toaster } from "@/components/ui/toaster";
 import { GlobalVideoPlayer } from "@/components/media/global-player";
 import { GlobalQuranPlayer } from "@/components/quran/global-quran-player";
 import { FirebaseClientProvider } from "@/firebase";
-import { useMediaStore } from "@/lib/store";
 import { LiveMatchIsland } from "@/components/football/live-match-island";
 import { RemotePointer } from "@/components/layout/remote-pointer";
 import { MainLayoutShell } from "@/components/layout/main-layout-shell";
+import { CarDock } from "@/components/layout/car-dock";
 import Script from 'next/script';
-import { useEffect } from 'react';
 
 /**
- * RootLayoutWrapper component - Global container without global scale
+ * RootLayoutWrapper component - Global container
  */
 function RootLayoutWrapper({ children }: { children: React.ReactNode }) {
   return (
-    <div className="w-full h-screen overflow-hidden bg-black">
+    <div className="w-full h-screen overflow-hidden bg-black relative flex">
       {children}
     </div>
   );
@@ -38,7 +37,6 @@ export default function RootLayout({
         
         <Script type="text/javascript" src="$vidaa/sdk/vidaa-sdk.js" strategy="beforeInteractive" />
         <Script src="https://polyfill.io/v3/polyfill.min.js?features=default,es6,es7,es8,es9" strategy="beforeInteractive" />
-        <Script src="https://aframe.io/releases/1.6.0/aframe.min.js" strategy="afterInteractive" />
         
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/mazenDevloper/Mz@main/src/importx.css" />
       </head>
@@ -47,6 +45,7 @@ export default function RootLayout({
           <RootLayoutWrapper>
             <LiveMatchIsland />
             <RemotePointer />
+            <CarDock />
             <MainLayoutShell>
               {children}
             </MainLayoutShell>

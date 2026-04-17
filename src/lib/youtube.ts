@@ -28,7 +28,7 @@ export interface YouTubeVideo {
 }
 
 const youtubeCache: Record<string, { data: any, timestamp: number }> = {};
-const CACHE_TTL = 1000 * 60 * 60 * 4;
+const CACHE_TTL = 1000 * 60 * 60 * 6; // 6 hours cache for quota efficiency
 
 const BLACKLIST_KEY = 'yt_blacklist_v50';
 

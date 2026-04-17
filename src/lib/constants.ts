@@ -6,6 +6,8 @@ export const FOOTBALL_API_KEY = '2f79edc60ed7f63aa4af1feea0f1ff2c';
 export const FOOTBALL_API_BASE_URL = 'https://v3.football.api-sports.io';
  
 export const YT_KEYS_POOL = [
+  "AIzaSyBQj0_RN0bVEYcPcmII709P3-BUGKCcClM",
+  "AIzaSyCANadeSR-riPkSf7wEJGSfJQREIn7dTi4",
   "AIzaSyBiR5Aw4N5sawPfiBjx1YvnxCD4MQOTDUk",
   "AIzaSyD3gFYKChgOrYCrJeYP_zu6AolEh2ZEpvU",
   "AIzaSyBBr2Wszx3vI1CZ09FcKl40tp4e3RSTd84", 

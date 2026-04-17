@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useMemo, useEffect, useState } from "react";
@@ -24,9 +25,10 @@ export function PrayerTimelineWidget() {
                  prayerTimes.find(p => p.date.endsWith(`-${now.getDate().toString().padStart(2, '0')}`)) || 
                  prayerTimes[0];
     
+    const isFriday = now.getDay() === 5;
     const list = [
       { name: "الفجر", time: data.fajr, iqamah: 25 },
-      { name: "الظهر", time: data.dhuhr, iqamah: 20 },
+      { name: isFriday ? "صلاة الجمعة" : "الظهر", time: data.dhuhr, iqamah: 20 },
       { name: "العصر", time: data.asr, iqamah: 20 },
       { name: "المغرب", time: data.maghrib, iqamah: 10 },
       { name: "العشاء", time: data.isha, iqamah: 20 },
@@ -68,18 +70,18 @@ export function PrayerTimelineWidget() {
   if (!now || prayers.length === 0) return null;
 
   return (
-    <div className="w-full flex items-center justify-between px-6 py-4 overflow-x-auto no-scrollbar rounded-[2.5rem] transition-all duration-700 premium-glass">
+    <div className="w-full flex items-center justify-between px-6 py-4 overflow-x-auto no-scrollbar rounded-[2.5rem] transition-all duration-0 premium-glass">
       <div className="flex items-center gap-10 flex-1 justify-around">
         {prayers.map((prayer, idx) => {
           const isActive = idx === activeIndex;
           
           return (
             <div key={prayer.name} className={cn(
-              "flex items-center gap-5 transition-all duration-1000 relative",
+              "flex items-center gap-5 transition-all duration-0 relative",
               isActive ? "scale-110 opacity-100" : "opacity-30 grayscale"
             )}>
               <div className={cn(
-                "flex flex-col items-center p-4 rounded-3xl transition-all duration-700 border-2 border-transparent relative overflow-hidden min-w-[100px]",
+                "flex flex-col items-center p-4 rounded-3xl transition-all duration-0 border-2 border-transparent relative overflow-hidden min-w-[100px]",
                 isActive && "bg-accent/20 border-accent/60 ring-4 ring-accent/30 shadow-[0_0_60px_rgba(65,184,131,0.8)]"
               )}>
                 {isActive && (
@@ -100,7 +102,7 @@ export function PrayerTimelineWidget() {
               </div>
 
               {isActive && (
-                <div className="flex flex-col border-l-4 border-accent/80 pl-8 py-3 animate-in fade-in slide-in-from-left-6 duration-1000 bg-accent/25 rounded-r-[2.5rem] px-8 shadow-[0_0_50px_rgba(65,184,131,0.5)] ring-2 ring-accent/20">
+                <div className="flex flex-col border-l-4 border-accent/80 pl-8 py-3 animate-in fade-in slide-in-from-left-6 duration-300 bg-accent/25 rounded-r-[2.5rem] px-8 shadow-[0_0_50px_rgba(65,184,131,0.5)] ring-2 ring-accent/20">
                   <div className="flex items-center gap-3">
                     <Timer className="w-5 h-5 text-accent" />
                     <span className="text-[11px] font-black text-accent uppercase tracking-[0.3em] drop-shadow-[0_0_15px_rgba(65,184,131,0.7)]">الإقامة</span>

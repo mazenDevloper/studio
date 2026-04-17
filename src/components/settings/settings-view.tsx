@@ -18,8 +18,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ShortcutBadge } from "@/components/layout/car-dock";
 
 /**
- * SettingsView v106.0 - Hyper-Fast & Channel Management
- * Expanded zoom slider max to 1.5 (150%) to support new defaults.
+ * SettingsView v107.0 - Hyper-Fast & Channel Management
+ * Added "Save Settings" button and labels for new zoom actions.
  */
 export function SettingsView() {
   const { 
@@ -29,7 +29,8 @@ export function SettingsView() {
     keyMappings, setKeyMapping, removeSpecificKeyMapping,
     customWallBackgrounds, addCustomWallBackground, autoHideIsland, setAutoHideIsland,
     displayScale, setDisplayScale, dockScale, setDockScale,
-    setIsRecordingKey, favoriteIptvChannels, toggleFavoriteIptvChannel, reorderIptvChannelTo
+    setIsRecordingKey, favoriteIptvChannels, toggleFavoriteIptvChannel, reorderIptvChannelTo,
+    syncMasterBin
   } = useMediaStore();
   
   const { toast } = useToast();
@@ -41,6 +42,7 @@ export function SettingsView() {
   const [recordingAction, setRecordingAction] = useState<AppAction | null>(null);
   const [recordingType, setRecordingType] = useState<'single' | 'combo'>('single');
   const [firstKey, setFirstKey] = useState<string | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const [newReminder, setNewReminder] = useState<Partial<Reminder>>({
     label: "", relativePrayer: "manual", manualTime: "12:00", offsetMinutes: 0, color: "text-blue-400", iconType: "bell", countdownWindow: 15, countupWindow: 15, expiryType: 'prayer', expiryValue: 'next'
@@ -51,6 +53,16 @@ export function SettingsView() {
     if (num >= 13) num++;
     if (num >= 17) num++;
     return num;
+  };
+
+  const handleGlobalSave = async () => {
+    setIsSyncing(true);
+    try {
+      await syncMasterBin();
+      toast({ title: "تم الحفظ بنجاح", description: "تمت مزامنة كافة الإعدادات مع السحابة" });
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   const handleSaveReminder = () => {
@@ -136,7 +148,9 @@ export function SettingsView() {
     nav_back: "عودة للخلف",
     toggle_reorder: "وضع الترتيب",
     delete_item: "حذف عنصر",
-    toggle_star: "تمييز بنجمة"
+    toggle_star: "تمييز بنجمة",
+    inc_zoom: "تكبير زوم المحتوى (33)",
+    dec_zoom: "تصغير زوم المحتوى (99)"
   };
 
   const contextLabels: Record<MappingContext, string> = {
@@ -151,7 +165,7 @@ export function SettingsView() {
   };
 
   const ActionKeyBadge = ({ k, action, context }: { k: string, action: AppAction, context: MappingContext }) => {
-    const isNumber = /^\d$/.test(k);
+    const isNumber = /^\d+$/.test(k);
     const isWhite = !isNumber && !['Red', 'Green', 'Yellow', 'Blue'].includes(k);
 
     return (
@@ -199,14 +213,27 @@ export function SettingsView() {
         <TabsContent value="appearance" className="space-y-12 animate-in fade-in duration-300">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <Card className="premium-glass p-8 space-y-8 bg-white/5 border-white/10">
-              <CardTitle className="text-2xl font-black text-white flex items-center gap-3"><Monitor className="w-6 h-6 text-primary" />عرض الشاشة</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-2xl font-black text-white flex items-center gap-3"><Monitor className="w-6 h-6 text-primary" />عرض الشاشة</CardTitle>
+                <Button 
+                  onClick={handleGlobalSave} 
+                  disabled={isSyncing}
+                  className="bg-primary/20 text-primary border border-primary/40 rounded-full h-10 px-6 font-black focusable"
+                >
+                  {isSyncing ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : <Save className="w-4 h-4 ml-2" />}
+                  حفظ الإعدادات
+                </Button>
+              </div>
               <div className="space-y-8">
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
-                    <span className="text-sm font-black text-white/60">زوم المحتوى (لهذا الجهاز)</span>
-                    <span className="text-primary font-black">{Math.round((displayScale ?? 0.8) * 100)}%</span>
+                    <div className="flex flex-col">
+                      <span className="text-sm font-black text-white/60">زوم المحتوى (لهذا الجهاز)</span>
+                      <span className="text-[10px] text-white/30 uppercase tracking-widest font-bold">Default: 100%</span>
+                    </div>
+                    <span className="text-primary font-black">{Math.round((displayScale ?? 1.0) * 100)}%</span>
                   </div>
-                  <Slider value={[displayScale ?? 0.8]} min={0.5} max={1.5} step={0.05} onValueChange={([v]) => setDisplayScale(v)} />
+                  <Slider value={[displayScale ?? 1.0]} min={0.5} max={1.5} step={0.05} onValueChange={([v]) => setDisplayScale(v)} />
                 </div>
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">

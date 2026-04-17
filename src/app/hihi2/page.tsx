@@ -2,7 +2,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CarDock } from "@/components/layout/car-dock";
 import { Trophy, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -40,35 +39,32 @@ export default function Hihi2Page() {
   }, []);
 
   return (
-    <>
-      <CarDock />
-      <main className="flex-1 h-screen bg-black relative flex flex-col overflow-hidden">
-        <header className="h-16 flex items-center justify-between px-8 bg-black/40 backdrop-blur-md border-b border-white/5 relative z-10">
-          <div className="flex items-center gap-3">
-            <FootballBallIcon className="w-6 h-6 text-amber-500 animate-pulse" />
-            <span className="text-white font-black text-xl tracking-tighter">HIHI2 SPORTS</span>
-          </div>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => setKey(Date.now())}
-            className="w-10 h-10 rounded-full bg-white/5 border border-white/10 text-white/60 focusable"
-          >
-            <RefreshCw className="w-5 h-5" />
-          </Button>
-        </header>
-        
-        <div className="flex-1 relative w-full h-full bg-zinc-950">
-          <iframe 
-            key={key}
-            src="https://hihi2.com/"
-            className="w-full h-full border-none"
-            sandbox="allow-scripts allow-forms allow-same-origin allow-presentation allow-downloads"
-            style={{ background: '#000' }}
-          />
-          <div className="absolute inset-0 pointer-events-none border-[10px] border-black/20" />
+    <main className="w-full h-full bg-black relative flex flex-col overflow-hidden">
+      <header className="h-16 flex items-center justify-between px-8 bg-black/40 backdrop-blur-md border-b border-white/5 relative z-10">
+        <div className="flex items-center gap-3">
+          <FootballBallIcon className="w-6 h-6 text-amber-500 animate-pulse" />
+          <span className="text-white font-black text-xl tracking-tighter">HIHI2 SPORTS</span>
         </div>
-      </main>
-    </>
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={() => setKey(Date.now())}
+          className="w-10 h-10 rounded-full bg-white/5 border border-white/10 text-white/60 focusable"
+        >
+          <RefreshCw className="w-5 h-5" />
+        </Button>
+      </header>
+      
+      <div className="flex-1 relative w-full h-full bg-zinc-950">
+        <iframe 
+          key={key}
+          src="https://hihi2.com/"
+          className="w-full h-full border-none"
+          sandbox="allow-scripts allow-forms allow-same-origin allow-presentation allow-downloads"
+          style={{ background: '#000' }}
+        />
+        <div className="absolute inset-0 pointer-events-none border-[10px] border-black/20" />
+      </div>
+    </main>
   );
 }

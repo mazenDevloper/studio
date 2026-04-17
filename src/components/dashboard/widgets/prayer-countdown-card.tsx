@@ -34,9 +34,10 @@ export function PrayerCountdownCard() {
                    prayerTimes.find(p => p.date.endsWith(`-${now.getDate().toString().padStart(2, '0')}`)) || 
                    prayerTimes[0];
     
+    const isFriday = now.getDay() === 5;
     const prayers = [
       { name: "الفجر", time: pTimes.fajr, iqamah: 25 },
-      { name: "الظهر", time: pTimes.dhuhr, iqamah: 20 },
+      { name: isFriday ? "صلاة الجمعة" : "الظهر", time: pTimes.dhuhr, iqamah: 20 },
       { name: "العصر", time: pTimes.asr, iqamah: 20 },
       { name: "المغرب", time: pTimes.maghrib, iqamah: 10 },
       { name: "العشاء", time: pTimes.isha, iqamah: 20 },
@@ -82,7 +83,7 @@ export function PrayerCountdownCard() {
 
   return (
     <div className={cn(
-      "h-full w-full rounded-[2.5rem] p-4 flex flex-col justify-center items-center text-center transition-all duration-1000 relative overflow-hidden premium-glass",
+      "h-full w-full rounded-[2.5rem] p-4 flex flex-col justify-center items-center text-center transition-all duration-0 relative overflow-hidden premium-glass",
       isIqamah && "ring-2 ring-accent shadow-[0_0_40px_rgba(65,184,131,0.3)]"
     )}>
       <div className="flex items-center gap-2 mb-1 relative z-10">
@@ -102,7 +103,7 @@ export function PrayerCountdownCard() {
               <stop offset="0%" stopColor="rgba(255,255,255,0.85)" />
               <stop offset="100%" stopColor="rgba(255,255,255,0.15)" />
             </linearGradient>
-            <linearGradient id="timerStroke" x1="100%" y1="100%" x2="0%" y2="0%">
+            <linearGradient id="timerStroke" x1="100%" x2="100%" y1="100%" y2="0%">
               <stop offset="0%" stopColor="rgba(255,255,255,1)" />
               <stop offset="100%" stopColor="rgba(255,255,255,0.1)" />
             </linearGradient>

@@ -31,6 +31,7 @@ export function ReminderSummaryWidget() {
   const processedReminders = useMemo(() => {
     const list: ReminderItem[] = [];
     const totalCurrentSecs = (now.getHours() * 3600) + (now.getMinutes() * 60) + now.getSeconds();
+    const isFriday = now.getDay() === 5;
 
     const tToM = (t: string) => {
       if (!t) return 0;
@@ -66,10 +67,12 @@ export function ReminderSummaryWidget() {
         let aDiff = azanSecs - totalCurrentSecs;
         if (aDiff < -43200) aDiff += 86400;
 
+        const displayName = (setting.id === 'dhuhr' && isFriday) ? "صلاة الجمعة" : setting.name;
+
         if (aDiff > -600) {
           list.push({ 
             id: `azan-${setting.id}`, 
-            name: setting.name, 
+            name: displayName, 
             label: setting.id === 'sunrise' ? "شروق الشمس" : setting.id === 'duha' ? "صلاة الضحى" : "الأذان", 
             diff: aDiff, 
             icon: Clock, 
@@ -87,7 +90,7 @@ export function ReminderSummaryWidget() {
           if (iDiff > -600) {
             list.push({ 
               id: `iqamah-${setting.id}`, 
-              name: `إقامة ${setting.name}`, 
+              name: `إقامة ${displayName}`, 
               label: "الإقامة", 
               diff: iDiff, 
               icon: Timer, 
@@ -191,7 +194,7 @@ export function ReminderSummaryWidget() {
 
         return (
           <div key={rem.id} className={cn(
-            "flex flex-col items-center justify-center relative py-1 transition-all duration-700 w-full",
+            "flex flex-col items-center justify-center relative py-1 transition-all duration-0 w-full",
             processedReminders.length > 1 && idx < processedReminders.length - 1 ? "border-b border-white/5" : "",
             idx === 0 ? "opacity-100" : idx === 1 ? "opacity-70" : "opacity-40"
           )}>

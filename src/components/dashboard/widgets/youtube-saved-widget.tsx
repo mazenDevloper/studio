@@ -5,12 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Bookmark, Play, Trash2, Clock, Activity } from "lucide-react";
 import { useMediaStore } from "@/lib/store";
 import Image from "next/image";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { ShortcutBadge } from "@/components/layout/car-dock";
 
-/**
- * YouTubeSavedWidget v87.0 - Ultra Prominent Duration Badges
- */
 export function YouTubeSavedWidget() {
   const { savedVideos, removeVideo, setActiveVideo } = useMediaStore();
 
@@ -40,37 +37,23 @@ export function YouTubeSavedWidget() {
       </CardHeader>
       <CardContent className="p-0">
         {!savedVideos || savedVideos.length === 0 ? (
-          <div className="py-12 mx-8 text-center bg-white/5 rounded-[2rem] border border-dashed border-white/5">
-            <p className="text-muted-foreground italic text-lg font-medium">لا توجد فيديوهات محفوظة حالياً.</p>
-          </div>
+          <div className="py-12 mx-8 text-center bg-white/5 rounded-[2rem] border border-dashed border-white/5"><p className="text-muted-foreground italic text-lg font-medium">لا توجد فيديوهات محفوظة حالياً.</p></div>
         ) : (
           <div className={horizontalListClass}>
             {savedVideos.map((video, idx) => (
               <div 
                 key={video.id} 
-                className="w-80 group relative overflow-hidden bg-zinc-900/80 border-none rounded-[2rem] transition-all hover:scale-[1.02] cursor-pointer shadow-xl focusable shrink-0"
+                className="w-80 group relative overflow-hidden bg-zinc-900/80 border-none rounded-[2rem] transition-all hover:scale-[1.02] cursor-pointer shadow-xl focusable shrink-0 outline-none"
                 onClick={() => setActiveVideo(video, savedVideos)}
                 tabIndex={0}
                 data-nav-id={`saved-video-${idx}`}
                 data-video-id={video.id}
               >
                 <div className="aspect-video relative overflow-hidden">
-                  <Image src={video.thumbnail} alt={video.title} fill className="object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                  <Image src={video.thumbnail} alt={video.title} fill className="object-cover opacity-80 group-hover:opacity-100" />
+                  <ShortcutBadge action="delete_item" className="-top-1 -right-1 scale-90 opacity-0 group-focus:opacity-100 transition-opacity" />
                   
-                  {video.duration && <div className="absolute bottom-2 right-2 bg-black text-white text-[14px] px-3 py-1.5 rounded-lg font-black z-10 border border-white/20 shadow-2xl">{video.duration}</div>}
-
-                  <Button
-                    variant="destructive"
-                    size="icon"
-                    className="absolute top-4 right-4 w-10 h-10 rounded-full opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-all focusable z-30 bg-red-600 hover:bg-red-700 shadow-2xl"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      removeVideo(video.id);
-                    }}
-                  >
-                    <Trash2 className="w-5 h-5" />
-                  </Button>
+                  {video.duration && <div className="absolute bottom-2 right-2 bg-black text-white text-[14px] px-3 py-1.5 rounded-lg font-black z-10 border border-white/20">{video.duration}</div>}
 
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-3xl flex items-center justify-center border border-white/20 opacity-0 group-hover:opacity-100 transition-all scale-75 group-hover:scale-100 shadow-2xl">
@@ -80,10 +63,7 @@ export function YouTubeSavedWidget() {
 
                   {video.progress && video.progress > 0 && (
                     <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-black/40">
-                      <div 
-                        className="h-full bg-accent shadow-[0_0_12px_hsl(var(--accent))]" 
-                        style={{ width: `${Math.min(100, (video.progress / (parseInt(video.duration?.includes(':') ? '3600' : (video.duration || '3600'))) || 3600) * 100)}%` }}
-                      />
+                      <div className="h-full bg-accent shadow-[0_0_12px_hsl(var(--accent))]" style={{ width: `${Math.min(100, (video.progress / 3600) * 100)}%` }} />
                     </div>
                   )}
                 </div>
@@ -91,12 +71,8 @@ export function YouTubeSavedWidget() {
                   <h3 className="font-bold text-base truncate text-white font-headline">{video.title}</h3>
                   <div className="flex items-center justify-end gap-3 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
                      {video.progress && video.progress > 0 ? (
-                       <span className="text-accent flex items-center gap-1">
-                         <Activity className="w-3 h-3" /> استكمال عند {formatTime(video.progress)}
-                       </span>
-                     ) : (
-                       <span>جاهز للمشاهدة</span>
-                     )}
+                       <span className="text-accent flex items-center gap-1"><Activity className="w-3 h-3" /> استكمال عند {formatTime(video.progress)}</span>
+                     ) : (<span>جاهز للمشاهدة</span>)}
                      <span className="opacity-30">•</span>
                      <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {video.duration || "---"}</span>
                   </div>
