@@ -12,9 +12,11 @@ interface AlertItem {
   id: string;
   name: string;
   diff: number;
+  expDiff?: number;
   type: 'azan' | 'iqamah' | 'reminder';
   color: string;
   isExpired?: boolean;
+  isEnding?: boolean;
 }
 
 interface GoalEvent {
@@ -24,8 +26,8 @@ interface GoalEvent {
 }
 
 /**
- * Split Interactive Island v81.0
- * Logic: Advanced Reminder Expiry - Linked to Next Prayer or Custom Time.
+ * Split Interactive Island v138.0
+ * Logic: Dual-Phase Reminder Countdown (Start & End).
  */
 export function LiveMatchIsland() {
   const { 
@@ -131,6 +133,8 @@ export function LiveMatchIsland() {
       for (const rem of reminders) {
         if (rem.completed) continue;
         let targetSecs = 0;
+        let expirySecs = 0;
+
         if (rem.relativePrayer === 'manual' && rem.manualTime) {
           targetSecs = tToM(rem.manualTime) * 60;
         } else {
@@ -140,39 +144,45 @@ export function LiveMatchIsland() {
         }
 
         if (targetSecs > 0) {
+          // Calculate Expiry for End Countdown
+          if (rem.expiryType === 'prayer') {
+            let expRef = rem.expiryValue === 'next' ? '' : rem.expiryValue;
+            if (rem.expiryValue === 'next') {
+              const curMins = totalCurrentSecs / 60;
+              const found = prayersArray.find(p => tToM(p.time) > curMins) || prayersArray[0];
+              expRef = found.id;
+            }
+            if (expRef && pData[expRef]) expirySecs = tToM(pData[expRef]) * 60;
+          } else if (rem.expiryType === 'manual' && rem.expiryValue) {
+            expirySecs = tToM(rem.expiryValue) * 60;
+          } else {
+            expirySecs = targetSecs + (parseInt(rem.expiryValue || '30') * 60);
+          }
+
           let startDiff = targetSecs - totalCurrentSecs;
           if (startDiff < -43200) startDiff += 86400;
           
+          let expDiff = expirySecs - totalCurrentSecs;
+          if (expDiff < -43200) expDiff += 86400;
+
           let isStarted = startDiff <= 0;
-          let isExpired = false;
+          let isExpired = expDiff <= 0;
 
-          // Expiry Logic v81.0
-          if (rem.expiryType === 'prayer') {
-            let expTime = '';
-            if (rem.expiryValue === 'next') {
-              const currentMins = totalCurrentSecs / 60;
-              const nextP = prayersArray.find(p => tToM(p.time) > currentMins) || prayersArray[0];
-              expTime = nextP.time;
-            } else {
-              expTime = pData[rem.expiryValue as keyof typeof pData] || '';
-            }
-            if (expTime) {
-              const expSecs = tToM(expTime) * 60;
-              let expDiff = expSecs - totalCurrentSecs;
-              if (expDiff < -43200) expDiff += 86400;
-              if (expDiff <= 0) isExpired = true;
-            }
-          } else if (rem.expiryType === 'manual' && rem.expiryValue) {
-            const expSecs = tToM(rem.expiryValue) * 60;
-            let expDiff = expSecs - totalCurrentSecs;
-            if (expDiff < -43200) expDiff += 86400;
-            if (expDiff <= 0) isExpired = true;
-          } else {
-            if (Math.abs(startDiff) >= (rem.countupWindow * 60)) isExpired = true;
-          }
+          // End countdown starts 10 minutes before expiry
+          const isEnding = expDiff > 0 && expDiff <= 600;
 
-          if (!isExpired && (startDiff < (rem.countdownWindow * 60) || isStarted)) {
-            list.push({ id: rem.id, name: rem.label, diff: startDiff, type: 'reminder', color: rem.color, isExpired: isStarted });
+          if (!isExpired) {
+            if (startDiff < (rem.countdownWindow * 60) || isStarted) {
+              list.push({ 
+                id: rem.id, 
+                name: rem.label, 
+                diff: isEnding ? expDiff : startDiff, 
+                type: 'reminder', 
+                color: isEnding ? 'text-red-500' : rem.color, 
+                isExpired: isStarted && !isEnding,
+                isEnding: isEnding
+              });
+            }
           }
         }
       }
@@ -236,7 +246,9 @@ export function LiveMatchIsland() {
                   {alert.type === 'azan' ? <Clock className="w-4 h-4 text-accent" /> : alert.type === 'iqamah' ? <Timer className="w-4 h-4 text-emerald-400" /> : <Bell className="w-4 h-4 text-primary" />}
                 </div>
                 <div className="flex-1 flex flex-col items-center justify-center">
-                  <span className="text-[0.8rem] font-black text-white/80 uppercase truncate max-w-[100px] leading-none mb-1">{alert.name}</span>
+                  <span className={cn("text-[0.8rem] font-black uppercase truncate max-w-[100px] leading-none mb-1", alert.isEnding ? "text-red-500" : "text-white/80")}>
+                    {alert.isEnding ? `END ${alert.name}` : alert.name}
+                  </span>
                   <div className="h-8 w-full"><GlassNumber text={alert.isExpired ? "الآن" : `${alert.diff >= 0 ? "-" : "+"}${formatCountdown(alert.diff)}`} id={`alert-${alert.id}`} size="2.2rem" colorClass={alert.color} /></div>
                 </div>
               </div>

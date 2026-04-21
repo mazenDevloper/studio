@@ -13,10 +13,12 @@ interface ReminderItem {
   name: string;
   label: string;
   diff: number;
+  expDiff?: number;
   icon: any;
   color: string;
   targetTimeStr: string;
   window: number;
+  isNearingEnd?: boolean;
 }
 
 export function ReminderSummaryWidget() {
@@ -104,35 +106,57 @@ export function ReminderSummaryWidget() {
     }
 
     for (const rem of reminders) {
+      if (rem.completed) continue;
       let targetSecs = 0;
+      let expirySecs = 0;
+
+      const dateStr = now.toISOString().split('T')[0];
+      const pData = prayerTimes.find(p => p.date === dateStr) || 
+                    prayerTimes.find(p => p.date.endsWith(`-${now.getDate().toString().padStart(2, '0')}`)) || 
+                    prayerTimes[0];
+
       if (rem.relativePrayer === 'manual' && rem.manualTime) {
         targetSecs = tToM(rem.manualTime) * 60;
       } else if (prayerTimes?.length) {
-        const dateStr = now.toISOString().split('T')[0];
-        const pData = prayerTimes.find(p => p.date === dateStr) || 
-                      prayerTimes.find(p => p.date.endsWith(`-${now.getDate().toString().padStart(2, '0')}`)) || 
-                      prayerTimes[0];
-        
         let refTime = pData[rem.relativePrayer as keyof typeof pData];
         let extraOffset = rem.offsetMinutes;
-
-        if (rem.relativePrayer === 'duha') {
-          refTime = pData['sunrise'];
-          extraOffset += 15;
-        }
-
+        if (rem.relativePrayer === 'duha') { refTime = pData['sunrise']; extraOffset += 15; }
         if (refTime) targetSecs = (tToM(refTime) + extraOffset) * 60;
       }
 
       if (targetSecs > 0) {
+        // Calculate Expiry
+        if (rem.expiryType === 'prayer') {
+          let expRef = rem.expiryValue === 'next' ? '' : rem.expiryValue;
+          if (rem.expiryValue === 'next') {
+            const prayers = ['fajr', 'sunrise', 'dhuhr', 'asr', 'maghrib', 'isha'];
+            const curMins = totalCurrentSecs / 60;
+            const found = prayers.find(p => tToM(pData[p]) > curMins) || 'fajr';
+            expRef = found;
+          }
+          if (expRef && pData[expRef]) expirySecs = tToM(pData[expRef]) * 60;
+        } else if (rem.expiryType === 'manual' && rem.expiryValue) {
+          expirySecs = tToM(rem.expiryValue) * 60;
+        } else {
+          expirySecs = targetSecs + (parseInt(rem.expiryValue || '30') * 60);
+        }
+
         let diff = targetSecs - totalCurrentSecs;
         if (diff < -43200) diff += 86400;
-        if (diff > -600) {
+
+        let expDiff = expirySecs - totalCurrentSecs;
+        if (expDiff < -43200) expDiff += 86400;
+
+        const isNearingEnd = expDiff > 0 && expDiff <= 600; // 10 minutes before end
+
+        if (expDiff > -60) { // Keep showing until 1 min after expiry
           list.push({ 
             id: rem.id, 
             name: rem.label || "تذكير مخصص", 
             label: "تذكير", 
             diff, 
+            expDiff,
+            isNearingEnd,
             icon: Bell, 
             color: rem.color || "text-blue-400", 
             targetTimeStr: formatTargetTime(targetSecs),
@@ -142,7 +166,12 @@ export function ReminderSummaryWidget() {
       }
     }
 
-    return list.sort((a, b) => Math.abs(a.diff) - Math.abs(b.diff)).slice(0, 3);
+    return list.sort((a, b) => {
+      // Prioritize nearing end countdowns
+      if (a.isNearingEnd && !b.isNearingEnd) return -1;
+      if (!a.isNearingEnd && b.isNearingEnd) return 1;
+      return Math.abs(a.diff) - Math.abs(b.diff);
+    }).slice(0, 3);
   }, [now, prayerTimes, reminders, prayerSettings]);
 
   const formatCountdown = (diffSeconds: number) => {
@@ -188,9 +217,11 @@ export function ReminderSummaryWidget() {
       {processedReminders.map((rem, idx) => {
         const RemIcon = rem.icon;
         const showCountdown = Math.abs(rem.diff) <= rem.window;
-        const displayVal = showCountdown 
-          ? `${rem.diff >= 0 ? "-" : "+"}${formatCountdown(rem.diff)}` 
-          : rem.targetTimeStr;
+        const showEndCountdown = rem.isNearingEnd && rem.diff <= 0;
+
+        let displayVal = rem.targetTimeStr;
+        if (showEndCountdown) displayVal = `END ${formatCountdown(rem.expDiff || 0)}`;
+        else if (showCountdown) displayVal = `${rem.diff >= 0 ? "-" : "+"}${formatCountdown(rem.diff)}`;
 
         return (
           <div key={rem.id} className={cn(
@@ -199,26 +230,26 @@ export function ReminderSummaryWidget() {
             idx === 0 ? "opacity-100" : idx === 1 ? "opacity-70" : "opacity-40"
           )}>
             <div className="flex items-center gap-3 mb-[-4px]">
-              <RemIcon className={cn("w-6 h-6 shadow-glow", rem.color)} />
-              <span className={cn("text-2xl font-black uppercase truncate max-w-[320px]", rem.color)}>
+              <RemIcon className={cn("w-6 h-6 shadow-glow", rem.isNearingEnd ? "text-red-500 animate-pulse" : rem.color)} />
+              <span className={cn("text-2xl font-black uppercase truncate max-w-[320px]", rem.isNearingEnd ? "text-red-500" : rem.color)}>
                 {rem.name}
               </span>
             </div>
             
             <div className={cn(
               "w-[95%] px-2",
-              (idx === 0 && showCountdown) ? "h-24" : "h-16"
+              (idx === 0 && (showCountdown || showEndCountdown)) ? "h-24" : "h-16"
             )}>
               <GlassNumber 
                 text={displayVal} 
                 id={`sum-vert-${rem.id}`} 
-                size={(idx === 0 && showCountdown) ? "5.5rem" : "4.5rem"}
+                size={(idx === 0 && (showCountdown || showEndCountdown)) ? "5.5rem" : "4.5rem"}
               />
             </div>
             
-            {idx === 0 && showCountdown && (
+            {idx === 0 && (showCountdown || showEndCountdown) && (
               <span className="text-white/30 font-black uppercase tracking-[0.4em] text-[10px] mt-1 animate-pulse">
-                Active Countdown
+                {showEndCountdown ? "Expiring Soon" : "Active Countdown"}
               </span>
             )}
           </div>

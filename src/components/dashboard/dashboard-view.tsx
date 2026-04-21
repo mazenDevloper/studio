@@ -8,7 +8,6 @@ import { MoonWidget } from "./widgets/moon-widget";
 import { DateAndClockWidget } from "./widgets/date-and-clock-widget";
 import { PlayingNowWidget } from "./widgets/playing-now-widget";
 import { PrayerTimelineWidget } from "./widgets/prayer-timeline-widget";
-import { MapWidget } from "./widgets/map-widget";
 import { ReminderSummaryWidget } from "./widgets/reminder-summary-widget";
 import { ActiveAzkarWidget } from "./widgets/active-azkar-widget";
 import { useMediaStore } from "@/lib/store";
@@ -26,8 +25,8 @@ const YouTubeSavedWidget = dynamic(() => import("./widgets/youtube-saved-widget"
 });
 
 /**
- * DashboardView v115.0 - Space Liberation
- * Removed top container space for a panoramic full-screen experience.
+ * DashboardView v118.0 - LITESPEED Optimized
+ * Zero top padding layout.
  */
 export function DashboardView() {
   const { 
@@ -45,12 +44,12 @@ export function DashboardView() {
         target.focus();
         target.classList.add('active-nav-target');
       }
-    }, 500);
+    }, 10); 
     return () => clearTimeout(timer);
   }, []);
 
   return (
-    <div className="h-full w-full pt-2 px-6 flex flex-col gap-8 relative overflow-y-auto pb-32 no-scrollbar bg-black">
+    <div className="h-full w-full pt-0 px-6 flex flex-col gap-8 relative overflow-y-auto pb-32 no-scrollbar bg-black">
       {wallPlateType && (
         <div className="fixed inset-0 z-[20000] bg-black flex items-center justify-center animate-in fade-in duration-0 p-0 m-0 overflow-hidden">
           <button 

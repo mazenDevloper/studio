@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useCallback, useRef, useState } from "react";
@@ -10,7 +9,8 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
 /**
- * Smart Engine v115.0 - Micro Feedback & Precision Navigation
+ * Smart Engine v155.0 - Multi-Level Precision Navigation
+ * Fixed Level-2 (Sidebar) skipping and responsive entry logic.
  */
 export function RemotePointer() {
   const pathname = usePathname();
@@ -19,10 +19,10 @@ export function RemotePointer() {
   
   const { 
     wallPlateType, setWallPlate, dockSide, isFullScreen, isMinimized, 
-    activeVideo, activeIptv, selectedChannel, setActiveIptv,
+    activeVideo, activeIptv, selectedChannel, 
     isAltModeActive, toggleAltMode, removeChannel, removeReciter, toggleStarChannel, favoriteChannels,
     pickedUpId, setPickedUpId, reorderChannel, reorderReciter, reorderIptvChannel, removeVideo,
-    isReorderMode, toggleReorderMode, setIsSidebarShrinked, isRecordingKey, favoriteIptvChannels,
+    isReorderMode, toggleReorderMode, setIsSidebarShrinked, isRecordingKey,
     displayScale, setDisplayScale
   } = useMediaStore();
 
@@ -102,31 +102,21 @@ export function RemotePointer() {
       return;
     }
 
+    const currentNavId = current.getAttribute('data-nav-id') || '';
     const currentRect = current.getBoundingClientRect();
     const isVertical = direction === "ArrowUp" || direction === "ArrowDown";
-    const isMovingToSidebar = (dockSide === 'left' && direction === 'ArrowLeft') || (dockSide === 'right' && direction === 'ArrowRight');
+    const isMovingToSidebarDir = (dockSide === 'left' && direction === 'ArrowLeft') || (dockSide === 'right' && direction === 'ArrowRight');
+    const isMovingToContentDir = (dockSide === 'left' && direction === 'ArrowRight') || (dockSide === 'right' && direction === 'ArrowLeft');
 
-    // Precision Content -> Sidebar Navigation (Restricted Level 2)
-    if (pathname === '/media' && !current.closest('aside')) {
-      if (isVertical) {
-        // Strict Isolation: Vertical buttons stay within content in media view
-      } else if (isMovingToSidebar) {
-        const navId = current.getAttribute('data-nav-id') || '';
-        const isFirstItem = navId.endsWith('-0') || navId === 'reciter-add' || navId === 'surah-0' || navId === 'subs-all';
-        
-        if (isFirstItem) {
-          let targetId = 'subs-all'; 
-          if (selectedChannel) {
-            const idx = favoriteChannels.findIndex(c => c.channelid === selectedChannel.channelid);
-            if (idx !== -1) targetId = `subs-${idx + 1}`;
-          }
-          const sidebarTarget = document.querySelector(`[data-nav-id="${targetId}"]`) as HTMLElement;
-          if (sidebarTarget) { sidebarTarget.focus(); return; }
-        } else {
-          // Stay within content level if not on the very first element of a section
-        }
-      }
+    // Smart Jump: Search -> Reciters
+    if (pathname === '/media' && (currentNavId === 'media-search-input' || currentNavId === 'search-btn') && direction === 'ArrowDown') {
+      const target = document.querySelector('[data-nav-id="reciter-add"]') as HTMLElement;
+      if (target) { target.focus(); return; }
     }
+
+    // Logic: Force Sidebar Stop when moving from Dock
+    const isInsideDock = currentNavId.startsWith('dock-');
+    const isInsideSidebar = !!current.closest('aside');
 
     let minDistance = Infinity;
     let next: HTMLElement | null = null;
@@ -134,8 +124,28 @@ export function RemotePointer() {
     for (const el of focusables) {
       if (el === current) continue;
       
-      // Vertical Isolation Fix: Prevent vertical jump to sidebar in Media View
-      if (pathname === '/media' && isVertical && !current.closest('aside') && el.closest('aside')) continue;
+      const targetInSidebar = !!el.closest('aside');
+      const targetInDock = el.getAttribute('data-nav-id')?.startsWith('dock-');
+
+      // Filter: Block skipping Sidebar (Level 2) when moving from Dock to Content
+      if (pathname === '/media' && isInsideDock && isMovingToContentDir) {
+        if (!targetInSidebar) continue; // Only allow targeting sidebar
+      }
+
+      // Filter: Block jumping from Sidebar to Content via Vertical keys
+      if (pathname === '/media' && isInsideSidebar && isVertical && !targetInSidebar) continue;
+
+      // Filter: Block Lateral Sidebar Jump in Content unless at specific gate
+      if (pathname === '/media' && !isInsideSidebar && !isInsideDock && isMovingToSidebarDir) {
+        const isFirstInList = currentNavId === 'reciter-add' || currentNavId === 'reciter-0' || currentNavId === 'surah-0' || currentNavId === 'starred-item-0' || currentNavId === 'live-sub-item-0' || currentNavId === 'goals-item-0' || currentNavId === 'kids-item-0' || currentNavId === 'sub-grid-item-0';
+        let isFirstColInGrid = false;
+        if (currentNavId.startsWith('grid-item-')) {
+          const parts = currentNavId.split('-');
+          const idx = parseInt(parts[parts.length - 1]);
+          if (idx % 3 === 0) isFirstColInGrid = true;
+        }
+        if (!isFirstInList && !isFirstColInGrid && targetInSidebar) continue;
+      }
 
       const rect2 = el.getBoundingClientRect();
       const p1 = { x: currentRect.left + currentRect.width / 2, y: currentRect.top + currentRect.height / 2 };
@@ -169,7 +179,7 @@ export function RemotePointer() {
       }
 
       setPressedKey(rawKey);
-      setTimeout(() => setPressedKey(null), 2000);
+      setTimeout(() => setPressedKey(null), 1500); 
 
       if (rawKey === 'Sub') { e.preventDefault(); toggleAltMode(); return; }
       
@@ -183,27 +193,8 @@ export function RemotePointer() {
           keyBufferRef.current = rawKey;
           if (comboTimeoutRef.current) clearTimeout(comboTimeoutRef.current);
           comboTimeoutRef.current = setTimeout(() => {
-            if (keyBufferRef.current === rawKey) {
-              keyBufferRef.current = "";
-            }
-          }, 2000);
-        }
-      }
-
-      const possibleNum = parseInt(finalKey);
-      if (!isNaN(possibleNum) && possibleNum >= 11 && possibleNum <= 23 && !isRecordingKey) {
-        const favs = useMediaStore.getState().favoriteIptvChannels;
-        const targetIdx = favs.findIndex((_, idx) => {
-          let num = 11 + idx;
-          if (num >= 13) num++;
-          if (num >= 17) num++;
-          return num === possibleNum;
-        });
-        if (targetIdx !== -1) {
-          e.preventDefault();
-          setActiveIptv(favs[targetIdx], favs);
-          toast({ title: `تشغيل القناة ${possibleNum}`, description: favs[targetIdx].name });
-          return;
+            if (keyBufferRef.current === rawKey) keyBufferRef.current = "";
+          }, 1500);
         }
       }
 
@@ -215,7 +206,6 @@ export function RemotePointer() {
         e.preventDefault();
         const newScale = Math.min(1.5, (displayScale || 1.0) + 0.05);
         setDisplayScale(newScale);
-        toast({ title: "تكبير الزوم", description: `${Math.round(newScale * 100)}%` });
         return;
       }
 
@@ -223,7 +213,6 @@ export function RemotePointer() {
         e.preventDefault();
         const newScale = Math.max(0.5, (displayScale || 1.0) - 0.05);
         setDisplayScale(newScale);
-        toast({ title: "تصغير الزوم", description: `${Math.round(newScale * 100)}%` });
         return;
       }
 
@@ -275,15 +264,15 @@ export function RemotePointer() {
     };
     window.addEventListener("keydown", handleKeyDown, true);
     return () => window.removeEventListener("keydown", handleKeyDown, true);
-  }, [navigate, isAction, wallPlateType, setWallPlate, router, pathname, isAltModeActive, toggleAltMode, toast, removeChannel, removeReciter, toggleStarChannel, pickedUpId, setPickedUpId, removeVideo, isReorderMode, toggleReorderMode, isRecordingKey, setActiveIptv, displayScale, setDisplayScale]);
+  }, [navigate, isAction, wallPlateType, setWallPlate, router, pathname, isAltModeActive, toggleAltMode, toast, removeChannel, removeReciter, toggleStarChannel, pickedUpId, setPickedUpId, removeVideo, isReorderMode, toggleReorderMode, isRecordingKey, displayScale, setDisplayScale]);
 
   return (
     <>
       {pressedKey && (
-        <div className="fixed top-6 right-6 z-[10003] animate-in fade-in zoom-in duration-300">
-          <div className="bg-black/60 backdrop-blur-3xl px-3 py-1.5 rounded-xl border border-white/10 shadow-2xl flex items-center gap-2">
-            <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-[8px] font-black text-primary border border-primary/20">زر</div>
-            <span className="text-[10px] font-black text-white tracking-tighter uppercase">{pressedKey}</span>
+        <div className="fixed top-6 right-6 z-[10003] animate-in fade-in zoom-in duration-200">
+          <div className="bg-black/60 backdrop-blur-3xl px-2 py-0.5 rounded-lg border border-white/10 shadow-2xl flex items-center gap-1">
+            <div className="w-3 h-3 rounded-full bg-primary/20 flex items-center justify-center text-[5px] font-black text-primary border border-primary/20">Z</div>
+            <span className="text-[7px] font-black text-white tracking-tighter uppercase">{pressedKey}</span>
           </div>
         </div>
       )}
