@@ -33,8 +33,8 @@ export function FootballBallIcon({ className }: { className?: string }) {
 }
 
 /**
- * SportsHubPage v370.0 - Flipped Split View Architecture
- * IDEB SPORTS (70%) on LEFT, HIHI2 (30%) on RIGHT.
+ * SportsHubPage v390.0 - Optimized Split View
+ * HIHI2 (30%) on RIGHT, IDEB SPORTS (70%) on LEFT in RTL.
  */
 export default function SportsHubPage() {
   const [key, setKey] = useState(Date.now());
@@ -73,32 +73,9 @@ export default function SportsHubPage() {
         </div>
       </header>
       
-      <div className="flex-1 relative w-full h-full bg-zinc-950 p-4 flex gap-4 overflow-hidden">
+      <div className="flex-1 relative w-full h-full bg-zinc-950 p-4 flex gap-4 overflow-y-auto no-scrollbar">
         
-        {/* IDEB SPORTS - Left View (70% width in split) */}
-        <div className={cn(
-          "relative rounded-[2.5rem] overflow-hidden border-2 border-white/5 transition-all duration-700 ease-in-out bg-black group shadow-2xl focusable",
-          maximizedView === 'ideb' ? "flex-[10] z-20" : maximizedView === 'hihi' ? "flex-0 w-0 opacity-0 pointer-events-none" : "flex-[7] z-10"
-        )} tabIndex={0} data-nav-id="ideb-frame-container">
-          <iframe 
-            key={`${key}-ideb`}
-            src="https://idebsports.ly/livestream"
-            className="w-full h-full border-none"
-            sandbox="allow-scripts allow-forms allow-same-origin allow-presentation allow-downloads"
-            style={{ background: '#000' }}
-          />
-          <button 
-            onClick={() => toggleMaximize('ideb')}
-            className="absolute bottom-6 left-6 w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/40 group-hover:text-white group-hover:bg-white/20 transition-all focusable z-30 shadow-glow"
-          >
-            {maximizedView === 'ideb' ? <Minimize2 className="w-7 h-7" /> : <Maximize2 className="w-7 h-7" />}
-          </button>
-          <div className="absolute top-6 left-6 bg-black/40 backdrop-blur-md px-4 py-1.5 rounded-xl border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-            <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">IDEB SPORTS LIVE</span>
-          </div>
-        </div>
-
-        {/* HIHI2 - Right View (30% width in split) */}
+        {/* HIHI2 - Right View in RTL (30% width in split) */}
         <div className={cn(
           "relative rounded-[2.5rem] overflow-hidden border-2 border-white/5 transition-all duration-700 ease-in-out bg-black group shadow-2xl focusable",
           maximizedView === 'hihi' ? "flex-[10] z-20" : maximizedView === 'ideb' ? "flex-0 w-0 opacity-0 pointer-events-none" : "flex-[3] z-10"
@@ -112,12 +89,35 @@ export default function SportsHubPage() {
           />
           <button 
             onClick={() => toggleMaximize('hihi')}
-            className="absolute bottom-6 left-6 w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/40 group-hover:text-white group-hover:bg-white/20 transition-all focusable z-30 shadow-glow"
+            className="absolute bottom-6 right-6 w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/40 group-hover:text-white group-hover:bg-white/20 transition-all focusable z-30 shadow-glow"
           >
             {maximizedView === 'hihi' ? <Minimize2 className="w-7 h-7" /> : <Maximize2 className="w-7 h-7" />}
           </button>
-          <div className="absolute top-6 left-6 bg-black/40 backdrop-blur-md px-4 py-1.5 rounded-xl border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+          <div className="absolute top-6 right-6 bg-black/40 backdrop-blur-md px-4 py-1.5 rounded-xl border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
             <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest">HIHI2 FEED</span>
+          </div>
+        </div>
+
+        {/* IDEB SPORTS - Left View in RTL (70% width in split) */}
+        <div className={cn(
+          "relative rounded-[2.5rem] overflow-hidden border-2 border-white/5 transition-all duration-700 ease-in-out bg-black group shadow-2xl focusable",
+          maximizedView === 'ideb' ? "flex-[10] z-20" : maximizedView === 'hihi' ? "flex-0 w-0 opacity-0 pointer-events-none" : "flex-[7] z-10"
+        )} tabIndex={0} data-nav-id="ideb-frame-container">
+          <iframe 
+            key={`${key}-ideb`}
+            src="https://idebsports.ly/livestream"
+            className="w-full h-full border-none"
+            sandbox="allow-scripts allow-forms allow-same-origin allow-presentation allow-downloads"
+            style={{ background: '#000' }}
+          />
+          <button 
+            onClick={() => toggleMaximize('ideb')}
+            className="absolute bottom-6 right-6 w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/40 group-hover:text-white group-hover:bg-white/20 transition-all focusable z-30 shadow-glow"
+          >
+            {maximizedView === 'ideb' ? <Minimize2 className="w-7 h-7" /> : <Maximize2 className="w-7 h-7" />}
+          </button>
+          <div className="absolute top-6 right-6 bg-black/40 backdrop-blur-md px-4 py-1.5 rounded-xl border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+            <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">IDEB SPORTS LIVE</span>
           </div>
         </div>
 
