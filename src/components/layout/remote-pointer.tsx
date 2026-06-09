@@ -10,8 +10,9 @@ import { useToast } from "@/hooks/use-toast";
 import { getDisplayNumber } from "@/lib/constants";
 
 /**
- * Smart Engine v170.0 - Precision Numeric Buffer & Navigation
- * Fixed: Visual buffer for double-digit shortcuts (11, 13, 17) with 2s delay.
+ * Smart Engine v180.0 - Precision Dual-Use Keys & Numeric Buffer
+ * Fixed: 2, 4, 6, 8 now work as both arrows AND numeric inputs simultaneously.
+ * Added: Dual-pass logic to allow "1 then 4" to become "14" while moving Left.
  */
 export function RemotePointer() {
   const pathname = usePathname();
@@ -103,7 +104,6 @@ export function RemotePointer() {
       return;
     }
 
-    const currentNavId = current.getAttribute('data-nav-id') || '';
     const currentRect = current.getBoundingClientRect();
     const isVertical = direction === "ArrowUp" || direction === "ArrowDown";
     
@@ -231,32 +231,38 @@ export function RemotePointer() {
         else if (translatedKey === '5') translatedKey = 'Enter';
       }
 
-      const isNumeric = /^\d$/.test(translatedKey);
-      const isColor = ['Red', 'Green', 'Yellow', 'Blue'].includes(translatedKey);
+      const isNumeric = /^\d$/.test(rawKey);
+      const isDualKey = isAltModeActive && ['2','4','6','8','5'].includes(rawKey);
 
       if (!isRecordingKey && isNumeric) {
-        e.preventDefault();
         if (bufferTimerRef.current) clearTimeout(bufferTimerRef.current);
         
-        const nextBuffer = displayBuffer + translatedKey;
+        const nextBuffer = displayBuffer + rawKey;
         setDisplayBuffer(nextBuffer);
 
         if (nextBuffer.length >= 2) {
           executeAction(nextBuffer, e);
-          bufferTimerRef.current = setTimeout(() => setDisplayBuffer(""), 2500);
+          setDisplayBuffer("");
+          // Dual use: If it's a directional key, we DON'T return, allowing it to move focus too
+          if (!isDualKey) {
+            e.preventDefault();
+            return;
+          }
         } else {
-          bufferTimerRef.current = setTimeout(() => {
-            executeAction(nextBuffer, null);
-            setDisplayBuffer("");
-          }, 2000);
+          // Single digit handling with 2s window
+          if (!isDualKey) {
+            bufferTimerRef.current = setTimeout(() => {
+              executeAction(nextBuffer, null);
+              setDisplayBuffer("");
+            }, 2000);
+            e.preventDefault();
+            return;
+          } else {
+            // It's a dual key (Direction + Numeric Buffer contribution)
+            // Execute direction immediately via translatedKey below, skip single-digit command delay
+            bufferTimerRef.current = setTimeout(() => setDisplayBuffer(""), 2000);
+          }
         }
-        return;
-      }
-
-      if (!isRecordingKey && isColor) {
-        e.preventDefault();
-        executeAction(translatedKey, e);
-        return;
       }
 
       setPressedKey(translatedKey);
