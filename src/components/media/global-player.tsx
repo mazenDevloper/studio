@@ -1,15 +1,16 @@
+
 "use client";
 
 import { useMediaStore } from "@/lib/store";
-import { X, Monitor, ChevronRight, ChevronLeft, Settings, LayoutGrid, Bookmark, BookmarkCheck, Youtube, Maximize2, Minimize2, Eye, EyeOff, Tv } from "lucide-react";
+import { X, Monitor, ChevronRight, ChevronLeft, Settings, LayoutGrid, Bookmark, BookmarkCheck, Youtube, Maximize2, Minimize2, Eye, EyeOff, Tv, MonitorPlay } from "lucide-react";
 import { cn, normalizeKey } from "@/lib/utils";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { ShortcutBadge } from "@/components/layout/car-dock";
 
 /**
- * GlobalVideoPlayer v108.0 - Zero Latency Player
- * All durations set to 0 for instantaneous UI updates.
+ * GlobalVideoPlayer v110.0 - Resident Audio Engine
+ * Features: Media Session API for background playback & Deep Session Recovery.
  */
 export function GlobalVideoPlayer() {
   const { 
@@ -30,11 +31,40 @@ export function GlobalVideoPlayer() {
   const isSaved = activeVideo ? savedVideos.some(v => v.id === activeVideo.id) : false;
 
   const startSeconds = useMemo(() => {
-    if (activeVideo?.id && isSaved && videoProgress[activeVideo.id]) {
+    if (activeVideo?.id && videoProgress[activeVideo.id]) {
       return Math.floor(videoProgress[activeVideo.id]);
     }
     return 0;
-  }, [activeVideo?.id, isSaved, videoProgress]);
+  }, [activeVideo?.id, videoProgress]);
+
+  // --- AUTO-FULLSCREEN FOR IDEB ---
+  useEffect(() => {
+    if (activeIptv?.stream_id === 'ideb-live') {
+      setIsFullScreen(true);
+      setIsMinimized(false);
+    }
+  }, [activeIptv?.stream_id, setIsFullScreen, setIsMinimized]);
+
+  // --- MEDIA SESSION API: BACKGROUND PERSISTENCE ---
+  useEffect(() => {
+    if ('mediaSession' in navigator && isActive) {
+      const metadata = {
+        title: activeVideo?.title || activeIptv?.name || "DriveCast Transmission",
+        artist: activeVideo?.channelTitle || "Live Feed",
+        album: "DriveCast Entertainment",
+        artwork: [
+          { src: activeVideo?.thumbnail || activeIptv?.stream_icon || "", sizes: '512x512', type: 'image/jpeg' }
+        ]
+      };
+      
+      navigator.mediaSession.metadata = new MediaMetadata(metadata);
+
+      navigator.mediaSession.setActionHandler('play', () => { setIsPlaying(true); playerRef.current?.playVideo?.(); });
+      navigator.mediaSession.setActionHandler('pause', () => { setIsPlaying(false); playerRef.current?.pauseVideo?.(); });
+      navigator.mediaSession.setActionHandler('previoustrack', () => prevTrack());
+      navigator.mediaSession.setActionHandler('nexttrack', () => nextTrack());
+    }
+  }, [isActive, activeVideo, activeIptv, nextTrack, prevTrack, setIsPlaying]);
 
   useEffect(() => {
     const handleForcedKeys = (e: KeyboardEvent) => {
@@ -72,7 +102,7 @@ export function GlobalVideoPlayer() {
         if (playerRef.current?.getCurrentTime && lastIdRef.current) {
           updateVideoProgress(lastIdRef.current, playerRef.current.getCurrentTime());
         }
-      }, 15000); 
+      }, 5000); 
     } else if (event.data === YT.PlayerState.PAUSED) setIsPlaying(false);
     else if (event.data === YT.PlayerState.ENDED) nextTrack();
   }, [setIsPlaying, nextTrack, updateVideoProgress]);
@@ -98,9 +128,14 @@ export function GlobalVideoPlayer() {
         playsinline: 1, origin: window.location.origin, enablejsapi: 1,
         start: startSeconds
       },
-      events: { onReady: (e: any) => e.target.playVideo(), onStateChange: onPlayerStateChange }
+      events: { 
+        onReady: (e: any) => {
+          if (isPlaying) e.target.playVideo();
+        }, 
+        onStateChange: onPlayerStateChange 
+      }
     });
-  }, [mounted, onPlayerStateChange, startSeconds, playerMode]); 
+  }, [mounted, onPlayerStateChange, startSeconds, playerMode, isPlaying]); 
 
   useEffect(() => {
     const currentYouTubeId = activeVideo ? activeVideo.id : null;
@@ -114,8 +149,10 @@ export function GlobalVideoPlayer() {
   const handleClose = () => {
     if (playerRef.current?.destroy) try { playerRef.current.destroy(); } catch {}
     playerRef.current = null; lastIdRef.current = null;
+    if (progressInterval.current) clearInterval(progressInterval.current);
     setActiveVideo(null); setActiveIptv(null); setGridMode('hidden');
     setIsPlayerControlsExpanded(false);
+    if ('mediaSession' in navigator) navigator.mediaSession.metadata = null;
   };
 
   if (!mounted) return null;
@@ -141,7 +178,16 @@ export function GlobalVideoPlayer() {
             sandbox="allow-scripts allow-forms allow-same-origin allow-presentation allow-downloads" 
             style={{ background: '#000' }} 
           />
-        ) : (activeIptv?.url && <iframe key={activeIptv.stream_id} src={`${activeIptv.url}${activeIptv.url.includes('?') ? '&' : '?'}autoplay=1`} className="w-full h-full border-none" allow="autoplay; encrypted-media; fullscreen" sandbox="allow-scripts allow-forms allow-same-origin allow-presentation allow-downloads" style={{ background: '#000' }} />)}
+        ) : (activeIptv?.url && (
+          <iframe 
+            key={activeIptv.stream_id} 
+            src={`${activeIptv.url}${activeIptv.url.includes('?') ? '&' : '?'}autoplay=1`} 
+            className="w-full h-full border-none" 
+            allow="autoplay; encrypted-media; fullscreen" 
+            sandbox="allow-scripts allow-forms allow-same-origin allow-presentation allow-downloads" 
+            style={{ background: '#000' }} 
+          />
+        ))}
       </div>
 
       {isMinimized && (
@@ -201,40 +247,6 @@ export function GlobalVideoPlayer() {
           </div>
         </div>
       )}
-
-      <div 
-        className={cn(
-          "absolute left-0 right-0 z-[100] bg-black/95 backdrop-blur-[80px] border-t border-white/10 transition-all duration-0 ease-linear px-12 py-8 rounded-t-[3rem] overflow-hidden player-playlist-grid",
-          gridMode === 'hidden' ? "bottom-[-100%] h-0 invisible" : 
-          gridMode === 'partial' ? "bottom-0 h-[66%] visible" : "bottom-0 h-full visible"
-        )}
-      >
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-primary/20 flex items-center justify-center border border-primary/20"><LayoutGrid className="w-7 h-7 text-primary" /></div>
-            <div className="flex flex-col"><h2 className="text-3xl font-black text-white tracking-tighter">قائمة التشغيل الذكية</h2><span className="text-[10px] text-white/40 uppercase font-bold tracking-[0.3em]">{gridMode === 'full' ? 'Full View Sync' : 'Partial Context View'}</span></div>
-          </div>
-          <Button variant="ghost" size="icon" onClick={() => setGridMode('hidden')} className="w-14 h-14 rounded-full bg-white/5 text-white focusable"><X className="w-8 h-8" /></Button>
-        </div>
-        <div className="h-full overflow-y-auto no-scrollbar pb-40">
-          <div className="grid grid-cols-3 gap-8">
-            {currentPlaylist.map((v: any, i: number) => {
-              const id = activeIptv ? v.stream_id : v.id;
-              const isActiveItem = activeIptv ? (activeIptv.stream_id === id) : (activeVideo?.id === id);
-              return (
-                <div key={`pl-item-${id}-${i}`} onClick={() => { if (activeIptv) setActiveIptv(v, currentPlaylist); else setActiveVideo(v, currentPlaylist); setGridMode('hidden'); }} data-nav-id={`player-playlist-item-${i}`} className={cn("group rounded-[2.5rem] bg-white/5 p-5 transition-all duration-0 focusable cursor-pointer border-4", isActiveItem ? "border-primary shadow-glow scale-105" : "border-transparent opacity-60 hover:opacity-100")} tabIndex={0}>
-                  <div className="aspect-video relative rounded-[1.8rem] overflow-hidden mb-4 shadow-2xl">
-                    <img src={activeIptv ? v.stream_icon : v.thumbnail} alt="" className="w-full h-full object-cover" />
-                    {v.duration && <div className="absolute bottom-2 right-2 bg-black text-white text-[14px] px-3 py-1.5 rounded-lg font-black z-10 border border-white/20 shadow-2xl">{v.duration}</div>}
-                    {isActiveItem && <div className="absolute inset-0 bg-primary/20 flex items-center justify-center"><div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center animate-pulse shadow-glow"><Youtube className="w-6 h-6 text-white" /></div></div>}
-                  </div>
-                  <h3 className="text-base font-black text-white line-clamp-2 px-2 uppercase tracking-tight leading-relaxed text-right">{activeIptv ? v.name : v.title}</h3>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
 
       {isActive && !isMinimized && (
         <div className={cn("fixed z-[5200] flex items-center transition-all duration-0 player-controls-bar", isFullScreen ? "left-10 bottom-10 scale-125 origin-bottom-left" : "right-12 bottom-12 scale-90")}>

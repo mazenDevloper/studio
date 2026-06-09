@@ -88,8 +88,8 @@ export function CarDock() {
 
   const handleNavigate = (href: string) => {
     if (pathname === '/media' && href === '/media') resetMediaView();
-    // Direct routing for maximum speed
-    window.location.href = href;
+    // Using router.push instead of window.location.href to keep players alive
+    router.push(href);
   };
 
   return (
@@ -107,7 +107,7 @@ export function CarDock() {
       </div>
       <div className="flex mt-auto flex-col items-center gap-3">
         <button onClick={toggleDockSide} className="w-10 h-10 min-[980px]:w-12 min-[980px]:h-12 rounded-full bg-white/5 border border-white/10 text-white focusable flex items-center justify-center relative"><ArrowRightLeft className="w-5 h-5 min-[980px]:w-6 min-[980px]:h-6" /></button>
-        <button onClick={() => window.history.back()} className="w-10 h-10 min-[980px]:w-12 min-[980px]:h-12 rounded-full bg-white/5 border border-white/10 text-white focusable flex items-center justify-center relative"><ArrowLeft className="w-5 h-5 min-[980px]:w-6 min-[980px]:h-6" /></button>
+        <button onClick={() => router.back()} className="w-10 h-10 min-[980px]:w-12 min-[980px]:h-12 rounded-full bg-white/5 border border-white/10 text-white focusable flex items-center justify-center relative"><ArrowLeft className="w-5 h-5 min-[980px]:w-6 min-[980px]:h-6" /></button>
       </div>
     </div>
   );

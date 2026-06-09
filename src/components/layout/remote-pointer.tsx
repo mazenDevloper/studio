@@ -10,11 +10,12 @@ import { useToast } from "@/hooks/use-toast";
 import { getDisplayNumber } from "@/lib/constants";
 
 /**
- * Direct Routing Engine v410.0 - Auto-Focus & Path Transitions
- * Features: Automatic dock icon focusing on load + Direct window.location.href.
+ * Direct Routing Engine v420.0 - Persistent Audio/Video
+ * Features: Switched window.location to router.push to prevent video stops.
  */
 export function RemotePointer() {
   const pathname = usePathname();
+  const router = useRouter();
   const { toast } = useToast();
   
   const { 
@@ -187,17 +188,18 @@ export function RemotePointer() {
     if (isAction(finalKey, 'nav_back')) {
       e?.preventDefault();
       if (wallPlateType) { setWallPlate(null); return; }
-      if (pathname !== '/') { window.location.assign(document.referrer || '/'); return; }
+      if (pathname !== '/') { router.back(); return; }
       return;
     }
 
-    if (isAction(finalKey, 'goto_home')) { e?.preventDefault(); window.location.href = '/'; return; }
-    if (isAction(finalKey, 'goto_media')) { e?.preventDefault(); window.location.href = '/media'; return; }
-    if (isAction(finalKey, 'goto_quran')) { e?.preventDefault(); window.location.href = '/quran'; return; }
-    if (isAction(finalKey, 'goto_hihi2')) { e?.preventDefault(); window.location.href = '/hihi2'; return; }
-    if (isAction(finalKey, 'goto_iptv')) { e?.preventDefault(); window.location.href = '/iptv'; return; }
-    if (isAction(finalKey, 'goto_football')) { e?.preventDefault(); window.location.href = '/football'; return; }
-    if (isAction(finalKey, 'goto_settings')) { e?.preventDefault(); window.location.href = '/settings'; return; }
+    // Use router.push instead of window.location.href for SPA persistence
+    if (isAction(finalKey, 'goto_home')) { e?.preventDefault(); router.push('/'); return; }
+    if (isAction(finalKey, 'goto_media')) { e?.preventDefault(); router.push('/media'); return; }
+    if (isAction(finalKey, 'goto_quran')) { e?.preventDefault(); router.push('/quran'); return; }
+    if (isAction(finalKey, 'goto_hihi2')) { e?.preventDefault(); router.push('/hihi2'); return; }
+    if (isAction(finalKey, 'goto_iptv')) { e?.preventDefault(); router.push('/iptv'); return; }
+    if (isAction(finalKey, 'goto_football')) { e?.preventDefault(); router.push('/football'); return; }
+    if (isAction(finalKey, 'goto_settings')) { e?.preventDefault(); router.push('/settings'); return; }
     
     if (isAction(finalKey, 'nav_up')) { e?.preventDefault(); navigate("ArrowUp"); return; }
     if (isAction(finalKey, 'nav_down')) { e?.preventDefault(); navigate("ArrowDown"); return; }
@@ -215,7 +217,7 @@ export function RemotePointer() {
         e?.preventDefault(); activeEl.click();
       }
     }
-  }, [navigate, isAction, wallPlateType, setWallPlate, pathname, isAltModeActive, toggleAltMode, toast, removeChannel, removeReciter, toggleStarChannel, pickedUpId, setPickedUpId, removeVideo, isReorderMode, toggleReorderMode, isRecordingKey, displayScale, setDisplayScale, favoriteIptvChannels, setActiveIptv]);
+  }, [navigate, isAction, wallPlateType, setWallPlate, pathname, isAltModeActive, toggleAltMode, toast, removeChannel, removeReciter, toggleStarChannel, pickedUpId, setPickedUpId, removeVideo, isReorderMode, toggleReorderMode, isRecordingKey, displayScale, setDisplayScale, favoriteIptvChannels, setActiveIptv, router]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

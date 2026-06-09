@@ -1,4 +1,3 @@
-
 "use client";
 
 import { create } from "zustand";
@@ -1000,7 +999,7 @@ export const useMediaStore = create<MediaState>()(
       setLastLiveUpdate: (time) => set({ lastLiveUpdate: time }),
     }),
     {
-      name: "drivecast-ready-v35",
+      name: "drivecast-ready-v40", // Incremented for persistence update
       partialize: (state) => ({ 
         favoriteChannels: state.favoriteChannels,
         favoriteReciters: state.favoriteReciters,
@@ -1021,7 +1020,10 @@ export const useMediaStore = create<MediaState>()(
         customWallBackgrounds: state.customWallBackgrounds,
         prayerSettings: state.prayerSettings,
         reminders: state.reminders,
-        favoriteTeams: state.favoriteTeams
+        favoriteTeams: state.favoriteTeams,
+        activeVideo: state.activeVideo, // Save active video for auto-resume
+        activeIptv: state.activeIptv, // Save active IPTV for auto-resume
+        isPlaying: state.isPlaying // Save play state
       }),
     }
   )
