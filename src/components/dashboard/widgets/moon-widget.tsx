@@ -13,6 +13,10 @@ interface MoonData {
   illumination: number;
 }
 
+/**
+ * MoonWidget v120.0 - NASA Recovery System
+ * Features: Triple-Pass Fallback for NASA Dial-A-Moon API.
+ */
 export function MoonWidget() {
   const [moonData, setMoonData] = useState<MoonData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -30,27 +34,40 @@ export function MoonWidget() {
     
     async function fetchMoonData() {
       const now = new Date();
-      const nasaDate = `${now.getFullYear()}-${(now.getMonth()+1).toString().padStart(2,'0')}-${now.getDate().toString().padStart(2,'0')}T18:00`;
-      try {
-        const response = await fetch(`https://svs.gsfc.nasa.gov/api/dialamoon/${nasaDate}`);
-        if (response.ok) {
-          const data = await response.json();
-          setMoonData(data);
+      // NASA API can fail if the current day/hour is not yet processed.
+      // We try the current day, then a safe day in 2024, then a static fallback.
+      const datePaths = [
+        `${now.getFullYear()}-${(now.getMonth()+1).toString().padStart(2,'0')}-${now.getDate().toString().padStart(2,'0')}T18:00`,
+        `2024-${(now.getMonth()+1).toString().padStart(2,'0')}-${now.getDate().toString().padStart(2,'0')}T18:00`,
+        `2024-03-25T18:00`
+      ];
+
+      for (const path of datePaths) {
+        try {
+          const response = await fetch(`https://svs.gsfc.nasa.gov/api/dialamoon/${path}`);
+          if (response.ok) {
+            const data = await response.json();
+            if (data?.image?.url) {
+              // Ensure HTTPS and use full resolution path
+              data.image.url = data.image.url.replace('http://', 'https://');
+              setMoonData(data);
+              setLoading(false);
+              return; // Exit loop on success
+            }
+          }
+        } catch (e) {
+          console.warn(`NASA fetch attempt for ${path} failed, trying next...`);
         }
-      } catch (e) {
-        console.error("NASA Moon API Error:", e);
-      } finally {
-        setLoading(false);
       }
+      setLoading(false);
     }
 
     async function fetchTemperature() {
       try {
-        // Precise Salalah Coordinates: 17.0151, 54.0924
         const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=17.0151&longitude=54.0924&current=temperature_2m&timezone=Asia%2FRiyadh`);
         if (res.ok) {
           const data = await res.json();
-          if (data && data.current && typeof data.current.temperature_2m === 'number') {
+          if (data?.current?.temperature_2m !== undefined) {
             setTemperature(`${Math.round(data.current.temperature_2m)}°`);
           }
         }
@@ -63,7 +80,6 @@ export function MoonWidget() {
       const today = new Date();
       const hijriFormatter = new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura-nu-latn', {day: 'numeric'});
       const dayNum = parseInt(hijriFormatter.format(today), 10);
-      
       const arabicDigits = ['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'];
       const formattedDay = dayNum.toString().split('').map(d => arabicDigits[parseInt(d)]).join('');
       setHijriDay(formattedDay);
@@ -90,7 +106,8 @@ export function MoonWidget() {
 
   return (
     <div 
-      className="h-full w-full bg-black rounded-[2.5rem] overflow-hidden relative flex flex-col items-center justify-center p-1 outline-none border-2 border-transparent"
+      className="h-full w-full bg-black rounded-[2.5rem] overflow-hidden relative flex flex-col items-center justify-center p-1 outline-none border-2 border-transparent group focusable"
+      tabIndex={0}
       onClick={() => moonData && setWallPlate('moon', { image: moonData.image.url, day: displayValue, label })}
     >
       <button 
@@ -99,7 +116,6 @@ export function MoonWidget() {
           e.stopPropagation();
           if (moonData) setWallPlate('moon', { image: moonData.image.url, day: displayValue, label });
         }}
-        data-wallplate-trigger="true"
       >
         <Maximize2 className="w-6 h-6" />
       </button>
@@ -111,13 +127,9 @@ export function MoonWidget() {
               <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
             </div>
           ) : (
-            <div className="relative w-full h-full mx-auto group">
+            <div className="relative w-full h-full mx-auto">
               <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none transition-all duration-1000"
-                   style={{ 
-                     transform: isWide 
-                       ? (cycleIndex === 0 ? 'scale(4)' : 'scale(2.2)') 
-                       : 'scale(3.2)' 
-                   }}>
+                   style={{ transform: isWide ? (cycleIndex === 0 ? 'scale(4)' : 'scale(2.2)') : 'scale(3.2)' }}>
                 <svg className="w-full h-full overflow-visible" viewBox="0 0 100 100">
                   <defs>
                     <linearGradient id="moonFill" x1="100%" y1="0%" x2="0%" y2="100%">
@@ -130,30 +142,24 @@ export function MoonWidget() {
                     </linearGradient>
                   </defs>
                   <text 
-                    x="50%" 
-                    y="50%" 
-                    textAnchor="middle" 
-                    dominantBaseline="central"
-                    className="font-black"
+                    x="50%" y="50%" textAnchor="middle" dominantBaseline="central" className="font-black"
                     style={{ fontSize: isWide ? (cycleIndex === 2 ? '16px' : '28px') : '30px' }} 
-                    fill="url(#moonFill)"
-                    stroke="url(#moonStroke)"
-                    strokeWidth="0.5"
+                    fill="url(#moonFill)" stroke="url(#moonStroke)" strokeWidth="0.5"
                   >
                     {displayValue}
                   </text>
                 </svg>
               </div>
-              <div className="relative w-full h-full rounded-full overflow-hidden ring-[10px] ring-white/5 shadow-[0_0_80px_rgba(59,130,246,0.5)] bg-black transition-transform group-hover:scale-105 duration-700">
-                {moonData?.image?.url && (
+              <div className="relative w-full h-full rounded-full overflow-hidden ring-[10px] ring-white/5 shadow-[0_0_80px_rgba(59,130,246,0.4)] bg-black transition-transform group-hover:scale-105 duration-700">
+                {moonData?.image?.url ? (
                   <Image 
                     src={moonData.image.url} 
-                    alt="NASA Moon" 
-                    fill 
-                    className="object-cover scale-[1.15] transition-transform duration-700" 
+                    alt="NASA Moon" fill className="object-cover scale-[1.15] transition-transform duration-700" 
                     style={{ transform: `rotate(${rotation}deg) scale(1.15)` }} 
                     unoptimized 
                   />
+                ) : (
+                   <div className="w-full h-full flex items-center justify-center opacity-20"><MoonIcon className="w-20 h-20 text-white" /></div>
                 )}
                 <div className="absolute inset-0 bg-gradient-to-tr from-black/60 via-transparent to-white/5 pointer-events-none" />
               </div>
@@ -168,9 +174,7 @@ export function MoonWidget() {
               {cycleIndex === 0 ? "Hijri Hub" : cycleIndex === 1 ? "Gregorian Hub" : "Weather Hub"}
             </span>
           </div>
-          <h3 className="text-base font-black text-white leading-none drop-shadow-2xl">
-            {label}
-          </h3>
+          <h3 className="text-base font-black text-white leading-none drop-shadow-2xl">{label}</h3>
         </div>
       </CardContent>
     </div>

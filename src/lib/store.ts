@@ -1,3 +1,4 @@
+
 "use client";
 
 import { create } from "zustand";
@@ -402,44 +403,67 @@ export const useMediaStore = create<MediaState>()(
 
       fetchPriorityData: async (context) => {
         set({ isInitialLoading: true });
-        const fetchBin = async (id: string) => {
-          try {
-            const r = await fetch(`https://api.jsonbin.io/v3/b/${id}/latest`, { 
-              headers: { 'X-Master-Key': JSONBIN_MASTER_KEY }, cache: 'no-store' 
-            });
-            return r.ok ? (await r.json()).record : null;
-          } catch (e) { return null; }
+        
+        const fetchBinLatest = async (id: string) => {
+          for (let i = 0; i < 2; i++) { // Try twice
+            try {
+              const r = await fetch(`https://api.jsonbin.io/v3/b/${id}/latest`, { 
+                headers: { 'X-Master-Key': JSONBIN_MASTER_KEY }, cache: 'no-store' 
+              });
+              if (r.ok) {
+                const data = await r.json();
+                return data.record || data;
+              }
+            } catch (e) {
+              console.warn(`JSONBin Fetch Attempt ${i+1} failed for ${id}`);
+            }
+            await new Promise(res => setTimeout(res, 500));
+          }
+          return null;
         };
 
-        const pData = await fetchBin(JSONBIN_PRAYER_TIMES_BIN_ID);
-        if (pData) set({ prayerTimes: Array.isArray(pData) ? pData : (pData.prayers || []) });
-
-        const chData = await fetchBin(JSONBIN_CHANNELS_BIN_ID);
-        if (chData) set({ favoriteChannels: chData });
-
-        const recData = await fetchBin(JSONBIN_POPULAR_RECITERS_BIN_ID);
-        if (recData) set({ favoriteReciters: recData });
-
-        const [mManuscripts, masterBin] = await Promise.all([
-          fetchBin(JSONBIN_MANUSCRIPTS_BIN_ID),
-          fetchBin(JSONBIN_MASTER_BIN_ID)
+        // Parallel fetching of all critical bins
+        const [pData, chData, recData, mManuscripts, masterBin, iptvData, savedData] = await Promise.all([
+          fetchBinLatest(JSONBIN_PRAYER_TIMES_BIN_ID),
+          fetchBinLatest(JSONBIN_CHANNELS_BIN_ID),
+          fetchBinLatest(JSONBIN_POPULAR_RECITERS_BIN_ID),
+          fetchBinLatest(JSONBIN_MANUSCRIPTS_BIN_ID),
+          fetchBinLatest(JSONBIN_MASTER_BIN_ID),
+          fetchBinLatest(JSONBIN_IPTV_FAVS_BIN_ID),
+          fetchBinLatest(JSONBIN_SAVED_VIDEOS_BIN_ID)
         ]);
+
+        if (pData) set({ prayerTimes: Array.isArray(pData) ? pData : (pData.prayers || []) });
+        if (chData) set({ favoriteChannels: Array.isArray(chData) ? chData : [] });
+        if (recData) {
+          const list = Array.isArray(recData) ? recData : (recData.reciters || []);
+          set({ favoriteReciters: list });
+        }
         if (mManuscripts) set({ customManuscripts: Array.isArray(mManuscripts) ? mManuscripts : (mManuscripts.manuscripts || []) });
         if (masterBin) {
+          const safeKeys = { ...DEFAULT_CONTEXT_MAPPINGS };
+          if (masterBin.keyMappings) {
+            Object.keys(masterBin.keyMappings).forEach(ctx => {
+              if (typeof masterBin.keyMappings[ctx] === 'object') {
+                safeKeys[ctx] = { ...DEFAULT_CONTEXT_MAPPINGS[ctx], ...masterBin.keyMappings[ctx] };
+              }
+            });
+          }
           set({ 
             favoriteTeams: masterBin.favoriteTeams || [], 
             reminders: masterBin.reminders || [],
             mapSettings: { ...get().mapSettings, ...masterBin.mapSettings },
-            customWallBackgrounds: masterBin.customWallBackgrounds || []
+            customWallBackgrounds: masterBin.customWallBackgrounds || [],
+            keyMappings: safeKeys,
+            displayScale: masterBin.displayScale ?? 1.0,
+            dockScale: masterBin.dockScale ?? 1.0,
+            isAltModeActive: masterBin.isAltModeActive ?? true,
+            autoHideIsland: masterBin.autoHideIsland ?? true,
+            lastLiveUpdate: masterBin.lastLiveUpdate ?? 0
           });
         }
-
-        const [iptvData, savedData] = await Promise.all([
-          fetchBin(JSONBIN_IPTV_FAVS_BIN_ID),
-          fetchBin(JSONBIN_SAVED_VIDEOS_BIN_ID)
-        ]);
-        if (iptvData) set({ favoriteIptvChannels: iptvData });
-        if (savedData) set({ savedVideos: savedData });
+        if (iptvData) set({ favoriteIptvChannels: Array.isArray(iptvData) ? iptvData : [] });
+        if (savedData) set({ savedVideos: Array.isArray(savedData) ? savedData : [] });
         
         set({ isInitialLoading: false });
       },
@@ -760,7 +784,7 @@ export const useMediaStore = create<MediaState>()(
       }),
 
       removeCustomWallBackground: (url) => set((state) => {
-        newList = state.customWallBackgrounds.filter(u => u !== url);
+        let newList = state.customWallBackgrounds.filter(u => u !== url);
         setTimeout(() => get().syncMasterBin(), 100);
         return { customWallBackgrounds: newList };
       }),
@@ -1014,27 +1038,9 @@ if (typeof window !== "undefined") {
   const turboSync = async () => {
     try {
       await useMediaStore.getState().fetchPriorityData('all');
-      const mastR = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_MASTER_BIN_ID}/latest`, { 
-        headers: { 'X-Master-Key': JSONBIN_MASTER_KEY }, cache: 'no-store' 
-      });
-      if (mastR.ok) {
-        const m = (await mastR.json()).record;
-        const safe = { ...DEFAULT_CONTEXT_MAPPINGS };
-        if (m.keyMappings) {
-          Object.keys(m.keyMappings).forEach(ctx => { 
-            if (typeof m.keyMappings[ctx] === 'object') safe[ctx] = { ...DEFAULT_CONTEXT_MAPPINGS[ctx], ...m.keyMappings[ctx] };
-          });
-        }
-        useMediaStore.setState({
-          keyMappings: safe,
-          displayScale: m.displayScale ?? 1.0,
-          dockScale: m.dockScale ?? 1.0,
-          isAltModeActive: m.isAltModeActive ?? true,
-          autoHideIsland: m.autoHideIsland ?? true,
-          lastLiveUpdate: m.lastLiveUpdate ?? 0
-        });
-      }
-    } catch (e) { console.warn("LITESPEED Turbo Sync Warn:", e); }
+    } catch (e) { 
+      console.warn("LITESPEED Turbo Sync Error:", e); 
+    }
   };
   setTimeout(turboSync, 1);
 }
