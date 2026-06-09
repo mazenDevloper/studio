@@ -10,18 +10,17 @@ import { useToast } from "@/hooks/use-toast";
 import { getDisplayNumber } from "@/lib/constants";
 
 /**
- * Direct Routing Engine v400.0 - Immediate Path Transitions
- * Features: Direct window.location.href for zero-latency screen jumps.
+ * Direct Routing Engine v410.0 - Auto-Focus & Path Transitions
+ * Features: Automatic dock icon focusing on load + Direct window.location.href.
  */
 export function RemotePointer() {
   const pathname = usePathname();
-  const router = useRouter();
   const { toast } = useToast();
   
   const { 
-    wallPlateType, setWallPlate, dockSide, isFullScreen, isMinimized, 
-    activeVideo, activeIptv, selectedChannel, 
-    isAltModeActive, toggleAltMode, removeChannel, removeReciter, toggleStarChannel, favoriteChannels,
+    wallPlateType, setWallPlate, isFullScreen, isMinimized, 
+    activeVideo, activeIptv, 
+    isAltModeActive, toggleAltMode, removeChannel, removeReciter, toggleStarChannel,
     pickedUpId, setPickedUpId, reorderChannel, reorderReciter, reorderIptvChannel, removeVideo,
     isReorderMode, toggleReorderMode, setIsSidebarShrinked, isRecordingKey,
     displayScale, setDisplayScale, favoriteIptvChannels, setActiveIptv
@@ -35,6 +34,19 @@ export function RemotePointer() {
     try { init({ debug: false, visualDebug: false }); } 
     catch (e) { console.warn(e); }
   }, []);
+
+  // AUTO-FOCUS ON LOAD: Focus the active dock icon when the page changes
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      // Find the dock button that has the active styling
+      const activeDockBtn = document.querySelector('[data-nav-id^="dock-"].bg-blue-600\\/10') as HTMLElement;
+      if (activeDockBtn) {
+        activeDockBtn.focus();
+        activeDockBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 600); // Slight delay to ensure DOM is ready
+    return () => clearTimeout(timer);
+  }, [pathname]);
 
   useEffect(() => {
     const handleFocusIn = (e: FocusEvent) => {
@@ -85,7 +97,7 @@ export function RemotePointer() {
 
     let current = document.activeElement as HTMLElement;
     if (!current || current === document.body || !current.classList.contains("focusable")) {
-      const rescue = document.querySelector('[data-nav-id="dash-col-1"]') as HTMLElement || focusables[0];
+      const rescue = document.querySelector('[data-nav-id^="dock-"].bg-blue-600\\/10') as HTMLElement || focusables[0];
       rescue?.focus();
       return;
     }
@@ -179,7 +191,6 @@ export function RemotePointer() {
       return;
     }
 
-    // Direct Routing for immediate screen jumps
     if (isAction(finalKey, 'goto_home')) { e?.preventDefault(); window.location.href = '/'; return; }
     if (isAction(finalKey, 'goto_media')) { e?.preventDefault(); window.location.href = '/media'; return; }
     if (isAction(finalKey, 'goto_quran')) { e?.preventDefault(); window.location.href = '/quran'; return; }
