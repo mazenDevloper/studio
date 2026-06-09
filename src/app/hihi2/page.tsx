@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, useRef } from "react";
@@ -33,8 +32,8 @@ export function FootballBallIcon({ className }: { className?: string }) {
 }
 
 /**
- * SportsHubPage v410.0 - Optimized Split View
- * IDEB SPORTS (Left - 70%) starts at 200px scroll.
+ * SportsHubPage v415.0 - Optimized Split View
+ * IDEB SPORTS (Left - 70%) starts at 1000px scroll.
  * HIHI2 (Right - 30%).
  */
 export default function SportsHubPage() {
@@ -47,10 +46,10 @@ export default function SportsHubPage() {
     return () => clearInterval(interval);
   }, []);
 
-  // Handle 200px scroll offset for Ideb Sports on load
+  // Handle 1000px scroll offset for Ideb Sports on load (5x previous 200px)
   useEffect(() => {
     if (idebScrollRef.current) {
-      idebScrollRef.current.scrollTop = 200;
+      idebScrollRef.current.scrollTop = 1000;
     }
   }, [key, maximizedView]);
 
@@ -107,7 +106,7 @@ export default function SportsHubPage() {
           </div>
         </div>
 
-        {/* IDEB SPORTS - Left View (70% width) with 200px Scroll Offset Container */}
+        {/* IDEB SPORTS - Left View (70% width) with 1000px Scroll Offset Container */}
         <div className={cn(
           "relative rounded-[2.5rem] overflow-hidden border-2 border-white/5 transition-all duration-700 ease-in-out bg-black group shadow-2xl focusable flex flex-col",
           maximizedView === 'ideb' ? "flex-[10] z-20" : maximizedView === 'hihi' ? "flex-0 w-0 opacity-0 pointer-events-none" : "flex-[7] z-10"
