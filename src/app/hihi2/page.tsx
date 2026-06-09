@@ -33,8 +33,8 @@ export function FootballBallIcon({ className }: { className?: string }) {
 }
 
 /**
- * SportsHubPage v350.0 - Dual Stream Architecture
- * Features: Split-view Ideb/Hihi2, Maximize/Minimize Toggle, Auto-Refresh
+ * SportsHubPage v360.0 - Swapped Split View Architecture
+ * Features: Hihi2 on Left (30%), Ideb on Right (70%), Maximize/Minimize Toggle
  */
 export default function SportsHubPage() {
   const [key, setKey] = useState(Date.now());
@@ -77,10 +77,39 @@ export default function SportsHubPage() {
         </div>
       </header>
       
-      {/* Content Container with Split Layout */}
+      {/* Content Container with Swapped Split Layout */}
       <div className="flex-1 relative w-full h-full bg-zinc-950 p-4 flex gap-4 overflow-hidden">
         
-        {/* IDEB SPORTS - Left/Primary View (70% width in split) */}
+        {/* HIHI2 - Left View (30% width in split) */}
+        <div className={cn(
+          "relative rounded-[2.5rem] overflow-hidden border-2 border-white/5 transition-all duration-700 ease-in-out bg-black group shadow-2xl focusable",
+          maximizedView === 'hihi' ? "flex-[10] z-20" : maximizedView === 'ideb' ? "flex-0 w-0 opacity-0 pointer-events-none" : "flex-[3] z-10"
+        )} tabIndex={0} data-nav-id="hihi-frame-container">
+          <iframe 
+            key={`${key}-hihi`}
+            src="https://hihi2.com/"
+            className="w-full h-full border-none"
+            sandbox="allow-scripts allow-forms allow-same-origin allow-presentation allow-downloads"
+            style={{ background: '#000' }}
+          />
+          
+          {/* Maximize Toggle Button for HIHI2 */}
+          <button 
+            onClick={() => toggleMaximize('hihi')}
+            className="absolute bottom-6 left-6 w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/40 group-hover:text-white group-hover:bg-white/20 transition-all focusable z-30 shadow-glow"
+            title={maximizedView === 'hihi' ? "Minimize" : "Maximize HIHI2"}
+            data-nav-id="hihi-maximize-btn"
+          >
+            {maximizedView === 'hihi' ? <Minimize2 className="w-7 h-7" /> : <Maximize2 className="w-7 h-7" />}
+          </button>
+          
+          {/* Visual Indicator */}
+          <div className="absolute top-6 left-6 bg-black/40 backdrop-blur-md px-4 py-1.5 rounded-xl border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+            <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest">HIHI2 FEED</span>
+          </div>
+        </div>
+
+        {/* IDEB SPORTS - Right View (70% width in split) */}
         <div className={cn(
           "relative rounded-[2.5rem] overflow-hidden border-2 border-white/5 transition-all duration-700 ease-in-out bg-black group shadow-2xl focusable",
           maximizedView === 'ideb' ? "flex-[10] z-20" : maximizedView === 'hihi' ? "flex-0 w-0 opacity-0 pointer-events-none" : "flex-[7] z-10"
@@ -109,34 +138,6 @@ export default function SportsHubPage() {
           </div>
         </div>
 
-        {/* HIHI2 - Right/Side View (30% width in split) */}
-        <div className={cn(
-          "relative rounded-[2.5rem] overflow-hidden border-2 border-white/5 transition-all duration-700 ease-in-out bg-black group shadow-2xl focusable",
-          maximizedView === 'hihi' ? "flex-[10] z-20" : maximizedView === 'ideb' ? "flex-0 w-0 opacity-0 pointer-events-none" : "flex-[3] z-10"
-        )} tabIndex={0} data-nav-id="hihi-frame-container">
-          <iframe 
-            key={`${key}-hihi`}
-            src="https://hihi2.com/"
-            className="w-full h-full border-none"
-            sandbox="allow-scripts allow-forms allow-same-origin allow-presentation allow-downloads"
-            style={{ background: '#000' }}
-          />
-          
-          {/* Maximize Toggle Button for HIHI2 */}
-          <button 
-            onClick={() => toggleMaximize('hihi')}
-            className="absolute bottom-6 left-6 w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/40 group-hover:text-white group-hover:bg-white/20 transition-all focusable z-30 shadow-glow"
-            title={maximizedView === 'hihi' ? "Minimize" : "Maximize HIHI2"}
-            data-nav-id="hihi-maximize-btn"
-          >
-            {maximizedView === 'hihi' ? <Minimize2 className="w-7 h-7" /> : <Maximize2 className="w-7 h-7" />}
-          </button>
-          
-          {/* Visual Indicator */}
-          <div className="absolute top-6 left-6 bg-black/40 backdrop-blur-md px-4 py-1.5 rounded-xl border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-            <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest">HIHI2 FEED</span>
-          </div>
-        </div>
       </div>
 
       {/* Background Overlay Decoration */}
