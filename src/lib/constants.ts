@@ -66,3 +66,10 @@ export function convertTo12Hour(time24h: string | undefined): string {
     
     return `${hours12}:${minutes}`;
 }
+
+export const getDisplayNumber = (index: number) => {
+  let num = 11 + index;
+  if (num >= 13) num++;
+  if (num >= 17) num++;
+  return num;
+};

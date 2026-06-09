@@ -2,16 +2,16 @@
 "use client";
 
 import { useEffect, useCallback, useRef, useState } from "react";
-import { normalizeKey } from "@/lib/utils";
+import { normalizeKey, cn } from "@/lib/utils";
 import { usePathname, useRouter } from "next/navigation";
 import { useMediaStore, AppAction, MappingContext } from "@/lib/store";
 import { init } from "@noriginmedia/norigin-spatial-navigation";
 import { useToast } from "@/hooks/use-toast";
-import { cn } from "@/lib/utils";
+import { getDisplayNumber } from "@/lib/constants";
 
 /**
- * Smart Engine v160.0 - Precision Numeric Buffer & Navigation
- * Added 2s delay for numeric keys to support double-digit shortcuts.
+ * Smart Engine v170.0 - Precision Numeric Buffer & Navigation
+ * Fixed: Visual buffer for double-digit shortcuts (11, 13, 17) with 2s delay.
  */
 export function RemotePointer() {
   const pathname = usePathname();
@@ -24,12 +24,12 @@ export function RemotePointer() {
     isAltModeActive, toggleAltMode, removeChannel, removeReciter, toggleStarChannel, favoriteChannels,
     pickedUpId, setPickedUpId, reorderChannel, reorderReciter, reorderIptvChannel, removeVideo,
     isReorderMode, toggleReorderMode, setIsSidebarShrinked, isRecordingKey,
-    displayScale, setDisplayScale
+    displayScale, setDisplayScale, favoriteIptvChannels, setActiveIptv
   } = useMediaStore();
 
   const [pressedKey, setPressedKey] = useState<string | null>(null);
-  const keyBufferRef = useRef<string>("");
-  const comboTimeoutRef = useRef<any>(null);
+  const [displayBuffer, setDisplayBuffer] = useState<string>("");
+  const bufferTimerRef = useRef<any>(null);
 
   useEffect(() => {
     try { init({ debug: false, visualDebug: false }); } 
@@ -106,43 +106,13 @@ export function RemotePointer() {
     const currentNavId = current.getAttribute('data-nav-id') || '';
     const currentRect = current.getBoundingClientRect();
     const isVertical = direction === "ArrowUp" || direction === "ArrowDown";
-    const isMovingToSidebarDir = (dockSide === 'left' && direction === 'ArrowLeft') || (dockSide === 'right' && direction === 'ArrowRight');
-    const isMovingToContentDir = (dockSide === 'left' && direction === 'ArrowRight') || (dockSide === 'right' && direction === 'ArrowLeft');
-
-    if (pathname === '/media' && (currentNavId === 'media-search-input' || currentNavId === 'search-btn') && direction === 'ArrowDown') {
-      const target = document.querySelector('[data-nav-id="reciter-add"]') as HTMLElement;
-      if (target) { target.focus(); return; }
-    }
-
-    const isInsideDock = currentNavId.startsWith('dock-');
-    const isInsideSidebar = !!current.closest('aside');
-
+    
     let minDistance = Infinity;
     let next: HTMLElement | null = null;
 
     for (const el of focusables) {
       if (el === current) continue;
       
-      const targetInSidebar = !!el.closest('aside');
-      const targetInDock = el.getAttribute('data-nav-id')?.startsWith('dock-');
-
-      if (pathname === '/media' && isInsideDock && isMovingToContentDir) {
-        if (!targetInSidebar) continue;
-      }
-
-      if (pathname === '/media' && isInsideSidebar && isVertical && !targetInSidebar) continue;
-
-      if (pathname === '/media' && !isInsideSidebar && !isInsideDock && isMovingToSidebarDir) {
-        const isFirstInList = currentNavId === 'reciter-add' || currentNavId === 'reciter-0' || currentNavId === 'surah-0' || currentNavId === 'starred-item-0' || currentNavId === 'live-sub-item-0' || currentNavId === 'goals-item-0' || currentNavId === 'kids-item-0' || currentNavId === 'sub-grid-item-0';
-        let isFirstColInGrid = false;
-        if (currentNavId.startsWith('grid-item-')) {
-          const parts = currentNavId.split('-');
-          const idx = parseInt(parts[parts.length - 1]);
-          if (idx % 3 === 0) isFirstColInGrid = true;
-        }
-        if (!isFirstInList && !isFirstColInGrid && targetInSidebar) continue;
-      }
-
       const rect2 = el.getBoundingClientRect();
       const p1 = { x: currentRect.left + currentRect.width / 2, y: currentRect.top + currentRect.height / 2 };
       const p2 = { x: rect2.left + rect2.width / 2, y: rect2.top + rect2.height / 2 };
@@ -162,11 +132,22 @@ export function RemotePointer() {
       next.focus(); 
       next.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' }); 
     }
-  }, [wallPlateType, dockSide, pickedUpId, reorderChannel, reorderReciter, reorderIptvChannel, pathname, selectedChannel, favoriteChannels]);
+  }, [wallPlateType, pickedUpId, reorderChannel, reorderReciter, reorderIptvChannel]);
 
-  // Execute Action Logic
   const executeAction = useCallback((finalKey: string, e: KeyboardEvent | null) => {
     const activeEl = document.activeElement as HTMLElement;
+
+    // 1. Check for IPTV Direct Channel shortcuts (11-23)
+    if (/^\d+$/.test(finalKey)) {
+      const displayNum = parseInt(finalKey);
+      const target = favoriteIptvChannels.find((_, idx) => getDisplayNumber(idx) === displayNum);
+      if (target) {
+        e?.preventDefault();
+        setActiveIptv(target, favoriteIptvChannels);
+        toast({ title: "بث مباشر", description: `الانتقال إلى ${target.name}` });
+        return;
+      }
+    }
 
     if (isAction(finalKey, 'inc_zoom')) {
       e?.preventDefault();
@@ -227,7 +208,7 @@ export function RemotePointer() {
         e?.preventDefault(); activeEl.click();
       }
     }
-  }, [navigate, isAction, wallPlateType, setWallPlate, router, pathname, isAltModeActive, toggleAltMode, toast, removeChannel, removeReciter, toggleStarChannel, pickedUpId, setPickedUpId, removeVideo, isReorderMode, toggleReorderMode, isRecordingKey, displayScale, setDisplayScale]);
+  }, [navigate, isAction, wallPlateType, setWallPlate, router, pathname, isAltModeActive, toggleAltMode, toast, removeChannel, removeReciter, toggleStarChannel, pickedUpId, setPickedUpId, removeVideo, isReorderMode, toggleReorderMode, isRecordingKey, displayScale, setDisplayScale, favoriteIptvChannels, setActiveIptv]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -239,12 +220,8 @@ export function RemotePointer() {
         return; 
       }
 
-      setPressedKey(rawKey);
-      setTimeout(() => setPressedKey(null), 2500); 
-
       if (rawKey === 'Sub') { e.preventDefault(); toggleAltMode(); return; }
       
-      // ALt Mode Translation
       let translatedKey = rawKey;
       if (isAltModeActive) {
         if (translatedKey === '2') translatedKey = 'ArrowUp'; 
@@ -254,47 +231,53 @@ export function RemotePointer() {
         else if (translatedKey === '5') translatedKey = 'Enter';
       }
 
-      // Numeric Buffer System (2 Seconds)
       const isNumeric = /^\d$/.test(translatedKey);
       const isColor = ['Red', 'Green', 'Yellow', 'Blue'].includes(translatedKey);
 
-      if (!isRecordingKey && (isNumeric || isColor)) {
+      if (!isRecordingKey && isNumeric) {
         e.preventDefault();
-        if (comboTimeoutRef.current) clearTimeout(comboTimeoutRef.current);
+        if (bufferTimerRef.current) clearTimeout(bufferTimerRef.current);
+        
+        const nextBuffer = displayBuffer + translatedKey;
+        setDisplayBuffer(nextBuffer);
 
-        if (keyBufferRef.current) {
-          // Second key pressed: Execute combo immediately
-          const finalCombo = keyBufferRef.current + translatedKey;
-          keyBufferRef.current = "";
-          executeAction(finalCombo, e);
+        if (nextBuffer.length >= 2) {
+          executeAction(nextBuffer, e);
+          bufferTimerRef.current = setTimeout(() => setDisplayBuffer(""), 2500);
         } else {
-          // First key pressed: Start 2s window
-          keyBufferRef.current = translatedKey;
-          comboTimeoutRef.current = setTimeout(() => {
-            const singleKey = keyBufferRef.current;
-            keyBufferRef.current = "";
-            if (singleKey) executeAction(singleKey, null);
-          }, 2000); // 2 Seconds Buffer
+          bufferTimerRef.current = setTimeout(() => {
+            executeAction(nextBuffer, null);
+            setDisplayBuffer("");
+          }, 2000);
         }
         return;
       }
 
-      // Immediate execution for non-buffered keys
+      if (!isRecordingKey && isColor) {
+        e.preventDefault();
+        executeAction(translatedKey, e);
+        return;
+      }
+
+      setPressedKey(translatedKey);
+      setTimeout(() => setPressedKey(null), 2500); 
       executeAction(translatedKey, e);
     };
 
     window.addEventListener("keydown", handleKeyDown, true);
     return () => window.removeEventListener("keydown", handleKeyDown, true);
-  }, [executeAction, isAltModeActive, toggleAltMode, isRecordingKey]);
+  }, [executeAction, isAltModeActive, toggleAltMode, isRecordingKey, displayBuffer]);
 
   return (
     <>
-      {pressedKey && (
+      {(pressedKey || displayBuffer) && (
         <div className="fixed top-6 right-6 z-[10003] animate-in fade-in zoom-in duration-200">
           <div className="bg-black/60 backdrop-blur-3xl px-3 py-1 rounded-lg border border-white/10 shadow-2xl flex items-center gap-2">
             <div className="w-4 h-4 rounded-full bg-primary/20 flex items-center justify-center text-[7px] font-black text-primary border border-primary/20">Z</div>
-            <span className="text-[10px] font-black text-white tracking-tighter uppercase">{pressedKey}</span>
-            {keyBufferRef.current && (
+            <span className="text-[14px] font-black text-white tracking-tighter uppercase tabular-nums">
+              {displayBuffer || pressedKey}
+            </span>
+            {displayBuffer && (
               <div className="ml-1 w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             )}
           </div>
