@@ -10,9 +10,8 @@ import { useToast } from "@/hooks/use-toast";
 import { getDisplayNumber } from "@/lib/constants";
 
 /**
- * Smart Engine v180.0 - Precision Dual-Use Keys & Numeric Buffer
- * Fixed: 2, 4, 6, 8 now work as both arrows AND numeric inputs simultaneously.
- * Added: Dual-pass logic to allow "1 then 4" to become "14" while moving Left.
+ * Direct Routing Engine v400.0 - Immediate Path Transitions
+ * Features: Direct window.location.href for zero-latency screen jumps.
  */
 export function RemotePointer() {
   const pathname = usePathname();
@@ -79,7 +78,6 @@ export function RemotePointer() {
 
   const navigate = useCallback((direction: string) => {
     if (wallPlateType) return;
-    const isRTL = document.documentElement.dir === 'rtl';
     const focusables = Array.from(document.querySelectorAll(".focusable")).filter(el => {
       if (el.tagName === 'INPUT' && !(el as HTMLInputElement).classList.contains('focusable')) return false;
       return true;
@@ -95,8 +93,8 @@ export function RemotePointer() {
     if (pickedUpId) {
       const type = current.getAttribute('data-type');
       if (type === 'channel' || type === 'reciter' || type === 'iptv') {
-        const movePrev = isRTL ? (direction === 'ArrowRight' || direction === 'ArrowUp') : (direction === 'ArrowLeft' || direction === 'ArrowUp');
-        const moveNext = isRTL ? (direction === 'ArrowLeft' || direction === 'ArrowDown') : (direction === 'ArrowRight' || direction === 'ArrowDown');
+        const movePrev = (direction === 'ArrowRight' || direction === 'ArrowUp');
+        const moveNext = (direction === 'ArrowLeft' || direction === 'ArrowDown');
         if (type === 'channel') { if (movePrev) reorderChannel(pickedUpId, 'prev'); if (moveNext) reorderChannel(pickedUpId, 'next'); }
         else if (type === 'reciter') { if (movePrev) reorderReciter(pickedUpId, 'prev'); if (moveNext) reorderReciter(pickedUpId, 'next'); }
         else if (type === 'iptv') { if (movePrev) reorderIptvChannel(pickedUpId, 'prev'); if (moveNext) reorderIptvChannel(pickedUpId, 'next'); }
@@ -137,7 +135,6 @@ export function RemotePointer() {
   const executeAction = useCallback((finalKey: string, e: KeyboardEvent | null) => {
     const activeEl = document.activeElement as HTMLElement;
 
-    // 1. Check for IPTV Direct Channel shortcuts (11-23)
     if (/^\d+$/.test(finalKey)) {
       const displayNum = parseInt(finalKey);
       const target = favoriteIptvChannels.find((_, idx) => getDisplayNumber(idx) === displayNum);
@@ -151,15 +148,13 @@ export function RemotePointer() {
 
     if (isAction(finalKey, 'inc_zoom')) {
       e?.preventDefault();
-      const newScale = Math.min(1.5, (displayScale || 1.0) + 0.05);
-      setDisplayScale(newScale);
+      setDisplayScale(Math.min(1.5, (displayScale || 1.0) + 0.05));
       return;
     }
 
     if (isAction(finalKey, 'dec_zoom')) {
       e?.preventDefault();
-      const newScale = Math.max(0.5, (displayScale || 1.0) - 0.05);
-      setDisplayScale(newScale);
+      setDisplayScale(Math.max(0.5, (displayScale || 1.0) - 0.05));
       return;
     }
 
@@ -180,17 +175,18 @@ export function RemotePointer() {
     if (isAction(finalKey, 'nav_back')) {
       e?.preventDefault();
       if (wallPlateType) { setWallPlate(null); return; }
-      if (pathname !== '/') { router.back(); return; }
+      if (pathname !== '/') { window.location.assign(document.referrer || '/'); return; }
       return;
     }
 
-    if (isAction(finalKey, 'goto_home')) { e?.preventDefault(); router.push('/'); return; }
-    if (isAction(finalKey, 'goto_media')) { e?.preventDefault(); router.push('/media'); return; }
-    if (isAction(finalKey, 'goto_quran')) { e?.preventDefault(); router.push('/quran'); return; }
-    if (isAction(finalKey, 'goto_hihi2')) { e?.preventDefault(); router.push('/hihi2'); return; }
-    if (isAction(finalKey, 'goto_iptv')) { e?.preventDefault(); router.push('/iptv'); return; }
-    if (isAction(finalKey, 'goto_football')) { e?.preventDefault(); router.push('/football'); return; }
-    if (isAction(finalKey, 'goto_settings')) { e?.preventDefault(); router.push('/settings'); return; }
+    // Direct Routing for immediate screen jumps
+    if (isAction(finalKey, 'goto_home')) { e?.preventDefault(); window.location.href = '/'; return; }
+    if (isAction(finalKey, 'goto_media')) { e?.preventDefault(); window.location.href = '/media'; return; }
+    if (isAction(finalKey, 'goto_quran')) { e?.preventDefault(); window.location.href = '/quran'; return; }
+    if (isAction(finalKey, 'goto_hihi2')) { e?.preventDefault(); window.location.href = '/hihi2'; return; }
+    if (isAction(finalKey, 'goto_iptv')) { e?.preventDefault(); window.location.href = '/iptv'; return; }
+    if (isAction(finalKey, 'goto_football')) { e?.preventDefault(); window.location.href = '/football'; return; }
+    if (isAction(finalKey, 'goto_settings')) { e?.preventDefault(); window.location.href = '/settings'; return; }
     
     if (isAction(finalKey, 'nav_up')) { e?.preventDefault(); navigate("ArrowUp"); return; }
     if (isAction(finalKey, 'nav_down')) { e?.preventDefault(); navigate("ArrowDown"); return; }
@@ -208,7 +204,7 @@ export function RemotePointer() {
         e?.preventDefault(); activeEl.click();
       }
     }
-  }, [navigate, isAction, wallPlateType, setWallPlate, router, pathname, isAltModeActive, toggleAltMode, toast, removeChannel, removeReciter, toggleStarChannel, pickedUpId, setPickedUpId, removeVideo, isReorderMode, toggleReorderMode, isRecordingKey, displayScale, setDisplayScale, favoriteIptvChannels, setActiveIptv]);
+  }, [navigate, isAction, wallPlateType, setWallPlate, pathname, isAltModeActive, toggleAltMode, toast, removeChannel, removeReciter, toggleStarChannel, pickedUpId, setPickedUpId, removeVideo, isReorderMode, toggleReorderMode, isRecordingKey, displayScale, setDisplayScale, favoriteIptvChannels, setActiveIptv]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -243,13 +239,8 @@ export function RemotePointer() {
         if (nextBuffer.length >= 2) {
           executeAction(nextBuffer, e);
           setDisplayBuffer("");
-          // Dual use: If it's a directional key, we DON'T return, allowing it to move focus too
-          if (!isDualKey) {
-            e.preventDefault();
-            return;
-          }
+          if (!isDualKey) { e.preventDefault(); return; }
         } else {
-          // Single digit handling with 2s window
           if (!isDualKey) {
             bufferTimerRef.current = setTimeout(() => {
               executeAction(nextBuffer, null);
@@ -258,8 +249,6 @@ export function RemotePointer() {
             e.preventDefault();
             return;
           } else {
-            // It's a dual key (Direction + Numeric Buffer contribution)
-            // Execute direction immediately via translatedKey below, skip single-digit command delay
             bufferTimerRef.current = setTimeout(() => setDisplayBuffer(""), 2000);
           }
         }
