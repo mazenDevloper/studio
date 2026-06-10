@@ -4,7 +4,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useMediaStore, Reminder, Manuscript, AppAction, MappingContext, IptvChannel } from "@/lib/store";
 import { 
-  Settings, Bell, Trash2, Edit2, Plus, Monitor, Palette, Keyboard, Clock, CheckCircle2, Save, BookOpen, LayoutGrid, Eye, Timer, Tv, ArrowRightLeft, Globe, Loader2, RefreshCw
+  Settings, Bell, Trash2, Edit2, Plus, Monitor, Palette, Keyboard, Clock, CheckCircle2, Save, BookOpen, LayoutGrid, Eye, Timer, Tv, ArrowRightLeft, Globe, Loader2, RefreshCw, Mic, ChevronUp, User
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,7 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ShortcutBadge } from "@/components/layout/car-dock";
 
 /**
- * SettingsView v162.0 - Fixed JSX Syntax & Optimized Global Sync.
+ * SettingsView v165.0 - Integrated Reciters Reordering.
  */
 export function SettingsView() {
   const { 
@@ -29,7 +29,9 @@ export function SettingsView() {
     customWallBackgrounds, addCustomWallBackground, autoHideIsland, setAutoHideIsland,
     displayScale, setDisplayScale, dockScale, setDockScale,
     setIsRecordingKey, favoriteIptvChannels, toggleFavoriteIptvChannel, reorderIptvChannelTo,
-    syncMasterBin, syncEverythingToCloud, isInitialLoading, fetchPriorityData
+    favoriteReciters, removeReciter, reorderReciterTo, moveReciterToTop, saveRecitersReorder,
+    syncMasterBin, syncEverythingToCloud, isInitialLoading, fetchPriorityData,
+    isReorderMode, toggleReorderMode, pickedUpId, setPickedUpId
   } = useMediaStore();
   
   const { toast } = useToast();
@@ -44,6 +46,7 @@ export function SettingsView() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [isGlobalSyncing, setIsGlobalSyncing] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isSavingReciters, setIsSavingReciters] = useState(false);
 
   const [newReminder, setNewReminder] = useState<Partial<Reminder>>({
     label: "", relativePrayer: "manual", manualTime: "12:00", offsetMinutes: 0, color: "text-blue-400", iconType: "bell", countdownWindow: 15, countupWindow: 15, expiryType: 'prayer', expiryValue: 'next'
@@ -102,6 +105,16 @@ export function SettingsView() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const handleSaveRecitersOrder = async () => {
+    setIsSavingReciters(true);
+    try {
+      await saveRecitersReorder();
+      toast({ title: "تم حفظ الترتيب", description: "تمت مزامنة ترتيب القراء سحابياً" });
+    } finally {
+      setIsSavingReciters(false);
+    }
+  };
+
   useEffect(() => {
     if (!recordingAction) return;
     setIsRecordingKey(true);
@@ -127,6 +140,27 @@ export function SettingsView() {
     window.addEventListener("keydown", handleKeyDown, true);
     return () => { window.removeEventListener("keydown", handleKeyDown, true); setIsRecordingKey(false); };
   }, [recordingAction, selectedContext, setKeyMapping, toast, setIsRecordingKey, recordingType, firstKey]);
+
+  // Reorder Handlers for Reciters
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    if (!isReorderMode) return;
+    e.dataTransfer.setData("id", id);
+    setPickedUpId(id);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    if (!isReorderMode) return;
+    e.preventDefault();
+  };
+
+  const handleDropReciter = (e: React.DragEvent, targetId: string) => {
+    if (!isReorderMode) return;
+    e.preventDefault();
+    const sourceId = e.dataTransfer.getData("id");
+    if (sourceId === targetId) return;
+    reorderReciterTo(sourceId, targetId);
+    setPickedUpId(null);
+  };
 
   const wallPresets = [
     "https://images.unsplash.com/photo-1578301978693-85fa9c0320b9?q=80&w=2000", 
@@ -174,6 +208,7 @@ export function SettingsView() {
           <TabsTrigger value="appearance" className="rounded-full px-8 h-full font-bold focusable relative">المظهر</TabsTrigger>
           <TabsTrigger value="prayers" className="rounded-full px-8 h-full font-bold focusable relative">الصلوات</TabsTrigger>
           <TabsTrigger value="reminders" className="rounded-full px-8 h-full font-bold focusable relative">التذكيرات</TabsTrigger>
+          <TabsTrigger value="reciters" className="rounded-full px-8 h-full font-bold focusable relative">القراء</TabsTrigger>
           <TabsTrigger value="iptv_channels" className="rounded-full px-8 h-full font-bold focusable relative">قنوات البث</TabsTrigger>
           <TabsTrigger value="manuscripts" className="rounded-full px-8 h-full font-bold focusable relative">المخطوطات</TabsTrigger>
           <TabsTrigger value="buttonmap" className="rounded-full px-8 h-full font-bold focusable relative">الأزرار</TabsTrigger>
@@ -209,9 +244,6 @@ export function SettingsView() {
                     </Button>
                   </div>
                 </div>
-                <p className="text-[10px] text-white/30 font-bold uppercase tracking-widest leading-relaxed">
-                  ملاحظة: التخزين الجاهز يعمل كبديل مؤقت للمحتوى الذي لم يتم تحميله بعد من السيرفر.
-                </p>
               </div>
               <div className="space-y-8">
                 <div className="space-y-4">
@@ -247,115 +279,77 @@ export function SettingsView() {
               {editingId ? <Edit2 className="w-10 h-10 text-yellow-500" /> : <Bell className="w-10 h-10 text-primary" />}
               {editingId ? "تعديل التذكير" : "إضافة تذكير ذكي جديد"}
             </CardTitle>
-            
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              <div className="space-y-2">
-                <span className="text-[10px] font-black text-white/40 uppercase px-4">وصف التذكير (يظهر في الداشبورد)</span>
-                <Input placeholder="مثال: شرب الماء..." value={newReminder.label} onChange={(e) => setNewReminder({ ...newReminder, label: e.target.value })} className="h-16 bg-black/40 border-white/10 rounded-2xl px-6 text-xl text-white text-right focusable" />
-              </div>
-              
-              <div className="space-y-2">
-                <span className="text-[10px] font-black text-white/40 uppercase px-4">وقت البدء (مرتبط بـ)</span>
-                <Select value={newReminder.relativePrayer} onValueChange={(v) => setNewReminder({ ...newReminder, relativePrayer: v as any })}>
-                  <SelectTrigger className="h-16 bg-black/40 border-white/10 rounded-2xl px-6 text-xl text-white text-right focusable"><SelectValue /></SelectTrigger>
-                  <SelectContent className="bg-zinc-900 border-white/10 text-white dir-rtl">
-                    <SelectItem value="manual">وقت يدوي محدد</SelectItem>
-                    {prayerSettings.map(p => (<SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {newReminder.relativePrayer === 'manual' ? (
-                <div className="space-y-2">
-                  <span className="text-[10px] font-black text-white/40 uppercase px-4">تحديد الساعة</span>
-                  <Input type="time" value={newReminder.manualTime} onChange={(e) => setNewReminder({ ...newReminder, manualTime: e.target.value })} className="h-16 bg-black/40 border-white/10 rounded-2xl px-6 text-xl text-white focusable" />
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <span className="text-[10px] font-black text-white/40 uppercase px-4">الإزاحة (بالدقائق)</span>
-                  <div className="h-16 flex items-center px-6 bg-black/40 rounded-2xl border border-white/10">
-                    <Slider value={[newReminder.offsetMinutes || 0]} min={-60} max={60} step={1} onValueChange={([v]) => setNewReminder({ ...newReminder, offsetMinutes: v })} className="flex-1" />
-                    <span className="w-16 text-center text-lg font-black text-primary mr-4">{newReminder.offsetMinutes}د</span>
-                  </div>
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <span className="text-[10px] font-black text-white/40 uppercase px-4">نوع الانتهاء (متى يختفي)</span>
-                <Select value={newReminder.expiryType} onValueChange={(v) => setNewReminder({ ...newReminder, expiryType: v as any })}>
-                  <SelectTrigger className="h-16 bg-black/40 border-white/10 rounded-2xl px-6 text-xl text-white text-right focusable"><SelectValue /></SelectTrigger>
-                  <SelectContent className="bg-zinc-900 border-white/10 text-white dir-rtl">
-                    <SelectItem value="prayer">الربط بصلاة محددة</SelectItem>
-                    <SelectItem value="manual">وقت يدوي محدد</SelectItem>
-                    <SelectItem value="duration">مدة عرض بالدقائق</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <span className="text-[10px] font-black text-white/40 uppercase px-4">قيمة الانتهاء</span>
-                {newReminder.expiryType === 'prayer' ? (
-                  <Select value={newReminder.expiryValue} onValueChange={(v) => setNewReminder({ ...newReminder, expiryValue: v })}>
-                    <SelectTrigger className="h-16 bg-black/40 border-white/10 rounded-2xl px-6 text-xl text-white text-right focusable"><SelectValue /></SelectTrigger>
-                    <SelectContent className="bg-zinc-900 border-white/10 text-white dir-rtl">
-                      <SelectItem value="next">الصلاة التالية تلقائياً</SelectItem>
-                      {prayerSettings.map(p => (<SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>))}
-                    </SelectContent>
-                  </Select>
-                ) : newReminder.expiryType === 'manual' ? (
-                  <Input type="time" value={newReminder.expiryValue} onChange={(e) => setNewReminder({ ...newReminder, expiryValue: e.target.value })} className="h-16 bg-black/40 border-white/10 rounded-2xl px-6 text-xl text-white focusable" />
-                ) : (
-                  <div className="h-16 flex items-center px-6 bg-black/40 rounded-2xl border border-white/10">
-                    <Slider value={[parseInt(newReminder.expiryValue || '30')]} min={1} max={120} step={1} onValueChange={([v]) => setNewReminder({ ...newReminder, expiryValue: v.toString() })} className="flex-1" />
-                    <span className="w-16 text-center text-lg font-black text-accent mr-4">{newReminder.expiryValue || '30'}د</span>
-                  </div>
-                )}
-              </div>
-
-              <Button onClick={handleSaveReminder} className="h-16 bg-primary text-white font-black text-xl rounded-2xl shadow-glow focusable mt-auto self-end">
-                <Save className="w-7 h-7 ml-3" /> {editingId ? "تحديث التذكير" : "حفظ التذكير"}
-              </Button>
+              <div className="space-y-2"><span className="text-[10px] font-black text-white/40 uppercase px-4">وصف التذكير</span><Input placeholder="مثال: شرب الماء..." value={newReminder.label} onChange={(e) => setNewReminder({ ...newReminder, label: e.target.value })} className="h-16 bg-black/40 border-white/10 rounded-2xl px-6 text-xl text-white text-right focusable" /></div>
+              <div className="space-y-2"><span className="text-[10px] font-black text-white/40 uppercase px-4">وقت البدء</span><Select value={newReminder.relativePrayer} onValueChange={(v) => setNewReminder({ ...newReminder, relativePrayer: v as any })}><SelectTrigger className="h-16 bg-black/40 border-white/10 rounded-2xl px-6 text-xl text-white text-right focusable"><SelectValue /></SelectTrigger><SelectContent className="bg-zinc-900 border-white/10 text-white dir-rtl"><SelectItem value="manual">وقت يدوي محدد</SelectItem>{prayerSettings.map(p => (<SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>))}</SelectContent></Select></div>
+              {newReminder.relativePrayer === 'manual' ? (<div className="space-y-2"><span className="text-[10px] font-black text-white/40 uppercase px-4">تحديد الساعة</span><Input type="time" value={newReminder.manualTime} onChange={(e) => setNewReminder({ ...newReminder, manualTime: e.target.value })} className="h-16 bg-black/40 border-white/10 rounded-2xl px-6 text-xl text-white focusable" /></div>) : (<div className="space-y-2"><span className="text-[10px] font-black text-white/40 uppercase px-4">الإزاحة</span><div className="h-16 flex items-center px-6 bg-black/40 rounded-2xl border border-white/10"><Slider value={[newReminder.offsetMinutes || 0]} min={-60} max={60} step={1} onValueChange={([v]) => setNewReminder({ ...newReminder, offsetMinutes: v })} className="flex-1" /><span className="w-16 text-center text-lg font-black text-primary mr-4">{newReminder.offsetMinutes}د</span></div></div>)}
+              <Button onClick={handleSaveReminder} className="h-16 bg-primary text-white font-black text-xl rounded-2xl shadow-glow focusable mt-auto self-end"><Save className="w-7 h-7 ml-3" /> {editingId ? "تحديث" : "حفظ"}</Button>
             </div>
           </Card>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {reminders.map((rem) => (
+              <div key={rem.id} className="bg-white/5 border border-white/5 p-6 rounded-[2rem] flex items-center justify-between group hover:bg-white/10 transition-all">
+                <div className="flex items-center gap-6"><div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center bg-black/40 shadow-xl", rem.color)}><Bell className="w-7 h-7" /></div><div className="flex flex-col"><h4 className="text-xl font-black text-white">{rem.label}</h4></div></div>
+                <div className="flex gap-2"><Button variant="ghost" size="icon" onClick={() => handleEdit(rem)} className="w-12 h-12 rounded-full bg-white/5 text-white/40 hover:bg-yellow-500 hover:text-black focusable"><Edit2 className="w-5 h-5" /></Button><Button variant="ghost" size="icon" onClick={() => removeReminder(rem.id)} className="w-12 h-12 rounded-full bg-red-600/10 text-red-500 hover:bg-red-600 hover:text-white focusable"><Trash2 className="w-5 h-5" /></Button></div>
+              </div>
+            ))}
+          </div>
+        </TabsContent>
 
-          <div className="space-y-6">
-            <div className="flex items-center justify-between px-4">
-              <h3 className="text-2xl font-black text-white/60">قائمة التذكيرات المخزنة</h3>
-              <span className="bg-white/5 border border-white/10 px-4 py-1 rounded-full text-xs font-black text-white/40 uppercase tracking-widest">{reminders.length} تذكير</span>
+        <TabsContent value="reciters" className="space-y-8 animate-in fade-in duration-300">
+          <Card className="bg-white/5 border-white/10 p-8 rounded-[3rem]">
+            <div className="flex items-center justify-between mb-10">
+              <div className="flex flex-col gap-1">
+                <CardTitle className="text-3xl font-black text-white flex items-center gap-4"><Mic className="w-8 h-8 text-emerald-400" />إدارة القراء والمبدعين</CardTitle>
+                <div className="flex gap-4 mt-2">
+                  <Button onClick={toggleReorderMode} variant={isReorderMode ? "default" : "outline"} className={cn("rounded-full h-10 px-6 font-black relative", isReorderMode ? "bg-yellow-500 text-black shadow-glow" : "bg-white/5 text-white")}>
+                    <ArrowRightLeft className="w-4 h-4 ml-2" /> {isReorderMode ? "إيقاف الترتيب" : "وضع الترتيب"}
+                  </Button>
+                  <Button onClick={handleSaveRecitersOrder} disabled={isSavingReciters} className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 rounded-full h-10 px-6 font-black focusable">
+                    {isSavingReciters ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : <Save className="w-4 h-4 ml-2" />} حفظ الترتيب
+                  </Button>
+                </div>
+              </div>
             </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {reminders.map((rem) => (
-                <div key={rem.id} className="bg-white/5 border border-white/5 p-6 rounded-[2rem] flex items-center justify-between group hover:bg-white/10 transition-all">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {favoriteReciters.map((r, idx) => (
+                <div 
+                  key={r.channelid} 
+                  draggable={isReorderMode}
+                  onDragStart={(e) => handleDragStart(e, r.channelid)}
+                  onDragOver={handleDragOver}
+                  onDrop={(e) => handleDropReciter(e, r.channelid)}
+                  onClick={() => isReorderMode && setPickedUpId(pickedUpId === r.channelid ? null : r.channelid)}
+                  className={cn(
+                    "bg-black/40 border border-white/5 p-6 rounded-[2.5rem] flex items-center justify-between group hover:border-emerald-500/40 transition-all duration-300 focusable",
+                    pickedUpId === r.channelid ? "border-accent scale-105 bg-accent/10" : "",
+                    isReorderMode && "cursor-move"
+                  )}
+                  tabIndex={0}
+                  data-type="reciter"
+                  data-id={r.channelid}
+                >
                   <div className="flex items-center gap-6">
-                    <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center bg-black/40 shadow-xl", rem.color)}>
-                      <Bell className="w-7 h-7" />
-                    </div>
-                    <div className="flex flex-col">
-                      <h4 className="text-xl font-black text-white">{rem.label}</h4>
-                      <div className="flex items-center gap-3 mt-1">
-                        <span className="text-[10px] font-bold text-white/30 uppercase tracking-tighter">
-                          يبدأ: {rem.relativePrayer === 'manual' ? rem.manualTime : rem.relativePrayer} {rem.offsetMinutes !== 0 && `(${rem.offsetMinutes > 0 ? '+' : ''}${rem.offsetMinutes}د)`}
-                        </span>
-                        <div className="w-1 h-1 rounded-full bg-white/20" />
-                        <span className="text-[10px] font-bold text-white/30 uppercase tracking-tighter">
-                          ينتهي: {rem.expiryType === 'prayer' ? (rem.expiryValue === 'next' ? 'الصلاة التالية' : rem.expiryValue) : rem.expiryValue}
-                        </span>
+                    <div className="relative">
+                      <div className="w-14 h-14 rounded-full overflow-hidden border border-white/10 bg-zinc-900 shadow-xl">
+                        {r.image ? <img src={r.image} className="w-full h-full object-cover" alt="" /> : <User className="w-6 h-6 text-white/20" />}
                       </div>
+                      <div className="absolute -top-2 -right-2 bg-emerald-500 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black text-black">{idx + 1}</div>
                     </div>
+                    <div className="flex flex-col"><h4 className="font-black text-white truncate max-w-[150px]">{r.name}</h4><span className="text-[10px] text-white/30 font-bold uppercase">قائمة المبدعين</span></div>
                   </div>
-                  <div className="flex gap-2">
-                    <Button variant="ghost" size="icon" onClick={() => handleEdit(rem)} className="w-12 h-12 rounded-full bg-white/5 text-white/40 hover:bg-yellow-500 hover:text-black focusable transition-all">
-                      <Edit2 className="w-5 h-5" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => removeReminder(rem.id)} className="w-12 h-12 rounded-full bg-red-600/10 text-red-500 hover:bg-red-600 hover:text-white focusable transition-all">
-                      <Trash2 className="w-5 h-5" />
-                    </Button>
+                  <div className="flex items-center gap-2">
+                    {isReorderMode && (
+                      <button onClick={(e) => { e.stopPropagation(); moveReciterToTop(r.channelid); }} className="w-10 h-10 rounded-full bg-white/5 text-yellow-500 flex items-center justify-center hover:bg-white/10">
+                        <ChevronUp className="w-5 h-5" />
+                      </button>
+                    )}
+                    <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); removeReciter(r.channelid); }} className="w-10 h-10 rounded-full bg-red-600/10 text-red-500 border border-red-600/20 hover:bg-red-600 hover:text-white"><Trash2 className="w-4 h-4" /></Button>
                   </div>
                 </div>
               ))}
             </div>
-          </div>
+          </Card>
         </TabsContent>
 
         <TabsContent value="iptv_channels" className="space-y-8 animate-in fade-in duration-300">
@@ -403,3 +397,4 @@ export function SettingsView() {
     </div>
   );
 }
+

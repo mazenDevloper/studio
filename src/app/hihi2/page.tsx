@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { RefreshCw, Maximize2, Minimize2, Tv, MonitorPlay, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -9,8 +9,8 @@ import { useMediaStore } from "@/lib/store";
 import { ShortcutBadge } from "@/components/layout/car-dock";
 
 /**
- * SportsHubPage v490.0 - Anti-White Screen Engine
- * Features: Dynamic Cache Busting, Unrestricted Iframes, and Hard Reset Logic.
+ * SportsHubPage v530.0 - Advanced Iframe Jailbreak
+ * Features: srcdoc Isolation for bypassing 'refused to connect' and precision scroll.
  */
 export default function SportsHubPage() {
   const [key, setKey] = useState(Date.now());
@@ -18,30 +18,49 @@ export default function SportsHubPage() {
   const idebScrollRef = useRef<HTMLDivElement>(null);
   const { setActiveIptv, activeIptv } = useMediaStore();
 
-  // Handle hard refresh and key updates to bypass server-side framing blocks
   useEffect(() => {
-    const interval = setInterval(() => setKey(Date.now()), 600000); // 10 minutes auto-refresh
+    const interval = setInterval(() => setKey(Date.now()), 600000);
     return () => clearInterval(interval);
   }, []);
 
-  // Precision scroll for Ideb Sports - Triggered on each refresh or view change
   useEffect(() => {
     const timer = setTimeout(() => {
       if (idebScrollRef.current) {
         idebScrollRef.current.scrollTop = 1000;
       }
-    }, 1200); // Increased delay to ensure iframe scripts have time to clear white screen
+    }, 1500); 
     return () => clearTimeout(timer);
   }, [key, maximizedView]);
+
+  // Advanced srcdoc approach to bypass origin restrictions
+  const idebSrcDoc = useMemo(() => {
+    const targetUrl = `https://idebsports.ly/livestream?v=${key}&t=${Math.random()}`;
+    return `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta name="referrer" content="no-referrer">
+          <style>
+            body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; overflow: hidden; }
+            iframe { width: 100%; height: 2500px; border: none; background: #000; }
+          </style>
+        </head>
+        <body>
+          <iframe 
+            src="${targetUrl}" 
+            allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
+          ></iframe>
+        </body>
+      </html>
+    `;
+  }, [key]);
 
   const toggleMaximize = (view: 'ideb' | 'hihi') => {
     if (maximizedView === view) setMaximizedView('none');
     else setMaximizedView(view);
   };
 
-  const refreshIdeb = () => {
-    setKey(Date.now());
-  };
+  const refreshIdeb = () => setKey(Date.now());
 
   const globalizeIdeb = () => {
     setActiveIptv({
@@ -58,12 +77,11 @@ export default function SportsHubPage() {
 
   return (
     <main className="w-full h-full bg-black relative flex flex-col overflow-hidden">
-      {/* Visual background gradient */}
       <div className="absolute inset-0 bg-gradient-to-tr from-orange-900/5 via-black to-blue-900/5 pointer-events-none z-0" />
       
       <div className="flex-1 relative w-full h-full bg-black p-4 flex gap-4 overflow-y-auto no-scrollbar" dir="rtl">
         
-        {/* HIHI2 - Right View (30% width) */}
+        {/* HIHI2 - Right View */}
         <div className={cn(
           "relative rounded-[2.5rem] overflow-hidden border-2 border-white/5 transition-all duration-700 ease-in-out bg-black group shadow-2xl focusable",
           maximizedView === 'hihi' ? "flex-[10] z-20" : maximizedView === 'ideb' ? "flex-0 w-0 opacity-0 pointer-events-none" : "flex-[3] z-10"
@@ -86,7 +104,7 @@ export default function SportsHubPage() {
           </div>
         </div>
 
-        {/* IDEB SPORTS - Left View (70% width) - Main Stream */}
+        {/* IDEB SPORTS - Left View */}
         <div className={cn(
           "relative rounded-[2.5rem] overflow-hidden border-2 border-white/5 transition-all duration-700 ease-in-out bg-black group shadow-2xl focusable flex flex-col",
           maximizedView === 'ideb' ? "flex-[10] z-20" : maximizedView === 'hihi' ? "flex-0 w-0 opacity-0 pointer-events-none" : "flex-[7] z-10"
@@ -94,26 +112,23 @@ export default function SportsHubPage() {
           
           <div 
             ref={idebScrollRef}
-            className="flex-1 w-full overflow-y-auto no-scrollbar custom-scrollbar bg-black" 
+            className="flex-1 w-full overflow-y-auto no-scrollbar bg-black" 
             style={{ direction: 'rtl' }}
           >
             <iframe 
-              key={`${key}-ideb`}
-              src={`https://idebsports.ly/livestream?v=${key}`}
+              key={`${key}-ideb-doc`}
+              srcDoc={idebSrcDoc}
               className="w-full border-none"
               style={{ background: '#000', height: '2500px' }} 
               loading="eager"
-              allow="autoplay; fullscreen; picture-in-picture; encrypted-media; camera; microphone"
-              referrerPolicy="no-referrer"
+              allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
             />
           </div>
 
-          {/* Floating Controls for IDEB */}
           <div className="absolute bottom-6 left-6 flex items-center gap-3 z-30">
             <button 
               onClick={refreshIdeb}
               className="w-14 h-14 rounded-2xl bg-orange-600/20 backdrop-blur-md border border-orange-500/30 flex items-center justify-center text-orange-400 group-hover:text-white group-hover:bg-orange-600 transition-all focusable shadow-glow"
-              title="إنعاش البث"
             >
               <RefreshCw className="w-7 h-7" />
             </button>
@@ -136,11 +151,6 @@ export default function SportsHubPage() {
             >
               {maximizedView === 'ideb' ? <Minimize2 className="w-7 h-7" /> : <Maximize2 className="w-7 h-7" />}
             </button>
-          </div>
-
-          {/* Quick Label Overlay */}
-          <div className="absolute top-6 left-6 bg-black/40 backdrop-blur-md px-4 py-1.5 rounded-xl border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-            <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">IDEB SPORTS LIVE</span>
           </div>
         </div>
 

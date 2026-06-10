@@ -1,3 +1,4 @@
+
 "use client";
 
 import { create } from "zustand";
@@ -157,10 +158,12 @@ interface MediaState {
   removeChannel: (channelid: string) => void;
   reorderChannel: (fromId: string, direction: 'prev' | 'next') => void;
   reorderChannelTo: (fromId: string, toId: string) => void;
+  moveChannelToTop: (channelId: string) => void;
   addReciter: (channel: YouTubeChannel) => void;
   removeReciter: (channelid: string) => void;
   reorderReciter: (fromId: string, direction: 'prev' | 'next') => void;
   reorderReciterTo: (fromId: string, toId: string) => void;
+  moveReciterToTop: (channelId: string) => void;
   toggleSaveVideo: (video: YouTubeVideo) => void;
   removeVideo: (id: string) => void;
   toggleStarChannel: (channelid: string) => void;
@@ -234,6 +237,7 @@ interface MediaState {
   fetchClubsFromCache: (leagueId: string) => Promise<void>;
   saveIptvReorder: () => Promise<void>;
   saveChannelsReorder: () => Promise<void>;
+  saveRecitersReorder: () => Promise<void>;
 }
 
 const updateBin = async (binId: string, data: any) => {
@@ -548,6 +552,11 @@ export const useMediaStore = create<MediaState>()(
         await updateBin(JSONBIN_CHANNELS_BIN_ID, state.favoriteChannels);
       },
 
+      saveRecitersReorder: async () => {
+        const state = get();
+        await updateBin(JSONBIN_POPULAR_RECITERS_BIN_ID, state.favoriteReciters);
+      },
+
       fetchPrayerTimes: async () => {
         try {
           const res = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_PRAYER_TIMES_BIN_ID}/latest`, {
@@ -602,7 +611,6 @@ export const useMediaStore = create<MediaState>()(
         const nextIdx = direction === 'next' ? idx + 1 : idx - 1;
         if (nextIdx < 0 || nextIdx >= list.length) return state;
         [list[idx], list[nextIdx]] = [list[nextIdx], list[idx]];
-        setTimeout(() => updateBin(JSONBIN_CHANNELS_BIN_ID, list), 500);
         return { favoriteChannels: list };
       }),
 
@@ -613,7 +621,15 @@ export const useMediaStore = create<MediaState>()(
         if (fromIdx === -1 || toIdx === -1) return state;
         const [moved] = list.splice(fromIdx, 1);
         list.splice(toIdx, 0, moved);
-        setTimeout(() => updateBin(JSONBIN_CHANNELS_BIN_ID, list), 500);
+        return { favoriteChannels: list };
+      }),
+
+      moveChannelToTop: (channelId) => set((state) => {
+        const list = [...state.favoriteChannels];
+        const idx = list.findIndex(c => c.channelid === channelId);
+        if (idx <= 0) return state;
+        const [moved] = list.splice(idx, 1);
+        list.unshift(moved);
         return { favoriteChannels: list };
       }),
 
@@ -640,7 +656,6 @@ export const useMediaStore = create<MediaState>()(
         const nextIdx = direction === 'next' ? idx + 1 : idx - 1;
         if (nextIdx < 0 || nextIdx >= list.length) return state;
         [list[idx], list[nextIdx]] = [list[nextIdx], list[idx]];
-        setTimeout(() => updateBin(JSONBIN_POPULAR_RECITERS_BIN_ID, list), 500);
         return { favoriteReciters: list };
       }),
 
@@ -651,7 +666,15 @@ export const useMediaStore = create<MediaState>()(
         if (fromIdx === -1 || toIdx === -1) return state;
         const [moved] = list.splice(fromIdx, 1);
         list.splice(toIdx, 0, moved);
-        setTimeout(() => updateBin(JSONBIN_POPULAR_RECITERS_BIN_ID, list), 500);
+        return { favoriteReciters: list };
+      }),
+
+      moveReciterToTop: (channelId) => set((state) => {
+        const list = [...state.favoriteReciters];
+        const idx = list.findIndex(r => r.channelid === channelId);
+        if (idx <= 0) return state;
+        const [moved] = list.splice(idx, 1);
+        list.unshift(moved);
         return { favoriteReciters: list };
       }),
 
@@ -748,7 +771,6 @@ export const useMediaStore = create<MediaState>()(
         const nextIdx = direction === 'next' ? idx + 1 : idx - 1;
         if (nextIdx < 0 || nextIdx >= list.length) return state;
         [list[idx], list[nextIdx]] = [list[nextIdx], list[idx]];
-        setTimeout(() => updateBin(JSONBIN_IPTV_FAVS_BIN_ID, list), 500);
         return { favoriteIptvChannels: list };
       }),
 
@@ -759,7 +781,6 @@ export const useMediaStore = create<MediaState>()(
         if (fromIdx === -1 || toIdx === -1) return state;
         const [moved] = list.splice(fromIdx, 1);
         list.splice(toIdx, 0, moved);
-        setTimeout(() => updateBin(JSONBIN_IPTV_FAVS_BIN_ID, list), 500);
         return { favoriteIptvChannels: list };
       }),
 
@@ -999,7 +1020,7 @@ export const useMediaStore = create<MediaState>()(
       setLastLiveUpdate: (time) => set({ lastLiveUpdate: time }),
     }),
     {
-      name: "drivecast-ready-v40", // Incremented for persistence update
+      name: "drivecast-ready-v40", 
       partialize: (state) => ({ 
         favoriteChannels: state.favoriteChannels,
         favoriteReciters: state.favoriteReciters,
@@ -1021,9 +1042,9 @@ export const useMediaStore = create<MediaState>()(
         prayerSettings: state.prayerSettings,
         reminders: state.reminders,
         favoriteTeams: state.favoriteTeams,
-        activeVideo: state.activeVideo, // Save active video for auto-resume
-        activeIptv: state.activeIptv, // Save active IPTV for auto-resume
-        isPlaying: state.isPlaying // Save play state
+        activeVideo: state.activeVideo, 
+        activeIptv: state.activeIptv, 
+        isPlaying: state.isPlaying 
       }),
     }
   )

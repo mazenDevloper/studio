@@ -188,7 +188,7 @@ export function RemotePointer() {
     if (isAction(finalKey, 'nav_back')) {
       e?.preventDefault();
       if (wallPlateType) { setWallPlate(null); return; }
-      if (pathname !== '/') { router.back(); return; }
+      if (pathname !== '/') { router.push('/'); return; }
       return;
     }
 

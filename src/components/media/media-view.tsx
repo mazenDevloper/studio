@@ -2,12 +2,13 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { 
   Search, Plus, Loader2, X, List, 
   Flame, Activity, RadioIcon, Trophy, Baby, ChevronRight, User, Youtube, Star, ArrowRightLeft, Mic, Play, Clock, Goal, UserPlus, CheckCircle2,
-  Sparkles, AlertCircle
+  Sparkles, AlertCircle, BookmarkPlus, GraduationCap, ChevronUp, Save
 } from "lucide-react";
 import { useMediaStore, YouTubeChannel, YouTubeVideo } from "@/lib/store";
 import { searchYouTubeChannels, fetchChannelVideos, searchYouTubeVideos } from "@/lib/youtube";
@@ -134,16 +135,17 @@ function AddContentModal({
 }
 
 /**
- * MediaView v370.0 - Quota-Efficient Starred Radar
- * Fetches Live, Stream, Upcoming from STARRED channels only.
+ * MediaView v590.0 - Advanced Live Probing & 3-Col Grid
+ * Features: 10 individual channel probes for /live and /stream, grid-cols-3 for desktop.
  */
 export function MediaView() {
+  const searchParams = useSearchParams();
   const { 
     favoriteChannels, addChannel, setActiveVideo, dockSide, isSidebarShrinked, setIsSidebarShrinked,
     selectedChannel, setSelectedChannel, channelVideos, setChannelVideos,
-    favoriteReciters, addReciter, 
-    isReorderMode, toggleReorderMode, pickedUpId, setPickedUpId, reorderChannelTo, reorderReciterTo,
-    fetchPriorityData, lastLiveUpdate, setLastLiveUpdate, syncMasterBin
+    favoriteReciters, addReciter, toggleSaveVideo, savedVideos,
+    isReorderMode, toggleReorderMode, pickedUpId, setPickedUpId, reorderChannelTo, moveChannelToTop,
+    fetchPriorityData, lastLiveUpdate, setLastLiveUpdate, syncMasterBin, saveChannelsReorder
   } = useMediaStore();
 
   const { toast } = useToast();
@@ -152,6 +154,7 @@ export function MediaView() {
   const [loading, setLoading] = useState(false);
   const [surahs, setSurahs] = useState<any[]>([]);
   const [windowWidth, setWindowWidth] = useState(0);
+  const [isSavingReorder, setIsSavingReorder] = useState(false);
   
   const [starredVideos, setStarredVideos] = useState<YouTubeVideo[]>([]);
   const [isStarredLoading, setIsStarredLoading] = useState(false);
@@ -180,20 +183,36 @@ export function MediaView() {
     window.addEventListener('resize', handleResize);
     fetch("https://api.quran.com/api/v4/chapters?language=ar").then(r => r.json()).then(d => setSurahs(d.chapters || []));
     setIsSidebarShrinked(false);
+    
+    const q = searchParams.get('q');
+    if (q) {
+      setSearch(q);
+      performSearch(q);
+    }
+    
     return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  }, [searchParams]);
 
   const performSearch = async (overrideQuery?: string) => {
     const queryToUse = overrideQuery || search;
     if (!queryToUse.trim()) return;
-    setLoading(true); setIsIsolatedViewActive(true); setIsSidebarShrinked(true);
-    try { const res = await searchYouTubeVideos(queryToUse); setSearchResults(res || []); } finally { setLoading(false); }
+    setLoading(true); 
+    setIsIsolatedViewActive(true); 
+    setIsSidebarShrinked(true);
+    try { 
+      const res = await searchYouTubeVideos(queryToUse); 
+      setSearchResults(res || []); 
+    } catch (e) {
+      console.error("Search Error:", e);
+      setSearchResults([]);
+    } finally { 
+      setLoading(false); 
+    }
   };
 
   const fetchFeeds = useCallback(async (force = false) => {
     if (!favoriteChannels.length) return;
 
-    const now = new Date();
     const timeSinceLast = Date.now() - lastLiveUpdate;
     const twoHours = 2 * 60 * 60 * 1000;
     const shouldUpdateLive = force || timeSinceLast >= twoHours;
@@ -202,46 +221,91 @@ export function MediaView() {
     setIsSpecializedLoading(true);
     
     try {
-      // 1. Fetch Goals and Kids (Specialized Lists)
-      const [writerResults, todResults, kidsRyan] = await Promise.allSettled([
-        searchYouTubeVideos("كاتب الاهداف", 5),
-        searchYouTubeVideos("TOD TV ملخص", 10),
-        searchYouTubeVideos("ريان بالعربي", 10)
+      const [writerResults, todResults, kidsData] = await Promise.allSettled([
+        searchYouTubeVideos("ملخصات مباريات الأمس كووورة", 10),
+        searchYouTubeVideos("TOD TV highlights", 10),
+        searchYouTubeVideos("كلمات الطفل الأولى ريان بالعربي كيدز بالعربي", 30)
       ]);
 
       const mergedGoals: YouTubeVideo[] = [];
       if (writerResults.status === 'fulfilled') mergedGoals.push(...writerResults.value);
       if (todResults.status === 'fulfilled') mergedGoals.push(...todResults.value);
       setMatchGoals(mergedGoals.slice(0, 15));
-      if (kidsRyan.status === 'fulfilled') setKidsVideos(kidsRyan.value);
 
-      // 2. Fetch Starred Channel Live Feeds (Quota Efficient)
-      if (shouldUpdateLive || starredVideos.length === 0) {
-        const starred = favoriteChannels.filter(c => c.starred);
-        const targetChannels = starred.length > 0 ? starred : favoriteChannels.slice(0, 5);
+      if (kidsData.status === 'fulfilled') {
+        const rawKids = kidsData.value;
+        const rayyanVideos = rawKids.filter(v => v.channelTitle?.includes("ريان"));
+        const kidsArabicVideos = rawKids.filter(v => v.channelTitle?.includes("كيدز") || v.channelTitle?.includes("Kids"));
         
-        // Single bundled search for live content from target channels
-        const bundles = targetChannels.map(c => `"${c.name}"`).join(' | ');
-        const bundleQuery = `${bundles} live stream upcoming "بث مباشر"`;
+        const finalKids: YouTubeVideo[] = [];
+        finalKids.push(...rawKids.slice(0, 3));
+        [0, 2, 4].forEach(idx => { if (rayyanVideos[idx]) finalKids.push(rayyanVideos[idx]); });
+        [1, 3, 5].forEach(idx => { if (kidsArabicVideos[idx]) finalKids.push(kidsArabicVideos[idx]); });
+
+        const usedIds = new Set(finalKids.map(v => v.id));
+        rawKids.forEach(v => { if (!usedIds.has(v.id) && finalKids.length < 20) { finalKids.push(v); usedIds.add(v.id); } });
+        setKidsVideos(finalKids);
+      }
+
+      // 1. YouTube Starred Videos (One per channel)
+      const starredChannels = favoriteChannels.filter(c => c.starred);
+      if (starredChannels.length > 0) {
+        const starredPromises = starredChannels.map(c => fetchChannelVideos(c.channelid, 1));
+        const starredResults = await Promise.allSettled(starredPromises);
+        const syncStarred: YouTubeVideo[] = [];
+        starredResults.forEach(res => {
+           if (res.status === 'fulfilled' && res.value.length > 0) {
+             syncStarred.push(res.value[0]);
+           }
+        });
+        setStarredVideos(syncStarred);
+      }
+
+      // 2. Advanced Live Probing (Top 10 Channels /live & /stream)
+      if (shouldUpdateLive || liveFromSubs.length === 0) {
+        const top10 = favoriteChannels.slice(0, 10);
+        const liveResults: YouTubeVideo[] = [];
+        const seenIds = new Set();
         
-        const liveResults = await searchYouTubeVideos(bundleQuery, 20);
-        setLiveFromSubs(liveResults.filter(v => v.isLive));
-        setStarredVideos(liveResults.slice(0, 15));
+        // Execute individual probes for each top channel
+        const probePromises = top10.map(async (c) => {
+          const [liveRes, streamRes] = await Promise.all([
+            searchYouTubeVideos(`"${c.name}" /live`, 2),
+            searchYouTubeVideos(`"${c.name}" /stream`, 2)
+          ]);
+          return [...liveRes, ...streamRes].filter(v => v.isLive);
+        });
+
+        const probeResults = await Promise.allSettled(probePromises);
+        probeResults.forEach(res => {
+          if (res.status === 'fulfilled') {
+            res.value.forEach(v => {
+              if (!seenIds.has(v.id) && liveResults.length < 15) {
+                liveResults.push(v);
+                seenIds.add(v.id);
+              }
+            });
+          }
+        });
         
+        setLiveFromSubs(liveResults.slice(0, 10));
         setLastLiveUpdate(Date.now());
         syncMasterBin();
       }
     } finally { setIsStarredLoading(false); setIsSpecializedLoading(false); }
-  }, [favoriteChannels, lastLiveUpdate, setLastLiveUpdate, syncMasterBin, starredVideos.length]);
+  }, [favoriteChannels, lastLiveUpdate, setLastLiveUpdate, syncMasterBin, liveFromSubs.length]);
 
   useEffect(() => { fetchFeeds(); }, [fetchFeeds]);
 
   useEffect(() => {
     if (selectedChannel) {
-      setLoading(true); setIsIsolatedViewActive(true);
-      fetchChannelVideos(selectedChannel.channelid, 20).then(v => { setChannelVideos(v); setLoading(false); }).catch(() => setLoading(false));
+      setLoading(true); 
+      setIsIsolatedViewActive(true);
+      fetchChannelVideos(selectedChannel.channelid, 20)
+        .then(v => { setChannelVideos(v); setLoading(false); })
+        .catch(() => setLoading(false));
     }
-  }, [selectedChannel]);
+  }, [selectedChannel, setChannelVideos]);
 
   const handleReciterClick = (name: string) => { 
     setSearch(prev => {
@@ -261,10 +325,88 @@ export function MediaView() {
     });
   };
 
-  const resetView = () => { setSelectedChannel(null); setSearchResults([]); setSearch(""); setIsIsolatedViewActive(false); setIsSidebarShrinked(false); };
+  const resetView = () => { 
+    setSelectedChannel(null); 
+    setSearchResults([]); 
+    setSearch(""); 
+    setIsIsolatedViewActive(false); 
+    setIsSidebarShrinked(false); 
+  };
 
-  const horizontalListClass = "w-full flex gap-3 px-8 pb-1 overflow-x-auto no-scrollbar scroll-smooth justify-start items-center";
+  const getSmartLabel = (title: string, isLive: boolean) => {
+    const t = title.toLowerCase();
+    if (isLive) return { text: "مباشر الآن", color: "bg-red-600" };
+    if (t.includes("ملخص") || t.includes("highlight")) return { text: "ملخص المباراة", color: "bg-blue-600" };
+    if (t.includes("اهداف") || t.includes("goals")) return { text: "أهداف", color: "bg-emerald-600" };
+    if (t.includes("مصحف") || t.includes("سورة")) return { text: "تلاوة", color: "bg-amber-600" };
+    return null;
+  };
+
+  const handleChannelAction = (e: React.MouseEvent, channelId: string | undefined, channelTitle: string | undefined) => {
+    e.stopPropagation();
+    if (!channelId || !channelTitle) return;
+    
+    const isFollowing = favoriteChannels.some(c => c.channelid === channelId);
+    if (!isFollowing) {
+      addChannel({ 
+        channelid: channelId, 
+        name: channelTitle, 
+        image: `https://yt3.ggpht.com/ytc/${channelId}=s88-c-k-c0x00ffffff-no-rj`, 
+        channeltitle: channelTitle, 
+        clickschannel: 0, 
+        starred: true 
+      });
+      toast({ title: "تم جرس القناة", description: `متابعة ${channelTitle} بنجاح` });
+    }
+  };
+
+  const navigateToChannel = (e: React.MouseEvent, channelId: string | undefined, channelTitle: string | undefined) => {
+    e.stopPropagation();
+    if (!channelId || !channelTitle) return;
+    setSelectedChannel({
+      channelid: channelId,
+      name: channelTitle,
+      image: `https://yt3.ggpht.com/ytc/${channelId}=s88-c-k-c0x00ffffff-no-rj`,
+      channeltitle: channelTitle,
+      clickschannel: 0,
+      starred: false
+    });
+    setSearchResults([]);
+  };
+
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    if (!isReorderMode) return;
+    e.dataTransfer.setData("id", id);
+    setPickedUpId(id);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    if (!isReorderMode) return;
+    e.preventDefault();
+  };
+
+  const handleDropChannel = (e: React.DragEvent, targetId: string) => {
+    if (!isReorderMode) return;
+    e.preventDefault();
+    const sourceId = e.dataTransfer.getData("id");
+    if (sourceId === targetId) return;
+    reorderChannelTo(sourceId, targetId);
+    setPickedUpId(null);
+  };
+
+  const handleSaveOrder = async () => {
+    setIsSavingReorder(true);
+    try {
+      await saveChannelsReorder();
+      toast({ title: "تم حفظ الترتيب", description: "تمت مزامنة ترتيب القنوات سحابياً" });
+    } finally {
+      setIsSavingReorder(false);
+    }
+  };
+
+  const activeGridVideos = selectedChannel ? channelVideos : searchResults;
   const showIsolatedView = isIsolatedViewActive || !!selectedChannel || searchResults.length > 0;
+  const horizontalListClass = "w-full flex gap-3 px-8 pb-1 overflow-x-auto no-scrollbar scroll-smooth justify-start items-center";
 
   return (
     <div className={cn("h-screen flex bg-transparent overflow-hidden relative", isDockLeft ? "flex-row-reverse" : "flex-row")}>
@@ -276,18 +418,64 @@ export function MediaView() {
           isDockLeft ? "border-l" : "border-r"
         )}>
           <div className="p-2 flex items-center justify-between border-b border-white/5">
-            {!isSidebarShrinked && <h2 className="text-[10px] font-black text-white/40 uppercase tracking-widest px-2">الاشتراكات</h2>}
-            <button onClick={() => setIsAddChannelOpen(true)} className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center transition-all focusable relative z-[150] shadow-glow border border-primary/20" tabIndex={0}><Plus className="w-5 h-5" /></button>
+            {!isSidebarShrinked && (
+              <div className="flex flex-col">
+                <h2 className="text-[10px] font-black text-white/40 uppercase tracking-widest px-2">الاشتراكات</h2>
+                {isReorderMode && <span className="text-[8px] text-yellow-500 font-bold px-2 animate-pulse">وضع الترتيب نشط</span>}
+              </div>
+            )}
+            <div className="flex items-center gap-1">
+              {isReorderMode && !isSidebarShrinked && (
+                <button onClick={handleSaveOrder} className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/30 focusable" disabled={isSavingReorder}>
+                  {isSavingReorder ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                </button>
+              )}
+              <button onClick={() => setIsAddChannelOpen(true)} className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center transition-all focusable relative z-[150] shadow-glow border border-primary/20" tabIndex={0}><Plus className="w-5 h-5" /></button>
+            </div>
           </div>
           <div className="flex-1 overflow-y-auto custom-scrollbar py-1 flex flex-col gap-0.5">
-            <div onClick={resetView} className={cn("flex items-center gap-3 p-2 cursor-pointer focusable w-[96%] mx-auto rounded-lg", !selectedChannel && !searchResults.length ? "bg-primary text-white" : "hover:bg-white/5 text-white/60")} tabIndex={0}>
+            <div onClick={resetView} className={cn("flex items-center gap-3 p-2 cursor-pointer focusable w-[96%] mx-auto rounded-lg", !selectedChannel && !searchResults.length && !isIsolatedViewActive ? "bg-primary text-white" : "hover:bg-white/5 text-white/60")} tabIndex={0}>
               <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/10 shrink-0"><List className="w-4 h-4" /></div>
               {!isSidebarShrinked && <span className="flex-1 text-right font-black text-sm block overflow-hidden whitespace-nowrap px-1">الكل</span>}
             </div>
             {favoriteChannels.map((ch, idx) => (
-              <div key={ch.channelid} onClick={() => { setSearchResults([]); setSelectedChannel(ch); }} className={cn("flex flex-row-reverse items-center p-2 rounded-lg w-[96%] mx-auto gap-3 cursor-pointer focusable shrink-0 border-2", selectedChannel?.channelid === ch.channelid ? "bg-primary text-white shadow-glow" : "hover:bg-white/5 text-white/60", pickedUpId === ch.channelid ? "border-accent animate-pulse" : "border-transparent")} tabIndex={0} data-nav-id={`subs-${idx + 1}`}>
-                <div className="w-8 h-8 rounded-lg overflow-hidden border border-white/10 shrink-0 relative"><img src={ch.image} className="w-full h-full object-cover" alt="" />{ch.starred && <div className="absolute top-0 right-0 w-2 h-2 bg-yellow-500 rounded-full shadow-glow" />}</div>
-                {!isSidebarShrinked && <span className="font-black text-sm flex-1 text-right leading-none text-white block overflow-hidden whitespace-nowrap px-1">{truncateName(ch.name)}</span>}
+              <div 
+                key={ch.channelid} 
+                draggable={isReorderMode}
+                onDragStart={(e) => handleDragStart(e, ch.channelid)}
+                onDragOver={handleDragOver}
+                onDrop={(e) => handleDropChannel(e, ch.channelid)}
+                onClick={() => { 
+                  if (isReorderMode) {
+                    setPickedUpId(pickedUpId === ch.channelid ? null : ch.channelid);
+                  } else {
+                    setSearchResults([]); setSelectedChannel(ch); 
+                  }
+                }} 
+                className={cn(
+                  "flex flex-row-reverse items-center p-2 rounded-lg w-[96%] mx-auto gap-3 cursor-pointer focusable shrink-0 border-2", 
+                  selectedChannel?.channelid === ch.channelid ? "bg-primary text-white shadow-glow" : "hover:bg-white/5 text-white/60", 
+                  pickedUpId === ch.channelid ? "border-yellow-500 animate-pulse bg-yellow-500/10" : "border-transparent",
+                  isReorderMode && "cursor-move"
+                )} 
+                tabIndex={0} data-nav-id={`subs-${idx + 1}`} data-type="channel" data-id={ch.channelid}
+              >
+                <div className="w-8 h-8 rounded-lg overflow-hidden border border-white/10 shrink-0 relative">
+                  <img src={ch.image} className="w-full h-full object-cover" alt="" />
+                  {ch.starred && <div className="absolute top-0 right-0 w-2 h-2 bg-yellow-500 rounded-full shadow-glow" />}
+                </div>
+                {!isSidebarShrinked && (
+                  <>
+                    <span className="font-black text-sm flex-1 text-right leading-none text-white block overflow-hidden whitespace-nowrap px-1">{truncateName(ch.name)}</span>
+                    {isReorderMode && (
+                      <div className="flex gap-1 shrink-0">
+                         <button onClick={(e) => { e.stopPropagation(); moveChannelToTop(ch.channelid); }} className="w-6 h-6 rounded bg-white/10 flex items-center justify-center hover:bg-white/20 transition-all">
+                           <ChevronUp className="w-3.5 h-3.5 text-yellow-500" />
+                         </button>
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
             ))}
           </div>
@@ -318,18 +506,22 @@ export function MediaView() {
             </section>
 
             <section className="min-h-[140px]" data-row-id="media-row-reciters">
-              <div className="flex items-center justify-between px-8 mb-2"><h2 className="text-[10px] font-black text-white/40 uppercase tracking-widest">القراء والمبدعون</h2></div>
+              <div className="flex items-center justify-between px-8 mb-2">
+                <h2 className="text-[10px] font-black text-white/40 uppercase tracking-widest">القراء والمبدعون</h2>
+              </div>
               <div className={horizontalListClass}>
                 <button onClick={() => setIsAddReciterOpen(true)} className="flex flex-col items-center gap-2 px-3 py-2 rounded-[1.5rem] focusable shrink-0 min-w-[100px] border-4 border-transparent hover:bg-emerald-600/20" tabIndex={0}><div className="w-14 h-14 rounded-full flex items-center justify-center bg-emerald-500/10 border-2 border-dashed border-emerald-500/30 text-emerald-400 shadow-lg"><UserPlus className="w-7 h-7" /></div><span className="text-[9px] font-black text-emerald-400/60 uppercase tracking-widest">إضافة</span></button>
                 {favoriteReciters.map((r, i) => (
                   <button 
                     key={r.channelid} 
                     onClick={() => handleReciterClick(r.name)} 
-                    className={cn("flex flex-col items-center gap-2 px-3 py-2 rounded-[1.5rem] focusable shrink-0 min-w-[100px] border-4", pickedUpId === r.channelid ? "border-accent bg-accent/10" : "border-transparent hover:bg-emerald-600/20")}
+                    className="flex flex-col items-center gap-2 px-3 py-2 rounded-[1.5rem] focusable shrink-0 min-w-[100px] border-4 transition-all relative group border-transparent hover:bg-emerald-600/20"
                     tabIndex={0}
                     data-nav-id={`reciter-${i}`}
                   >
-                    <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-emerald-500/30 relative">{r.image ? <img src={r.image} className="w-full h-full object-cover" alt="" /> : <User className="w-6 h-6 text-emerald-400" />}</div>
+                    <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-emerald-500/30">
+                      {r.image ? <img src={r.image} className="w-full h-full object-cover" alt="" /> : <User className="w-6 h-6 text-emerald-400" />}
+                    </div>
                     <span className="text-[11px] font-black truncate max-w-[90px] text-white block">{truncateName(r.name)}</span>
                   </button>
                 ))}
@@ -344,10 +536,10 @@ export function MediaView() {
               </div>
             </section>
 
-            <section className="min-h-[220px]" data-row-id="media-row-live">
+            <section className="min-h-[220px]" data-row-id="media-row-live-subs">
               {liveFromSubs.length > 0 && (
                 <>
-                  <div className="flex items-center justify-between px-8 mb-2"><h2 className="text-xs font-black text-white flex items-center gap-2"><div className="w-5 h-5 rounded bg-red-600 flex items-center justify-center shadow-glow"><RadioIcon className="w-3 h-3 text-white" /></div>بثوث الاشتراكات المباشرة</h2></div>
+                  <div className="flex items-center justify-between px-8 mb-2"><h2 className="text-xs font-black text-white flex items-center gap-2"><div className="w-5 h-5 rounded bg-red-600 flex items-center justify-center shadow-glow"><RadioIcon className="w-3 h-3 text-white" /></div>بثوث الاشتراكات المباشرة (أفضل 10)</h2></div>
                   <div className={horizontalListClass}>
                     {liveFromSubs.map((v, idx) => (
                       <div key={v.id + idx} onClick={() => setActiveVideo(v, liveFromSubs)} className="w-60 group relative overflow-hidden bg-zinc-900/80 border-2 border-red-600/30 rounded-[1.5rem] focusable shrink-0 cursor-pointer animate-pulse" tabIndex={0} data-nav-id={`live-item-${idx}`}>
@@ -373,7 +565,10 @@ export function MediaView() {
                     {starredVideos.map((v, idx) => (
                       <div key={v.id + idx} onClick={() => setActiveVideo(v, starredVideos)} className="w-60 group relative overflow-hidden bg-zinc-900/80 rounded-[1.5rem] focusable shrink-0 cursor-pointer" tabIndex={0} data-nav-id={`starred-item-${idx}`}>
                         <div className="aspect-video relative overflow-hidden"><img src={v.thumbnail} className="w-full h-full object-cover" alt="" />{v.duration && <div className="absolute bottom-2 right-2 bg-black text-white text-[14px] px-3 py-1.5 rounded-lg font-black z-10">{v.duration}</div>}<div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100"><Play className="w-8 h-8 text-white" /></div></div>
-                        <div className="p-2 text-right"><h3 className="font-bold text-xs truncate text-white">{v.title}</h3></div>
+                        <div className="p-2 text-right">
+                           <h3 className="font-bold text-xs truncate text-white">{v.title}</h3>
+                           <p className="text-[8px] text-yellow-500 font-bold uppercase mt-1">{v.channelTitle}</p>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -381,15 +576,37 @@ export function MediaView() {
               )}
             </section>
 
-            <section className="min-h-[220px]" data-row-id="media-row-goals">
+            <section className="min-h-[220px]" data-row-id="media-row-highlights">
               {matchGoals.length > 0 && (
                 <>
-                  <div className="flex items-center justify-between px-8 mb-2"><h2 className="text-xs font-black text-white flex items-center gap-2"><div className="w-5 h-5 rounded bg-primary/20 flex items-center justify-center"><Goal className="w-3 h-3 text-primary" /></div>ملخصات مباريات الامس</h2></div>
+                  <div className="flex items-center justify-between px-8 mb-2"><h2 className="text-xs font-black text-white flex items-center gap-2"><div className="w-5 h-5 rounded bg-blue-600 flex items-center justify-center shadow-glow"><Trophy className="w-3 h-3 text-white" /></div>ملخصات مباريات الأمس</h2></div>
                   <div className={horizontalListClass}>
                     {matchGoals.map((v, idx) => (
-                      <div key={v.id + idx} onClick={() => setActiveVideo(v, matchGoals)} className="w-60 group relative overflow-hidden bg-zinc-900/80 rounded-[1.5rem] focusable shrink-0 cursor-pointer" tabIndex={0} data-nav-id={`goals-item-${idx}`}>
-                        <div className="aspect-video relative overflow-hidden"><img src={v.thumbnail} className="w-full h-full object-cover" alt="" /></div>
-                        <div className="p-2 text-right"><h3 className="font-bold text-[11px] truncate text-white">{v.title}</h3></div>
+                      <div key={v.id + idx} onClick={() => setActiveVideo(v, matchGoals)} className="w-60 group relative overflow-hidden bg-zinc-900/80 border-b-4 border-blue-600/40 rounded-[1.5rem] focusable shrink-0 cursor-pointer" tabIndex={0} data-nav-id={`highlight-item-${idx}`}>
+                        <div className="aspect-video relative overflow-hidden"><img src={v.thumbnail} className="w-full h-full object-cover opacity-80" alt="" /><div className="absolute top-2 left-2 bg-blue-600 text-white text-[8px] px-2 py-0.5 rounded font-black uppercase">SUMMARY</div></div>
+                        <div className="p-2 text-right"><h3 className="font-bold text-[10px] truncate text-white">{v.title}</h3></div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </section>
+
+            <section className="min-h-[220px]" data-row-id="media-row-kids">
+              {kidsVideos.length > 0 && (
+                <>
+                  <div className="flex items-center justify-between px-8 mb-2"><h2 className="text-xs font-black text-white flex items-center gap-2"><div className="w-5 h-5 rounded bg-emerald-500 flex items-center justify-center shadow-glow"><GraduationCap className="w-3 h-3 text-black" /></div>كلمات الطفل الأولى (تعليمي)</h2></div>
+                  <div className={horizontalListClass}>
+                    {kidsVideos.map((v, idx) => (
+                      <div key={v.id + idx} onClick={() => setActiveVideo(v, kidsVideos)} className="w-60 group relative overflow-hidden bg-zinc-900/80 border-b-4 border-emerald-500/40 rounded-[1.5rem] focusable shrink-0 cursor-pointer" tabIndex={0} data-nav-id={`kids-item-${idx}`}>
+                        <div className="aspect-video relative overflow-hidden">
+                          <img src={v.thumbnail} className="w-full h-full object-cover" alt="" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-emerald-900/40 to-transparent pointer-events-none" />
+                        </div>
+                        <div className="p-2 text-right">
+                          <h3 className="font-bold text-[10px] truncate text-white">{v.title}</h3>
+                          <p className="text-[8px] text-emerald-400/60 font-black uppercase mt-1">{v.channelTitle}</p>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -398,21 +615,101 @@ export function MediaView() {
             </section>
           </>
         ) : (
-          <section className="space-y-4 animate-in slide-in-from-top-10 duration-0 min-h-[500px]" data-row-id="media-row-isolated">
-            <div className="flex justify-between items-center sticky top-0 z-[120] bg-black/60 backdrop-blur-xl p-4 rounded-[2rem] border border-white/10">
-              <button onClick={resetView} className="h-11 px-8 rounded-full bg-red-600 text-white font-black text-xs shadow-glow focusable flex items-center gap-3 relative" tabIndex={0}><ChevronRight className="w-4 h-4" /><span>العودة</span></button>
-              <h2 className="text-lg font-black text-white">{selectedChannel ? truncateName(selectedChannel.name) : `نتائج البحث: ${search}`}</h2>
+          <section className="space-y-6 animate-in slide-in-from-top-10 duration-0 min-h-[500px]" data-row-id="media-row-isolated">
+            <div className="flex justify-between items-center sticky top-0 z-[120] bg-black/60 backdrop-blur-xl p-6 rounded-[2.5rem] border border-white/10 shadow-2xl">
+              <button onClick={resetView} className="h-12 px-8 rounded-full bg-red-600 text-white font-black text-sm shadow-glow focusable flex items-center gap-3 relative" tabIndex={0}><ChevronRight className="w-5 h-5" /><span>العودة للمكتبة</span></button>
+              <div className="flex flex-col items-end">
+                <h2 className="text-2xl font-black text-white tracking-tighter">{selectedChannel ? selectedChannel.name : `نتائج البحث: ${search}`}</h2>
+                <p className="text-[10px] text-white/40 uppercase tracking-[0.3em] font-bold">Search Results Radar</p>
+              </div>
             </div>
+            
             {loading ? (
-              <div className="flex justify-center py-40"><Loader2 className="w-12 h-12 animate-spin text-primary" /></div>
+              <div className="flex justify-center py-40"><Loader2 className="w-16 h-16 animate-spin text-primary" /></div>
+            ) : activeGridVideos.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {activeGridVideos.map((v, i) => {
+                  const label = getSmartLabel(v.title, v.isLive || false);
+                  const isFollowing = favoriteChannels.some(c => c.channelid === v.channelId);
+                  const isSaved = savedVideos.some(s => s.id === v.id);
+                  const nameLen = v.channelTitle?.length || 0;
+                  
+                  return (
+                    <Card 
+                      key={i} 
+                      className="group bg-zinc-900 border-none rounded-[2.8rem] cursor-pointer focusable overflow-hidden shadow-2xl transition-all hover:scale-[1.03] outline-none aspect-video relative" 
+                      tabIndex={0} 
+                      data-nav-id={`grid-item-${i}`} 
+                      onClick={() => setActiveVideo(v, activeGridVideos)}
+                    >
+                      <div className="w-full h-full relative">
+                        <img src={v.thumbnail} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-70 group-hover:opacity-100" alt="" />
+                        
+                        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent flex flex-col justify-end p-8">
+                          
+                          <div className="absolute top-6 left-6 flex gap-3 opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity">
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); toggleSaveVideo(v); }}
+                              className={cn("w-12 h-12 rounded-full backdrop-blur-md border border-white/20 flex items-center justify-center transition-all", isSaved ? "bg-accent text-black shadow-glow" : "bg-white/10 text-white/40 hover:bg-white/20")}
+                            >
+                              <BookmarkPlus className="w-6 h-6" />
+                            </button>
+                            <button 
+                              onClick={(e) => handleChannelAction(e, v.channelId, v.channelTitle)}
+                              className={cn("w-12 h-12 rounded-full backdrop-blur-md border border-white/20 flex items-center justify-center transition-all shadow-xl", isFollowing ? "bg-emerald-500/20 text-emerald-400" : "bg-primary/20 text-primary hover:bg-primary hover:text-white")}
+                            >
+                              {isFollowing ? <CheckCircle2 className="w-6 h-6" /> : <UserPlus className="w-6 h-6" />}
+                            </button>
+                          </div>
+
+                          {label && (
+                            <div className={cn("absolute top-6 right-6 px-4 py-1.5 rounded-xl text-[10px] font-black text-white uppercase tracking-widest shadow-2xl z-20", label.color)}>
+                              {label.text}
+                            </div>
+                          )}
+
+                          <div className="flex items-center gap-6 dir-rtl">
+                             <div 
+                               className="w-20 h-20 rounded-full overflow-hidden border-4 border-white/10 bg-zinc-800 flex-shrink-0 shadow-2xl group/avatar relative"
+                               onClick={(e) => navigateToChannel(e, v.channelId, v.channelTitle)}
+                             >
+                               <img src={`https://yt3.ggpht.com/ytc/${v.channelId}=s88-c-k-c0x00ffffff-no-rj`} className="w-full h-full object-cover" onError={(e) => (e.currentTarget.src = "https://images.unsplash.com/photo-1594911772125-07fc7a2d8d9f?w=100")} />
+                               <div className="absolute inset-0 bg-primary/20 opacity-0 group-hover/avatar:opacity-100 transition-opacity flex items-center justify-center"><Plus className="w-8 h-8 text-white" /></div>
+                             </div>
+                             
+                             <div className="flex-1 min-w-0 text-right space-y-1">
+                                <span className={cn(
+                                  "font-black text-white drop-shadow-2xl transition-all uppercase tracking-tight truncate block",
+                                  nameLen < 8 ? "text-4xl" : nameLen < 15 ? "text-xl" : "text-sm"
+                                )}>
+                                  {v.channelTitle}
+                                </span>
+                                <h3 className="font-bold text-base text-white/80 leading-tight line-clamp-2 drop-shadow-lg">
+                                  {v.title}
+                                </h3>
+                             </div>
+                          </div>
+
+                          <div className="mt-4 flex items-center justify-between opacity-40">
+                             <div className="flex items-center gap-2">
+                               <Clock className="w-3.5 h-3.5" />
+                               <span className="text-[10px] font-black">{v.duration || "BEYOND"}</span>
+                             </div>
+                             <div className="h-0.5 flex-1 mx-4 bg-white/10 rounded-full" />
+                             <span className="text-[10px] font-black uppercase tracking-widest">YouTube Satellite</span>
+                          </div>
+
+                        </div>
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {(selectedChannel ? channelVideos : searchResults).map((v, i) => (
-                  <Card key={i} onClick={() => setActiveVideo(v, (selectedChannel ? channelVideos : searchResults))} className="group bg-white/5 border-none rounded-[1.5rem] cursor-pointer focusable overflow-hidden shadow-2xl" tabIndex={0} data-nav-id={`grid-item-${i}`}>
-                    <div className="aspect-video relative"><img src={v.thumbnail} className="w-full h-full object-cover" alt="" /></div>
-                    <CardContent className="p-3 text-right h-16 flex items-center justify-end"><h3 className="font-bold text-xs text-white line-clamp-2">{v.title}</h3></CardContent>
-                  </Card>
-                ))}
+              <div className="py-40 flex flex-col items-center justify-center gap-6 opacity-30 text-white">
+                <AlertCircle className="w-20 h-20" />
+                <p className="text-2xl font-black uppercase tracking-widest">لا توجد فيديوهات متاحة</p>
+                <Button variant="outline" onClick={resetView} className="rounded-full border-white/10 font-bold focusable">العودة للرئيسية</Button>
               </div>
             )}
           </section>
@@ -424,3 +721,4 @@ export function MediaView() {
     </div>
   );
 }
+
