@@ -135,8 +135,8 @@ function AddContentModal({
 }
 
 /**
- * MediaView v590.0 - Advanced Live Probing & 3-Col Grid
- * Features: 10 individual channel probes for /live and /stream, grid-cols-3 for desktop.
+ * MediaView v600.0 - Balanced Cinematic Search Grid.
+ * Optimized typography and avatar sizing for better readability.
  */
 export function MediaView() {
   const searchParams = useSearchParams();
@@ -342,7 +342,7 @@ export function MediaView() {
     return null;
   };
 
-  const handleChannelAction = (e: React.MouseEvent, channelId: string | undefined, channelTitle: string | undefined) => {
+  const handleChannelAction = (e: React.MouseEvent, channelId: string | undefined, channelTitle: string | undefined, avatar: string | undefined) => {
     e.stopPropagation();
     if (!channelId || !channelTitle) return;
     
@@ -351,7 +351,7 @@ export function MediaView() {
       addChannel({ 
         channelid: channelId, 
         name: channelTitle, 
-        image: `https://yt3.ggpht.com/ytc/${channelId}=s88-c-k-c0x00ffffff-no-rj`, 
+        image: avatar || `https://yt3.ggpht.com/ytc/${channelId}=s88-c-k-c0x00ffffff-no-rj`, 
         channeltitle: channelTitle, 
         clickschannel: 0, 
         starred: true 
@@ -360,13 +360,13 @@ export function MediaView() {
     }
   };
 
-  const navigateToChannel = (e: React.MouseEvent, channelId: string | undefined, channelTitle: string | undefined) => {
+  const navigateToChannel = (e: React.MouseEvent, channelId: string | undefined, channelTitle: string | undefined, avatar: string | undefined) => {
     e.stopPropagation();
     if (!channelId || !channelTitle) return;
     setSelectedChannel({
       channelid: channelId,
       name: channelTitle,
-      image: `https://yt3.ggpht.com/ytc/${channelId}=s88-c-k-c0x00ffffff-no-rj`,
+      image: avatar || `https://yt3.ggpht.com/ytc/${channelId}=s88-c-k-c0x00ffffff-no-rj`,
       channeltitle: channelTitle,
       clickschannel: 0,
       starred: false
@@ -618,7 +618,7 @@ export function MediaView() {
           <section className="space-y-6 animate-in slide-in-from-top-10 duration-0 min-h-[500px]" data-row-id="media-row-isolated">
             <div className="flex justify-between items-center sticky top-0 z-[120] bg-black/60 backdrop-blur-xl p-6 rounded-[2.5rem] border border-white/10 shadow-2xl">
               <button onClick={resetView} className="h-12 px-8 rounded-full bg-red-600 text-white font-black text-sm shadow-glow focusable flex items-center gap-3 relative" tabIndex={0}><ChevronRight className="w-5 h-5" /><span>العودة للمكتبة</span></button>
-              <div className="flex flex-col items-end">
+              <div className="flex flex-col items-end text-right">
                 <h2 className="text-2xl font-black text-white tracking-tighter">{selectedChannel ? selectedChannel.name : `نتائج البحث: ${search}`}</h2>
                 <p className="text-[10px] text-white/40 uppercase tracking-[0.3em] font-bold">Search Results Radar</p>
               </div>
@@ -645,58 +645,58 @@ export function MediaView() {
                       <div className="w-full h-full relative">
                         <img src={v.thumbnail} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-70 group-hover:opacity-100" alt="" />
                         
-                        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent flex flex-col justify-end p-8">
+                        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent flex flex-col justify-end p-6">
                           
-                          <div className="absolute top-6 left-6 flex gap-3 opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity">
+                          <div className="absolute top-4 left-4 flex gap-2 opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity">
                             <button 
                               onClick={(e) => { e.stopPropagation(); toggleSaveVideo(v); }}
-                              className={cn("w-12 h-12 rounded-full backdrop-blur-md border border-white/20 flex items-center justify-center transition-all", isSaved ? "bg-accent text-black shadow-glow" : "bg-white/10 text-white/40 hover:bg-white/20")}
+                              className={cn("w-10 h-10 rounded-full backdrop-blur-md border border-white/20 flex items-center justify-center transition-all", isSaved ? "bg-accent text-black shadow-glow" : "bg-white/10 text-white/40 hover:bg-white/20")}
                             >
-                              <BookmarkPlus className="w-6 h-6" />
+                              <BookmarkPlus className="w-5 h-5" />
                             </button>
                             <button 
-                              onClick={(e) => handleChannelAction(e, v.channelId, v.channelTitle)}
-                              className={cn("w-12 h-12 rounded-full backdrop-blur-md border border-white/20 flex items-center justify-center transition-all shadow-xl", isFollowing ? "bg-emerald-500/20 text-emerald-400" : "bg-primary/20 text-primary hover:bg-primary hover:text-white")}
+                              onClick={(e) => handleChannelAction(e, v.channelId, v.channelTitle, v.channelAvatar)}
+                              className={cn("w-10 h-10 rounded-full backdrop-blur-md border border-white/20 flex items-center justify-center transition-all shadow-xl", isFollowing ? "bg-emerald-500/20 text-emerald-400" : "bg-primary/20 text-primary hover:bg-primary hover:text-white")}
                             >
-                              {isFollowing ? <CheckCircle2 className="w-6 h-6" /> : <UserPlus className="w-6 h-6" />}
+                              {isFollowing ? <CheckCircle2 className="w-5 h-5" /> : <UserPlus className="w-5 h-5" />}
                             </button>
                           </div>
 
                           {label && (
-                            <div className={cn("absolute top-6 right-6 px-4 py-1.5 rounded-xl text-[10px] font-black text-white uppercase tracking-widest shadow-2xl z-20", label.color)}>
+                            <div className={cn("absolute top-4 right-4 px-3 py-1 rounded-lg text-[9px] font-black text-white uppercase tracking-widest shadow-2xl z-20", label.color)}>
                               {label.text}
                             </div>
                           )}
 
-                          <div className="flex items-center gap-6 dir-rtl">
+                          <div className="flex items-center gap-4 dir-rtl text-right">
                              <div 
-                               className="w-20 h-20 rounded-full overflow-hidden border-4 border-white/10 bg-zinc-800 flex-shrink-0 shadow-2xl group/avatar relative"
-                               onClick={(e) => navigateToChannel(e, v.channelId, v.channelTitle)}
+                               className="w-16 h-16 rounded-full overflow-hidden border-4 border-white/10 bg-zinc-800 flex-shrink-0 shadow-2xl group/avatar relative cursor-pointer"
+                               onClick={(e) => navigateToChannel(e, v.channelId, v.channelTitle, v.channelAvatar)}
                              >
-                               <img src={`https://yt3.ggpht.com/ytc/${v.channelId}=s88-c-k-c0x00ffffff-no-rj`} className="w-full h-full object-cover" onError={(e) => (e.currentTarget.src = "https://images.unsplash.com/photo-1594911772125-07fc7a2d8d9f?w=100")} />
-                               <div className="absolute inset-0 bg-primary/20 opacity-0 group-hover/avatar:opacity-100 transition-opacity flex items-center justify-center"><Plus className="w-8 h-8 text-white" /></div>
+                               <img src={v.channelAvatar || `https://yt3.ggpht.com/ytc/${v.channelId}=s88-c-k-c0x00ffffff-no-rj`} className="w-full h-full object-cover" onError={(e) => (e.currentTarget.src = "https://images.unsplash.com/photo-1594911772125-07fc7a2d8d9f?w=100")} />
+                               <div className="absolute inset-0 bg-primary/20 opacity-0 group-hover/avatar:opacity-100 transition-opacity flex items-center justify-center"><Plus className="w-6 h-6 text-white" /></div>
                              </div>
                              
-                             <div className="flex-1 min-w-0 text-right space-y-1">
+                             <div className="flex-1 min-w-0 space-y-0.5">
                                 <span className={cn(
                                   "font-black text-white drop-shadow-2xl transition-all uppercase tracking-tight truncate block",
-                                  nameLen < 8 ? "text-4xl" : nameLen < 15 ? "text-xl" : "text-sm"
+                                  nameLen < 8 ? "text-2xl" : nameLen < 15 ? "text-lg" : "text-sm"
                                 )}>
                                   {v.channelTitle}
                                 </span>
-                                <h3 className="font-bold text-base text-white/80 leading-tight line-clamp-2 drop-shadow-lg">
+                                <h3 className="font-bold text-sm text-white/80 leading-tight line-clamp-2 drop-shadow-lg">
                                   {v.title}
                                 </h3>
                              </div>
                           </div>
 
-                          <div className="mt-4 flex items-center justify-between opacity-40">
+                          <div className="mt-3 flex items-center justify-between opacity-40">
                              <div className="flex items-center gap-2">
-                               <Clock className="w-3.5 h-3.5" />
-                               <span className="text-[10px] font-black">{v.duration || "BEYOND"}</span>
+                               <Clock className="w-3 h-3" />
+                               <span className="text-[9px] font-black">{v.duration || "BEYOND"}</span>
                              </div>
-                             <div className="h-0.5 flex-1 mx-4 bg-white/10 rounded-full" />
-                             <span className="text-[10px] font-black uppercase tracking-widest">YouTube Satellite</span>
+                             <div className="h-0.5 flex-1 mx-3 bg-white/10 rounded-full" />
+                             <span className="text-[9px] font-black uppercase tracking-widest">YouTube Satellite</span>
                           </div>
 
                         </div>
@@ -721,4 +721,3 @@ export function MediaView() {
     </div>
   );
 }
-

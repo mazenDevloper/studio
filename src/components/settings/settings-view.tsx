@@ -18,7 +18,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ShortcutBadge } from "@/components/layout/car-dock";
 
 /**
- * SettingsView v165.0 - Integrated Reciters Reordering.
+ * SettingsView v166.0 - Enhanced Reciters Reorder Stability.
+ * Fixed "Select All" issue by ensuring pickedUpId is correctly verified against channelid.
  */
 export function SettingsView() {
   const { 
@@ -143,7 +144,7 @@ export function SettingsView() {
 
   // Reorder Handlers for Reciters
   const handleDragStart = (e: React.DragEvent, id: string) => {
-    if (!isReorderMode) return;
+    if (!isReorderMode || !id) return;
     e.dataTransfer.setData("id", id);
     setPickedUpId(id);
   };
@@ -154,10 +155,10 @@ export function SettingsView() {
   };
 
   const handleDropReciter = (e: React.DragEvent, targetId: string) => {
-    if (!isReorderMode) return;
+    if (!isReorderMode || !targetId) return;
     e.preventDefault();
     const sourceId = e.dataTransfer.getData("id");
-    if (sourceId === targetId) return;
+    if (!sourceId || sourceId === targetId) return;
     reorderReciterTo(sourceId, targetId);
     setPickedUpId(null);
   };
@@ -314,37 +315,50 @@ export function SettingsView() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {favoriteReciters.map((r, idx) => (
                 <div 
-                  key={r.channelid} 
+                  key={r.channelid || `reciter-${idx}`} 
                   draggable={isReorderMode}
                   onDragStart={(e) => handleDragStart(e, r.channelid)}
                   onDragOver={handleDragOver}
                   onDrop={(e) => handleDropReciter(e, r.channelid)}
-                  onClick={() => isReorderMode && setPickedUpId(pickedUpId === r.channelid ? null : r.channelid)}
+                  onClick={() => {
+                    if (isReorderMode && r.channelid) {
+                      setPickedUpId(pickedUpId === r.channelid ? null : r.channelid);
+                    }
+                  }}
                   className={cn(
-                    "bg-black/40 border border-white/5 p-6 rounded-[2.5rem] flex items-center justify-between group hover:border-emerald-500/40 transition-all duration-300 focusable",
-                    pickedUpId === r.channelid ? "border-accent scale-105 bg-accent/10" : "",
+                    "bg-black/40 border border-white/5 p-6 rounded-[2.5rem] flex items-center justify-between group hover:border-emerald-500/40 transition-all duration-300 focusable outline-none",
+                    (isReorderMode && pickedUpId === r.channelid) ? "border-accent scale-105 bg-accent/20 shadow-glow" : "",
                     isReorderMode && "cursor-move"
                   )}
                   tabIndex={0}
                   data-type="reciter"
                   data-id={r.channelid}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && isReorderMode && r.channelid) {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setPickedUpId(pickedUpId === r.channelid ? null : r.channelid);
+                    }
+                  }}
                 >
-                  <div className="flex items-center gap-6">
+                  <div className="flex items-center gap-6 pointer-events-none">
                     <div className="relative">
                       <div className="w-14 h-14 rounded-full overflow-hidden border border-white/10 bg-zinc-900 shadow-xl">
                         {r.image ? <img src={r.image} className="w-full h-full object-cover" alt="" /> : <User className="w-6 h-6 text-white/20" />}
                       </div>
                       <div className="absolute -top-2 -right-2 bg-emerald-500 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black text-black">{idx + 1}</div>
                     </div>
-                    <div className="flex flex-col"><h4 className="font-black text-white truncate max-w-[150px]">{r.name}</h4><span className="text-[10px] text-white/30 font-bold uppercase">قائمة المبدعين</span></div>
+                    <div className="flex flex-col text-right"><h4 className="font-black text-white truncate max-w-[150px]">{r.name}</h4><span className="text-[10px] text-white/30 font-bold uppercase">قائمة المبدعين</span></div>
                   </div>
                   <div className="flex items-center gap-2">
                     {isReorderMode && (
-                      <button onClick={(e) => { e.stopPropagation(); moveReciterToTop(r.channelid); }} className="w-10 h-10 rounded-full bg-white/5 text-yellow-500 flex items-center justify-center hover:bg-white/10">
+                      <button onClick={(e) => { e.stopPropagation(); moveReciterToTop(r.channelid); }} className="w-10 h-10 rounded-full bg-white/5 text-yellow-500 flex items-center justify-center hover:bg-white/10 focusable">
                         <ChevronUp className="w-5 h-5" />
                       </button>
                     )}
-                    <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); removeReciter(r.channelid); }} className="w-10 h-10 rounded-full bg-red-600/10 text-red-500 border border-red-600/20 hover:bg-red-600 hover:text-white"><Trash2 className="w-4 h-4" /></Button>
+                    {!isReorderMode && (
+                      <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); removeReciter(r.channelid); }} className="w-10 h-10 rounded-full bg-red-600/10 text-red-500 border border-red-600/20 hover:bg-red-600 hover:text-white focusable"><Trash2 className="w-4 h-4" /></Button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -397,4 +411,3 @@ export function SettingsView() {
     </div>
   );
 }
-

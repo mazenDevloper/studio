@@ -25,6 +25,7 @@ export interface YouTubeVideo {
   viewCount?: number;
   duration?: string;
   progress?: number;
+  channelAvatar?: string;
 }
 
 const youtubeCache: Record<string, { data: any, timestamp: number }> = {};
@@ -127,10 +128,18 @@ export async function searchYouTubeVideos(query: string, limit = 20): Promise<Yo
   if (!data?.items) return [];
 
   const videoIds = data.items.map((v: any) => v.id.videoId).filter(Boolean).join(',');
+  const channelIds = Array.from(new Set(data.items.map((v: any) => v.snippet.channelId))).filter(Boolean).join(',');
+
   if (!videoIds) return [];
 
-  const detailsData = await fetchWithRotation('videos', { part: 'snippet,contentDetails', id: videoIds });
+  // Fetch video details and channel avatars in parallel
+  const [detailsData, channelsData] = await Promise.all([
+    fetchWithRotation('videos', { part: 'snippet,contentDetails', id: videoIds }),
+    channelIds ? fetchWithRotation('channels', { part: 'snippet', id: channelIds }) : Promise.resolve(null)
+  ]);
+
   const detailsMap: Record<string, any> = {};
+  const channelAvatarMap: Record<string, string> = {};
 
   if (detailsData?.items) {
     detailsData.items.forEach((v: any) => {
@@ -138,6 +147,12 @@ export async function searchYouTubeVideos(query: string, limit = 20): Promise<Yo
         duration: parseISO8601Duration(v.contentDetails.duration),
         isLive: v.snippet.liveBroadcastContent === 'live' || v.snippet.liveBroadcastContent === 'upcoming'
       };
+    });
+  }
+
+  if (channelsData?.items) {
+    channelsData.items.forEach((c: any) => {
+      channelAvatarMap[c.id] = c.snippet.thumbnails.default?.url || c.snippet.thumbnails.high?.url;
     });
   }
 
@@ -150,7 +165,8 @@ export async function searchYouTubeVideos(query: string, limit = 20): Promise<Yo
     channelTitle: v.snippet.channelTitle,
     channelId: v.snippet.channelId,
     duration: detailsMap[v.id.videoId]?.duration || "",
-    isLive: detailsMap[v.id.videoId]?.isLive || false
+    isLive: detailsMap[v.id.videoId]?.isLive || false,
+    channelAvatar: channelAvatarMap[v.snippet.channelId]
   })).filter(v => v.id);
 
   return results.sort((a, b) => (a.isLive === b.isLive) ? 0 : a.isLive ? -1 : 1);
@@ -165,6 +181,7 @@ export async function fetchChannelVideos(channelId: string, limit = 15): Promise
   if (!chanData?.items?.[0]) return [];
   const uploadsId = chanData.items[0].contentDetails.relatedPlaylists.uploads;
   const channelTitle = chanData.items[0].snippet.title;
+  const channelAvatar = chanData.items[0].snippet.thumbnails.default?.url;
 
   const playlistData = await fetchWithRotation('playlistItems', { part: 'snippet', playlistId: uploadsId, maxResults: limit.toString() });
   if (!playlistData?.items) return [];
@@ -200,7 +217,8 @@ export async function fetchChannelVideos(channelId: string, limit = 15): Promise
     channelId,
     isLive: statsMap[vidId]?.isLive || false,
     viewCount: statsMap[vidId]?.viewCount || 0,
-    duration: statsMap[vidId]?.duration || ""
+    duration: statsMap[vidId]?.duration || "",
+    channelAvatar
   })).sort((a, b) => (a.isLive === b.isLive) ? 0 : a.isLive ? -1 : 1);
 }
 
