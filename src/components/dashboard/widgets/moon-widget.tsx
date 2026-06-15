@@ -14,8 +14,8 @@ interface MoonData {
 }
 
 /**
- * MoonWidget v120.0 - NASA Recovery System
- * Features: Triple-Pass Fallback for NASA Dial-A-Moon API.
+ * MoonWidget v130.0 - NASA Protocol Recovery System
+ * Features: Protocol-aware URL injection & Global Fallback Engine.
  */
 export function MoonWidget() {
   const [moonData, setMoonData] = useState<MoonData | null>(null);
@@ -34,30 +34,46 @@ export function MoonWidget() {
     
     async function fetchMoonData() {
       const now = new Date();
-      // NASA API can fail if the current day/hour is not yet processed.
-      // We try the current day, then a safe day in 2024, then a static fallback.
+      const date = now.toISOString().split('T')[0];
+      const yesterday = new Date(now.getTime() - 86400000).toISOString().split('T')[0];
+      
+      // NASA API paths: Current, Yesterday, and a fixed archive point
       const datePaths = [
-        `${now.getFullYear()}-${(now.getMonth()+1).toString().padStart(2,'0')}-${now.getDate().toString().padStart(2,'0')}T18:00`,
-        `2024-${(now.getMonth()+1).toString().padStart(2,'0')}-${now.getDate().toString().padStart(2,'0')}T18:00`,
+        `${date}T18:00`,
+        `${yesterday}T18:00`,
         `2024-03-25T18:00`
       ];
 
+      let found = false;
       for (const path of datePaths) {
         try {
           const response = await fetch(`https://svs.gsfc.nasa.gov/api/dialamoon/${path}`);
           if (response.ok) {
             const data = await response.json();
             if (data?.image?.url) {
-              // Ensure HTTPS and use full resolution path
-              data.image.url = data.image.url.replace('http://', 'https://');
-              setMoonData(data);
-              setLoading(false);
-              return; // Exit loop on success
+              let finalUrl = data.image.url;
+              // Protocol-Relative Fix: // -> https://
+              if (finalUrl.startsWith('//')) finalUrl = 'https:' + finalUrl;
+              // HTTP Force: http -> https
+              else finalUrl = finalUrl.replace('http://', 'https://');
+              
+              setMoonData({ ...data, image: { url: finalUrl } });
+              found = true;
+              break;
             }
           }
         } catch (e) {
-          console.warn(`NASA fetch attempt for ${path} failed, trying next...`);
+          console.warn(`NASA fetch failed for ${path}, trying fallback...`);
         }
+      }
+
+      // Final Fail-safe: Use a high-quality static moon image if all API calls fail
+      if (!found) {
+        setMoonData({
+          image: { url: "https://images.unsplash.com/photo-1532693322450-2cb5c511067d?q=80&w=1000" },
+          phase: "Full Moon",
+          illumination: 100
+        });
       }
       setLoading(false);
     }
@@ -157,6 +173,7 @@ export function MoonWidget() {
                     alt="NASA Moon" fill className="object-cover scale-[1.15] transition-transform duration-700" 
                     style={{ transform: `rotate(${rotation}deg) scale(1.15)` }} 
                     unoptimized 
+                    priority
                   />
                 ) : (
                    <div className="w-full h-full flex items-center justify-center opacity-20"><MoonIcon className="w-20 h-20 text-white" /></div>
