@@ -9,8 +9,8 @@ import { useMediaStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
 /**
- * MoonWidget v180.0 - Hijri Sync Engine
- * Uses phasesmoon.com for high-fidelity Hijri day synchronization.
+ * MoonWidget v190.0 - Hijri Phase Engine
+ * Features: phasesmoon.com integration, 1.8x scaling, and Hijri synchronization.
  */
 export function MoonWidget() {
   const [loading, setLoading] = useState(true);
@@ -42,7 +42,7 @@ export function MoonWidget() {
 
     try {
       const today = new Date();
-      // Get Hijri day number (1-30)
+      // Get Hijri day number (1-30) using Umm al-Qura calendar
       const hijriFormatter = new Intl.DateTimeFormat('en-u-ca-islamic-umalqura-nu-latn', {day: 'numeric'});
       const dayNum = parseInt(hijriFormatter.format(today), 10);
       const validDay = dayNum > 30 ? 30 : (dayNum < 1 ? 1 : dayNum);
@@ -73,7 +73,7 @@ export function MoonWidget() {
   const label = cycleIndex === 0 ? "اليوم الهجري" : cycleIndex === 1 ? "اليوم الميلادي" : "درجة الحرارة";
   const isWide = windowWidth > 968;
 
-  // The dynamic moon phase URL based on Hijri day
+  // The dynamic moon phase URL based on Hijri day (using phasesmoon archive)
   const moonImageUrl = `https://phasesmoon.com/moonpng/220/moon-phase-${hijriDay}.webp`;
 
   return (
@@ -124,13 +124,13 @@ export function MoonWidget() {
                 </svg>
               </div>
 
-              {/* Full-Bleed Hijri Moon Image */}
-              <div className="relative w-full h-full rounded-full overflow-hidden shadow-[0_0_100px_rgba(255,255,255,0.15)] bg-black transition-transform group-hover:scale-105 duration-700">
+              {/* Full-Bleed Hijri Moon Image with 1.8x Scale */}
+              <div className="relative w-full h-full rounded-full overflow-hidden shadow-[0_0_120px_rgba(255,255,255,0.1)] bg-black transition-transform group-hover:scale-105 duration-700">
                 <Image 
                   src={moonImageUrl} 
                   alt={`Moon Phase ${hijriDay}`} 
                   fill 
-                  className="object-cover scale-[1.3] transition-transform duration-700" 
+                  className="object-cover scale-[1.8] transition-transform duration-1000" 
                   unoptimized 
                   priority
                 />
@@ -153,4 +153,3 @@ export function MoonWidget() {
     </div>
   );
 }
-

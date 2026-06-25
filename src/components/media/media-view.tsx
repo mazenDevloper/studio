@@ -53,7 +53,7 @@ function AddContentModal({
     }
   };
 
-  // Logic: Removed auto-focus effect to keep focus on input while typing
+  // Logic: Stability Focus - No automatic jumps to results while typing
 
   return (
     <Dialog open={isOpen} onOpenChange={(val) => { onOpenChange(val); if(!val) { setResults([]); setQuery(""); } }}>
@@ -446,6 +446,7 @@ export function MediaView() {
                 <div className="w-10 h-10 rounded-xl overflow-hidden border border-white/10 shrink-0 relative">
                   <img src={ch.image} className="w-full h-full object-cover" alt="" />
                   {ch.starred && <div className="absolute top-0 right-0 w-2.5 h-2.5 bg-yellow-500 rounded-full shadow-glow border border-black" />}
+                  <ShortcutBadge action="toggle_star" className="-top-3 -right-3 opacity-0 group-focus:opacity-100 transition-opacity" />
                 </div>
                 {!isSidebarShrinked && (
                   <>
@@ -545,7 +546,7 @@ export function MediaView() {
                   <div className={horizontalListClass}>
                     {starredVideos.map((v, idx) => (
                       <div key={v.id + idx} onClick={() => setActiveVideo(v, starredVideos)} className="w-72 group relative overflow-hidden bg-zinc-900/80 rounded-[2rem] focusable shrink-0 cursor-pointer transition-all hover:scale-105 shadow-2xl border border-white/5" tabIndex={0} data-nav-id={`starred-item-${idx}`}>
-                        <div className="aspect-video relative overflow-hidden"><img src={v.thumbnail} className="w-full h-full object-cover" alt="" />{v.duration && <div className="absolute bottom-3 right-3 bg-black/80 text-white text-[14px] px-3 py-1.5 rounded-xl font-black z-10 border border-white/10">{v.duration}</div>}<div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 backdrop-blur-sm transition-all"><Play className="w-10 h-10 text-white fill-current" /></div></div>
+                        <div className="aspect-video relative overflow-hidden"><img src={v.thumbnail} className="w-full h-full object-cover" alt="" /><div className="absolute bottom-3 right-3 bg-black/80 text-white text-[14px] px-3 py-1.5 rounded-xl font-black z-10 border border-white/10">{v.duration}</div><div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 backdrop-blur-sm transition-all"><Play className="w-10 h-10 text-white fill-current" /></div></div>
                         <div className="p-4 text-right bg-black/40">
                            <h3 className="font-bold text-xs truncate text-white leading-tight">{v.title}</h3>
                            <div className="flex items-center justify-end gap-2 mt-2 opacity-60"><span className="text-[9px] text-yellow-500 font-bold uppercase">{v.channelTitle}</span></div>
@@ -711,4 +712,3 @@ export function MediaView() {
     </div>
   );
 }
-

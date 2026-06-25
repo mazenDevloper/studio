@@ -10,8 +10,8 @@ import { useToast } from "@/hooks/use-toast";
 import { getDisplayNumber } from "@/lib/constants";
 
 /**
- * Direct Routing Engine v420.0 - Persistent Audio/Video
- * Features: Switched window.location to router.push to prevent video stops.
+ * Direct Routing Engine v430.0 - Advanced Action Handler
+ * Features: Added 'toggle_star' for focused channels without clicking.
  */
 export function RemotePointer() {
   const pathname = usePathname();
@@ -45,7 +45,7 @@ export function RemotePointer() {
         activeDockBtn.focus();
         activeDockBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
-    }, 600); // Slight delay to ensure DOM is ready
+    }, 600); 
     return () => clearTimeout(timer);
   }, [pathname]);
 
@@ -172,6 +172,19 @@ export function RemotePointer() {
     }
 
     if (isAction(finalKey, 'toggle_reorder')) { e?.preventDefault(); toggleReorderMode(); return; }
+
+    // Toggle Star Action for Focused Channel
+    if (isAction(finalKey, 'toggle_star')) {
+      e?.preventDefault();
+      const type = activeEl.getAttribute('data-type');
+      const id = activeEl.getAttribute('data-id');
+      if (type === 'channel' && id) {
+        toggleStarChannel(id);
+        toast({ title: "الاشتراكات", description: "تم تحديث حالة التمييز بنجاح" });
+      }
+      return;
+    }
+
     if (isAction(finalKey, 'delete_item')) {
       const type = activeEl.getAttribute('data-type');
       const id = activeEl.getAttribute('data-id');
@@ -192,7 +205,6 @@ export function RemotePointer() {
       return;
     }
 
-    // Use router.push instead of window.location.href for SPA persistence
     if (isAction(finalKey, 'goto_home')) { e?.preventDefault(); router.push('/'); return; }
     if (isAction(finalKey, 'goto_media')) { e?.preventDefault(); router.push('/media'); return; }
     if (isAction(finalKey, 'goto_quran')) { e?.preventDefault(); router.push('/quran'); return; }
