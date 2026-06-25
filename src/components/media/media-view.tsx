@@ -53,18 +53,7 @@ function AddContentModal({
     }
   };
 
-  useEffect(() => {
-    if (results.length > 0 && !loading && isOpen) {
-      const timer = setTimeout(() => {
-        const firstResult = document.querySelector('[data-nav-id="modal-result-0"]') as HTMLElement;
-        if (firstResult) {
-          firstResult.focus();
-          scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-      }, 100); 
-      return () => clearTimeout(timer);
-    }
-  }, [results, loading, isOpen]);
+  // Logic: Removed auto-focus effect to keep focus on input while typing
 
   return (
     <Dialog open={isOpen} onOpenChange={(val) => { onOpenChange(val); if(!val) { setResults([]); setQuery(""); } }}>
@@ -85,6 +74,7 @@ function AddContentModal({
               onChange={(e) => handleSearch(e.target.value)} 
               className="h-16 bg-white/5 border-white/10 rounded-2xl pr-14 text-xl focusable transition-all focus:bg-white/10 focus:border-primary/50 text-right text-white" 
               data-nav-id="modal-search-input"
+              autoFocus
             />
             <div className="absolute right-5 top-1/2 -translate-y-1/2 text-white/20">
               {loading ? <Loader2 className="w-6 h-6 animate-spin text-primary" /> : <Search className="w-6 h-6" />}
@@ -134,10 +124,6 @@ function AddContentModal({
   );
 }
 
-/**
- * MediaView v730.0 - Strict Sports Filtering & Cinema Layout
- * Features: Complete purge of beIN/TOD and bottom-right info anchoring.
- */
 export function MediaView() {
   const searchParams = useSearchParams();
   const { 
@@ -221,7 +207,6 @@ export function MediaView() {
     setIsSpecializedLoading(true);
     
     try {
-      // 1. Fetching logic: Explicitly targeting generic sports highlights
       const [writerResults, customHighlights, kidsData] = await Promise.allSettled([
         searchYouTubeVideos("أهداف مباريات اليوم بدون بي ان", 20),
         searchYouTubeVideos("ملخصات مباريات اليوم عالمية", 20),
@@ -332,7 +317,7 @@ export function MediaView() {
 
   const getSmartLabel = (title: string, isLive: boolean) => {
     const t = title.toLowerCase();
-    if (isLive) return { text: "بث حي", color: "bg-red-600 shadow-[0_0_15px_rgba(220,38,38,0.8)] animate-pulse" };
+    if (isLive) return { text: "بث حي", color: "bg-red-600 animate-pulse" };
     if (t.includes("ملخص") || t.includes("highlight")) return { text: "ملخص ذكي", color: "bg-blue-600/80" };
     if (t.includes("اهداف") || t.includes("goals")) return { text: "أهداف", color: "bg-emerald-600/80" };
     if (t.includes("مصحف") || t.includes("سورة")) return { text: "تلاوة خاشعة", color: "bg-amber-600/80" };
@@ -626,18 +611,17 @@ export function MediaView() {
                 <p className="text-white/20 font-black uppercase tracking-[0.8em] text-sm animate-pulse">Syncing Streams...</p>
               </div>
             ) : activeGridVideos.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {activeGridVideos.map((v, i) => {
                   const label = getSmartLabel(v.title, v.isLive || false);
                   const isFollowing = favoriteChannels.some(c => c.channelid === v.channelId);
                   const isSaved = savedVideos.some(s => s.id === v.id);
                   const progress = videoProgress[v.id] || 0;
-                  const nameLen = v.channelTitle?.length || 0;
                   
                   return (
                     <Card 
                       key={i} 
-                      className="group bg-zinc-900/40 border-none rounded-[3.5rem] cursor-pointer focusable overflow-hidden shadow-2xl transition-all hover:scale-[1.05] outline-none aspect-video relative" 
+                      className="group bg-zinc-900/40 border-none rounded-[2.8rem] cursor-pointer focusable overflow-hidden shadow-2xl transition-all hover:scale-[1.04] outline-none aspect-[16/10] relative" 
                       tabIndex={0} 
                       data-nav-id={`grid-item-${i}`} 
                       onClick={() => setActiveVideo(v, activeGridVideos)}
@@ -645,69 +629,62 @@ export function MediaView() {
                       <div className="w-full h-full relative">
                         <img src={v.thumbnail} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110 opacity-70 group-hover:opacity-100" alt="" />
                         
-                        {/* THE CINEMATIC OVERLAY - Anchored to Bottom Right */}
-                        <div className="absolute inset-0 bg-gradient-to-tr from-black/95 via-black/30 to-transparent flex flex-col justify-end items-end p-8 text-right dir-rtl">
+                        <div className="absolute inset-0 bg-gradient-to-tr from-black/95 via-black/20 to-transparent flex flex-col justify-end items-end p-4 text-right dir-rtl">
                           
-                          {/* TOP ACTIONS */}
-                          <div className="absolute top-6 left-6 flex gap-3 opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-all duration-300 translate-y-[-10px] group-hover:translate-y-0">
+                          <div className="absolute top-4 left-4 flex gap-2 opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-all duration-300">
                             <button 
                               onClick={(e) => { e.stopPropagation(); toggleSaveVideo(v); }}
-                              className={cn("w-12 h-12 rounded-full backdrop-blur-xl border border-white/20 flex items-center justify-center transition-all shadow-2xl", isSaved ? "bg-accent text-black shadow-glow" : "bg-white/10 text-white/60 hover:bg-white/30")}
+                              className={cn("w-10 h-10 rounded-full backdrop-blur-xl border border-white/20 flex items-center justify-center transition-all shadow-2xl", isSaved ? "bg-accent text-black shadow-glow" : "bg-white/10 text-white/60 hover:bg-white/30")}
                             >
-                              <BookmarkPlus className="w-6 h-6" />
+                              <BookmarkPlus className="w-5 h-5" />
                             </button>
                             <button 
                               onClick={(e) => handleChannelAction(e, v.channelId, v.channelTitle, v.channelAvatar)}
-                              className={cn("w-12 h-12 rounded-full backdrop-blur-xl border border-white/20 flex items-center justify-center transition-all shadow-2xl", isFollowing ? "bg-emerald-500/20 text-emerald-400" : "bg-primary/20 text-primary hover:bg-primary hover:text-white")}
+                              className={cn("w-10 h-10 rounded-full backdrop-blur-xl border border-white/20 flex items-center justify-center transition-all shadow-2xl", isFollowing ? "bg-emerald-500/20 text-emerald-400" : "bg-primary/20 text-primary hover:bg-primary hover:text-white")}
                             >
-                              {isFollowing ? <CheckCircle2 className="w-6 h-6" /> : <UserPlus className="w-6 h-6" />}
+                              {isFollowing ? <CheckCircle2 className="w-5 h-5" /> : <UserPlus className="w-5 h-5" />}
                             </button>
                           </div>
 
                           {label && (
-                            <div className={cn("absolute top-6 right-6 px-4 py-1.5 rounded-xl text-[10px] font-black text-white uppercase tracking-[0.2em] shadow-2xl z-20", label.color)}>
+                            <div className={cn("absolute top-4 right-4 px-3 py-1 rounded-lg text-[8px] font-black text-white uppercase tracking-[0.1em] shadow-2xl z-20", label.color)}>
                               {label.text}
                             </div>
                           )}
 
-                          {/* ANCHORED IDENTITY HUB - PINNED BOTTOM RIGHT */}
-                          <div className="flex flex-row items-center gap-4 w-full justify-start mt-auto">
+                          <div className="flex flex-row items-center gap-3 w-full justify-start mt-auto mb-1">
                              <div 
-                               className="w-12 h-12 rounded-full overflow-hidden border-2 border-white/30 bg-zinc-800 flex-shrink-0 shadow-2xl group/avatar relative cursor-pointer hover:border-primary transition-colors"
+                               className="w-9 h-9 rounded-full overflow-hidden border-2 border-white/20 bg-zinc-800 flex-shrink-0 shadow-2xl group/avatar relative cursor-pointer hover:border-primary transition-colors"
                                onClick={(e) => navigateToChannel(e, v.channelId, v.channelTitle, v.channelAvatar)}
                              >
                                <img src={v.channelAvatar || `https://yt3.ggpht.com/ytc/${v.channelId}=s88-c-k-c0x00ffffff-no-rj`} className="w-full h-full object-cover" />
                              </div>
                              
-                             <div className="flex-1 min-w-0 space-y-0.5">
-                                <span className={cn(
-                                  "font-black text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.4)] transition-all uppercase tracking-tighter truncate block leading-tight",
-                                  nameLen < 12 ? "text-xl" : "text-sm"
-                                )}>
+                             <div className="flex-1 min-w-0">
+                                <span className="font-black text-white text-[10px] uppercase tracking-tighter truncate block leading-none opacity-80 mb-0.5">
                                   {v.channelTitle}
                                 </span>
-                                <h3 className="font-bold text-xs md:text-sm text-white/90 leading-tight line-clamp-2 drop-shadow-2xl">
+                                <h3 className="font-bold text-[11px] text-white/95 leading-tight line-clamp-2 drop-shadow-2xl">
                                   {v.title}
                                 </h3>
                              </div>
                           </div>
 
-                          {/* PROGRESS RADAR */}
                           {progress > 0 && (
-                            <div className="mt-3 h-1 w-full bg-white/10 rounded-full overflow-hidden">
-                              <div className="h-full bg-accent shadow-[0_0_15px_rgba(var(--accent),0.8)]" style={{ width: `${Math.min(100, (progress / 3600) * 100)}%` }} />
+                            <div className="h-0.5 w-full bg-white/10 rounded-full overflow-hidden mb-1">
+                              <div className="h-full bg-accent shadow-[0_0_10px_rgba(var(--accent),0.8)]" style={{ width: `${Math.min(100, (progress / 3600) * 100)}%` }} />
                             </div>
                           )}
 
-                          <div className="mt-3 flex items-center justify-between w-full opacity-40">
-                             <div className="flex items-center gap-2">
-                               <Clock className="w-3.5 h-3.5 text-white" />
-                               <span className="text-[9px] font-black text-white uppercase tracking-widest">{v.duration || "FEED"}</span>
+                          <div className="flex items-center justify-between w-full opacity-40 px-1">
+                             <div className="flex items-center gap-1.5">
+                               <Clock className="w-2.5 h-2.5 text-white" />
+                               <span className="text-[8px] font-black text-white uppercase tracking-widest">{v.duration || "FEED"}</span>
                              </div>
                              {v.isLive && (
-                               <div className="flex items-center gap-2">
-                                 <div className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse" />
-                                 <span className="text-[9px] font-black text-red-500 uppercase tracking-widest">LIVE</span>
+                               <div className="flex items-center gap-1">
+                                 <div className="w-1 h-1 rounded-full bg-red-600 animate-pulse" />
+                                 <span className="text-[8px] font-black text-red-500 uppercase tracking-widest">LIVE</span>
                                </div>
                              )}
                           </div>
@@ -734,3 +711,4 @@ export function MediaView() {
     </div>
   );
 }
+
