@@ -207,9 +207,9 @@ export function MediaView() {
     
     try {
       const [writerResults, customHighlights, kidsData] = await Promise.allSettled([
-        searchYouTubeVideos("أهداف مباريات اليوم بدون بي ان", 20),
+        searchYouTubeVideos("أهداف مباريات اليوم", 20),
         searchYouTubeVideos("ملخصات مباريات اليوم عالمية", 20),
-        searchYouTubeVideos("قناة ريان بالعربي أطفال", 30)
+        searchYouTubeVideos("قناة ريان بالعربي أطفال كيدز", 30)
       ]);
 
       const mergedGoals: YouTubeVideo[] = [];
@@ -225,15 +225,11 @@ export function MediaView() {
       setMatchGoals(mergedGoals.slice(0, 20));
 
       if (kidsData.status === 'fulfilled') {
-        const rawKids = kidsData.value;
-        const rayyanVideos = rawKids.filter(v => v.channelTitle?.includes("ريان"));
-        const finalKids = rayyanVideos.length > 0 ? rayyanVideos.slice(0, 15) : rawKids.slice(0, 15);
-        setKidsVideos(finalKids);
+        setKidsVideos(kidsData.value.slice(0, 20));
       }
 
       const starredChannels = favoriteChannels.filter(c => c.starred);
       if (starredChannels.length > 0) {
-        // Dashboard-style Logic: First video of each, then the rest
         const starredPromises = starredChannels.map(c => fetchChannelVideos(c.channelid, 5));
         const starredResults = await Promise.allSettled(starredPromises);
         
@@ -255,12 +251,8 @@ export function MediaView() {
 
         setStarredVideos([...firstVideos, ...sortedRemaining]);
 
-        // Specific Section for THE FIRST starred channel
         const firstC = starredChannels[0];
         fetchChannelVideos(firstC.channelid, 15).then(setFirstStarredVideos).catch(() => {});
-      } else {
-        setStarredVideos([]);
-        setFirstStarredVideos([]);
       }
 
       if (shouldUpdateLive || liveFromSubs.length === 0) {
@@ -270,8 +262,8 @@ export function MediaView() {
         
         const probePromises = top10.map(async (c) => {
           const [liveRes, streamRes] = await Promise.all([
-            searchYouTubeVideos(`"${c.name}" /live`, 2),
-            searchYouTubeVideos(`"${c.name}" /stream`, 2)
+            searchYouTubeVideos(`"${c.name}" مباشر`, 3),
+            searchYouTubeVideos(`"${c.name}" live stream`, 3)
           ]);
           return [...liveRes, ...streamRes].filter(v => v.isLive);
         });
@@ -280,7 +272,7 @@ export function MediaView() {
         probeResults.forEach(res => {
           if (res.status === 'fulfilled') {
             res.value.forEach(v => {
-              if (!seenIds.has(v.id) && liveResults.length < 15) {
+              if (!seenIds.has(v.id)) {
                 liveResults.push(v);
                 seenIds.add(v.id);
               }
@@ -288,12 +280,12 @@ export function MediaView() {
           }
         });
         
-        setLiveFromSubs(liveResults.slice(0, 10));
+        setLiveFromSubs(liveResults.slice(0, 15));
         setLastLiveUpdate(Date.now());
         syncMasterBin();
       }
     } finally { setIsStarredLoading(false); setIsSpecializedLoading(false); }
-  }, [favoriteChannels, lastLiveUpdate, setLastLiveUpdate, syncMasterBin, liveFromSubs.length]);
+  }, [favoriteChannels, lastLiveUpdate, setLastLiveUpdate, syncMasterBin]);
 
   useEffect(() => { fetchFeeds(); }, [fetchFeeds]);
 
@@ -409,8 +401,7 @@ export function MediaView() {
   const showIsolatedView = isIsolatedViewActive || !!selectedChannel || searchResults.length > 0;
   const horizontalListClass = "w-full flex gap-4 px-8 pb-4 overflow-x-auto no-scrollbar scroll-smooth justify-start items-center";
 
-  // COMMON SECTION TRANSITION CLASS - Focus Scale Up WITHOUT Black Overlay
-  const sectionTransition = "transition-all duration-700 focus-within:scale-[1.1] focus-within:z-50 relative origin-center";
+  const sectionTransition = "transition-all duration-700 scale-[0.9] opacity-60 focus-within:scale-[1.2] focus-within:opacity-100 focus-within:z-50 relative origin-center";
 
   return (
     <div className={cn("h-screen flex bg-transparent overflow-hidden relative", isDockLeft ? "flex-row-reverse" : "flex-row")}>
@@ -488,7 +479,7 @@ export function MediaView() {
       <main className="flex-1 overflow-y-auto custom-scrollbar relative pt-4 pb-40 space-y-0 px-10 no-scrollbar" style={{ direction: 'rtl' }}>
         {!showIsolatedView ? (
           <>
-            <section className={cn("py-4", sectionTransition)} data-row-id="media-row-search">
+            <section className={cn("py-4 !scale-100 !opacity-100")} data-row-id="media-row-search">
               <div className="flex justify-start items-center gap-4 mb-4">
                 <Button onClick={toggleReorderMode} variant={isReorderMode ? "default" : "outline"} className={cn("rounded-full h-10 px-8 font-black text-xs relative", isReorderMode ? "bg-yellow-500 text-black shadow-glow" : "bg-white/5 border-white/10 text-white")} tabIndex={0}><ShortcutBadge action="toggle_reorder" className="-bottom-2 -left-2" /><ArrowRightLeft className="w-4 h-4 ml-2" /> {isReorderMode ? "إيقاف الترتيب" : "تفعيل الترتيب"}</Button>
               </div>
@@ -550,7 +541,7 @@ export function MediaView() {
                   <div className="flex items-center justify-between px-8 mb-2"><h2 className="text-xs font-black text-white flex items-center gap-3"><div className="w-6 h-6 rounded bg-red-600 flex items-center justify-center shadow-glow"><RadioIcon className="w-4 h-4 text-white" /></div>بثوث حية من اشتراكاتك</h2></div>
                   <div className={horizontalListClass}>
                     {liveFromSubs.map((v, idx) => (
-                      <div key={v.id + idx} onClick={() => setActiveVideo(v, liveFromSubs)} className="w-72 group relative overflow-hidden bg-zinc-900/80 border-2 border-red-600/40 rounded-[1.8rem] focusable shrink-0 cursor-pointer transition-all hover:scale-105 shadow-2xl" tabIndex={0} data-nav-id={`live-item-${idx}`}>
+                      <div key={v.id + idx} onClick={() => setActiveVideo(v, liveFromSubs)} className="w-72 group relative overflow-hidden bg-zinc-900/80 border-2 border-red-600/40 rounded-[1.8rem] focusable shrink-0 cursor-pointer transition-all shadow-2xl" tabIndex={0} data-nav-id={`live-item-${idx}`}>
                         <div className="aspect-video relative overflow-hidden">
                           <img src={v.thumbnail} className="w-full h-full object-cover" alt="" />
                           <div className="absolute top-3 right-3 bg-red-600 text-white text-[9px] px-2.5 py-1 rounded-full font-black uppercase tracking-tighter shadow-glow animate-pulse">LIVE NOW</div>
@@ -571,7 +562,7 @@ export function MediaView() {
                   <div className="flex items-center justify-between px-8 mb-2"><h2 className="text-xs font-black text-white flex items-center gap-3"><div className="w-6 h-6 rounded bg-yellow-500 flex items-center justify-center shadow-lg"><Star className="w-4 h-4 text-black fill-current" /></div>الترددات المجرسة (مؤخراً)</h2></div>
                   <div className={horizontalListClass}>
                     {starredVideos.map((v, idx) => (
-                      <div key={v.id + idx} onClick={() => setActiveVideo(v, starredVideos)} className="w-72 group relative overflow-hidden bg-zinc-900/80 rounded-[1.8rem] focusable shrink-0 cursor-pointer transition-all hover:scale-105 shadow-2xl border border-white/5" tabIndex={0} data-nav-id={`starred-item-${idx}`}>
+                      <div key={v.id + idx} onClick={() => setActiveVideo(v, starredVideos)} className="w-72 group relative overflow-hidden bg-zinc-900/80 rounded-[1.8rem] focusable shrink-0 cursor-pointer transition-all shadow-2xl border border-white/5" tabIndex={0} data-nav-id={`starred-item-${idx}`}>
                         <div className="aspect-video relative overflow-hidden"><img src={v.thumbnail} className="w-full h-full object-cover" alt="" /><div className="absolute bottom-3 right-3 bg-black/80 text-white text-[12px] px-2.5 py-1 rounded-xl font-black z-10 border border-white/10">{v.duration}</div><div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 backdrop-blur-sm transition-all"><Play className="w-8 h-8 text-white fill-current" /></div></div>
                         <div className="p-4 text-right bg-black/40">
                            <h3 className="font-bold text-xs truncate text-white leading-tight">{v.title}</h3>
@@ -584,7 +575,6 @@ export function MediaView() {
               )}
             </section>
 
-            {/* New Exclusive Section for First Starred Channel */}
             {favoriteChannels.filter(c => c.starred).length > 0 && firstStarredVideos.length > 0 && (
               <section className={cn("", sectionTransition)} data-row-id="media-row-first-starred">
                 <div className="flex items-center justify-between px-8 mb-2">
@@ -597,7 +587,7 @@ export function MediaView() {
                 </div>
                 <div className={horizontalListClass}>
                   {firstStarredVideos.map((v, idx) => (
-                    <div key={v.id + idx} onClick={() => setActiveVideo(v, firstStarredVideos)} className="w-72 group relative overflow-hidden bg-zinc-900/80 rounded-[1.8rem] focusable shrink-0 cursor-pointer transition-all hover:scale-105 shadow-2xl border border-white/5" tabIndex={0} data-nav-id={`first-starred-item-${idx}`}>
+                    <div key={v.id + idx} onClick={() => setActiveVideo(v, firstStarredVideos)} className="w-72 group relative overflow-hidden bg-zinc-900/80 rounded-[1.8rem] focusable shrink-0 cursor-pointer transition-all shadow-2xl border border-white/5" tabIndex={0} data-nav-id={`first-starred-item-${idx}`}>
                       <div className="aspect-video relative overflow-hidden">
                         <img src={v.thumbnail} className="w-full h-full object-cover" alt="" />
                         <div className="absolute bottom-3 right-3 bg-black/80 text-white text-[12px] px-2.5 py-1 rounded-xl font-black z-10 border border-white/10">{v.duration}</div>
@@ -650,7 +640,7 @@ export function MediaView() {
             </section>
           </>
         ) : (
-          <section className={cn("space-y-10 animate-in slide-in-from-top-10 duration-500 min-h-[500px] transition-all", sectionTransition)} data-row-id="media-row-isolated">
+          <section className={cn("space-y-10 animate-in slide-in-from-top-10 duration-500 min-h-[500px] transition-all scale-[0.9] focus-within:scale-[1.0] focus-within:z-50 relative origin-center")} data-row-id="media-row-isolated">
             <div className="flex justify-between items-center sticky top-0 z-[120] bg-black/70 backdrop-blur-2xl p-8 rounded-[3rem] border border-white/10 shadow-[0_0_80px_rgba(0,0,0,0.8)]">
               <button onClick={resetView} className="h-14 px-10 rounded-full bg-red-600 text-white font-black text-base shadow-glow focusable flex items-center gap-4 relative transition-all active:scale-95" tabIndex={0}><ChevronRight className="w-6 h-6" /><span>العودة للمكتبة</span></button>
               <div className="flex flex-col items-end text-right">
