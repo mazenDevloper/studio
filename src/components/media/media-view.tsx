@@ -53,8 +53,6 @@ function AddContentModal({
     }
   };
 
-  // Logic: Stability Focus - No automatic jumps to results while typing
-
   return (
     <Dialog open={isOpen} onOpenChange={(val) => { onOpenChange(val); if(!val) { setResults([]); setQuery(""); } }}>
       <DialogContent className="bg-zinc-950/95 backdrop-blur-3xl border-white/10 text-white max-w-2xl max-h-[85vh] flex flex-col p-0 rounded-[3rem] overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.8)] outline-none">
@@ -109,7 +107,7 @@ function AddContentModal({
             ))
           ) : query.length >= 3 && !loading ? (
             <div className="py-20 flex flex-col items-center justify-center gap-4 opacity-30">
-              <Sparkles className="w-16 h-16" />
+              <span className="text-4xl">✨</span>
               <p className="font-black text-xl text-white">لا توجد نتائج مطابقة</p>
             </div>
           ) : (
@@ -389,7 +387,10 @@ export function MediaView() {
 
   const activeGridVideos = selectedChannel ? channelVideos : searchResults;
   const showIsolatedView = isIsolatedViewActive || !!selectedChannel || searchResults.length > 0;
-  const horizontalListClass = "w-full flex gap-4 px-8 pb-2 overflow-x-auto no-scrollbar scroll-smooth justify-start items-center";
+  const horizontalListClass = "w-full flex gap-4 px-8 pb-4 overflow-x-auto no-scrollbar scroll-smooth justify-start items-center";
+
+  // COMMON SECTION TRANSITION CLASS - Focus Scale Up WITHOUT Black Overlay
+  const sectionTransition = "transition-all duration-700 focus-within:scale-[1.1] focus-within:z-50 scale-95 relative origin-center";
 
   return (
     <div className={cn("h-screen flex bg-transparent overflow-hidden relative", isDockLeft ? "flex-row-reverse" : "flex-row")}>
@@ -464,11 +465,11 @@ export function MediaView() {
         </aside>
       )}
 
-      <main className="flex-1 overflow-y-auto custom-scrollbar relative pt-4 pb-40 space-y-6 px-10 no-scrollbar" style={{ direction: 'rtl' }}>
+      <main className="flex-1 overflow-y-auto custom-scrollbar relative pt-4 pb-40 space-y-0 px-10 no-scrollbar" style={{ direction: 'rtl' }}>
         {!showIsolatedView ? (
           <>
-            <section className="space-y-4" data-row-id="media-row-search">
-              <div className="flex justify-start items-center gap-4">
+            <section className={cn("py-4", sectionTransition)} data-row-id="media-row-search">
+              <div className="flex justify-start items-center gap-4 mb-4">
                 <Button onClick={toggleReorderMode} variant={isReorderMode ? "default" : "outline"} className={cn("rounded-full h-10 px-8 font-black text-xs relative", isReorderMode ? "bg-yellow-500 text-black shadow-glow" : "bg-white/5 border-white/10 text-white")} tabIndex={0}><ShortcutBadge action="toggle_reorder" className="-bottom-2 -left-2" /><ArrowRightLeft className="w-4 h-4 ml-2" /> {isReorderMode ? "إيقاف الترتيب" : "تفعيل الترتيب"}</Button>
               </div>
               <div className="flex items-center gap-3 w-full">
@@ -487,47 +488,52 @@ export function MediaView() {
               </div>
             </section>
 
-            <section className="min-h-[160px]" data-row-id="media-row-reciters">
+            <section className={cn("", sectionTransition)} data-row-id="media-row-reciters">
               <div className="flex items-center justify-between px-8 mb-4">
-                <h2 className="text-[10px] font-black text-white/40 uppercase tracking-[0.5em]">القراء والمبدعون</h2>
+                <h2 className="text-xl font-black text-white/40 uppercase tracking-[0.5em]">القراء والمبدعون</h2>
               </div>
               <div className={horizontalListClass}>
-                <button onClick={() => setIsAddReciterOpen(true)} className="flex flex-col items-center gap-3 px-4 py-3 rounded-[2rem] focusable shrink-0 min-w-[110px] border-4 border-transparent hover:bg-emerald-600/10" tabIndex={0}><div className="w-16 h-16 rounded-full flex items-center justify-center bg-emerald-500/10 border-2 border-dashed border-emerald-500/30 text-emerald-400 shadow-lg"><UserPlus className="w-8 h-8" /></div><span className="text-[9px] font-black text-emerald-400/60 uppercase tracking-widest">إضافة جديد</span></button>
+                <button onClick={() => setIsAddReciterOpen(true)} className="flex flex-col items-center gap-3 px-4 py-2 rounded-[2rem] focusable shrink-0 min-w-[140px] border-2 border-transparent hover:bg-emerald-600/10" tabIndex={0}>
+                  <div className="w-24 h-24 rounded-full flex items-center justify-center bg-emerald-500/10 border-2 border-dashed border-emerald-500/30 text-emerald-400">
+                    <Plus className="w-10 h-10" />
+                  </div>
+                  <span className="text-[10px] font-black text-emerald-400/60 uppercase tracking-widest">إضافة جديد</span>
+                </button>
                 {favoriteReciters.map((r, i) => (
                   <button 
                     key={r.channelid} 
                     onClick={() => handleReciterClick(r.name)} 
-                    className="flex flex-col items-center gap-3 px-4 py-3 rounded-[2rem] focusable shrink-0 min-w-[110px] border-4 transition-all relative group border-transparent hover:bg-emerald-600/10"
+                    className="flex flex-col items-center gap-3 px-4 py-2 rounded-[2rem] focusable shrink-0 min-w-[140px] border-2 transition-all relative group border-transparent hover:bg-emerald-600/10"
                     tabIndex={0}
                     data-nav-id={`reciter-${i}`}
                   >
-                    <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-emerald-500/30 shadow-2xl">
-                      {r.image ? <img src={r.image} className="w-full h-full object-cover" alt="" /> : <User className="w-6 h-6 text-white/20" />}
+                    <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-emerald-500/30 shadow-2xl group-hover:scale-105 transition-transform duration-500">
+                      {r.image ? <img src={r.image} className="w-full h-full object-cover" alt="" /> : <User className="w-10 h-10 text-white/20" />}
                     </div>
-                    <span className="text-[11px] font-black truncate max-w-[100px] text-white/90 block">{truncateName(r.name, 14)}</span>
+                    <span className="text-xs font-black truncate max-w-[120px] text-white block">{truncateName(r.name, 12)}</span>
                   </button>
                 ))}
               </div>
             </section>
 
-            <section className="min-h-[80px]" data-row-id="media-row-surahs">
-              <div className={horizontalListClass}>
+            <section className={cn("", sectionTransition)} data-row-id="media-row-surahs">
+              <div className={cn(horizontalListClass, "py-2")}>
                 {surahs.map((s, i) => (
-                  <button key={i} data-nav-id={`surah-${i}`} onClick={() => handleSurahClick(s.name_arabic)} className="px-6 py-3 rounded-full bg-white/5 border border-white/10 text-white font-black text-sm hover:bg-blue-600/20 focusable shrink-0 relative" tabIndex={0}>{s.name_arabic}</button>
+                  <button key={i} data-nav-id={`surah-${i}`} onClick={() => handleSurahClick(s.name_arabic)} className="px-8 py-3 rounded-full bg-white/5 border border-white/10 text-white font-black text-sm hover:bg-blue-600/20 focusable shrink-0 relative transition-all" tabIndex={0}>{s.name_arabic}</button>
                 ))}
               </div>
             </section>
 
-            <section className="min-h-[240px]" data-row-id="media-row-live-subs">
+            <section className={cn("", sectionTransition)} data-row-id="media-row-live-subs">
               {liveFromSubs.length > 0 && (
                 <>
-                  <div className="flex items-center justify-between px-8 mb-4"><h2 className="text-xs font-black text-white flex items-center gap-3"><div className="w-6 h-6 rounded bg-red-600 flex items-center justify-center shadow-glow"><RadioIcon className="w-4 h-4 text-white" /></div>بثوث حية من اشتراكاتك</h2></div>
+                  <div className="flex items-center justify-between px-8 mb-2"><h2 className="text-xs font-black text-white flex items-center gap-3"><div className="w-6 h-6 rounded bg-red-600 flex items-center justify-center shadow-glow"><RadioIcon className="w-4 h-4 text-white" /></div>بثوث حية من اشتراكاتك</h2></div>
                   <div className={horizontalListClass}>
                     {liveFromSubs.map((v, idx) => (
-                      <div key={v.id + idx} onClick={() => setActiveVideo(v, liveFromSubs)} className="w-72 group relative overflow-hidden bg-zinc-900/80 border-2 border-red-600/40 rounded-[2rem] focusable shrink-0 cursor-pointer transition-all hover:scale-105 shadow-2xl" tabIndex={0} data-nav-id={`live-item-${idx}`}>
+                      <div key={v.id + idx} onClick={() => setActiveVideo(v, liveFromSubs)} className="w-72 group relative overflow-hidden bg-zinc-900/80 border-2 border-red-600/40 rounded-[1.8rem] focusable shrink-0 cursor-pointer transition-all hover:scale-105 shadow-2xl" tabIndex={0} data-nav-id={`live-item-${idx}`}>
                         <div className="aspect-video relative overflow-hidden">
                           <img src={v.thumbnail} className="w-full h-full object-cover" alt="" />
-                          <div className="absolute top-3 right-3 bg-red-600 text-white text-[10px] px-3 py-1 rounded-full font-black uppercase tracking-tighter shadow-glow animate-pulse">LIVE NOW</div>
+                          <div className="absolute top-3 right-3 bg-red-600 text-white text-[9px] px-2.5 py-1 rounded-full font-black uppercase tracking-tighter shadow-glow animate-pulse">LIVE NOW</div>
                         </div>
                         <div className="p-4 text-right bg-gradient-to-t from-black to-transparent">
                           <h3 className="font-bold text-xs truncate text-white leading-tight">{v.title}</h3>
@@ -539,17 +545,17 @@ export function MediaView() {
               )}
             </section>
 
-            <section className="min-h-[240px]" data-row-id="media-row-starred">
+            <section className={cn("", sectionTransition)} data-row-id="media-row-starred">
               {starredVideos.length > 0 && (
                 <>
-                  <div className="flex items-center justify-between px-8 mb-4"><h2 className="text-xs font-black text-white flex items-center gap-3"><div className="w-6 h-6 rounded bg-yellow-500 flex items-center justify-center shadow-lg"><Star className="w-4 h-4 text-black fill-current" /></div>الترددات المجرسة (مؤخراً)</h2></div>
+                  <div className="flex items-center justify-between px-8 mb-2"><h2 className="text-xs font-black text-white flex items-center gap-3"><div className="w-6 h-6 rounded bg-yellow-500 flex items-center justify-center shadow-lg"><Star className="w-4 h-4 text-black fill-current" /></div>الترددات المجرسة (مؤخراً)</h2></div>
                   <div className={horizontalListClass}>
                     {starredVideos.map((v, idx) => (
-                      <div key={v.id + idx} onClick={() => setActiveVideo(v, starredVideos)} className="w-72 group relative overflow-hidden bg-zinc-900/80 rounded-[2rem] focusable shrink-0 cursor-pointer transition-all hover:scale-105 shadow-2xl border border-white/5" tabIndex={0} data-nav-id={`starred-item-${idx}`}>
-                        <div className="aspect-video relative overflow-hidden"><img src={v.thumbnail} className="w-full h-full object-cover" alt="" /><div className="absolute bottom-3 right-3 bg-black/80 text-white text-[14px] px-3 py-1.5 rounded-xl font-black z-10 border border-white/10">{v.duration}</div><div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 backdrop-blur-sm transition-all"><Play className="w-10 h-10 text-white fill-current" /></div></div>
+                      <div key={v.id + idx} onClick={() => setActiveVideo(v, starredVideos)} className="w-72 group relative overflow-hidden bg-zinc-900/80 rounded-[1.8rem] focusable shrink-0 cursor-pointer transition-all hover:scale-105 shadow-2xl border border-white/5" tabIndex={0} data-nav-id={`starred-item-${idx}`}>
+                        <div className="aspect-video relative overflow-hidden"><img src={v.thumbnail} className="w-full h-full object-cover" alt="" /><div className="absolute bottom-3 right-3 bg-black/80 text-white text-[12px] px-2.5 py-1 rounded-xl font-black z-10 border border-white/10">{v.duration}</div><div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 backdrop-blur-sm transition-all"><Play className="w-8 h-8 text-white fill-current" /></div></div>
                         <div className="p-4 text-right bg-black/40">
                            <h3 className="font-bold text-xs truncate text-white leading-tight">{v.title}</h3>
-                           <div className="flex items-center justify-end gap-2 mt-2 opacity-60"><span className="text-[9px] text-yellow-500 font-bold uppercase">{v.channelTitle}</span></div>
+                           <div className="flex items-center justify-end gap-2 mt-1 opacity-60"><span className="text-[8px] text-yellow-500 font-bold uppercase">{v.channelTitle}</span></div>
                         </div>
                       </div>
                     ))}
@@ -558,15 +564,15 @@ export function MediaView() {
               )}
             </section>
 
-            <section className="min-h-[240px]" data-row-id="media-row-highlights">
+            <section className={cn("", sectionTransition)} data-row-id="media-row-highlights">
               {matchGoals.length > 0 && (
                 <>
-                  <div className="flex items-center justify-between px-8 mb-4"><h2 className="text-xs font-black text-white flex items-center gap-3"><div className="w-6 h-6 rounded bg-blue-600 flex items-center justify-center shadow-glow"><Trophy className="w-4 h-4 text-white" /></div>ملخصات رياضية ذكية</h2></div>
+                  <div className="flex items-center justify-between px-8 mb-2"><h2 className="text-xs font-black text-white flex items-center gap-3"><div className="w-6 h-6 rounded bg-blue-600 flex items-center justify-center shadow-glow"><Trophy className="w-4 h-4 text-white" /></div>ملخصات رياضية ذكية</h2></div>
                   <div className={horizontalListClass}>
                     {matchGoals.map((v, idx) => (
-                      <div key={v.id + idx} onClick={() => setActiveVideo(v, matchGoals)} className="w-72 group relative overflow-hidden bg-zinc-900/80 border-b-4 border-blue-600/50 rounded-[2rem] focusable shrink-0 cursor-pointer shadow-2xl transition-all" tabIndex={0} data-nav-id={`highlight-item-${idx}`}>
-                        <div className="aspect-video relative overflow-hidden"><img src={v.thumbnail} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" alt="" /><div className="absolute top-3 left-3 bg-blue-600 text-white text-[9px] px-3 py-1 rounded-full font-black uppercase tracking-widest shadow-lg">GOALS & SUMMARY</div></div>
-                        <div className="p-4 text-right"><h3 className="font-bold text-[11px] truncate text-white leading-tight">{v.title}</h3></div>
+                      <div key={v.id + idx} onClick={() => setActiveVideo(v, matchGoals)} className="w-72 group relative overflow-hidden bg-zinc-900/80 border-b-4 border-blue-600/50 rounded-[1.8rem] focusable shrink-0 cursor-pointer shadow-2xl transition-all" tabIndex={0} data-nav-id={`highlight-item-${idx}`}>
+                        <div className="aspect-video relative overflow-hidden"><img src={v.thumbnail} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" alt="" /><div className="absolute top-3 left-3 bg-blue-600 text-white text-[8px] px-2.5 py-1 rounded-full font-black uppercase tracking-widest shadow-lg">GOALS & SUMMARY</div></div>
+                        <div className="p-4 text-right"><h3 className="font-bold text-xs truncate text-white leading-tight">{v.title}</h3></div>
                       </div>
                     ))}
                   </div>
@@ -574,20 +580,20 @@ export function MediaView() {
               )}
             </section>
 
-            <section className="min-h-[240px]" data-row-id="media-row-kids">
+            <section className={cn("", sectionTransition)} data-row-id="media-row-kids">
               {kidsVideos.length > 0 && (
                 <>
-                  <div className="flex items-center justify-between px-8 mb-4"><h2 className="text-xs font-black text-white flex items-center gap-3"><div className="w-6 h-6 rounded bg-emerald-500 flex items-center justify-center shadow-glow"><GraduationCap className="w-4 h-4 text-black" /></div>أكاديمية الطفل (تعليمي)</h2></div>
+                  <div className="flex items-center justify-between px-8 mb-2"><h2 className="text-xs font-black text-white flex items-center gap-3"><div className="w-6 h-6 rounded bg-emerald-500 flex items-center justify-center shadow-glow"><GraduationCap className="w-4 h-4 text-black" /></div>أكاديمية الطفل (تعليمي)</h2></div>
                   <div className={horizontalListClass}>
                     {kidsVideos.map((v, idx) => (
-                      <div key={v.id + idx} onClick={() => setActiveVideo(v, kidsVideos)} className="w-72 group relative overflow-hidden bg-zinc-900/80 border-b-4 border-emerald-500/50 rounded-[2rem] focusable shrink-0 cursor-pointer shadow-2xl transition-all" tabIndex={0} data-nav-id={`kids-item-${idx}`}>
+                      <div key={v.id + idx} onClick={() => setActiveVideo(v, kidsVideos)} className="w-72 group relative overflow-hidden bg-zinc-900/80 border-b-4 border-emerald-500/50 rounded-[1.8rem] focusable shrink-0 cursor-pointer shadow-2xl transition-all" tabIndex={0} data-nav-id={`kids-item-${idx}`}>
                         <div className="aspect-video relative overflow-hidden">
                           <img src={v.thumbnail} className="w-full h-full object-cover" alt="" />
                           <div className="absolute inset-0 bg-gradient-to-t from-emerald-900/50 to-transparent pointer-events-none" />
                         </div>
                         <div className="p-4 text-right">
-                          <h3 className="font-bold text-[11px] truncate text-white leading-tight">{v.title}</h3>
-                          <p className="text-[9px] text-emerald-400/80 font-black uppercase mt-1 tracking-tighter">{v.channelTitle}</p>
+                          <h3 className="font-bold text-xs truncate text-white leading-tight">{v.title}</h3>
+                          <p className="text-[8px] text-emerald-400/80 font-black uppercase mt-1 tracking-tighter">{v.channelTitle}</p>
                         </div>
                       </div>
                     ))}
@@ -597,7 +603,7 @@ export function MediaView() {
             </section>
           </>
         ) : (
-          <section className="space-y-10 animate-in slide-in-from-top-10 duration-500 min-h-[500px]" data-row-id="media-row-isolated">
+          <section className={cn("space-y-10 animate-in slide-in-from-top-10 duration-500 min-h-[500px] transition-all", sectionTransition)} data-row-id="media-row-isolated">
             <div className="flex justify-between items-center sticky top-0 z-[120] bg-black/70 backdrop-blur-2xl p-8 rounded-[3rem] border border-white/10 shadow-[0_0_80px_rgba(0,0,0,0.8)]">
               <button onClick={resetView} className="h-14 px-10 rounded-full bg-red-600 text-white font-black text-base shadow-glow focusable flex items-center gap-4 relative transition-all active:scale-95" tabIndex={0}><ChevronRight className="w-6 h-6" /><span>العودة للمكتبة</span></button>
               <div className="flex flex-col items-end text-right">
@@ -653,7 +659,7 @@ export function MediaView() {
                             </div>
                           )}
 
-                          <div className="flex flex-row items-center gap-3 w-full justify-start mt-auto mb-1">
+                          <div className="flex flex-row items-center gap-2 w-full justify-start mt-auto mb-1">
                              <div 
                                className="w-9 h-9 rounded-full overflow-hidden border-2 border-white/20 bg-zinc-800 flex-shrink-0 shadow-2xl group/avatar relative cursor-pointer hover:border-primary transition-colors"
                                onClick={(e) => navigateToChannel(e, v.channelId, v.channelTitle, v.channelAvatar)}
@@ -662,10 +668,10 @@ export function MediaView() {
                              </div>
                              
                              <div className="flex-1 min-w-0">
-                                <span className="font-black text-white text-[10px] uppercase tracking-tighter truncate block leading-none opacity-80 mb-0.5">
+                                <span className="font-black text-white text-[8px] uppercase tracking-tighter truncate block leading-none opacity-80 mb-0.5">
                                   {v.channelTitle}
                                 </span>
-                                <h3 className="font-bold text-[11px] text-white/95 leading-tight line-clamp-2 drop-shadow-2xl">
+                                <h3 className="font-bold text-[10px] text-white/95 leading-tight line-clamp-2 drop-shadow-2xl">
                                   {v.title}
                                 </h3>
                              </div>
@@ -677,7 +683,7 @@ export function MediaView() {
                             </div>
                           )}
 
-                          <div className="flex items-center justify-between w-full opacity-40 px-1">
+                          <div className="flex items-center justify-between w-full opacity-40">
                              <div className="flex items-center gap-1.5">
                                <Clock className="w-2.5 h-2.5 text-white" />
                                <span className="text-[8px] font-black text-white uppercase tracking-widest">{v.duration || "FEED"}</span>
@@ -700,7 +706,7 @@ export function MediaView() {
               <div className="py-40 flex flex-col items-center justify-center gap-8 opacity-30 text-white">
                 <AlertCircle className="w-24 h-24 text-white/20" />
                 <p className="text-3xl font-black uppercase tracking-[0.4em]">لا توجد بيانات متاحة</p>
-                <Button variant="outline" onClick={resetView} className="rounded-full h-16 px-12 border-white/20 font-black text-xl hover:bg-white/10 transition-all focusable">العودة للرئيسية</Button>
+                <Button variant="outline" onClick={resetView} className="rounded-full h-16 px-12 border-white/20 font-black text-xl hover:bg-white/10 transition-all focusable">العودة للمكتبة</Button>
               </div>
             )}
           </section>

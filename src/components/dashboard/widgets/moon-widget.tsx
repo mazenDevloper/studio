@@ -9,8 +9,8 @@ import { useMediaStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
 /**
- * MoonWidget v190.0 - Hijri Phase Engine
- * Features: phasesmoon.com integration, 1.8x scaling, and Hijri synchronization.
+ * MoonWidget v210.0 - Natural Aspect Engine
+ * Features: phasesmoon.com integration with natural circular display (Width 100%, Height Auto).
  */
 export function MoonWidget() {
   const [loading, setLoading] = useState(true);
@@ -42,13 +42,11 @@ export function MoonWidget() {
 
     try {
       const today = new Date();
-      // Get Hijri day number (1-30) using Umm al-Qura calendar
       const hijriFormatter = new Intl.DateTimeFormat('en-u-ca-islamic-umalqura-nu-latn', {day: 'numeric'});
       const dayNum = parseInt(hijriFormatter.format(today), 10);
       const validDay = dayNum > 30 ? 30 : (dayNum < 1 ? 1 : dayNum);
       setHijriDay(validDay);
 
-      // Arabic digits for display
       const arabicDigits = ['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'];
       const formattedDay = dayNum.toString().split('').map(d => arabicDigits[parseInt(d)]).join('');
       setHijriDisplay(formattedDay);
@@ -73,7 +71,6 @@ export function MoonWidget() {
   const label = cycleIndex === 0 ? "اليوم الهجري" : cycleIndex === 1 ? "اليوم الميلادي" : "درجة الحرارة";
   const isWide = windowWidth > 968;
 
-  // The dynamic moon phase URL based on Hijri day (using phasesmoon archive)
   const moonImageUrl = `https://phasesmoon.com/moonpng/220/moon-phase-${hijriDay}.webp`;
 
   return (
@@ -93,16 +90,15 @@ export function MoonWidget() {
       </button>
 
       <CardContent className="p-0 h-full flex flex-col items-center justify-center gap-4 relative z-10 w-full text-center">
-        <div className={isWide ? "relative w-72 h-72 flex-shrink-0 mx-auto transition-all duration-1000" : "relative w-48 h-48 flex-shrink-0 mx-auto transition-all duration-1000"}>
+        <div className={cn("relative flex-shrink-0 mx-auto transition-all duration-1000", isWide ? "w-80" : "w-56")}>
           {loading ? (
-            <div className="w-full h-full rounded-full bg-white/5 flex items-center justify-center border border-white/10">
+            <div className="w-full h-56 rounded-[2rem] bg-white/5 flex items-center justify-center border border-white/10">
               <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
             </div>
           ) : (
-            <div className="relative w-full h-full mx-auto">
-              {/* Central Identity Number */}
+            <div className="relative w-full mx-auto">
               <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none transition-all duration-1000"
-                   style={{ transform: isWide ? (cycleIndex === 0 ? 'scale(4.2)' : 'scale(2.4)') : 'scale(3.5)' }}>
+                   style={{ transform: isWide ? (cycleIndex === 0 ? 'scale(4.8)' : 'scale(2.8)') : 'scale(3.8)' }}>
                 <svg className="w-full h-full overflow-visible" viewBox="0 0 100 100">
                   <defs>
                     <linearGradient id="moonFill" x1="100%" y1="0%" x2="0%" y2="100%">
@@ -124,13 +120,13 @@ export function MoonWidget() {
                 </svg>
               </div>
 
-              {/* Full-Bleed Hijri Moon Image with 1.8x Scale */}
-              <div className="relative w-full h-full rounded-full overflow-hidden shadow-[0_0_120px_rgba(255,255,255,0.1)] bg-black transition-transform group-hover:scale-105 duration-700">
+              <div className="relative w-full overflow-hidden bg-black transition-transform group-hover:scale-105 duration-700">
                 <Image 
                   src={moonImageUrl} 
                   alt={`Moon Phase ${hijriDay}`} 
-                  fill 
-                  className="object-cover scale-[1.8] transition-transform duration-1000" 
+                  width={400}
+                  height={400}
+                  className="w-full h-auto transition-transform duration-1000 object-contain" 
                   unoptimized 
                   priority
                 />

@@ -67,9 +67,29 @@ export function convertTo12Hour(time24h: string | undefined): string {
     return `${hours12}:${minutes}`;
 }
 
+/**
+ * Advanced Display Number Logic: Skips navigation-dangerous combinations.
+ * Specifically skips any number where both digits are [2, 4, 5, 6, 8].
+ */
 export const getDisplayNumber = (index: number) => {
-  let num = 11 + index;
-  if (num >= 13) num++;
-  if (num >= 17) num++;
-  return num;
+  const blockedDigits = [2, 4, 5, 6, 8];
+  let currentNum = 11;
+  let count = 0;
+  
+  while (count < index) {
+    currentNum++;
+    const s = currentNum.toString();
+    const d1 = parseInt(s[0]);
+    const d2 = parseInt(s[1]);
+    
+    // Check if the number is dangerous for navigation or is a legacy skip
+    const isNavigationDangerous = s.length === 2 && blockedDigits.includes(d1) && blockedDigits.includes(d2);
+    const isLegacySkip = currentNum === 13 || currentNum === 17;
+    
+    if (isNavigationDangerous || isLegacySkip) {
+      continue;
+    }
+    count++;
+  }
+  return currentNum;
 };

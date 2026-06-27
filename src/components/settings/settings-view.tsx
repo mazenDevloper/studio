@@ -16,10 +16,11 @@ import { cn, normalizeKey } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ShortcutBadge } from "@/components/layout/car-dock";
+import { getDisplayNumber } from "@/lib/constants";
 
 /**
- * SettingsView v166.0 - Enhanced Reciters Reorder Stability.
- * Fixed "Select All" issue by ensuring pickedUpId is correctly verified against channelid.
+ * SettingsView v167.0 - Pure Clarity & Safe Numbering.
+ * Refined numbering logic to strictly avoid navigation digit collisions.
  */
 export function SettingsView() {
   const { 
@@ -29,7 +30,7 @@ export function SettingsView() {
     keyMappings, setKeyMapping, removeSpecificKeyMapping,
     customWallBackgrounds, addCustomWallBackground, autoHideIsland, setAutoHideIsland,
     displayScale, setDisplayScale, dockScale, setDockScale,
-    setIsRecordingKey, favoriteIptvChannels, toggleFavoriteIptvChannel, reorderIptvChannelTo,
+    setIsRecordingKey, favoriteIptvChannels, toggleFavoriteIptvChannel, updateIptvChannel, reorderIptvChannelTo,
     favoriteReciters, removeReciter, reorderReciterTo, moveReciterToTop, saveRecitersReorder,
     syncMasterBin, syncEverythingToCloud, isInitialLoading, fetchPriorityData,
     isReorderMode, toggleReorderMode, pickedUpId, setPickedUpId
@@ -52,13 +53,6 @@ export function SettingsView() {
   const [newReminder, setNewReminder] = useState<Partial<Reminder>>({
     label: "", relativePrayer: "manual", manualTime: "12:00", offsetMinutes: 0, color: "text-blue-400", iconType: "bell", countdownWindow: 15, countupWindow: 15, expiryType: 'prayer', expiryValue: 'next'
   });
-
-  const getDisplayNumber = (index: number) => {
-    let num = 11 + index;
-    if (num >= 13) num++;
-    if (num >= 17) num++;
-    return num;
-  };
 
   const handleGlobalSave = async () => {
     setIsSyncing(true);
@@ -142,7 +136,6 @@ export function SettingsView() {
     return () => { window.removeEventListener("keydown", handleKeyDown, true); setIsRecordingKey(false); };
   }, [recordingAction, selectedContext, setKeyMapping, toast, setIsRecordingKey, recordingType, firstKey]);
 
-  // Reorder Handlers for Reciters
   const handleDragStart = (e: React.DragEvent, id: string) => {
     if (!isReorderMode || !id) return;
     e.dataTransfer.setData("id", id);
@@ -371,14 +364,37 @@ export function SettingsView() {
             <div className="flex items-center justify-between mb-10">
               <div className="flex flex-col gap-1">
                 <CardTitle className="text-3xl font-black text-white flex items-center gap-4"><Tv className="w-8 h-8 text-emerald-500" />إدارة قنوات البث المباشر</CardTitle>
-                <p className="text-white/40 font-bold text-xs mr-12">تحكم بأرقام القنوات (11-23) عبر إعادة الترتيب</p>
+                <p className="text-white/40 font-bold text-xs mr-12">تحكم بأرقام القنوات وروابطها المباشرة</p>
               </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {favoriteIptvChannels.map((ch, idx) => (
-                <div key={ch.stream_id} className="bg-black/40 border border-white/5 p-6 rounded-[2.5rem] flex items-center justify-between group hover:border-emerald-500/40 transition-all duration-300">
-                  <div className="flex items-center gap-6"><div className="relative"><div className="w-14 h-14 rounded-2xl overflow-hidden border border-white/10 bg-zinc-900 shadow-xl"><img src={ch.stream_icon} className="w-full h-full object-cover" alt="" /></div><div className="absolute -top-3 -right-3 w-10 h-10 rounded-full bg-emerald-500 border-4 border-black flex items-center justify-center shadow-glow"><span className="text-sm font-black text-black">{getDisplayNumber(idx)}</span></div></div><div className="flex flex-col"><h4 className="font-black text-white truncate max-w-[150px]">{ch.name}</h4><span className="text-[10px] text-white/30 font-bold uppercase tracking-tighter">رقم الاختصار: {getDisplayNumber(idx)}</span></div></div>
-                  <div className="flex items-center gap-2"><div className="flex flex-col gap-1"><Button variant="ghost" size="icon" onClick={() => reorderIptvChannelTo(ch.stream_id, favoriteIptvChannels[Math.max(0, idx - 1)].stream_id)} disabled={idx === 0} className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 text-white/40"><Plus className="w-4 h-4 rotate-180" /></Button><Button variant="ghost" size="icon" onClick={() => reorderIptvChannelTo(ch.stream_id, favoriteIptvChannels[Math.min(favoriteIptvChannels.length - 1, idx + 1)].stream_id)} disabled={idx === favoriteIptvChannels.length - 1} className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 text-white/40"><Plus className="w-4 h-4" /></Button></div><Button variant="ghost" size="icon" onClick={() => toggleFavoriteIptvChannel(ch)} className="w-10 h-10 rounded-full bg-red-600/10 text-red-500 border border-red-600/20 hover:bg-red-600 hover:text-white"><Trash2 className="w-4 h-4" /></Button></div>
+                <div key={ch.stream_id} className="bg-black/40 border border-white/5 p-6 rounded-[2.5rem] flex flex-col gap-4 group hover:border-emerald-500/40 transition-all duration-300">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-6">
+                      <div className="relative">
+                        <div className="w-14 h-14 rounded-2xl overflow-hidden border border-white/10 bg-zinc-900 shadow-xl"><img src={ch.stream_icon} className="w-full h-full object-cover" alt="" /></div>
+                        <div className="absolute -top-3 -right-3 w-10 h-10 rounded-full bg-emerald-500 border-4 border-black flex items-center justify-center shadow-glow"><span className="text-sm font-black text-black">{getDisplayNumber(idx)}</span></div>
+                      </div>
+                      <div className="flex flex-col"><h4 className="font-black text-white truncate max-w-[150px]">{ch.name}</h4><span className="text-[10px] text-white/30 font-bold uppercase tracking-tighter">رقم الاختصار: {getDisplayNumber(idx)}</span></div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex flex-col gap-1">
+                        <Button variant="ghost" size="icon" onClick={() => reorderIptvChannelTo(ch.stream_id, favoriteIptvChannels[Math.max(0, idx - 1)].stream_id)} disabled={idx === 0} className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 text-white/40"><ChevronUp className="w-4 h-4" /></Button>
+                        <Button variant="ghost" size="icon" onClick={() => reorderIptvChannelTo(ch.stream_id, favoriteIptvChannels[Math.min(favoriteIptvChannels.length - 1, idx + 1)].stream_id)} disabled={idx === favoriteIptvChannels.length - 1} className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 text-white/40"><ChevronUp className="w-4 h-4 rotate-180" /></Button>
+                      </div>
+                      <Button variant="ghost" size="icon" onClick={() => toggleFavoriteIptvChannel(ch)} className="w-10 h-10 rounded-full bg-red-600/10 text-red-500 border border-red-600/20 hover:bg-red-600 hover:text-white"><Trash2 className="w-4 h-4" /></Button>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <span className="text-[9px] font-black text-emerald-500/60 uppercase tracking-widest px-2">رابط البث المباشر (URL)</span>
+                    <Input 
+                      value={ch.url || ""} 
+                      onChange={(e) => updateIptvChannel(ch.stream_id, { url: e.target.value })} 
+                      className="h-10 bg-black/60 border-white/5 rounded-xl px-4 text-xs text-white dir-ltr font-mono focus:border-emerald-500/50"
+                      placeholder="http://..."
+                    />
+                  </div>
                 </div>
               ))}
             </div>

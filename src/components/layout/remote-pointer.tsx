@@ -10,8 +10,8 @@ import { useToast } from "@/hooks/use-toast";
 import { getDisplayNumber } from "@/lib/constants";
 
 /**
- * Direct Routing Engine v430.0 - Advanced Action Handler
- * Features: Added 'toggle_star' for focused channels without clicking.
+ * Direct Routing Engine v210.0 - Advanced Action Handler
+ * Features: Blocked numeric combinations for navigation digits to prevent channel switching errors.
  */
 export function RemotePointer() {
   const pathname = usePathname();
@@ -39,7 +39,6 @@ export function RemotePointer() {
   // AUTO-FOCUS ON LOAD: Focus the active dock icon when the page changes
   useEffect(() => {
     const timer = setTimeout(() => {
-      // Find the dock button that has the active styling
       const activeDockBtn = document.querySelector('[data-nav-id^="dock-"].bg-blue-600\\/10') as HTMLElement;
       if (activeDockBtn) {
         activeDockBtn.focus();
@@ -149,6 +148,13 @@ export function RemotePointer() {
     const activeEl = document.activeElement as HTMLElement;
 
     if (/^\d+$/.test(finalKey)) {
+      // SECURE DRIVER: Block navigation-only numeric combinations from channel switching
+      const blockedCombos = [
+        '22', '44', '66', '88', '24', '26', '28', '82', '84', '86', '42', '46', '48', '62', '64', '68',
+        '25', '45', '65', '85', '52', '54', '56', '58', '55'
+      ];
+      if (blockedCombos.includes(finalKey)) return;
+
       const displayNum = parseInt(finalKey);
       const target = favoriteIptvChannels.find((_, idx) => getDisplayNumber(idx) === displayNum);
       if (target) {
@@ -173,7 +179,6 @@ export function RemotePointer() {
 
     if (isAction(finalKey, 'toggle_reorder')) { e?.preventDefault(); toggleReorderMode(); return; }
 
-    // Toggle Star Action for Focused Channel
     if (isAction(finalKey, 'toggle_star')) {
       e?.preventDefault();
       const type = activeEl.getAttribute('data-type');

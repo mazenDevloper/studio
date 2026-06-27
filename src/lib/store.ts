@@ -14,7 +14,8 @@ import {
   JSONBIN_MANUSCRIPTS_BIN_ID,
   JSONBIN_CLUBS_CACHE_BIN_ID,
   JSONBIN_POPULAR_RECITERS_BIN_ID,
-  prayerTimesData
+  prayerTimesData,
+  getDisplayNumber as getGlobalDisplayNumber
 } from "./constants";
 
 export interface Reminder {
@@ -183,6 +184,7 @@ interface MediaState {
   toggleBelledMatch: (matchId: string) => void;
   skipMatch: (matchId: string) => void;
   toggleFavoriteIptvChannel: (channel: IptvChannel) => void;
+  updateIptvChannel: (id: string, update: Partial<IptvChannel>) => void;
   reorderIptvChannel: (fromId: string, direction: 'prev' | 'next') => void;
   reorderIptvChannelTo: (fromId: string, toId: string) => void;
   setIptvPlaylist: (channels: IptvChannel[], index: number) => void;
@@ -764,6 +766,12 @@ export const useMediaStore = create<MediaState>()(
         });
       },
 
+      updateIptvChannel: (id, update) => set((state) => {
+        const newList = state.favoriteIptvChannels.map(c => c.stream_id === id ? { ...c, ...update } : c);
+        setTimeout(() => updateBin(JSONBIN_IPTV_FAVS_BIN_ID, newList), 100);
+        return { favoriteIptvChannels: newList };
+      }),
+
       reorderIptvChannel: (id, direction) => set((state) => {
         const list = [...state.favoriteIptvChannels];
         const idx = list.findIndex(c => c.stream_id === id);
@@ -962,7 +970,7 @@ export const useMediaStore = create<MediaState>()(
           activeIptv: { ...channel, url: channel.url || `http://playstop.watch:2095/live/W87d737/Pd37qj34/${channel.stream_id}.m3u8`, type: 'web' },
           iptvSwitchingInfo: { 
             current: channel, next: state.iptvPlaylist[nextNextIdx], prev: state.iptvPlaylist[prevIdx],
-            currentNum: getDisplayNumber(nextIdx), nextNum: getDisplayNumber(nextNextIdx), prevNum: getDisplayNumber(prevIdx)
+            currentNum: getGlobalDisplayNumber(nextIdx), nextNum: getGlobalDisplayNumber(nextNextIdx), prevNum: getGlobalDisplayNumber(prevIdx)
           }
         });
         setTimeout(() => set({ iptvSwitchingInfo: null }), 3000);
@@ -979,7 +987,7 @@ export const useMediaStore = create<MediaState>()(
           activeIptv: { ...channel, url: channel.url || `http://playstop.watch:2095/live/W87d737/Pd37qj34/${channel.stream_id}.m3u8`, type: 'web' },
           iptvSwitchingInfo: { 
             current: channel, next: state.iptvPlaylist[nextIdx], prev: state.iptvPlaylist[prevPrevIdx],
-            currentNum: getDisplayNumber(prevIdx), nextNum: getDisplayNumber(nextIdx), prevNum: getDisplayNumber(prevPrevIdx)
+            currentNum: getGlobalDisplayNumber(prevIdx), nextNum: getGlobalDisplayNumber(nextIdx), prevNum: getGlobalDisplayNumber(prevPrevIdx)
           }
         });
         setTimeout(() => set({ iptvSwitchingInfo: null }), 3000);
@@ -1049,13 +1057,6 @@ export const useMediaStore = create<MediaState>()(
     }
   )
 );
-
-const getDisplayNumber = (index: number) => {
-  let num = 11 + index;
-  if (num >= 13) num++;
-  if (num >= 17) num++;
-  return num;
-};
 
 if (typeof window !== "undefined") {
   const turboSync = async () => {
