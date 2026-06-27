@@ -142,6 +142,7 @@ export function MediaView() {
   
   const [starredVideos, setStarredVideos] = useState<YouTubeVideo[]>([]);
   const [isStarredLoading, setIsStarredLoading] = useState(false);
+  const [firstStarredVideos, setFirstStarredVideos] = useState<YouTubeVideo[]>([]);
   
   const [liveFromSubs, setLiveFromSubs] = useState<YouTubeVideo[]>([]);
   const [kidsVideos, setKidsVideos] = useState<YouTubeVideo[]>([]);
@@ -232,15 +233,34 @@ export function MediaView() {
 
       const starredChannels = favoriteChannels.filter(c => c.starred);
       if (starredChannels.length > 0) {
-        const starredPromises = starredChannels.map(c => fetchChannelVideos(c.channelid, 1));
+        // Dashboard-style Logic: First video of each, then the rest
+        const starredPromises = starredChannels.map(c => fetchChannelVideos(c.channelid, 5));
         const starredResults = await Promise.allSettled(starredPromises);
-        const syncStarred: YouTubeVideo[] = [];
+        
+        const firstVideos: YouTubeVideo[] = [];
+        const remainingVideos: YouTubeVideo[] = [];
+
         starredResults.forEach(res => {
            if (res.status === 'fulfilled' && res.value.length > 0) {
-             syncStarred.push(res.value[0]);
+             firstVideos.push(res.value[0]);
+             remainingVideos.push(...res.value.slice(1));
            }
         });
-        setStarredVideos(syncStarred);
+
+        const sortedRemaining = remainingVideos.sort((a, b) => {
+          const dateA = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
+          const dateB = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
+          return dateB - dateA;
+        });
+
+        setStarredVideos([...firstVideos, ...sortedRemaining]);
+
+        // Specific Section for THE FIRST starred channel
+        const firstC = starredChannels[0];
+        fetchChannelVideos(firstC.channelid, 15).then(setFirstStarredVideos).catch(() => {});
+      } else {
+        setStarredVideos([]);
+        setFirstStarredVideos([]);
       }
 
       if (shouldUpdateLive || liveFromSubs.length === 0) {
@@ -390,7 +410,7 @@ export function MediaView() {
   const horizontalListClass = "w-full flex gap-4 px-8 pb-4 overflow-x-auto no-scrollbar scroll-smooth justify-start items-center";
 
   // COMMON SECTION TRANSITION CLASS - Focus Scale Up WITHOUT Black Overlay
-  const sectionTransition = "transition-all duration-700 focus-within:scale-[1.1] focus-within:z-50 scale-95 relative origin-center";
+  const sectionTransition = "transition-all duration-700 focus-within:scale-[1.1] focus-within:z-50 relative origin-center";
 
   return (
     <div className={cn("h-screen flex bg-transparent overflow-hidden relative", isDockLeft ? "flex-row-reverse" : "flex-row")}>
@@ -428,7 +448,7 @@ export function MediaView() {
                 draggable={isReorderMode}
                 onDragStart={(e) => handleDragStart(e, ch.channelid)}
                 onDragOver={handleDragOver}
-                onDrop={(e) => handleDropChannel(e, ch.channelid)}
+                onDropChannel={(e) => handleDropChannel(e, ch.channelid)}
                 onClick={() => { 
                   if (isReorderMode) {
                     setPickedUpId(pickedUpId === ch.channelid ? null : ch.channelid);
@@ -510,7 +530,7 @@ export function MediaView() {
                     <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-emerald-500/30 shadow-2xl group-hover:scale-105 transition-transform duration-500">
                       {r.image ? <img src={r.image} className="w-full h-full object-cover" alt="" /> : <User className="w-10 h-10 text-white/20" />}
                     </div>
-                    <span className="text-xs font-black truncate max-w-[120px] text-white block">{truncateName(r.name, 12)}</span>
+                    <span className="text-[10px] font-black truncate max-w-[120px] text-white block">{truncateName(r.name, 12)}</span>
                   </button>
                 ))}
               </div>
@@ -563,6 +583,33 @@ export function MediaView() {
                 </>
               )}
             </section>
+
+            {/* New Exclusive Section for First Starred Channel */}
+            {favoriteChannels.filter(c => c.starred).length > 0 && firstStarredVideos.length > 0 && (
+              <section className={cn("", sectionTransition)} data-row-id="media-row-first-starred">
+                <div className="flex items-center justify-between px-8 mb-2">
+                  <h2 className="text-xs font-black text-white flex items-center gap-3">
+                    <div className="w-7 h-7 rounded-full overflow-hidden border-2 border-yellow-500/50 shadow-glow bg-zinc-900">
+                      <img src={favoriteChannels.filter(c => c.starred)[0].image} className="w-full h-full object-cover" alt="" />
+                    </div>
+                    <span className="tracking-tight">أحدث محتوى من: {favoriteChannels.filter(c => c.starred)[0].name}</span>
+                  </h2>
+                </div>
+                <div className={horizontalListClass}>
+                  {firstStarredVideos.map((v, idx) => (
+                    <div key={v.id + idx} onClick={() => setActiveVideo(v, firstStarredVideos)} className="w-72 group relative overflow-hidden bg-zinc-900/80 rounded-[1.8rem] focusable shrink-0 cursor-pointer transition-all hover:scale-105 shadow-2xl border border-white/5" tabIndex={0} data-nav-id={`first-starred-item-${idx}`}>
+                      <div className="aspect-video relative overflow-hidden">
+                        <img src={v.thumbnail} className="w-full h-full object-cover" alt="" />
+                        <div className="absolute bottom-3 right-3 bg-black/80 text-white text-[12px] px-2.5 py-1 rounded-xl font-black z-10 border border-white/10">{v.duration}</div>
+                      </div>
+                      <div className="p-4 text-right bg-black/40">
+                        <h3 className="font-bold text-xs truncate text-white leading-tight">{v.title}</h3>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
 
             <section className={cn("", sectionTransition)} data-row-id="media-row-highlights">
               {matchGoals.length > 0 && (
