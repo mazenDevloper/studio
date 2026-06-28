@@ -162,6 +162,7 @@ interface MediaState {
   moveChannelToTop: (channelId: string) => void;
   addReciter: (channel: YouTubeChannel) => void;
   removeReciter: (channelid: string) => void;
+  updateReciter: (id: string, name: string) => void;
   reorderReciter: (fromId: string, direction: 'prev' | 'next') => void;
   reorderReciterTo: (fromId: string, toId: string) => void;
   moveReciterToTop: (channelId: string) => void;
@@ -363,7 +364,7 @@ export const useMediaStore = create<MediaState>()(
         carScale: 1.02, 
         backgroundIndex: 0,
         showManuscriptBg: true,
-        manuscriptBgUrl: "https://images.unsplash.com/photo-1578301978693-85fa9c0320b9?q=80&w=2000",
+        manuscriptBgUrl: "https://www.image2url.com/r2/default/images/1782382707952-d99447c6-bc60-475d-9406-5fd2ef320bd5.png",
         fontScale: 1.0
       },
       displayScale: 1.0,
@@ -410,24 +411,20 @@ export const useMediaStore = create<MediaState>()(
         set({ isInitialLoading: true });
         
         const fetchBinLatest = async (id: string) => {
-          for (let i = 0; i < 2; i++) { // Try twice
-            try {
-              const r = await fetch(`https://api.jsonbin.io/v3/b/${id}/latest`, { 
-                headers: { 'X-Master-Key': JSONBIN_MASTER_KEY }, cache: 'no-store' 
-              });
-              if (r.ok) {
-                const data = await r.json();
-                return data.record || data;
-              }
-            } catch (e) {
-              console.warn(`JSONBin Fetch Attempt ${i+1} failed for ${id}`);
+          try {
+            const r = await fetch(`https://api.jsonbin.io/v3/b/${id}/latest`, { 
+              headers: { 'X-Master-Key': JSONBIN_MASTER_KEY }, cache: 'no-store' 
+            });
+            if (r.ok) {
+              const data = await r.json();
+              return data.record || data;
             }
-            await new Promise(res => setTimeout(res, 500));
+          } catch (e) {
+            console.warn(`JSONBin Fetch Error for ${id}`);
           }
           return null;
         };
 
-        // Parallel fetching of all critical bins
         const [pData, chData, recData, mManuscripts, masterBin, iptvData, savedData] = await Promise.all([
           fetchBinLatest(JSONBIN_PRAYER_TIMES_BIN_ID),
           fetchBinLatest(JSONBIN_CHANNELS_BIN_ID),
@@ -440,10 +437,7 @@ export const useMediaStore = create<MediaState>()(
 
         if (pData) set({ prayerTimes: Array.isArray(pData) ? pData : (pData.prayers || []) });
         if (chData) set({ favoriteChannels: Array.isArray(chData) ? chData : [] });
-        if (recData) {
-          const list = Array.isArray(recData) ? recData : (recData.reciters || []);
-          set({ favoriteReciters: list });
-        }
+        if (recData) set({ favoriteReciters: Array.isArray(recData) ? recData : (recData.reciters || []) });
         if (mManuscripts) set({ customManuscripts: Array.isArray(mManuscripts) ? mManuscripts : (mManuscripts.manuscripts || []) });
         if (masterBin) {
           const safeKeys = { ...DEFAULT_CONTEXT_MAPPINGS };
@@ -651,6 +645,12 @@ export const useMediaStore = create<MediaState>()(
         });
       },
 
+      updateReciter: (id, name) => set((state) => {
+        const newList = state.favoriteReciters.map(r => r.channelid === id ? { ...r, name } : r);
+        updateBin(JSONBIN_POPULAR_RECITERS_BIN_ID, newList);
+        return { favoriteReciters: newList };
+      }),
+
       reorderReciter: (id, direction) => set((state) => {
         const list = [...state.favoriteReciters];
         const idx = list.findIndex(r => r.channelid === id);
@@ -768,7 +768,6 @@ export const useMediaStore = create<MediaState>()(
 
       updateIptvChannel: (id, update) => set((state) => {
         const newList = state.favoriteIptvChannels.map(c => c.stream_id === id ? { ...c, ...update } : c);
-        setTimeout(() => updateBin(JSONBIN_IPTV_FAVS_BIN_ID, newList), 100);
         return { favoriteIptvChannels: newList };
       }),
 
@@ -1028,7 +1027,7 @@ export const useMediaStore = create<MediaState>()(
       setLastLiveUpdate: (time) => set({ lastLiveUpdate: time }),
     }),
     {
-      name: "drivecast-ready-v40", 
+      name: "drivecast-ready-v41", 
       partialize: (state) => ({ 
         favoriteChannels: state.favoriteChannels,
         favoriteReciters: state.favoriteReciters,
@@ -1057,14 +1056,3 @@ export const useMediaStore = create<MediaState>()(
     }
   )
 );
-
-if (typeof window !== "undefined") {
-  const turboSync = async () => {
-    try {
-      await useMediaStore.getState().fetchPriorityData('all');
-    } catch (e) { 
-      console.warn("LITESPEED Turbo Sync Error:", e); 
-    }
-  };
-  setTimeout(turboSync, 1);
-}

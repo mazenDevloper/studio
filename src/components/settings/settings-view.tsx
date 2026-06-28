@@ -4,7 +4,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useMediaStore, Reminder, Manuscript, AppAction, MappingContext, IptvChannel } from "@/lib/store";
 import { 
-  Settings, Bell, Trash2, Edit2, Plus, Monitor, Palette, Keyboard, Clock, CheckCircle2, Save, BookOpen, LayoutGrid, Eye, Timer, Tv, ArrowRightLeft, Globe, Loader2, RefreshCw, Mic, ChevronUp, User
+  Settings, Bell, Trash2, Edit2, Plus, Monitor, Palette, Keyboard, Clock, CheckCircle2, Save, BookOpen, LayoutGrid, Eye, Timer, Tv, ArrowRightLeft, Globe, Loader2, RefreshCw, Mic, ChevronUp, User, X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,8 +19,8 @@ import { ShortcutBadge } from "@/components/layout/car-dock";
 import { getDisplayNumber } from "@/lib/constants";
 
 /**
- * SettingsView v167.0 - Pure Clarity & Safe Numbering.
- * Refined numbering logic to strictly avoid navigation digit collisions.
+ * SettingsView v170.0 - Personalized Reciters & IPTV Management.
+ * Features: Fixed X icon ReferenceError and added direct reciter name editing.
  */
 export function SettingsView() {
   const { 
@@ -31,13 +31,15 @@ export function SettingsView() {
     customWallBackgrounds, addCustomWallBackground, autoHideIsland, setAutoHideIsland,
     displayScale, setDisplayScale, dockScale, setDockScale,
     setIsRecordingKey, favoriteIptvChannels, toggleFavoriteIptvChannel, updateIptvChannel, reorderIptvChannelTo,
-    favoriteReciters, removeReciter, reorderReciterTo, moveReciterToTop, saveRecitersReorder,
+    favoriteReciters, removeReciter, updateReciter, reorderReciterTo, moveReciterToTop, saveRecitersReorder,
     syncMasterBin, syncEverythingToCloud, isInitialLoading, fetchPriorityData,
-    isReorderMode, toggleReorderMode, pickedUpId, setPickedUpId
+    isReorderMode, toggleReorderMode, pickedUpId, setPickedUpId, saveIptvReorder
   } = useMediaStore();
   
   const { toast } = useToast();
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingReciterId, setEditingReciterId] = useState<string | null>(null);
+  const [reciterNameInput, setReciterNameInput] = useState("");
   const [bgInput, setBgInput] = useState("");
   const [manuscriptInput, setManuscriptInput] = useState("");
   const [manuscriptType, setManuscriptType] = useState<'text' | 'image'>('text');
@@ -100,6 +102,14 @@ export function SettingsView() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const handleSaveReciterName = (id: string) => {
+    if (!reciterNameInput.trim()) return;
+    updateReciter(id, reciterNameInput);
+    setEditingReciterId(null);
+    setReciterNameInput("");
+    toast({ title: "تم تعديل الاسم", description: "تم تحديث اسم القارئ بنجاح" });
+  };
+
   const handleSaveRecitersOrder = async () => {
     setIsSavingReciters(true);
     try {
@@ -157,6 +167,7 @@ export function SettingsView() {
   };
 
   const wallPresets = [
+    "https://www.image2url.com/r2/default/images/1782382707952-d99447c6-bc60-475d-9406-5fd2ef320bd5.png",
     "https://images.unsplash.com/photo-1578301978693-85fa9c0320b9?q=80&w=2000", 
     "https://images.unsplash.com/photo-1594911772125-07fc7a2d8d9f?q=80&w=2000", 
     "https://images.unsplash.com/photo-1519817650390-64a93db51149?q=80&w=2000"
@@ -188,6 +199,29 @@ export function SettingsView() {
         <button onClick={() => removeSpecificKeyMapping(context, action, k)} className="absolute -top-1 -right-1 w-5 h-5 bg-red-600 rounded-full flex items-center justify-center opacity-0 group-hover/key:opacity-100 transition-opacity border border-white/20"><Trash2 className="w-2.5 h-2.5 text-white" /></button>
       </div>
     );
+  };
+
+  const handleSaveIptvChannel = async () => {
+    try {
+      await saveIptvReorder();
+      toast({ title: "تم الحفظ", description: "تم تحديث روابط القناة سحابياً" });
+    } catch (e) {
+      toast({ variant: "destructive", title: "خطأ في الحفظ" });
+    }
+  };
+
+  const handleSelectWallpaper = (url: string) => {
+    updateMapSettings({ manuscriptBgUrl: url });
+    toast({ title: "تم اختيار الخلفية" });
+  };
+
+  const handleAddWallpaper = () => {
+    if(bgInput) { 
+      addCustomWallBackground(bgInput); 
+      updateMapSettings({ manuscriptBgUrl: bgInput }); 
+      setBgInput(""); 
+      toast({title: "تمت الإضافة والحفظ سحابياً"}); 
+    }
   };
 
   return (
@@ -260,8 +294,17 @@ export function SettingsView() {
             <Card className="premium-glass p-8 space-y-8 bg-white/5 border-white/10">
               <CardTitle className="text-2xl font-black text-white flex items-center gap-3"><Palette className="w-6 h-6 text-primary" />خلفية اللوحة</CardTitle>
               <div className="space-y-6">
-                <div className="flex gap-4"><Input placeholder="رابط صورة جديدة..." value={bgInput} onChange={(e) => setBgInput(e.target.value)} className="h-14 bg-black/40 border-white/10 rounded-xl px-6 text-white text-right flex-1" /><Button onClick={() => { if(bgInput) { addCustomWallBackground(bgInput); updateMapSettings({ manuscriptBgUrl: bgInput }); setBgInput(""); toast({title: "تمت الإضافة"}); } }} className="h-14 w-14 bg-primary rounded-xl focusable"><Plus className="w-6 h-6" /></Button></div>
-                <div className="grid grid-cols-3 gap-4">{allBackgrounds.map((url, i) => (<div key={i} onClick={() => updateMapSettings({ manuscriptBgUrl: url })} className={cn("aspect-video rounded-xl overflow-hidden cursor-pointer border-2 transition-all group relative", mapSettings.manuscriptBgUrl === url ? "border-primary shadow-glow scale-105" : "border-transparent opacity-60 hover:opacity-100")}><img src={url} className="w-full h-full object-cover" alt="" /></div>))}</div>
+                <div className="flex gap-4">
+                  <Input placeholder="رابط صورة جديدة..." value={bgInput} onChange={(e) => setBgInput(e.target.value)} className="h-14 bg-black/40 border-white/10 rounded-xl px-6 text-white text-right flex-1" />
+                  <Button onClick={handleAddWallpaper} className="h-14 w-14 bg-primary rounded-xl focusable"><Plus className="w-6 h-6" /></Button>
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  {allBackgrounds.map((url, i) => (
+                    <div key={i} onClick={() => handleSelectWallpaper(url)} className={cn("aspect-video rounded-xl overflow-hidden cursor-pointer border-2 transition-all group relative", mapSettings.manuscriptBgUrl === url ? "border-primary shadow-glow scale-105" : "border-transparent opacity-60 hover:opacity-100")}>
+                      <img src={url} className="w-full h-full object-cover" alt="" />
+                    </div>
+                  ))}
+                </div>
               </div>
             </Card>
           </div>
@@ -305,7 +348,7 @@ export function SettingsView() {
                 </div>
               </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 gap-4">
               {favoriteReciters.map((r, idx) => (
                 <div 
                   key={r.channelid || `reciter-${idx}`} 
@@ -319,38 +362,47 @@ export function SettingsView() {
                     }
                   }}
                   className={cn(
-                    "bg-black/40 border border-white/5 p-6 rounded-[2.5rem] flex items-center justify-between group hover:border-emerald-500/40 transition-all duration-300 focusable outline-none",
+                    "bg-black/40 border border-white/5 p-6 rounded-[2rem] flex items-center justify-between group hover:border-emerald-500/40 transition-all duration-300 focusable outline-none",
                     (isReorderMode && pickedUpId === r.channelid) ? "border-accent scale-105 bg-accent/20 shadow-glow" : "",
                     isReorderMode && "cursor-move"
                   )}
                   tabIndex={0}
                   data-type="reciter"
                   data-id={r.channelid}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && isReorderMode && r.channelid) {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setPickedUpId(pickedUpId === r.channelid ? null : r.channelid);
-                    }
-                  }}
                 >
-                  <div className="flex items-center gap-6 pointer-events-none">
-                    <div className="relative">
+                  <div className="flex items-center gap-6 flex-1 min-w-0">
+                    <div className="relative shrink-0">
                       <div className="w-14 h-14 rounded-full overflow-hidden border border-white/10 bg-zinc-900 shadow-xl">
                         {r.image ? <img src={r.image} className="w-full h-full object-cover" alt="" /> : <User className="w-6 h-6 text-white/20" />}
                       </div>
                       <div className="absolute -top-2 -right-2 bg-emerald-500 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black text-black">{idx + 1}</div>
                     </div>
-                    <div className="flex flex-col text-right"><h4 className="font-black text-white truncate max-w-[150px]">{r.name}</h4><span className="text-[10px] text-white/30 font-bold uppercase">قائمة المبدعين</span></div>
+                    {editingReciterId === r.channelid ? (
+                      <div className="flex items-center gap-3 flex-1 max-w-xl">
+                        <Input 
+                          value={reciterNameInput} 
+                          onChange={(e) => setReciterNameInput(e.target.value)} 
+                          className="h-12 bg-black/60 border-white/10 rounded-xl px-4 text-white text-right"
+                          autoFocus
+                          onKeyDown={(e) => e.key === 'Enter' && handleSaveReciterName(r.channelid)}
+                        />
+                        <Button onClick={() => handleSaveReciterName(r.channelid)} className="h-12 w-12 bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 rounded-xl focusable"><CheckCircle2 className="w-5 h-5" /></Button>
+                        <Button onClick={() => setEditingReciterId(null)} variant="ghost" className="h-12 w-12 bg-white/5 text-white/40 rounded-xl focusable"><X className="w-5 h-5" /></Button>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col text-right"><h4 className="font-black text-xl text-white truncate">{r.name}</h4><span className="text-[10px] text-white/30 font-bold uppercase">قائمة المبدعين</span></div>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
-                    {isReorderMode && (
+                    {isReorderMode ? (
                       <button onClick={(e) => { e.stopPropagation(); moveReciterToTop(r.channelid); }} className="w-10 h-10 rounded-full bg-white/5 text-yellow-500 flex items-center justify-center hover:bg-white/10 focusable">
                         <ChevronUp className="w-5 h-5" />
                       </button>
-                    )}
-                    {!isReorderMode && (
-                      <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); removeReciter(r.channelid); }} className="w-10 h-10 rounded-full bg-red-600/10 text-red-500 border border-red-600/20 hover:bg-red-600 hover:text-white focusable"><Trash2 className="w-4 h-4" /></Button>
+                    ) : editingReciterId !== r.channelid && (
+                      <>
+                        <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); setEditingReciterId(r.channelid); setReciterNameInput(r.name); }} className="w-10 h-10 rounded-full bg-white/5 text-yellow-500 hover:bg-yellow-500 hover:text-black focusable"><Edit2 className="w-4 h-4" /></Button>
+                        <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); removeReciter(r.channelid); }} className="w-10 h-10 rounded-full bg-red-600/10 text-red-500 border border-red-600/20 hover:bg-red-600 hover:text-white focusable"><Trash2 className="w-4 h-4" /></Button>
+                      </>
                     )}
                   </div>
                 </div>
@@ -388,12 +440,22 @@ export function SettingsView() {
                   </div>
                   <div className="space-y-2">
                     <span className="text-[9px] font-black text-emerald-500/60 uppercase tracking-widest px-2">رابط البث المباشر (URL)</span>
-                    <Input 
-                      value={ch.url || ""} 
-                      onChange={(e) => updateIptvChannel(ch.stream_id, { url: e.target.value })} 
-                      className="h-10 bg-black/60 border-white/5 rounded-xl px-4 text-xs text-white dir-ltr font-mono focus:border-emerald-500/50"
-                      placeholder="http://..."
-                    />
+                    <div className="flex gap-2">
+                      <Input 
+                        value={ch.url || ""} 
+                        onChange={(e) => updateIptvChannel(ch.stream_id, { url: e.target.value })} 
+                        className="h-10 bg-black/60 border-white/5 rounded-xl px-4 text-xs text-white dir-ltr font-mono focus:border-emerald-500/50 flex-1"
+                        placeholder="http://..."
+                      />
+                      <Button 
+                        size="icon" 
+                        variant="ghost" 
+                        onClick={handleSaveIptvChannel} 
+                        className="h-10 w-10 bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 hover:bg-emerald-500 hover:text-black focusable"
+                      >
+                        <Save className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ))}
