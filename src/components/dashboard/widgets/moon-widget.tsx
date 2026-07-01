@@ -3,14 +3,14 @@
 
 import { useEffect, useState } from "react";
 import { CardContent } from "@/components/ui/card";
-import { Moon as MoonIcon, Loader2, Cloud, Calendar, Maximize2 } from "lucide-react";
+import { Moon as MoonIcon, Loader2, Cloud, Calendar, Maximize2, Type } from "lucide-react";
 import Image from "next/image";
 import { useMediaStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
 /**
- * MoonWidget v210.0 - Natural Aspect Engine
- * Features: phasesmoon.com integration with natural circular display (Width 100%, Height Auto).
+ * MoonWidget v215.0 - Integrated Manuscript Engine
+ * Features: Manuscript on Moon switcher and natural aspect display.
  */
 export function MoonWidget() {
   const [loading, setLoading] = useState(true);
@@ -19,7 +19,8 @@ export function MoonWidget() {
   const [hijriDisplay, setHijriDisplay] = useState("١");
   const [temperature, setTemperature] = useState<string>("--");
   const [windowWidth, setWindowWidth] = useState(0);
-  const setWallPlate = useMediaStore(state => state.setWallPlate);
+  
+  const { setWallPlate, mapSettings, updateMapSettings } = useMediaStore();
 
   useEffect(() => {
     const handleResize = () => setWindowWidth(window.innerWidth);
@@ -73,21 +74,39 @@ export function MoonWidget() {
 
   const moonImageUrl = `https://phasesmoon.com/moonpng/220/moon-phase-${hijriDay}.webp`;
 
+  const toggleManuscriptOnMoon = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    updateMapSettings({ showManuscriptOnMoon: !mapSettings.showManuscriptOnMoon });
+  };
+
   return (
     <div 
       className="h-full w-full bg-black rounded-[2.5rem] overflow-hidden relative flex flex-col items-center justify-center p-1 outline-none border-2 border-transparent group focusable"
       tabIndex={0}
       onClick={() => setWallPlate('moon', { image: moonImageUrl, day: displayValue, label })}
     >
-      <button 
-        className="absolute top-6 left-6 w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/20 transition-all z-50 focusable opacity-0 group-hover:opacity-100 group-focus:opacity-100"
-        onClick={(e) => {
-          e.stopPropagation();
-          setWallPlate('moon', { image: moonImageUrl, day: displayValue, label });
-        }}
-      >
-        <Maximize2 className="w-6 h-6" />
-      </button>
+      <div className="absolute top-6 left-6 flex items-center gap-3 z-50 opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-all">
+        <button 
+          className={cn(
+            "w-12 h-12 rounded-full backdrop-blur-md border flex items-center justify-center transition-all focusable",
+            mapSettings.showManuscriptOnMoon ? "bg-primary text-white border-primary shadow-glow" : "bg-white/10 text-white/40 border-white/10 hover:bg-white/20"
+          )}
+          onClick={toggleManuscriptOnMoon}
+          title="عرض المخطوطة على القمر"
+        >
+          <Type className="w-6 h-6" />
+        </button>
+
+        <button 
+          className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/20 transition-all focusable"
+          onClick={(e) => {
+            e.stopPropagation();
+            setWallPlate('moon', { image: moonImageUrl, day: displayValue, label });
+          }}
+        >
+          <Maximize2 className="w-6 h-6" />
+        </button>
+      </div>
 
       <CardContent className="p-0 h-full flex flex-col items-center justify-center gap-4 relative z-10 w-full text-center">
         <div className={cn("relative flex-shrink-0 mx-auto transition-all duration-1000", isWide ? "w-80" : "w-56")}>

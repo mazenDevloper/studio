@@ -10,8 +10,8 @@ import Autoplay from "embla-carousel-autoplay";
 import Image from "next/image";
 
 /**
- * ActiveAzkarWidget v63.0 - Zero Padding Content
- * Pure visual impact with no borders or gaps.
+ * ActiveAzkarWidget v80.0 - High-Contrast Isolation
+ * Features: White-Only images via brightness/invert, High-precision font application.
  */
 export function ActiveAzkarWidget() {
   const customManuscripts = useMediaStore(state => state.customManuscripts);
@@ -43,7 +43,7 @@ export function ActiveAzkarWidget() {
     >
       {mapSettings.showManuscriptBg && mapSettings.manuscriptBgUrl && (
         <div className="absolute inset-0 z-0">
-          <Image src={mapSettings.manuscriptBgUrl} alt="Card Background" fill className="object-cover opacity-60" priority />
+          <Image src={mapSettings.manuscriptBgUrl} alt="Card Background" fill className="object-cover opacity-60" priority unoptimized />
         </div>
       )}
       
@@ -61,16 +61,24 @@ export function ActiveAzkarWidget() {
                     <Maximize2 className="w-6 h-6" />
                   </button>
 
-                  <div className="animate-in fade-in zoom-in-95 duration-1000 w-full h-full flex justify-center items-center p-0 m-0">
+                  <div className="animate-in fade-in zoom-in-95 duration-1000 w-full h-full flex justify-center items-center p-0 m-0 px-12">
                     {item.type === 'text' ? (
-                      <p className="w-full text-5xl md:text-7xl lg:text-8xl font-calligraphy text-white leading-tight drop-shadow-[0_0_30px_rgba(255,255,255,0.9)] text-center tracking-wide whitespace-pre-wrap break-words px-4">
+                      <p 
+                        className="w-full text-4xl md:text-5xl lg:text-7xl font-calligraphy text-white leading-[1.3] drop-shadow-[0_0_30px_rgba(255,255,255,1)] text-center tracking-normal whitespace-pre-wrap break-words"
+                        style={{ 
+                          fontFamily: item.fontFamily || 'Aref Ruqaa',
+                          WebkitTextStroke: '1px rgba(255,255,255,0.1)',
+                          paintOrder: 'stroke fill'
+                        }}
+                      >
                         {item.content}
                       </p>
                     ) : (
                       <img 
                         src={item.content} 
                         alt="Manuscript"
-                        className="h-full w-full object-contain brightness-0 invert drop-shadow-[0_0_80px_rgba(255,255,255,1)] p-0 m-0"
+                        className="h-full w-full object-contain brightness-100 drop-shadow-[0_0_100px_rgba(255,255,255,0.8)] p-0 m-0"
+                        style={{ filter: 'brightness(0) invert(1) drop-shadow(0 0 30px rgba(255,255,255,0.8))' }}
                       />
                     )}
                   </div>

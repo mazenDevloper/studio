@@ -26,8 +26,8 @@ interface GoalEvent {
 }
 
 /**
- * Split Interactive Island v138.0
- * Logic: Dual-Phase Reminder Countdown (Start & End).
+ * Split Interactive Island v140.0 - Hydration Guarded
+ * Logic: Dual-Phase Reminder Countdown with Mounting Check to prevent Hydration errors.
  */
 export function LiveMatchIsland() {
   const { 
@@ -35,13 +35,16 @@ export function LiveMatchIsland() {
     showIslands, toggleShowIslands, skippedMatchIds, skipMatch, autoHideIsland
   } = useMediaStore();
 
+  const [mounted, setMounted] = useState(false);
   const [topMatches, setTopMatches] = useState<Match[]>([]);
-  const [now, setNow] = useState(new Date());
+  const [now, setNow] = useState<Date | null>(null);
   const [activeGoal, setActiveGoal] = useState<GoalEvent | null>(null);
   const prevScoresRef = useRef<Record<string, { home: number, away: number }>>({});
   const lastFetchRef = useRef<number>(0);
 
   useEffect(() => {
+    setMounted(true);
+    setNow(new Date());
     const timer = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
@@ -93,6 +96,7 @@ export function LiveMatchIsland() {
   };
 
   const activeAlerts = useMemo(() => {
+    if (!now) return [];
     const list: AlertItem[] = [];
     const totalCurrentSecs = (now.getHours() * 3600) + (now.getMinutes() * 60) + now.getSeconds();
 
@@ -144,7 +148,6 @@ export function LiveMatchIsland() {
         }
 
         if (targetSecs > 0) {
-          // Calculate Expiry for End Countdown
           if (rem.expiryType === 'prayer') {
             let expRef = rem.expiryValue === 'next' ? '' : rem.expiryValue;
             if (rem.expiryValue === 'next') {
@@ -167,8 +170,6 @@ export function LiveMatchIsland() {
 
           let isStarted = startDiff <= 0;
           let isExpired = expDiff <= 0;
-
-          // End countdown starts 10 minutes before expiry
           const isEnding = expDiff > 0 && expDiff <= 600;
 
           if (!isExpired) {
@@ -228,6 +229,8 @@ export function LiveMatchIsland() {
     </div>
   );
 
+  if (!mounted || !now) return null;
+
   const hasActiveAlert = activeAlerts.length > 0;
   if (autoHideIsland && !hasActiveAlert && !activeGoal) return null;
 
@@ -281,3 +284,4 @@ export function LiveMatchIsland() {
     </div>
   );
 }
+

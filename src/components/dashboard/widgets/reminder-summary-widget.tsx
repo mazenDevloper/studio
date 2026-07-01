@@ -21,16 +21,24 @@ interface ReminderItem {
   isNearingEnd?: boolean;
 }
 
+/**
+ * ReminderSummaryWidget v75.0 - Hydration Guarded
+ * Logic: Multi-Reminder Lifecycle Tracking with Client-Only initialization.
+ */
 export function ReminderSummaryWidget() {
   const { prayerTimes, reminders, prayerSettings } = useMediaStore();
-  const [now, setNow] = useState(new Date());
+  const [mounted, setMounted] = useState(false);
+  const [now, setNow] = useState<Date | null>(null);
 
   useEffect(() => {
+    setMounted(true);
+    setNow(new Date());
     const timer = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
   const processedReminders = useMemo(() => {
+    if (!now) return [];
     const list: ReminderItem[] = [];
     const totalCurrentSecs = (now.getHours() * 3600) + (now.getMinutes() * 60) + now.getSeconds();
     const isFriday = now.getDay() === 5;
@@ -125,7 +133,6 @@ export function ReminderSummaryWidget() {
       }
 
       if (targetSecs > 0) {
-        // Calculate Expiry
         if (rem.expiryType === 'prayer') {
           let expRef = rem.expiryValue === 'next' ? '' : rem.expiryValue;
           if (rem.expiryValue === 'next') {
@@ -147,9 +154,9 @@ export function ReminderSummaryWidget() {
         let expDiff = expirySecs - totalCurrentSecs;
         if (expDiff < -43200) expDiff += 86400;
 
-        const isNearingEnd = expDiff > 0 && expDiff <= 600; // 10 minutes before end
+        const isNearingEnd = expDiff > 0 && expDiff <= 600;
 
-        if (expDiff > -60) { // Keep showing until 1 min after expiry
+        if (expDiff > -60) { 
           list.push({ 
             id: rem.id, 
             name: rem.label || "تذكير مخصص", 
@@ -167,7 +174,6 @@ export function ReminderSummaryWidget() {
     }
 
     return list.sort((a, b) => {
-      // Prioritize nearing end countdowns
       if (a.isNearingEnd && !b.isNearingEnd) return -1;
       if (!a.isNearingEnd && b.isNearingEnd) return 1;
       return Math.abs(a.diff) - Math.abs(b.diff);
@@ -210,6 +216,8 @@ export function ReminderSummaryWidget() {
       </svg>
     </div>
   );
+
+  if (!mounted || !now) return <div className="h-full w-full bg-zinc-950/80 rounded-[2.5rem] animate-pulse" />;
 
   return (
     <div className="h-full w-full bg-zinc-950/80 backdrop-blur-[120px] rounded-[2.5rem] border border-white/10 relative overflow-hidden flex flex-col justify-center gap-2 p-6 outline-none focusable" tabIndex={0}>
@@ -258,3 +266,4 @@ export function ReminderSummaryWidget() {
     </div>
   );
 }
+

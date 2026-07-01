@@ -10,8 +10,8 @@ import { useToast } from "@/hooks/use-toast";
 import { getDisplayNumber } from "@/lib/constants";
 
 /**
- * Direct Routing Engine v210.0 - Advanced Action Handler
- * Features: Blocked numeric combinations for navigation digits to prevent channel switching errors.
+ * Ultimate Routing Engine v750.0 - Spatial Focus & Hyper-Shortcuts
+ * Features: Restored geometric navigation with blue-glow indicator and 44/66/22/88 shortcuts.
  */
 export function RemotePointer() {
   const pathname = usePathname();
@@ -24,7 +24,8 @@ export function RemotePointer() {
     isAltModeActive, toggleAltMode, removeChannel, removeReciter, toggleStarChannel,
     pickedUpId, setPickedUpId, reorderChannel, reorderReciter, reorderIptvChannel, removeVideo,
     isReorderMode, toggleReorderMode, setIsSidebarShrinked, isRecordingKey,
-    displayScale, setDisplayScale, favoriteIptvChannels, setActiveIptv
+    displayScale, setDisplayScale, favoriteIptvChannels, setActiveIptv,
+    mapSettings, updateMapSettings, customManuscripts, wallPlateData
   } = useMediaStore();
 
   const [pressedKey, setPressedKey] = useState<string | null>(null);
@@ -36,7 +37,7 @@ export function RemotePointer() {
     catch (e) { console.warn(e); }
   }, []);
 
-  // AUTO-FOCUS ON LOAD: Focus the active dock icon when the page changes
+  // AUTO-FOCUS ON LOAD
   useEffect(() => {
     const timer = setTimeout(() => {
       const activeDockBtn = document.querySelector('[data-nav-id^="dock-"].bg-blue-600\\/10') as HTMLElement;
@@ -48,6 +49,7 @@ export function RemotePointer() {
     return () => clearTimeout(timer);
   }, [pathname]);
 
+  // SIDEBAR AUTO-EXPAND LOGIC
   useEffect(() => {
     const handleFocusIn = (e: FocusEvent) => {
       if (pathname !== '/media') return;
@@ -55,7 +57,6 @@ export function RemotePointer() {
       const isInsideSidebar = target.closest('aside');
       setIsSidebarShrinked(!isInsideSidebar);
     };
-
     window.addEventListener('focusin', handleFocusIn);
     return () => window.removeEventListener('focusin', handleFocusIn);
   }, [pathname, setIsSidebarShrinked]);
@@ -78,21 +79,33 @@ export function RemotePointer() {
 
     if (isPlayerActive) {
       if (match(mappings.player?.[action])) return true;
-      const isReservedByPlayer = Object.values(mappings.player || {}).some(keys => 
-        Array.isArray(keys) && keys.some(k => k.toLowerCase() === normalizedKey)
-      );
-      if (isReservedByPlayer) return false;
     }
 
     if (pageCtx !== 'global' && match(mappings[pageCtx]?.[action])) return true;
     return match(mappings.global?.[action]);
   }, [pathname, activeVideo, activeIptv, isFullScreen, isMinimized]);
 
+  const navigateManuscript = useCallback((direction: 'next' | 'prev') => {
+    if (!wallPlateData?.id || !customManuscripts.length) return;
+    const currentId = wallPlateData.id || wallPlateData.content;
+    const currentIdx = customManuscripts.findIndex(m => m.id === currentId || m.content === currentId);
+    if (currentIdx === -1) {
+      setWallPlate('manuscript', customManuscripts[0]);
+      return;
+    }
+    let nextIdx = direction === 'next' ? currentIdx + 1 : currentIdx - 1;
+    if (nextIdx >= customManuscripts.length) nextIdx = 0;
+    if (nextIdx < 0) nextIdx = customManuscripts.length - 1;
+    setWallPlate('manuscript', customManuscripts[nextIdx]);
+  }, [wallPlateData, customManuscripts, setWallPlate]);
+
   const navigate = useCallback((direction: string) => {
     if (wallPlateType) return;
     const focusables = Array.from(document.querySelectorAll(".focusable")).filter(el => {
       if (el.tagName === 'INPUT' && !(el as HTMLInputElement).classList.contains('focusable')) return false;
-      return true;
+      // Skip hidden or scaled elements that shouldn't be focused
+      const rect = el.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0;
     }) as HTMLElement[];
 
     let current = document.activeElement as HTMLElement;
@@ -147,13 +160,20 @@ export function RemotePointer() {
   const executeAction = useCallback((finalKey: string, e: KeyboardEvent | null) => {
     const activeEl = document.activeElement as HTMLElement;
 
+    // Hyper-Shortcuts for WallPlate
+    if (isAction(finalKey, 'inc_font')) { e?.preventDefault(); updateMapSettings({ fontScale: Math.min(2.0, (mapSettings.fontScale || 1.0) + 0.1) }); return; }
+    if (isAction(finalKey, 'dec_font')) { e?.preventDefault(); updateMapSettings({ fontScale: Math.max(0.3, (mapSettings.fontScale || 1.0) - 0.1) }); return; }
+    if (isAction(finalKey, 'next_manuscript')) { e?.preventDefault(); navigateManuscript('next'); return; }
+    if (isAction(finalKey, 'prev_manuscript')) { e?.preventDefault(); navigateManuscript('prev'); return; }
+
     if (/^\d+$/.test(finalKey)) {
-      // SECURE DRIVER: Block navigation-only numeric combinations from channel switching
+      // SECURE DRIVER: Block navigation combinations from channel switching
       const blockedCombos = [
         '22', '44', '66', '88', '24', '26', '28', '82', '84', '86', '42', '46', '48', '62', '64', '68',
         '25', '45', '65', '85', '52', '54', '56', '58', '55'
       ];
-      if (blockedCombos.includes(finalKey)) return;
+      const hasHyperAction = ['inc_font', 'dec_font', 'next_manuscript', 'prev_manuscript'].some(act => isAction(finalKey, act as AppAction));
+      if (blockedCombos.includes(finalKey) && !hasHyperAction) return;
 
       const displayNum = parseInt(finalKey);
       const target = favoriteIptvChannels.find((_, idx) => getDisplayNumber(idx) === displayNum);
@@ -165,51 +185,11 @@ export function RemotePointer() {
       }
     }
 
-    if (isAction(finalKey, 'inc_zoom')) {
-      e?.preventDefault();
-      setDisplayScale(Math.min(1.5, (displayScale || 1.0) + 0.05));
-      return;
-    }
-
-    if (isAction(finalKey, 'dec_zoom')) {
-      e?.preventDefault();
-      setDisplayScale(Math.max(0.5, (displayScale || 1.0) - 0.05));
-      return;
-    }
-
+    if (isAction(finalKey, 'inc_zoom')) { e?.preventDefault(); setDisplayScale(Math.min(1.5, (displayScale || 1.0) + 0.05)); return; }
+    if (isAction(finalKey, 'dec_zoom')) { e?.preventDefault(); setDisplayScale(Math.max(0.5, (displayScale || 1.0) - 0.05)); return; }
     if (isAction(finalKey, 'toggle_reorder')) { e?.preventDefault(); toggleReorderMode(); return; }
-
-    if (isAction(finalKey, 'toggle_star')) {
-      e?.preventDefault();
-      const type = activeEl.getAttribute('data-type');
-      const id = activeEl.getAttribute('data-id');
-      if (type === 'channel' && id) {
-        toggleStarChannel(id);
-        toast({ title: "الاشتراكات", description: "تم تحديث حالة التمييز بنجاح" });
-      }
-      return;
-    }
-
-    if (isAction(finalKey, 'delete_item')) {
-      const type = activeEl.getAttribute('data-type');
-      const id = activeEl.getAttribute('data-id');
-      if (type === 'channel' && id) removeChannel(id);
-      else if (type === 'reciter' && id) removeReciter(id);
-      else if (type === 'iptv' && id) toggleStarChannel(id);
-      else if (activeEl.getAttribute('data-nav-id')?.startsWith('saved-video-')) {
-        const videoId = activeEl.getAttribute('data-video-id');
-        if (videoId) removeVideo(videoId);
-      }
-      return;
-    }
-
-    if (isAction(finalKey, 'nav_back')) {
-      e?.preventDefault();
-      if (wallPlateType) { setWallPlate(null); return; }
-      if (pathname !== '/') { router.push('/'); return; }
-      return;
-    }
-
+    
+    if (isAction(finalKey, 'nav_back')) { e?.preventDefault(); if (wallPlateType) { setWallPlate(null); return; } if (pathname !== '/') router.push('/'); return; }
     if (isAction(finalKey, 'goto_home')) { e?.preventDefault(); router.push('/'); return; }
     if (isAction(finalKey, 'goto_media')) { e?.preventDefault(); router.push('/media'); return; }
     if (isAction(finalKey, 'goto_quran')) { e?.preventDefault(); router.push('/quran'); return; }
@@ -223,18 +203,17 @@ export function RemotePointer() {
     if (isAction(finalKey, 'nav_left')) { e?.preventDefault(); navigate("ArrowLeft"); return; }
     if (isAction(finalKey, 'nav_right')) { e?.preventDefault(); navigate("ArrowRight"); return; }
     
-    if (isAction(finalKey, 'nav_ok') || (e && e.keyCode === 13)) { 
+    if (isAction(finalKey, 'nav_ok') || (e && (e.keyCode === 13 || e.key === 'Enter'))) { 
       if (activeEl?.classList.contains("focusable")) {
         const type = activeEl.getAttribute('data-type');
         if ((type === 'channel' || type === 'reciter' || type === 'iptv') && isReorderMode) {
           const id = activeEl.getAttribute('data-id');
           if (id) { e?.preventDefault(); e?.stopPropagation(); setPickedUpId(pickedUpId === id ? null : id); return; }
         }
-        if (isReorderMode && !type) { e?.preventDefault(); return; }
         e?.preventDefault(); activeEl.click();
       }
     }
-  }, [navigate, isAction, wallPlateType, setWallPlate, pathname, isAltModeActive, toggleAltMode, toast, removeChannel, removeReciter, toggleStarChannel, pickedUpId, setPickedUpId, removeVideo, isReorderMode, toggleReorderMode, isRecordingKey, displayScale, setDisplayScale, favoriteIptvChannels, setActiveIptv, router]);
+  }, [navigate, isAction, wallPlateType, setWallPlate, pathname, favoriteIptvChannels, setActiveIptv, router, mapSettings, updateMapSettings, navigateManuscript, displayScale, setDisplayScale, isReorderMode, pickedUpId, setPickedUpId, toggleReorderMode]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -275,11 +254,11 @@ export function RemotePointer() {
             bufferTimerRef.current = setTimeout(() => {
               executeAction(nextBuffer, null);
               setDisplayBuffer("");
-            }, 2000);
+            }, 1000); 
             e.preventDefault();
             return;
           } else {
-            bufferTimerRef.current = setTimeout(() => setDisplayBuffer(""), 2000);
+            bufferTimerRef.current = setTimeout(() => setDisplayBuffer(""), 1000);
           }
         }
       }

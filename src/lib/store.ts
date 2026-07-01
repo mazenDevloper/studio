@@ -54,12 +54,18 @@ export interface MapSettings {
   showManuscriptBg: boolean;
   manuscriptBgUrl: string;
   fontScale: number;
+  manuscriptColor: string;
+  showManuscriptOnMoon: boolean;
+  hue: number;
+  saturation: number;
+  brightness: number;
 }
 
 export interface Manuscript {
   id: string;
   type: 'text' | 'image';
   content: string;
+  fontFamily?: string;
 }
 
 export interface IptvChannel {
@@ -89,7 +95,7 @@ export type AppAction =
   | 'player_next' | 'player_prev' | 'player_save' | 'player_fullscreen' | 'player_playlist' | 'player_minimize' | 'player_close' | 'player_settings'
   | 'focus_search' | 'focus_reciters' | 'focus_surahs'
   | 'goto_tab_appearance' | 'goto_tab_prayers' | 'goto_tab_reminders' | 'goto_tab_manuscripts' | 'goto_tab_buttonmap'
-  | 'inc_zoom' | 'dec_zoom';
+  | 'inc_zoom' | 'dec_zoom' | 'inc_font' | 'dec_font' | 'next_manuscript' | 'prev_manuscript';
 
 interface MediaState {
   favoriteChannels: YouTubeChannel[];
@@ -108,6 +114,7 @@ interface MediaState {
   prayerSettings: PrayerSetting[];
   reminders: Reminder[];
   customManuscripts: Manuscript[];
+  customFonts: { name: string, url: string }[];
   customWallBackgrounds: string[];
   customManuscriptColors: string[];
   mapSettings: MapSettings;
@@ -174,7 +181,11 @@ interface MediaState {
   removeReminder: (id: string) => void;
   toggleReminder: (id: string) => void;
   addManuscript: (manuscript: Manuscript) => void;
+  updateManuscript: (id: string, update: Partial<Manuscript>) => void;
   removeManuscript: (id: string) => void;
+  reorderManuscript: (fromId: string, direction: 'prev' | 'next') => void;
+  addCustomFont: (name: string, url: string) => void;
+  removeCustomFont: (name: string) => void;
   addCustomWallBackground: (url: string) => void;
   removeCustomWallBackground: (url: string) => void;
   addCustomManuscriptColor: (color: string) => void;
@@ -241,11 +252,12 @@ interface MediaState {
   saveIptvReorder: () => Promise<void>;
   saveChannelsReorder: () => Promise<void>;
   saveRecitersReorder: () => Promise<void>;
+  saveManuscriptsReorder: () => Promise<void>;
 }
 
 const updateBin = async (binId: string, data: any) => {
   try {
-    await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
+    const response = await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -253,8 +265,9 @@ const updateBin = async (binId: string, data: any) => {
       },
       body: JSON.stringify(data)
     });
+    if (!response.ok) throw new Error("JSONBin Update Failed");
   } catch (e) {
-    console.error(`JSONBin Sync Error [${binId}]:`, e);
+    console.warn(`JSONBin Sync Warning [${binId}]:`, e);
   }
 };
 
@@ -276,7 +289,11 @@ const DEFAULT_GLOBAL_MAPPINGS: Record<string, string[]> = {
   toggle_star: ['Yellow'],
   toggle_reorder: ['Blue'],
   inc_zoom: ['33'],
-  dec_zoom: ['99']
+  dec_zoom: ['99'],
+  inc_font: ['66'],
+  dec_font: ['44'],
+  next_manuscript: ['88'],
+  prev_manuscript: ['22']
 };
 
 const DEFAULT_PLAYER_MAPPINGS: Record<string, string[]> = {
@@ -329,7 +346,7 @@ const INITIAL_IPTV_FAVORITES: IptvChannel[] = [
   {
     name: "beIN Sports 1 HD",
     stream_id: "2001",
-    stream_icon: "https://i.pinimg.com/736x/8e/8e/8e/8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e.jpg",
+    stream_icon: "https://yt3.googleusercontent.com/ytc/AIdro_n_Y5T4m6Yk7S7S7S7S7S7S7S7S7S7S7S7S7S7S=s900-c-k-c0x00ffffff-no-rj",
     category_id: "direct",
     starred: true,
     type: 'web',
@@ -356,8 +373,9 @@ export const useMediaStore = create<MediaState>()(
       prayerSettings: DEFAULT_PRAYER_SETTINGS,
       reminders: [],
       customManuscripts: [],
+      customFonts: [],
       customWallBackgrounds: [],
-      customManuscriptColors: ['#ffffff', '#FFD700', '#C0C0C0'],
+      customManuscriptColors: ['#ffffff', '#FFD700', '#C0C0C0', 'linear-gradient(to bottom, #fff, #999)'],
       mapSettings: { 
         zoom: 20.0, 
         tilt: 65, 
@@ -365,7 +383,12 @@ export const useMediaStore = create<MediaState>()(
         backgroundIndex: 0,
         showManuscriptBg: true,
         manuscriptBgUrl: "https://www.image2url.com/r2/default/images/1782382707952-d99447c6-bc60-475d-9406-5fd2ef320bd5.png",
-        fontScale: 1.0
+        fontScale: 1.0,
+        manuscriptColor: '#ffffff',
+        showManuscriptOnMoon: false,
+        hue: 0,
+        saturation: 100,
+        brightness: 100
       },
       displayScale: 1.0,
       dockScale: 1.0,
@@ -425,7 +448,8 @@ export const useMediaStore = create<MediaState>()(
           return null;
         };
 
-        const [pData, chData, recData, mManuscripts, masterBin, iptvData, savedData] = await Promise.all([
+        // Parallel Fetch for Extreme Speed
+        const results = await Promise.allSettled([
           fetchBinLatest(JSONBIN_PRAYER_TIMES_BIN_ID),
           fetchBinLatest(JSONBIN_CHANNELS_BIN_ID),
           fetchBinLatest(JSONBIN_POPULAR_RECITERS_BIN_ID),
@@ -435,10 +459,32 @@ export const useMediaStore = create<MediaState>()(
           fetchBinLatest(JSONBIN_SAVED_VIDEOS_BIN_ID)
         ]);
 
+        const pData = results[0].status === 'fulfilled' ? results[0].value : null;
+        const chData = results[1].status === 'fulfilled' ? results[1].value : null;
+        const recData = results[2].status === 'fulfilled' ? results[2].value : null;
+        const mManuscripts = results[3].status === 'fulfilled' ? results[3].value : null;
+        const masterBin = results[4].status === 'fulfilled' ? results[4].value : null;
+        const iptvData = results[5].status === 'fulfilled' ? results[5].value : null;
+        const savedData = results[6].status === 'fulfilled' ? results[6].value : null;
+
         if (pData) set({ prayerTimes: Array.isArray(pData) ? pData : (pData.prayers || []) });
         if (chData) set({ favoriteChannels: Array.isArray(chData) ? chData : [] });
-        if (recData) set({ favoriteReciters: Array.isArray(recData) ? recData : (recData.reciters || []) });
-        if (mManuscripts) set({ customManuscripts: Array.isArray(mManuscripts) ? mManuscripts : (mManuscripts.manuscripts || []) });
+        
+        if (recData) {
+          const list = Array.isArray(recData) ? recData : (recData.reciters || []);
+          set({ favoriteReciters: list });
+        }
+        
+        if (iptvData) {
+          const list = Array.isArray(iptvData) ? iptvData : (iptvData.channels || []);
+          set({ favoriteIptvChannels: list });
+        }
+
+        if (mManuscripts) {
+          const list = Array.isArray(mManuscripts) ? mManuscripts : (mManuscripts.manuscripts || []);
+          set({ customManuscripts: list });
+        }
+        
         if (masterBin) {
           const safeKeys = { ...DEFAULT_CONTEXT_MAPPINGS };
           if (masterBin.keyMappings) {
@@ -452,6 +498,7 @@ export const useMediaStore = create<MediaState>()(
             favoriteTeams: masterBin.favoriteTeams || [], 
             reminders: masterBin.reminders || [],
             mapSettings: { ...get().mapSettings, ...masterBin.mapSettings },
+            customFonts: masterBin.customFonts || [],
             customWallBackgrounds: masterBin.customWallBackgrounds || [],
             keyMappings: safeKeys,
             displayScale: masterBin.displayScale ?? 1.0,
@@ -461,7 +508,7 @@ export const useMediaStore = create<MediaState>()(
             lastLiveUpdate: masterBin.lastLiveUpdate ?? 0
           });
         }
-        if (iptvData) set({ favoriteIptvChannels: Array.isArray(iptvData) ? iptvData : [] });
+        
         if (savedData) set({ savedVideos: Array.isArray(savedData) ? savedData : [] });
         
         set({ isInitialLoading: false });
@@ -477,6 +524,7 @@ export const useMediaStore = create<MediaState>()(
           prayerSettings: state.prayerSettings,
           reminders: state.reminders,
           mapSettings: state.mapSettings,
+          customFonts: state.customFonts,
           videoProgress: state.videoProgress,
           customWallBackgrounds: state.customWallBackgrounds,
           customManuscriptColors: state.customManuscriptColors,
@@ -492,7 +540,7 @@ export const useMediaStore = create<MediaState>()(
 
       syncEverythingToCloud: async () => {
         const state = get();
-        await Promise.all([
+        await Promise.allSettled([
           get().syncMasterBin(),
           updateBin(JSONBIN_CHANNELS_BIN_ID, state.favoriteChannels),
           updateBin(JSONBIN_SAVED_VIDEOS_BIN_ID, state.savedVideos),
@@ -551,6 +599,11 @@ export const useMediaStore = create<MediaState>()(
       saveRecitersReorder: async () => {
         const state = get();
         await updateBin(JSONBIN_POPULAR_RECITERS_BIN_ID, state.favoriteReciters);
+      },
+
+      saveManuscriptsReorder: async () => {
+        const state = get();
+        await updateBin(JSONBIN_MANUSCRIPTS_BIN_ID, state.customManuscripts);
       },
 
       fetchPrayerTimes: async () => {
@@ -797,10 +850,38 @@ export const useMediaStore = create<MediaState>()(
         return { customManuscripts: newList };
       }),
 
+      updateManuscript: (id, update) => set((state) => {
+        const newList = state.customManuscripts.map(m => m.id === id ? { ...m, ...update } : m);
+        updateBin(JSONBIN_MANUSCRIPTS_BIN_ID, newList);
+        return { customManuscripts: newList };
+      }),
+
       removeManuscript: (id) => set((state) => {
         const newList = state.customManuscripts.filter(m => m.id !== id);
         updateBin(JSONBIN_MANUSCRIPTS_BIN_ID, newList);
         return { customManuscripts: newList };
+      }),
+
+      reorderManuscript: (id, direction) => set((state) => {
+        const list = [...state.customManuscripts];
+        const idx = list.findIndex(m => m.id === id);
+        if (idx === -1) return state;
+        const nextIdx = direction === 'next' ? idx + 1 : idx - 1;
+        if (nextIdx < 0 || nextIdx >= list.length) return state;
+        [list[idx], list[nextIdx]] = [list[nextIdx], list[idx]];
+        return { customManuscripts: list };
+      }),
+
+      addCustomFont: (name, url) => set((state) => {
+        const newList = [...state.customFonts.filter(f => f.name !== name), { name, url }];
+        setTimeout(() => get().syncMasterBin(), 100);
+        return { customFonts: newList };
+      }),
+
+      removeCustomFont: (name) => set((state) => {
+        const newList = state.customFonts.filter(f => f.name !== name);
+        setTimeout(() => get().syncMasterBin(), 100);
+        return { customFonts: newList };
       }),
 
       addCustomWallBackground: (url) => set((state) => {
@@ -1027,12 +1108,11 @@ export const useMediaStore = create<MediaState>()(
       setLastLiveUpdate: (time) => set({ lastLiveUpdate: time }),
     }),
     {
-      name: "drivecast-ready-v41", 
+      name: "drivecast-ready-v50", 
       partialize: (state) => ({ 
         favoriteChannels: state.favoriteChannels,
         favoriteReciters: state.favoriteReciters,
         favoriteIptvChannels: state.favoriteIptvChannels,
-        customManuscripts: state.customManuscripts,
         prayerTimes: state.prayerTimes,
         videoProgress: state.videoProgress, 
         dockSide: state.dockSide, 
@@ -1045,7 +1125,6 @@ export const useMediaStore = create<MediaState>()(
         dockScale: state.dockScale,
         lastLiveUpdate: state.lastLiveUpdate,
         mapSettings: state.mapSettings,
-        customWallBackgrounds: state.customWallBackgrounds,
         prayerSettings: state.prayerSettings,
         reminders: state.reminders,
         favoriteTeams: state.favoriteTeams,

@@ -2,24 +2,30 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { RefreshCw, Maximize2, Minimize2, MonitorPlay, Ghost, ShieldAlert } from "lucide-react";
+import { RefreshCw, Maximize2, Minimize2, MonitorPlay, Ghost } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useMediaStore } from "@/lib/store";
 import { ShortcutBadge } from "@/components/layout/car-dock";
 
 /**
- * SportsHubPage v700.0 - Ghost Tunnel Bypass (REBUILT FROM 0)
- * Logic: Uses advanced srcdoc isolation with origin nulling and session noise 
- * to bypass 'Refused to connect' and domain-level frame blocking.
+ * SportsHubPage v710.0 - Hydration Secure & Ghost Tunnel Bypass
+ * Logic: Moves random keys and timers to useEffect to prevent SSR mismatches.
  */
 export default function SportsHubPage() {
   const { setActiveIptv, activeIptv, dockSide } = useMediaStore();
-  const [sessionKey, setSessionKey] = useState(Math.random().toString(36).substring(2, 15));
-  const [key, setKey] = useState(Date.now());
+  const [sessionKey, setSessionKey] = useState("");
+  const [key, setKey] = useState(0);
   const [maximizedView, setMaximizedView] = useState<'none' | 'ideb' | 'hihi'>('none');
+  const [mounted, setMounted] = useState(false);
   const idebScrollRef = useRef<HTMLDivElement>(null);
   
   const isDockLeft = dockSide === 'left';
+
+  useEffect(() => {
+    setMounted(true);
+    setSessionKey(Math.random().toString(36).substring(2, 15));
+    setKey(Date.now());
+  }, []);
 
   const refreshIdeb = () => {
     setSessionKey(Math.random().toString(36).substring(2, 15));
@@ -27,13 +33,14 @@ export default function SportsHubPage() {
   };
 
   useEffect(() => {
+    if (!mounted) return;
     const timer = setTimeout(() => {
       if (idebScrollRef.current) {
         idebScrollRef.current.scrollTop = 1050; // Center on video player
       }
     }, 2500); 
     return () => clearTimeout(timer);
-  }, [key, maximizedView]);
+  }, [key, maximizedView, mounted]);
 
   const toggleMaximize = (view: 'ideb' | 'hihi') => {
     if (maximizedView === view) setMaximizedView('none');
@@ -53,10 +60,10 @@ export default function SportsHubPage() {
 
   const isIdebInGlobal = activeIptv?.stream_id === 'ideb-live';
 
+  if (!mounted) return <div className="w-full h-full bg-black animate-pulse" />;
+
   /**
    * THE GHOST TUNNEL HTML
-   * This is a complete, self-contained document that acts as a bridge.
-   * It prevents the target site from seeing the host domain.
    */
   const ghostTunnelHtml = `
     <!DOCTYPE html>
@@ -69,17 +76,11 @@ export default function SportsHubPage() {
           iframe { width: 100%; height: 2500px; border: none; background: #000; }
         </style>
         <script>
-          // Origin Nulling & Stealth Injection
           (function() {
             const originalReferrer = document.referrer;
             Object.defineProperty(document, 'referrer', { get: () => '' });
             Object.defineProperty(window, 'name', { get: () => '' });
-            
-            // Block parent detection
-            try {
-              window.top = window;
-              window.parent = window;
-            } catch(e) {}
+            try { window.top = window; window.parent = window; } catch(e) {}
           })();
         </script>
       </head>
@@ -102,7 +103,6 @@ export default function SportsHubPage() {
         isDockLeft ? "flex-row" : "flex-row-reverse"
       )} dir="rtl">
         
-        {/* HIHI2 - Side View */}
         <div className={cn(
           "relative rounded-[3rem] overflow-hidden border-2 border-white/5 transition-all duration-700 ease-in-out bg-black group shadow-2xl focusable",
           maximizedView === 'hihi' ? "flex-[10] z-20" : maximizedView === 'ideb' ? "flex-0 w-0 opacity-0 pointer-events-none" : "flex-[3] z-10"
@@ -124,7 +124,6 @@ export default function SportsHubPage() {
           </div>
         </div>
 
-        {/* IDEB SPORTS - Ghost Tunnel View */}
         <div className={cn(
           "relative rounded-[3rem] overflow-hidden border-2 border-white/10 transition-all duration-700 ease-in-out bg-black group shadow-[0_0_50px_rgba(0,0,0,0.8)] focusable flex flex-col",
           maximizedView === 'ideb' ? "flex-[10] z-20" : maximizedView === 'hihi' ? "flex-0 w-0 opacity-0 pointer-events-none" : "flex-[7] z-10"
@@ -145,7 +144,6 @@ export default function SportsHubPage() {
             />
           </div>
 
-          {/* Floating Action HUD */}
           <div className="absolute top-8 left-8 flex items-center gap-3 z-30">
             <div className="bg-black/60 backdrop-blur-2xl px-5 py-2.5 rounded-full border border-orange-500/30 flex items-center gap-3 shadow-2xl animate-in slide-in-from-top-4">
               <Ghost className="w-5 h-5 text-orange-500 animate-pulse" />
@@ -187,3 +185,4 @@ export default function SportsHubPage() {
     </main>
   );
 }
+

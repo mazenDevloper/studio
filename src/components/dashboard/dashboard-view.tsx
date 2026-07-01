@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import { MoonWidget } from "./widgets/moon-widget";
@@ -12,7 +12,7 @@ import { ReminderSummaryWidget } from "./widgets/reminder-summary-widget";
 import { ActiveAzkarWidget } from "./widgets/active-azkar-widget";
 import { useMediaStore } from "@/lib/store";
 import { Carousel, CarouselContent, CarouselItem, CarouselApi } from "@/components/ui/carousel";
-import { X } from "lucide-react";
+import { X, ChevronLeft, ChevronRight } from "lucide-react";
 
 const LatestVideosWidget = dynamic(() => import("./widgets/latest-videos-widget").then(m => m.LatestVideosWidget), { 
   ssr: false,
@@ -25,13 +25,14 @@ const YouTubeSavedWidget = dynamic(() => import("./widgets/youtube-saved-widget"
 });
 
 /**
- * DashboardView v118.0 - LITESPEED Optimized
- * Zero top padding layout.
+ * DashboardView v165.0 - Double-Tap Control Engine
+ * Features: Visual Isolation, 44/66 Size Control, 22/88 Manuscript Switching.
  */
 export function DashboardView() {
   const { 
     favoriteChannels, activeVideo, wallPlateType, wallPlateData, 
-    mapSettings, setWallPlate: updateWallPlate, fetchPriorityData
+    mapSettings, setWallPlate: updateWallPlate, fetchPriorityData,
+    customManuscripts, updateMapSettings
   } = useMediaStore();
   
   const [api, setApi] = useState<CarouselApi>();
@@ -48,32 +49,133 @@ export function DashboardView() {
     return () => clearTimeout(timer);
   }, []);
 
+  // Manuscript Cycling Logic for Full Screen
+  const navigateWallPlate = (direction: 'next' | 'prev') => {
+    if (!wallPlateData?.id || !customManuscripts.length) return;
+    const currentIdx = customManuscripts.findIndex(m => m.id === (wallPlateData.id || wallPlateData.content));
+    if (currentIdx === -1) {
+      updateWallPlate('manuscript', customManuscripts[0]);
+      return;
+    }
+    
+    let nextIdx = direction === 'next' ? currentIdx + 1 : currentIdx - 1;
+    if (nextIdx >= customManuscripts.length) nextIdx = 0;
+    if (nextIdx < 0) nextIdx = customManuscripts.length - 1;
+    
+    updateWallPlate('manuscript', customManuscripts[nextIdx]);
+  };
+
+  // Keyboard Control for WallPlate
+  useEffect(() => {
+    if (!wallPlateType) return;
+    
+    const handleKeys = (e: KeyboardEvent) => {
+      const key = e.key;
+      // In store, 44/66/22/88 are mapped via the buffer system in RemotePointer
+      // But we can also handle direct key events here if needed.
+    };
+    
+    window.addEventListener('keydown', handleKeys);
+    return () => window.removeEventListener('keydown', handleKeys);
+  }, [wallPlateType]);
+
+  const activeManuscript = useMemo(() => {
+    if (!customManuscripts.length) return null;
+    return customManuscripts[0];
+  }, [customManuscripts]);
+
   return (
     <div className="h-full w-full pt-0 px-6 flex flex-col gap-8 relative overflow-y-auto pb-32 no-scrollbar bg-black">
       {wallPlateType && (
         <div className="fixed inset-0 z-[20000] bg-black flex items-center justify-center animate-in fade-in duration-0 p-0 m-0 overflow-hidden">
-          <button 
-            className="absolute top-10 right-10 w-16 h-16 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-white focusable z-[20001]"
-            onClick={() => updateWallPlate(null)}
-          >
-            <X className="w-8 h-8" />
-          </button>
+          {/* Action HUD */}
+          <div className="absolute top-10 right-10 flex gap-4 z-[20001]">
+            <button 
+              className="w-16 h-16 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-white focusable shadow-2xl backdrop-blur-3xl"
+              onClick={() => updateWallPlate(null)}
+            >
+              <X className="w-8 h-8" />
+            </button>
+          </div>
+
+          {/* WallPlate Navigation */}
+          {wallPlateType === 'manuscript' && customManuscripts.length > 1 && (
+            <>
+              <button 
+                onClick={() => navigateWallPlate('prev')}
+                className="absolute left-10 top-1/2 -translate-y-1/2 w-20 h-20 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/20 transition-all z-[20002] focusable"
+              >
+                <ChevronLeft className="w-12 h-12" />
+              </button>
+              <button 
+                onClick={() => navigateWallPlate('next')}
+                className="absolute right-10 top-1/2 -translate-y-1/2 w-20 h-20 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/20 transition-all z-[20002] focusable"
+              >
+                <ChevronRight className="w-12 h-12" />
+              </button>
+            </>
+          )}
+          
           <div className="w-full h-full flex items-center justify-center overflow-hidden p-0 m-0 relative">
             {wallPlateType === 'moon' && (
               <div className="relative w-full h-full flex items-center justify-center bg-black p-0 m-0">
                 <Image src={wallPlateData.image} alt="Moon" fill className="object-contain" unoptimized />
+                
+                {mapSettings.showManuscriptOnMoon && activeManuscript && (
+                  <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none p-12">
+                    {activeManuscript.type === 'text' ? (
+                      <p 
+                        className="text-6xl lg:text-[10rem] font-calligraphy text-center transition-all duration-700 leading-tight whitespace-pre-wrap"
+                        style={{ 
+                          fontFamily: activeManuscript.fontFamily || 'Aref Ruqaa',
+                          color: mapSettings.manuscriptColor,
+                          fontSize: `${(mapSettings.fontScale || 1.0) * 10}rem`,
+                          filter: 'drop-shadow(0 0 40px rgba(0,0,0,0.9))',
+                          WebkitTextStroke: '2px rgba(255,255,255,0.2)',
+                          paintOrder: 'stroke fill'
+                        }}
+                      >
+                        {activeManuscript.content}
+                      </p>
+                    ) : (
+                      <img 
+                        src={activeManuscript.content} 
+                        className="max-w-[80%] max-h-[60%] object-contain drop-shadow-[0_0_80px_rgba(255,255,255,0.4)]" 
+                        style={{ filter: 'brightness(0) invert(1) drop-shadow(0 0 40px rgba(255,255,255,0.8))' }}
+                      />
+                    )}
+                  </div>
+                )}
               </div>
             )}
+            
             {wallPlateType === 'manuscript' && (
               <div className="relative w-full h-full flex items-center justify-center p-0 m-0">
                 <div className="absolute inset-0 z-0">
-                  <Image src={mapSettings.manuscriptBgUrl || "https://images.unsplash.com/photo-1578301978693-85fa9c0320b9?q=80&w=2000"} alt="" fill className="object-cover opacity-90" priority />
+                  <Image 
+                    src={mapSettings.manuscriptBgUrl || "https://images.unsplash.com/photo-1578301978693-85fa9c0320b9?q=80&w=2000"} 
+                    alt="" fill className="object-cover opacity-90" priority 
+                  />
                 </div>
-                <div className="relative z-10 w-full h-full flex items-center justify-center px-0 m-0">
+                <div className="relative z-10 w-full h-full flex items-center justify-center px-8 m-0 animate-in zoom-in-95 duration-700">
                   {wallPlateData?.type === 'text' ? (
-                    <p className="text-6xl lg:text-[14rem] font-calligraphy text-center text-white drop-shadow-[0_0_60px_rgba(255,255,255,0.8)] px-4">{wallPlateData.content}</p>
+                    <p 
+                      className="text-6xl lg:text-[12rem] font-calligraphy text-center px-4 leading-[1.2] whitespace-pre-wrap tracking-wide drop-shadow-[0_0_80px_rgba(0,0,0,0.8)]"
+                      style={{ 
+                        fontFamily: wallPlateData.fontFamily || 'Aref Ruqaa',
+                        color: mapSettings.manuscriptColor,
+                        fontSize: `${(mapSettings.fontScale || 1.0) * 12}rem`,
+                        textShadow: `0 0 60px ${mapSettings.manuscriptColor}66`
+                      }}
+                    >
+                      {wallPlateData.content}
+                    </p>
                   ) : (
-                    <img src={wallPlateData.content} className="w-full h-full object-contain drop-shadow-[0_0_80px_rgba(255,255,255,0.6)]" />
+                    <img 
+                      src={wallPlateData.content} 
+                      className="w-full h-full object-contain drop-shadow-[0_0_100px_rgba(255,255,255,0.7)]" 
+                      style={{ filter: `brightness(0) invert(1) drop-shadow(0 0 40px ${mapSettings.manuscriptColor})` }}
+                    />
                   )}
                 </div>
               </div>
