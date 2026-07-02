@@ -24,10 +24,6 @@ const YouTubeSavedWidget = dynamic(() => import("./widgets/youtube-saved-widget"
   loading: () => <div className="h-64 w-full bg-zinc-900/20 animate-pulse rounded-[2.5rem]" />
 });
 
-/**
- * DashboardView v165.0 - Double-Tap Control Engine
- * Features: Visual Isolation, 44/66 Size Control, 22/88 Manuscript Switching.
- */
 export function DashboardView() {
   const { 
     favoriteChannels, activeVideo, wallPlateType, wallPlateData, 
@@ -49,7 +45,6 @@ export function DashboardView() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Manuscript Cycling Logic for Full Screen
   const navigateWallPlate = (direction: 'next' | 'prev') => {
     if (!wallPlateData?.id || !customManuscripts.length) return;
     const currentIdx = customManuscripts.findIndex(m => m.id === (wallPlateData.id || wallPlateData.content));
@@ -57,27 +52,11 @@ export function DashboardView() {
       updateWallPlate('manuscript', customManuscripts[0]);
       return;
     }
-    
     let nextIdx = direction === 'next' ? currentIdx + 1 : currentIdx - 1;
     if (nextIdx >= customManuscripts.length) nextIdx = 0;
     if (nextIdx < 0) nextIdx = customManuscripts.length - 1;
-    
     updateWallPlate('manuscript', customManuscripts[nextIdx]);
   };
-
-  // Keyboard Control for WallPlate
-  useEffect(() => {
-    if (!wallPlateType) return;
-    
-    const handleKeys = (e: KeyboardEvent) => {
-      const key = e.key;
-      // In store, 44/66/22/88 are mapped via the buffer system in RemotePointer
-      // But we can also handle direct key events here if needed.
-    };
-    
-    window.addEventListener('keydown', handleKeys);
-    return () => window.removeEventListener('keydown', handleKeys);
-  }, [wallPlateType]);
 
   const activeManuscript = useMemo(() => {
     if (!customManuscripts.length) return null;
@@ -88,62 +67,23 @@ export function DashboardView() {
     <div className="h-full w-full pt-0 px-6 flex flex-col gap-8 relative overflow-y-auto pb-32 no-scrollbar bg-black">
       {wallPlateType && (
         <div className="fixed inset-0 z-[20000] bg-black flex items-center justify-center animate-in fade-in duration-0 p-0 m-0 overflow-hidden">
-          {/* Action HUD */}
           <div className="absolute top-10 right-10 flex gap-4 z-[20001]">
-            <button 
-              className="w-16 h-16 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-white focusable shadow-2xl backdrop-blur-3xl"
-              onClick={() => updateWallPlate(null)}
-            >
-              <X className="w-8 h-8" />
-            </button>
+            <button className="w-16 h-16 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-white focusable shadow-2xl backdrop-blur-3xl" onClick={() => updateWallPlate(null)}><X className="w-8 h-8" /></button>
           </div>
 
-          {/* WallPlate Navigation */}
           {wallPlateType === 'manuscript' && customManuscripts.length > 1 && (
-            <>
-              <button 
-                onClick={() => navigateWallPlate('prev')}
-                className="absolute left-10 top-1/2 -translate-y-1/2 w-20 h-20 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/20 transition-all z-[20002] focusable"
-              >
-                <ChevronLeft className="w-12 h-12" />
-              </button>
-              <button 
-                onClick={() => navigateWallPlate('next')}
-                className="absolute right-10 top-1/2 -translate-y-1/2 w-20 h-20 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/20 transition-all z-[20002] focusable"
-              >
-                <ChevronRight className="w-12 h-12" />
-              </button>
-            </>
+            <><button onClick={() => navigateWallPlate('prev')} className="absolute left-10 top-1/2 -translate-y-1/2 w-20 h-20 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/20 transition-all z-[20002] focusable"><ChevronLeft className="w-12 h-12" /></button><button onClick={() => navigateWallPlate('next')} className="absolute right-10 top-1/2 -translate-y-1/2 w-20 h-20 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/20 transition-all z-[20002] focusable"><ChevronRight className="w-12 h-12" /></button></>
           )}
           
-          <div className="w-full h-full flex items-center justify-center overflow-hidden p-0 m-0 relative">
+          <div className="w-full h-full flex items-center justify-center overflow-hidden p-0 m-0 relative" style={{ filter: `hue-rotate(${mapSettings.hue || 0}deg) saturate(${mapSettings.saturation || 100}%) brightness(${mapSettings.brightness || 100}%)` }}>
             {wallPlateType === 'moon' && (
               <div className="relative w-full h-full flex items-center justify-center bg-black p-0 m-0">
                 <Image src={wallPlateData.image} alt="Moon" fill className="object-contain" unoptimized />
-                
                 {mapSettings.showManuscriptOnMoon && activeManuscript && (
                   <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none p-12">
                     {activeManuscript.type === 'text' ? (
-                      <p 
-                        className="text-6xl lg:text-[10rem] font-calligraphy text-center transition-all duration-700 leading-tight whitespace-pre-wrap"
-                        style={{ 
-                          fontFamily: activeManuscript.fontFamily || 'Aref Ruqaa',
-                          color: mapSettings.manuscriptColor,
-                          fontSize: `${(mapSettings.fontScale || 1.0) * 10}rem`,
-                          filter: 'drop-shadow(0 0 40px rgba(0,0,0,0.9))',
-                          WebkitTextStroke: '2px rgba(255,255,255,0.2)',
-                          paintOrder: 'stroke fill'
-                        }}
-                      >
-                        {activeManuscript.content}
-                      </p>
-                    ) : (
-                      <img 
-                        src={activeManuscript.content} 
-                        className="max-w-[80%] max-h-[60%] object-contain drop-shadow-[0_0_80px_rgba(255,255,255,0.4)]" 
-                        style={{ filter: 'brightness(0) invert(1) drop-shadow(0 0 40px rgba(255,255,255,0.8))' }}
-                      />
-                    )}
+                      <p className="text-6xl lg:text-[10rem] font-calligraphy text-center transition-all duration-700 leading-tight whitespace-pre-wrap" style={{ fontFamily: activeManuscript.fontFamily || 'Aref Ruqaa', color: mapSettings.manuscriptColor, fontSize: `${(mapSettings.fontScale || 1.0) * 10}rem`, filter: 'drop-shadow(0 0 40px rgba(0,0,0,0.9))' }}>{activeManuscript.content}</p>
+                    ) : <img src={activeManuscript.content} className="max-w-[80%] max-h-[60%] object-contain" style={{ filter: 'brightness(0) invert(1) drop-shadow(0 0 40px rgba(255,255,255,0.8))' }} />}
                   </div>
                 )}
               </div>
@@ -151,32 +91,11 @@ export function DashboardView() {
             
             {wallPlateType === 'manuscript' && (
               <div className="relative w-full h-full flex items-center justify-center p-0 m-0">
-                <div className="absolute inset-0 z-0">
-                  <Image 
-                    src={mapSettings.manuscriptBgUrl || "https://images.unsplash.com/photo-1578301978693-85fa9c0320b9?q=80&w=2000"} 
-                    alt="" fill className="object-cover opacity-90" priority 
-                  />
-                </div>
+                <div className="absolute inset-0 z-0"><Image src={mapSettings.manuscriptBgUrl || "https://images.unsplash.com/photo-1578301978693-85fa9c0320b9?q=80&w=2000"} alt="" fill className="object-cover opacity-90" priority /></div>
                 <div className="relative z-10 w-full h-full flex items-center justify-center px-8 m-0 animate-in zoom-in-95 duration-700">
                   {wallPlateData?.type === 'text' ? (
-                    <p 
-                      className="text-6xl lg:text-[12rem] font-calligraphy text-center px-4 leading-[1.2] whitespace-pre-wrap tracking-wide drop-shadow-[0_0_80px_rgba(0,0,0,0.8)]"
-                      style={{ 
-                        fontFamily: wallPlateData.fontFamily || 'Aref Ruqaa',
-                        color: mapSettings.manuscriptColor,
-                        fontSize: `${(mapSettings.fontScale || 1.0) * 12}rem`,
-                        textShadow: `0 0 60px ${mapSettings.manuscriptColor}66`
-                      }}
-                    >
-                      {wallPlateData.content}
-                    </p>
-                  ) : (
-                    <img 
-                      src={wallPlateData.content} 
-                      className="w-full h-full object-contain drop-shadow-[0_0_100px_rgba(255,255,255,0.7)]" 
-                      style={{ filter: `brightness(0) invert(1) drop-shadow(0 0 40px ${mapSettings.manuscriptColor})` }}
-                    />
-                  )}
+                    <p className="text-6xl lg:text-[12rem] font-calligraphy text-center px-4 leading-[1.2] whitespace-pre-wrap tracking-wide drop-shadow-[0_0_80px_rgba(0,0,0,0.8)]" style={{ fontFamily: wallPlateData.fontFamily || 'Aref Ruqaa', color: mapSettings.manuscriptColor, fontSize: `${(mapSettings.fontScale || 1.0) * 12}rem` }}>{wallPlateData.content}</p>
+                  ) : <img src={wallPlateData.content} className="w-full h-full object-contain" style={{ filter: `brightness(0) invert(1) drop-shadow(0 0 40px ${mapSettings.manuscriptColor})` }} />}
                 </div>
               </div>
             )}
@@ -185,38 +104,18 @@ export function DashboardView() {
       )}
 
       <div className="grid grid-cols-12 gap-6 min-h-[480px]" data-row-id="dash-row-1">
-        <div className="col-span-4 rounded-[2.5rem] overflow-hidden relative shadow-2xl h-[480px] bg-black focusable" tabIndex={0} data-nav-id="dash-col-0">
-          <ActiveAzkarWidget />
-        </div>
-        <div className="col-span-4 rounded-[2.5rem] relative flex items-center justify-center overflow-hidden h-[480px] shadow-2xl focusable bg-black outline-none" tabIndex={0} data-nav-id="dash-col-1">
-          <ReminderSummaryWidget />
-        </div>
+        <div className="col-span-4 rounded-[2.5rem] overflow-hidden relative shadow-2xl h-[480px] bg-black focusable" tabIndex={0} data-nav-id="dash-col-0"><ActiveAzkarWidget /></div>
+        <div className="col-span-4 rounded-[2.5rem] relative flex items-center justify-center overflow-hidden h-[480px] shadow-2xl focusable bg-black outline-none" tabIndex={0} data-nav-id="dash-col-1"><ReminderSummaryWidget /></div>
         <div className="col-span-4 flex flex-col gap-4 h-[480px] relative">
           <div className="flex-1 relative overflow-hidden bg-black rounded-[2.5rem] shadow-2xl focusable" tabIndex={0} data-nav-id="dash-col-2">
-            <Carousel setApi={setApi} opts={{ loop: true }} className="w-full h-full">
-              <CarouselContent className="h-full ml-0 overflow-hidden no-scrollbar">
-                <CarouselItem className="pl-0 h-full flex items-center justify-center bg-black"><MoonWidget /></CarouselItem>
-                {activeVideo && <CarouselItem className="pl-0 h-full flex items-center justify-center bg-black"><PlayingNowWidget /></CarouselItem>}
-              </CarouselContent>
-            </Carousel>
+            <Carousel setApi={setApi} opts={{ loop: true }} className="w-full h-full"><CarouselContent className="h-full ml-0 overflow-hidden no-scrollbar"><CarouselItem className="pl-0 h-full flex items-center justify-center bg-black"><MoonWidget /></CarouselItem>{activeVideo && <CarouselItem className="pl-0 h-full flex items-center justify-center bg-black"><PlayingNowWidget /></CarouselItem>}</CarouselContent></Carousel>
           </div>
-          <div className="flex-[0.35] rounded-[2.5rem] relative overflow-hidden shadow-2xl focusable bg-black" tabIndex={0} data-nav-id="dash-col-clock">
-            <DateAndClockWidget />
-          </div>
+          <div className="flex-[0.35] rounded-[2.5rem] relative overflow-hidden shadow-2xl focusable bg-black" tabIndex={0} data-nav-id="dash-col-clock"><DateAndClockWidget /></div>
         </div>
       </div>
-
-      <div className="w-full shadow-xl focusable bg-black rounded-[2.5rem] overflow-hidden outline-none" tabIndex={0} data-nav-id="dash-row-2-bar" data-row-id="dash-row-2">
-        <PrayerTimelineWidget />
-      </div>
-
-      <div className="w-full" data-row-id="dash-row-latest">
-        <LatestVideosWidget channels={favoriteChannels.filter(c => c.starred)} />
-      </div>
-
-      <div className="w-full pb-12" data-row-id="dash-row-saved">
-        <YouTubeSavedWidget />
-      </div>
+      <div className="w-full shadow-xl focusable bg-black rounded-[2.5rem] overflow-hidden outline-none" tabIndex={0} data-nav-id="dash-row-2-bar" data-row-id="dash-row-2"><PrayerTimelineWidget /></div>
+      <div className="w-full" data-row-id="dash-row-latest"><LatestVideosWidget channels={favoriteChannels.filter(c => c.starred)} /></div>
+      <div className="w-full pb-12" data-row-id="dash-row-saved"><YouTubeSavedWidget /></div>
     </div>
   );
 }

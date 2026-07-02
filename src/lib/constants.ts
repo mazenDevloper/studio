@@ -69,7 +69,6 @@ export function convertTo12Hour(time24h: string | undefined): string {
 
 /**
  * Advanced Display Number Logic: Skips navigation-dangerous combinations.
- * Specifically skips any number where both digits are [2, 4, 5, 6, 8].
  */
 export const getDisplayNumber = (index: number) => {
   const blockedDigits = [2, 4, 5, 6, 8];
@@ -81,14 +80,9 @@ export const getDisplayNumber = (index: number) => {
     const s = currentNum.toString();
     const d1 = parseInt(s[0]);
     const d2 = parseInt(s[1]);
-    
-    // Check if the number is dangerous for navigation or is a legacy skip
     const isNavigationDangerous = s.length === 2 && blockedDigits.includes(d1) && blockedDigits.includes(d2);
     const isLegacySkip = currentNum === 13 || currentNum === 17;
-    
-    if (isNavigationDangerous || isLegacySkip) {
-      continue;
-    }
+    if (isNavigationDangerous || isLegacySkip) continue;
     count++;
   }
   return currentNum;

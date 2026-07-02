@@ -21,10 +21,6 @@ interface ReminderItem {
   isNearingEnd?: boolean;
 }
 
-/**
- * ReminderSummaryWidget v75.0 - Hydration Guarded
- * Logic: Multi-Reminder Lifecycle Tracking with Client-Only initialization.
- */
 export function ReminderSummaryWidget() {
   const { prayerTimes, reminders, prayerSettings } = useMediaStore();
   const [mounted, setMounted] = useState(false);
@@ -55,21 +51,16 @@ export function ReminderSummaryWidget() {
       return convertTo12Hour(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`);
     };
 
+    const dateStr = now.toISOString().split('T')[0];
+    const pData = prayerTimes.find(p => p.date === dateStr) || 
+                  prayerTimes.find(p => p.date.endsWith(`-${now.getDate().toString().padStart(2, '0')}`)) || 
+                  prayerTimes[0];
+
     if (prayerTimes?.length) {
-      const dateStr = now.toISOString().split('T')[0];
-      const pData = prayerTimes.find(p => p.date === dateStr) || 
-                    prayerTimes.find(p => p.date.endsWith(`-${now.getDate().toString().padStart(2, '0')}`)) || 
-                    prayerTimes[0];
-      
       for (const setting of prayerSettings) {
         let refTime = pData[setting.id as keyof typeof pData];
         let baseMinutesOffset = setting.offsetMinutes;
-
-        if (setting.id === 'duha') {
-          refTime = pData['sunrise'];
-          baseMinutesOffset += 15;
-        }
-
+        if (setting.id === 'duha') { refTime = pData['sunrise']; baseMinutesOffset += 15; }
         if (!refTime) continue;
 
         const baseMinutes = tToM(refTime) + baseMinutesOffset;
@@ -78,17 +69,11 @@ export function ReminderSummaryWidget() {
         if (aDiff < -43200) aDiff += 86400;
 
         const displayName = (setting.id === 'dhuhr' && isFriday) ? "صلاة الجمعة" : setting.name;
-
         if (aDiff > -600) {
           list.push({ 
-            id: `azan-${setting.id}`, 
-            name: displayName, 
-            label: setting.id === 'sunrise' ? "شروق الشمس" : setting.id === 'duha' ? "صلاة الضحى" : "الأذان", 
-            diff: aDiff, 
-            icon: Clock, 
-            color: setting.id === 'sunrise' || setting.id === 'duha' ? "text-orange-400" : "text-accent", 
-            targetTimeStr: formatTargetTime(azanSecs),
-            window: setting.countdownWindow * 60
+            id: `azan-${setting.id}`, name: displayName, label: setting.id === 'sunrise' ? "شروق الشمس" : setting.id === 'duha' ? "صلاة الضحى" : "الأذان", 
+            diff: aDiff, icon: Clock, color: setting.id === 'sunrise' || setting.id === 'duha' ? "text-orange-400" : "text-accent", 
+            targetTimeStr: formatTargetTime(azanSecs), window: setting.countdownWindow * 60
           });
         }
 
@@ -96,17 +81,11 @@ export function ReminderSummaryWidget() {
           const iqamahSecs = azanSecs + (setting.iqamahDuration * 60);
           let iDiff = iqamahSecs - totalCurrentSecs;
           if (iDiff < -43200) iDiff += 86400;
-
           if (iDiff > -600) {
             list.push({ 
-              id: `iqamah-${setting.id}`, 
-              name: `إقامة ${displayName}`, 
-              label: "الإقامة", 
-              diff: iDiff, 
-              icon: Timer, 
-              color: "text-emerald-400", 
-              targetTimeStr: formatTargetTime(iqamahSecs),
-              window: setting.countupWindow * 60 
+              id: `iqamah-${setting.id}`, name: `إقامة ${displayName}`, label: "الإقامة", 
+              diff: iDiff, icon: Timer, color: "text-emerald-400", 
+              targetTimeStr: formatTargetTime(iqamahSecs), window: setting.countupWindow * 60 
             });
           }
         }
@@ -115,33 +94,36 @@ export function ReminderSummaryWidget() {
 
     for (const rem of reminders) {
       if (rem.completed) continue;
-      let targetSecs = 0;
-      let expirySecs = 0;
-
-      const dateStr = now.toISOString().split('T')[0];
-      const pData = prayerTimes.find(p => p.date === dateStr) || 
-                    prayerTimes.find(p => p.date.endsWith(`-${now.getDate().toString().padStart(2, '0')}`)) || 
-                    prayerTimes[0];
+      let targetSecs = 0, expirySecs = 0;
 
       if (rem.relativePrayer === 'manual' && rem.manualTime) {
         targetSecs = tToM(rem.manualTime) * 60;
-      } else if (prayerTimes?.length) {
+      } else if (pData) {
         let refTime = pData[rem.relativePrayer as keyof typeof pData];
-        let extraOffset = rem.offsetMinutes;
-        if (rem.relativePrayer === 'duha') { refTime = pData['sunrise']; extraOffset += 15; }
-        if (refTime) targetSecs = (tToM(refTime) + extraOffset) * 60;
+        if (rem.relativePrayer === 'duha') refTime = pData['sunrise'];
+        
+        if (refTime) {
+          const pSetting = prayerSettings.find(s => s.id === rem.relativePrayer);
+          let baseMins = tToM(refTime) + (rem.relativePrayer === 'duha' ? 15 : 0);
+          if (rem.referencePoint === 'iqamah') baseMins += (pSetting?.iqamahDuration || 0);
+          targetSecs = (baseMins + rem.offsetMinutes) * 60;
+        }
       }
 
       if (targetSecs > 0) {
-        if (rem.expiryType === 'prayer') {
+        if (rem.expiryType === 'prayer' || rem.expiryType === 'iqamah') {
           let expRef = rem.expiryValue === 'next' ? '' : rem.expiryValue;
           if (rem.expiryValue === 'next') {
             const prayers = ['fajr', 'sunrise', 'dhuhr', 'asr', 'maghrib', 'isha'];
             const curMins = totalCurrentSecs / 60;
-            const found = prayers.find(p => tToM(pData[p]) > curMins) || 'fajr';
-            expRef = found;
+            expRef = prayers.find(p => tToM(pData[p]) > curMins) || 'fajr';
           }
-          if (expRef && pData[expRef]) expirySecs = tToM(pData[expRef]) * 60;
+          if (expRef && pData[expRef]) {
+            const expSetting = prayerSettings.find(s => s.id === expRef);
+            let expMins = tToM(pData[expRef]);
+            if (rem.expiryType === 'iqamah') expMins += (expSetting?.iqamahDuration || 0);
+            expirySecs = expMins * 60;
+          }
         } else if (rem.expiryType === 'manual' && rem.expiryValue) {
           expirySecs = tToM(rem.expiryValue) * 60;
         } else {
@@ -150,69 +132,31 @@ export function ReminderSummaryWidget() {
 
         let diff = targetSecs - totalCurrentSecs;
         if (diff < -43200) diff += 86400;
-
         let expDiff = expirySecs - totalCurrentSecs;
         if (expDiff < -43200) expDiff += 86400;
 
-        const isNearingEnd = expDiff > 0 && expDiff <= 600;
-
         if (expDiff > -60) { 
           list.push({ 
-            id: rem.id, 
-            name: rem.label || "تذكير مخصص", 
-            label: "تذكير", 
-            diff, 
-            expDiff,
-            isNearingEnd,
-            icon: Bell, 
-            color: rem.color || "text-blue-400", 
-            targetTimeStr: formatTargetTime(targetSecs),
-            window: rem.countdownWindow * 60
+            id: rem.id, name: rem.label, label: "تذكير", diff, expDiff, isNearingEnd: expDiff > 0 && expDiff <= 600,
+            icon: rem.iconType === 'play' ? Timer : Bell, color: rem.color, targetTimeStr: formatTargetTime(targetSecs), window: rem.countdownWindow * 60
           });
         }
       }
     }
 
-    return list.sort((a, b) => {
-      if (a.isNearingEnd && !b.isNearingEnd) return -1;
-      if (!a.isNearingEnd && b.isNearingEnd) return 1;
-      return Math.abs(a.diff) - Math.abs(b.diff);
-    }).slice(0, 3);
+    return list.sort((a, b) => (a.isNearingEnd && !b.isNearingEnd) ? -1 : (!a.isNearingEnd && b.isNearingEnd) ? 1 : Math.abs(a.diff) - Math.abs(b.diff)).slice(0, 3);
   }, [now, prayerTimes, reminders, prayerSettings]);
 
-  const formatCountdown = (diffSeconds: number) => {
-    const absSecs = Math.abs(diffSeconds);
-    const m = Math.floor((absSecs % 3600) / 60);
-    const s = absSecs % 60;
-    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-  };
+  const formatCountdown = (diffSeconds: number) => { const absSecs = Math.abs(diffSeconds); return `${Math.floor((absSecs % 3600) / 60).toString().padStart(2, '0')}:${(absSecs % 60).toString().padStart(2, '0')}`; };
 
   const GlassNumber = ({ text, size = '4.5rem', id }: { text: string, size?: string, id: string }) => (
     <div className="relative w-[95%] h-full flex flex-col items-center justify-center mx-auto">
       <svg className="w-full h-full overflow-visible" viewBox="0 0 280 80">
         <defs>
-          <linearGradient id={`textFill-sum-${id}`} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="rgba(255,255,255,0.95)" />
-            <stop offset="100%" stopColor="rgba(255,255,255,0.2)" />
-          </linearGradient>
-          <linearGradient id={`textStroke-sum-${id}`} x1="100%" y1="100%" x2="0%" y2="0%">
-            <stop offset="0%" stopColor="rgba(255,255,255,1)" />
-            <stop offset="100%" stopColor="rgba(255,255,255,0.1)" />
-          </linearGradient>
+          <linearGradient id={`textFill-sum-${id}`} x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="rgba(255,255,255,0.95)" /><stop offset="100%" stopColor="rgba(255,255,255,0.2)" /></linearGradient>
+          <linearGradient id={`textStroke-sum-${id}`} x1="100%" y1="100%" x2="0%" y2="0%"><stop offset="0%" stopColor="rgba(255,255,255,1)" /><stop offset="100%" stopColor="rgba(255,255,255,0.1)" /></linearGradient>
         </defs>
-        <text 
-          x="50%" 
-          y="50%" 
-          textAnchor="middle" 
-          dominantBaseline="central"
-          className="font-black tabular-nums tracking-tighter"
-          style={{ fontSize: size }}
-          fill={`url(#textFill-sum-${id})`}
-          stroke={`url(#textStroke-sum-${id})`}
-          strokeWidth="1"
-        >
-          {text}
-        </text>
+        <text x="50%" y="50%" textAnchor="middle" dominantBaseline="central" className="font-black tabular-nums tracking-tighter" style={{ fontSize: size }} fill={`url(#textFill-sum-${id})`} stroke={`url(#textStroke-sum-${id})`} strokeWidth="1">{text}</text>
       </svg>
     </div>
   );
@@ -226,44 +170,17 @@ export function ReminderSummaryWidget() {
         const RemIcon = rem.icon;
         const showCountdown = Math.abs(rem.diff) <= rem.window;
         const showEndCountdown = rem.isNearingEnd && rem.diff <= 0;
-
         let displayVal = rem.targetTimeStr;
         if (showEndCountdown) displayVal = `END ${formatCountdown(rem.expDiff || 0)}`;
         else if (showCountdown) displayVal = `${rem.diff >= 0 ? "-" : "+"}${formatCountdown(rem.diff)}`;
 
         return (
-          <div key={rem.id} className={cn(
-            "flex flex-col items-center justify-center relative py-1 transition-all duration-0 w-full",
-            processedReminders.length > 1 && idx < processedReminders.length - 1 ? "border-b border-white/5" : "",
-            idx === 0 ? "opacity-100" : idx === 1 ? "opacity-70" : "opacity-40"
-          )}>
-            <div className="flex items-center gap-3 mb-[-4px]">
-              <RemIcon className={cn("w-6 h-6 shadow-glow", rem.isNearingEnd ? "text-red-500 animate-pulse" : rem.color)} />
-              <span className={cn("text-2xl font-black uppercase truncate max-w-[320px]", rem.isNearingEnd ? "text-red-500" : rem.color)}>
-                {rem.name}
-              </span>
-            </div>
-            
-            <div className={cn(
-              "w-[95%] px-2",
-              (idx === 0 && (showCountdown || showEndCountdown)) ? "h-24" : "h-16"
-            )}>
-              <GlassNumber 
-                text={displayVal} 
-                id={`sum-vert-${rem.id}`} 
-                size={(idx === 0 && (showCountdown || showEndCountdown)) ? "5.5rem" : "4.5rem"}
-              />
-            </div>
-            
-            {idx === 0 && (showCountdown || showEndCountdown) && (
-              <span className="text-white/30 font-black uppercase tracking-[0.4em] text-[10px] mt-1 animate-pulse">
-                {showEndCountdown ? "Expiring Soon" : "Active Countdown"}
-              </span>
-            )}
+          <div key={rem.id} className={cn("flex flex-col items-center justify-center relative py-1 transition-all duration-0 w-full", processedReminders.length > 1 && idx < processedReminders.length - 1 ? "border-b border-white/5" : "", idx === 0 ? "opacity-100" : idx === 1 ? "opacity-70" : "opacity-40")}>
+            <div className="flex items-center gap-3 mb-[-4px]"><RemIcon className={cn("w-6 h-6 shadow-glow", rem.isNearingEnd ? "text-red-500 animate-pulse" : rem.color)} /><span className={cn("text-2xl font-black uppercase truncate max-w-[320px]", rem.isNearingEnd ? "text-red-500" : rem.color)}>{rem.name}</span></div>
+            <div className={cn("w-[95%] px-2", (idx === 0 && (showCountdown || showEndCountdown)) ? "h-24" : "h-16")}><GlassNumber text={displayVal} id={`sum-vert-${rem.id}`} size={(idx === 0 && (showCountdown || showEndCountdown)) ? "5.5rem" : "4.5rem"} /></div>
           </div>
         );
       })}
     </div>
   );
 }
-
