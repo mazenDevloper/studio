@@ -28,7 +28,8 @@ interface GoalEvent {
 export function LiveMatchIsland() {
   const { 
     favoriteTeams, prayerTimes, prayerSettings, reminders, belledMatchIds, 
-    showIslands, toggleShowIslands, skippedMatchIds, skipMatch, autoHideIsland
+    showIslands, toggleShowIslands, skippedMatchIds, skipMatch, autoHideIsland,
+    skippedReminderIds, skipReminder
   } = useMediaStore();
 
   const [mounted, setMounted] = useState(false);
@@ -88,44 +89,45 @@ export function LiveMatchIsland() {
         const azanSecs = (tToM(refTime) + (setting.id === 'duha' ? 15 : 0) + setting.offsetMinutes) * 60;
         let aDiff = azanSecs - totalCurrentSecs;
         if (aDiff < -43200) aDiff += 86400;
-        if (aDiff > 0 && aDiff < (setting.countdownWindow * 60)) list.push({ id: `azan-${setting.id}`, name: setting.name, diff: aDiff, type: 'azan', color: 'text-accent' });
-        else if (aDiff <= 0 && setting.iqamahDuration > 0 && Math.abs(aDiff) < (setting.iqamahDuration * 60)) list.push({ id: `iqamah-${setting.id}`, name: `إقامة ${setting.name}`, diff: aDiff, type: 'iqamah', color: 'text-emerald-400' });
+        
+        if (aDiff > 0 && aDiff < (setting.countdownWindow * 60)) {
+          list.push({ id: `azan-${setting.id}`, name: setting.name, diff: aDiff, type: 'azan', color: 'text-accent' });
+        } else if (aDiff <= 0 && setting.iqamahDuration > 0) {
+          // IQAMAH: Countdown remaining minutes
+          const iqamahRemaining = (setting.iqamahDuration * 60) + aDiff;
+          if (iqamahRemaining > 0) {
+            list.push({ id: `iqamah-${setting.id}`, name: `إقامة ${setting.name}`, diff: iqamahRemaining, type: 'iqamah', color: 'text-emerald-400' });
+          }
+        }
       }
 
       for (const rem of reminders) {
-        if (rem.completed) continue;
+        if (rem.completed || skippedReminderIds.includes(rem.id)) continue;
         let targetSecs = 0, expirySecs = 0;
-        if (rem.relativePrayer === 'manual' && rem.manualTime) targetSecs = tToM(rem.manualTime) * 60;
-        else {
-          let refTime = pData[rem.relativePrayer as keyof typeof pData];
-          if (rem.relativePrayer === 'duha') refTime = pData['sunrise'];
-          if (refTime) {
-            const pSetting = prayerSettings.find(s => s.id === rem.relativePrayer);
-            let baseMins = tToM(refTime) + (rem.relativePrayer === 'duha' ? 15 : 0);
-            if (rem.referencePoint === 'iqamah') baseMins += (pSetting?.iqamahDuration || 0);
-            targetSecs = (baseMins + rem.offsetMinutes) * 60;
-          }
+        
+        if (rem.startType === 'manual' && rem.manualStartTime) targetSecs = tToM(rem.manualStartTime) * 60;
+        else if (rem.startReference && pData[rem.startReference]) {
+          const pSetting = prayerSettings.find(s => s.id === rem.startReference);
+          let baseMins = tToM(pData[rem.startReference]);
+          if (rem.startType === 'iqamah') baseMins += (pSetting?.iqamahDuration || 0);
+          targetSecs = (baseMins + rem.startOffset) * 60;
         }
+
         if (targetSecs > 0) {
-          if (rem.expiryType === 'prayer' || rem.expiryType === 'iqamah') {
-            let expRef = rem.expiryValue === 'next' ? '' : rem.expiryValue;
-            if (rem.expiryValue === 'next') {
-              const prayers = ['fajr', 'sunrise', 'dhuhr', 'asr', 'maghrib', 'isha'];
-              expRef = prayers.find(p => tToM(pData[p]) > (totalCurrentSecs / 60)) || 'fajr';
-            }
-            if (expRef && pData[expRef]) {
-              const expSetting = prayerSettings.find(s => s.id === expRef);
-              let expMins = tToM(pData[expRef]);
-              if (rem.expiryType === 'iqamah') expMins += (expSetting?.iqamahDuration || 0);
-              expirySecs = expMins * 60;
-            }
-          } else if (rem.expiryType === 'manual' && rem.expiryValue) expirySecs = tToM(rem.expiryValue) * 60;
-          else expirySecs = targetSecs + (parseInt(rem.expiryValue || '30') * 60);
+          if (rem.endType === 'manual' && rem.manualEndTime) expirySecs = tToM(rem.manualEndTime) * 60;
+          else if (rem.endType === 'duration') expirySecs = targetSecs + (rem.durationMinutes || 30) * 60;
+          else if ((rem.endType === 'azan' || rem.endType === 'iqamah' || rem.endType === 'prayer') && rem.endReference && pData[rem.endReference]) {
+            const expSetting = prayerSettings.find(s => s.id === rem.endReference);
+            let expMins = tToM(pData[rem.endReference]);
+            if (rem.endType === 'iqamah') expMins += (expSetting?.iqamahDuration || 0);
+            expirySecs = (expMins + rem.endOffset) * 60;
+          }
 
           let startDiff = targetSecs - totalCurrentSecs;
           if (startDiff < -43200) startDiff += 86400;
           let expDiff = expirySecs - totalCurrentSecs;
           if (expDiff < -43200) expDiff += 86400;
+          
           if (expDiff > 0) {
             if (startDiff < (rem.countdownWindow * 60) || startDiff <= 0) {
               const isEnding = expDiff <= 600;
@@ -136,7 +138,7 @@ export function LiveMatchIsland() {
       }
     }
     return list.sort((a, b) => Math.abs(a.diff) - Math.abs(b.diff));
-  }, [now, prayerTimes, prayerSettings, reminders]);
+  }, [now, prayerTimes, prayerSettings, reminders, skippedReminderIds]);
 
   const sortedMatches = useMemo(() => {
     return topMatches.filter(m => !skippedMatchIds.includes(m.id)).sort((a, b) => {
@@ -168,14 +170,20 @@ export function LiveMatchIsland() {
         {showIslands && (
           <div className="flex items-center gap-3">
             {activeAlerts.map((alert) => (
-              <div key={alert.id} className="pointer-events-auto premium-glass min-w-[12rem] h-[3.5rem] rounded-[2.5rem] flex items-center px-4 gap-3 animate-in slide-in-from-top-4 border border-white/10">
+              <div key={alert.id} className="pointer-events-auto premium-glass min-w-[12rem] h-[3.5rem] rounded-[2.5rem] flex items-center px-4 gap-3 animate-in slide-in-from-top-4 border border-white/10 relative group">
+                <button 
+                  onClick={(e) => { e.stopPropagation(); alert.type === 'reminder' ? skipReminder(alert.id) : null; }} 
+                  className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-black/40 text-white/40 opacity-0 group-hover:opacity-100 flex items-center justify-center z-50 pointer-events-auto"
+                >
+                  <X className="w-3 h-3" />
+                </button>
                 <div className={cn("w-8 h-8 rounded-full flex items-center justify-center shrink-0", alert.type === 'azan' ? "bg-accent/20" : alert.type === 'iqamah' ? "bg-emerald-400/20" : "bg-primary/20")}>{alert.type === 'azan' ? <Clock className="w-4 h-4 text-accent" /> : alert.type === 'iqamah' ? <Timer className="w-4 h-4 text-emerald-400" /> : <Bell className="w-4 h-4 text-primary" />}</div>
                 <div className="flex-1 flex flex-col items-center justify-center"><span className={cn("text-[0.8rem] font-black uppercase truncate max-w-[100px] leading-none mb-1", alert.isEnding ? "text-red-500" : "text-white/80")}>{alert.isEnding ? `END ${alert.name}` : alert.name}</span><div className="h-8 w-full"><GlassNumber text={alert.isExpired ? "الآن" : `${alert.diff >= 0 ? "-" : "+"}${formatCountdown(alert.diff)}`} id={`alert-${alert.id}`} size="2.2rem" colorClass={alert.color} /></div></div>
               </div>
             ))}
             {!activeGoal && sortedMatches[0] && (
               <div className="pointer-events-auto premium-glass w-[18rem] h-[3.5rem] rounded-[2.5rem] overflow-hidden relative group border border-white/10 shadow-2xl">
-                <button onClick={(e) => { e.stopPropagation(); skipMatch(sortedMatches[0].id); }} className="absolute top-1 left-1 z-50 w-6 h-6 rounded-full bg-black/40 text-white/40 opacity-0 group-hover:opacity-100 flex items-center justify-center"><X className="w-3 h-3" /></button>
+                <button onClick={(e) => { e.stopPropagation(); skipMatch(sortedMatches[0].id); }} className="absolute top-1 left-1 z-50 w-6 h-6 rounded-full bg-black/40 text-white/40 opacity-0 group-hover:opacity-100 flex items-center justify-center pointer-events-auto"><X className="w-3 h-3" /></button>
                 <div className="absolute inset-0 flex items-center justify-between px-2 overflow-hidden opacity-40"><img src={sortedMatches[0].homeLogo} className="h-full scale-150 translate-x-4" alt="" /><img src={sortedMatches[0].awayLogo} className="h-full scale-150 -translate-x-4" alt="" /></div>
                 <div className="relative z-10 h-full flex flex-col items-center justify-center">{sortedMatches[0].status === 'live' && <span className="absolute top-1 text-[10px] font-black text-primary bg-black/60 px-2 rounded-full border border-primary/20">{sortedMatches[0].minute}'</span>}<GlassNumber text={sortedMatches[0].status === 'upcoming' ? sortedMatches[0].startTime : `${sortedMatches[0].score?.away}-${sortedMatches[0].score?.home}`} id="main-match" /></div>
               </div>

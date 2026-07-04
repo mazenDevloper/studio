@@ -31,7 +31,7 @@ export interface YouTubeVideo {
 const youtubeCache: Record<string, { data: any, timestamp: number }> = {};
 const CACHE_TTL = 1000 * 60 * 60 * 6; 
 
-const BLACKLIST_KEY = 'yt_blacklist_v60';
+const BLACKLIST_KEY = 'yt_blacklist_v140';
 
 function getBlacklist(): Record<string, number> {
   if (typeof window === 'undefined') return {};
@@ -74,7 +74,8 @@ async function fetchWithRotation(endpoint: string, params: Record<string, string
   
   const totalKeys = YT_KEYS_POOL.length;
   const blacklist = getBlacklist();
-  const setApiError = useMediaStore.getState().setApiError;
+  const store = useMediaStore.getState();
+  const setApiError = store.setApiError;
 
   for (let attempts = 0; attempts < totalKeys * 1.5; attempts++) {
     const activeIndex = attempts % totalKeys;

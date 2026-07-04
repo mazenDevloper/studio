@@ -47,7 +47,8 @@ export function DashboardView() {
 
   const navigateWallPlate = (direction: 'next' | 'prev') => {
     if (!wallPlateData?.id || !customManuscripts.length) return;
-    const currentIdx = customManuscripts.findIndex(m => m.id === (wallPlateData.id || wallPlateData.content));
+    const currentId = wallPlateData.id || wallPlateData.content;
+    const currentIdx = customManuscripts.findIndex(m => m.id === currentId || m.content === currentId);
     if (currentIdx === -1) {
       updateWallPlate('manuscript', customManuscripts[0]);
       return;
@@ -75,7 +76,7 @@ export function DashboardView() {
             <><button onClick={() => navigateWallPlate('prev')} className="absolute left-10 top-1/2 -translate-y-1/2 w-20 h-20 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/20 transition-all z-[20002] focusable"><ChevronLeft className="w-12 h-12" /></button><button onClick={() => navigateWallPlate('next')} className="absolute right-10 top-1/2 -translate-y-1/2 w-20 h-20 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/20 transition-all z-[20002] focusable"><ChevronRight className="w-12 h-12" /></button></>
           )}
           
-          <div className="w-full h-full flex items-center justify-center overflow-hidden p-0 m-0 relative" style={{ filter: `hue-rotate(${mapSettings.hue || 0}deg) saturate(${mapSettings.saturation || 100}%) brightness(${mapSettings.brightness || 100}%)` }}>
+          <div className="w-full h-full flex items-center justify-center overflow-hidden p-0 m-0 relative" style={{ filter: wallPlateType === 'moon' ? `hue-rotate(${mapSettings.hue || 0}deg) saturate(${mapSettings.saturation || 100}%) brightness(${mapSettings.brightness || 100}%)` : 'none' }}>
             {wallPlateType === 'moon' && (
               <div className="relative w-full h-full flex items-center justify-center bg-black p-0 m-0">
                 <Image src={wallPlateData.image} alt="Moon" fill className="object-contain" unoptimized />
@@ -92,7 +93,7 @@ export function DashboardView() {
             {wallPlateType === 'manuscript' && (
               <div className="relative w-full h-full flex items-center justify-center p-0 m-0">
                 <div className="absolute inset-0 z-0"><Image src={mapSettings.manuscriptBgUrl || "https://images.unsplash.com/photo-1578301978693-85fa9c0320b9?q=80&w=2000"} alt="" fill className="object-cover opacity-90" priority /></div>
-                <div className="relative z-10 w-full h-full flex items-center justify-center px-8 m-0 animate-in zoom-in-95 duration-700">
+                <div className="relative z-10 w-full h-full flex items-center justify-center px-8 m-0 animate-in zoom-in-95 duration-700" style={{ filter: `hue-rotate(${mapSettings.hue || 0}deg) saturate(${mapSettings.saturation || 100}%) brightness(${mapSettings.brightness || 100}%)` }}>
                   {wallPlateData?.type === 'text' ? (
                     <p className="text-6xl lg:text-[12rem] font-calligraphy text-center px-4 leading-[1.2] whitespace-pre-wrap tracking-wide drop-shadow-[0_0_80px_rgba(0,0,0,0.8)]" style={{ fontFamily: wallPlateData.fontFamily || 'Aref Ruqaa', color: mapSettings.manuscriptColor, fontSize: `${(mapSettings.fontScale || 1.0) * 12}rem` }}>{wallPlateData.content}</p>
                   ) : <img src={wallPlateData.content} className="w-full h-full object-contain" style={{ filter: `brightness(0) invert(1) drop-shadow(0 0 40px ${mapSettings.manuscriptColor})` }} />}

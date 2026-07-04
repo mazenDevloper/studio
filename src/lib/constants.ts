@@ -42,8 +42,8 @@ export const JSONBIN_SAVED_VIDEOS_BIN_ID = '68e4ac20d0ea881f4098138c';
 export const JSONBIN_IPTV_FAVS_BIN_ID = '69a87b8bd0ea881f40eeec0c'; 
 export const JSONBIN_PRAYER_TIMES_BIN_ID = '69a00f6eae596e708f4b7291'; 
 export const JSONBIN_MANUSCRIPTS_BIN_ID = '69b63c5cc3097a1dd5278b25'; 
-export const JSONBIN_MASTER_BIN_ID = '69b63cb1c3097a1dd5278bf4'; 
-export const JSONBIN_MATCHES_SCHEDULE_BIN_ID = '69c782cbb7ec241ddcb0b99a';
+export const JSONBIN_MASTER_BIN_ID = '69c782cbb7ec241ddcb0b99a'; 
+export const JSONBIN_MATCHES_SCHEDULE_BIN_ID = '69c782cbb7ec241ddcb0b99a'; // Point to Master for schedule integration
 export const JSONBIN_CLUBS_CACHE_BIN_ID = '69b6a00bc3097a1dd527b3fa';
 export const JSONBIN_POPULAR_RECITERS_BIN_ID = '6909c1cd43b1c97be997b522';
 
