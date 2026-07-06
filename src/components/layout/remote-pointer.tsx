@@ -103,7 +103,6 @@ export function RemotePointer() {
     if (wallPlateType) return;
     const focusables = Array.from(document.querySelectorAll(".focusable")).filter(el => {
       if (el.tagName === 'INPUT' && !(el as HTMLInputElement).classList.contains('focusable')) return false;
-      // Skip hidden or scaled elements that shouldn't be focused
       const rect = el.getBoundingClientRect();
       return rect.width > 0 && rect.height > 0;
     }) as HTMLElement[];
@@ -166,13 +165,23 @@ export function RemotePointer() {
     if (isAction(finalKey, 'next_manuscript')) { e?.preventDefault(); navigateManuscript('next'); return; }
     if (isAction(finalKey, 'prev_manuscript')) { e?.preventDefault(); navigateManuscript('prev'); return; }
 
+    // Media Scrolling Actions
+    if (isAction(finalKey, 'media_scroll_up')) {
+      e?.preventDefault();
+      const main = document.querySelector('main');
+      if (main) main.scrollBy({ top: -400, behavior: 'smooth' });
+      return;
+    }
+    if (isAction(finalKey, 'media_scroll_down')) {
+      e?.preventDefault();
+      const main = document.querySelector('main');
+      if (main) main.scrollBy({ top: 400, behavior: 'smooth' });
+      return;
+    }
+
     if (/^\d+$/.test(finalKey)) {
-      // SECURE DRIVER: Block navigation combinations from channel switching
-      const blockedCombos = [
-        '22', '44', '66', '88', '24', '26', '28', '82', '84', '86', '42', '46', '48', '62', '64', '68',
-        '25', '45', '65', '85', '52', '54', '56', '58', '55'
-      ];
-      const hasHyperAction = ['inc_font', 'dec_font', 'next_manuscript', 'prev_manuscript'].some(act => isAction(finalKey, act as AppAction));
+      const blockedCombos = ['22', '44', '66', '88', '24', '26', '28', '82', '84', '86', '42', '46', '48', '62', '64', '68', '25', '45', '65', '85', '52', '54', '56', '58', '55', '33', '99'];
+      const hasHyperAction = ['inc_font', 'dec_font', 'next_manuscript', 'prev_manuscript', 'inc_zoom', 'dec_zoom'].some(act => isAction(finalKey, act as AppAction));
       if (blockedCombos.includes(finalKey) && !hasHyperAction) return;
 
       const displayNum = parseInt(finalKey);

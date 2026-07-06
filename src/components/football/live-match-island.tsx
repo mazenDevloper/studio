@@ -19,12 +19,6 @@ interface AlertItem {
   isEnding?: boolean;
 }
 
-interface GoalEvent {
-  matchId: string;
-  teamName: string;
-  teamLogo: string;
-}
-
 export function LiveMatchIsland() {
   const { 
     favoriteTeams, prayerTimes, prayerSettings, reminders, belledMatchIds, 
@@ -35,8 +29,6 @@ export function LiveMatchIsland() {
   const [mounted, setMounted] = useState(false);
   const [topMatches, setTopMatches] = useState<Match[]>([]);
   const [now, setNow] = useState<Date | null>(null);
-  const [activeGoal, setActiveGoal] = useState<GoalEvent | null>(null);
-  const prevScoresRef = useRef<Record<string, { home: number, away: number }>>({});
   const lastFetchRef = useRef<number>(0);
 
   useEffect(() => {
@@ -47,27 +39,14 @@ export function LiveMatchIsland() {
   }, []);
 
   const fetchMatches = useCallback(async (force = false) => {
-    const hasLiveMatch = topMatches.some(m => m.status === 'live');
     const timeSinceLast = Date.now() - lastFetchRef.current;
-    if (!force && !hasLiveMatch && timeSinceLast < 3600000 && lastFetchRef.current !== 0) return;
-    if (!force && hasLiveMatch && timeSinceLast < 60000) return;
+    if (!force && timeSinceLast < 60000) return;
     try {
       const matches = await fetchFootballData('today');
       lastFetchRef.current = Date.now();
-      if (matches && matches.length > 0) {
-        for (const match of matches) {
-          const prev = prevScoresRef.current[match.id];
-          const isFavoriteMatch = favoriteTeams.some(t => t.id === match.homeTeamId || t.id === match.awayTeamId) || belledMatchIds.includes(match.id);
-          if (prev && match.score && isFavoriteMatch) {
-            if (match.score.home > prev.home) { setActiveGoal({ matchId: match.id, teamName: match.homeTeam, teamLogo: match.homeLogo }); setTimeout(() => setActiveGoal(null), 8000); }
-            else if (match.score.away > prev.away) { setActiveGoal({ matchId: match.id, teamName: match.awayTeam, teamLogo: match.awayLogo }); setTimeout(() => setActiveGoal(null), 8000); }
-          }
-          if (match.score) prevScoresRef.current[match.id] = { home: match.score.home, away: match.score.away };
-        }
-      }
       setTopMatches(matches || []);
     } catch (e) {}
-  }, [favoriteTeams, belledMatchIds, topMatches]);
+  }, []);
 
   useEffect(() => { fetchMatches(true); }, []);
   useEffect(() => { const interval = setInterval(() => fetchMatches(), 60000); return () => clearInterval(interval); }, [fetchMatches]);
@@ -79,9 +58,10 @@ export function LiveMatchIsland() {
     const list: AlertItem[] = [];
     const totalCurrentSecs = (now.getHours() * 3600) + (now.getMinutes() * 60) + now.getSeconds();
     const dateStr = now.toISOString().split('T')[0];
-    const pData = prayerTimes.find(p => p.date === dateStr) || prayerTimes.find(p => p.date.endsWith(`-${now.getDate().toString().padStart(2, '0')}`)) || prayerTimes[0];
+    const pData = prayerTimes.find(p => p.date === dateStr) || prayerTimes[0];
     
     if (pData) {
+      // Azan and Iqamah Logic
       for (const setting of prayerSettings) {
         let refTime = pData[setting.id as keyof typeof pData];
         if (setting.id === 'duha') refTime = pData['sunrise'];
@@ -93,7 +73,6 @@ export function LiveMatchIsland() {
         if (aDiff > 0 && aDiff < (setting.countdownWindow * 60)) {
           list.push({ id: `azan-${setting.id}`, name: setting.name, diff: aDiff, type: 'azan', color: 'text-accent' });
         } else if (aDiff <= 0 && setting.iqamahDuration > 0) {
-          // IQAMAH: Countdown remaining minutes
           const iqamahRemaining = (setting.iqamahDuration * 60) + aDiff;
           if (iqamahRemaining > 0) {
             list.push({ id: `iqamah-${setting.id}`, name: `إقامة ${setting.name}`, diff: iqamahRemaining, type: 'iqamah', color: 'text-emerald-400' });
@@ -101,38 +80,52 @@ export function LiveMatchIsland() {
         }
       }
 
+      // Custom Reminders with Overnight Continuity
       for (const rem of reminders) {
         if (rem.completed || skippedReminderIds.includes(rem.id)) continue;
-        let targetSecs = 0, expirySecs = 0;
+        let startSecs = 0, endSecs = 0;
         
-        if (rem.startType === 'manual' && rem.manualStartTime) targetSecs = tToM(rem.manualStartTime) * 60;
+        // Calculate Start
+        if (rem.startType === 'manual' && rem.manualStartTime) startSecs = tToM(rem.manualStartTime) * 60;
         else if (rem.startReference && pData[rem.startReference]) {
           const pSetting = prayerSettings.find(s => s.id === rem.startReference);
           let baseMins = tToM(pData[rem.startReference]);
           if (rem.startType === 'iqamah') baseMins += (pSetting?.iqamahDuration || 0);
-          targetSecs = (baseMins + rem.startOffset) * 60;
+          startSecs = (baseMins + rem.startOffset) * 60;
         }
 
-        if (targetSecs > 0) {
-          if (rem.endType === 'manual' && rem.manualEndTime) expirySecs = tToM(rem.manualEndTime) * 60;
-          else if (rem.endType === 'duration') expirySecs = targetSecs + (rem.durationMinutes || 30) * 60;
-          else if ((rem.endType === 'azan' || rem.endType === 'iqamah' || rem.endType === 'prayer') && rem.endReference && pData[rem.endReference]) {
-            const expSetting = prayerSettings.find(s => s.id === rem.endReference);
-            let expMins = tToM(pData[rem.endReference]);
-            if (rem.endType === 'iqamah') expMins += (expSetting?.iqamahDuration || 0);
-            expirySecs = (expMins + rem.endOffset) * 60;
-          }
+        // Calculate End
+        if (rem.endType === 'manual' && rem.manualEndTime) endSecs = tToM(rem.manualEndTime) * 60;
+        else if (rem.endType === 'duration') endSecs = startSecs + (rem.durationMinutes || 30) * 60;
+        else if ((rem.endType === 'azan' || rem.endType === 'iqamah' || rem.endType === 'prayer') && rem.endReference && pData[rem.endReference]) {
+          const expSetting = prayerSettings.find(s => s.id === rem.endReference);
+          let expMins = tToM(pData[rem.endReference]);
+          if (rem.endType === 'iqamah') expMins += (expSetting?.iqamahDuration || 0);
+          endSecs = (expMins + (rem.endOffset || 0)) * 60;
+        }
 
-          let startDiff = targetSecs - totalCurrentSecs;
-          if (startDiff < -43200) startDiff += 86400;
-          let expDiff = expirySecs - totalCurrentSecs;
-          if (expDiff < -43200) expDiff += 86400;
+        if (startSecs > 0) {
+          let sDiff = startSecs - totalCurrentSecs;
+          if (sDiff < -43200) sDiff += 86400; // Handle day wrapping
           
-          if (expDiff > 0) {
-            if (startDiff < (rem.countdownWindow * 60) || startDiff <= 0) {
-              const isEnding = expDiff <= 600;
-              list.push({ id: rem.id, name: rem.label, diff: isEnding ? expDiff : startDiff, type: 'reminder', color: isEnding ? 'text-red-500' : rem.color, isExpired: startDiff <= 0 && !isEnding, isEnding });
-            }
+          let eDiff = endSecs - totalCurrentSecs;
+          if (eDiff < -43200) eDiff += 86400;
+
+          const windowSecs = (rem.countdownWindow || 15) * 60;
+          // Persistence Logic: show if we are between start and end OR within the countdown window
+          const isActive = (sDiff <= 0 && eDiff > 0) || (sDiff > 0 && sDiff < windowSecs);
+          
+          if (isActive) {
+            const isEnding = eDiff <= 600; // Last 10 minutes
+            list.push({ 
+              id: rem.id, 
+              name: rem.label, 
+              diff: isEnding ? eDiff : sDiff, 
+              type: 'reminder', 
+              color: isEnding ? 'text-red-500' : rem.color, 
+              isExpired: sDiff <= 0 && !isEnding, 
+              isEnding 
+            });
           }
         }
       }
@@ -140,17 +133,11 @@ export function LiveMatchIsland() {
     return list.sort((a, b) => Math.abs(a.diff) - Math.abs(b.diff));
   }, [now, prayerTimes, prayerSettings, reminders, skippedReminderIds]);
 
-  const sortedMatches = useMemo(() => {
-    return topMatches.filter(m => !skippedMatchIds.includes(m.id)).sort((a, b) => {
-      const aB = belledMatchIds.includes(a.id), bB = belledMatchIds.includes(b.id);
-      if (aB !== bB) return aB ? -1 : 1;
-      const aF = favoriteTeams.some(t => t.id === a.homeTeamId || t.id === a.awayTeamId), bF = favoriteTeams.some(t => t.id === b.homeTeamId || t.id === b.awayTeamId);
-      if (aF !== bF) return aF ? -1 : 1;
-      return (a.status === 'live' ? 0 : 1) - (b.status === 'live' ? 0 : 1);
-    });
-  }, [topMatches, skippedMatchIds, favoriteTeams, belledMatchIds]);
-
-  const formatCountdown = (diffSeconds: number) => { const absSecs = Math.abs(diffSeconds); return `${Math.floor((absSecs % 3600) / 60).toString().padStart(2, '0')}:${(absSecs % 60).toString().padStart(2, '0')}`; };
+  const formatCountdown = (diffSeconds: number) => { 
+    const absSecs = Math.abs(diffSeconds); 
+    return `${Math.floor((absSecs % 3600) / 60).toString().padStart(2, '0')}:${(absSecs % 60).toString().padStart(2, '0')}`; 
+  };
+  
   const GlassNumber = ({ text, size = '3rem', id, colorClass }: { text: string, size?: string, id: string, colorClass?: string }) => (
     <div className="relative w-full h-full flex items-center justify-center">
       <svg className="w-full h-full overflow-visible" viewBox="0 0 200 60">
@@ -161,7 +148,7 @@ export function LiveMatchIsland() {
   );
 
   if (!mounted || !now) return null;
-  if (autoHideIsland && !activeAlerts.length && !activeGoal) return null;
+  if (autoHideIsland && !activeAlerts.length) return null;
 
   return (
     <div className={cn("fixed top-6 left-1/2 -translate-x-1/2 z-[10001] flex flex-col items-center gap-4 pointer-events-none scale-110 dir-rtl transition-all duration-700", (showIslands || activeAlerts.length) ? "translate-y-0 opacity-100" : "-translate-y-20 opacity-0")}>
@@ -171,23 +158,18 @@ export function LiveMatchIsland() {
           <div className="flex items-center gap-3">
             {activeAlerts.map((alert) => (
               <div key={alert.id} className="pointer-events-auto premium-glass min-w-[12rem] h-[3.5rem] rounded-[2.5rem] flex items-center px-4 gap-3 animate-in slide-in-from-top-4 border border-white/10 relative group">
-                <button 
-                  onClick={(e) => { e.stopPropagation(); alert.type === 'reminder' ? skipReminder(alert.id) : null; }} 
-                  className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-black/40 text-white/40 opacity-0 group-hover:opacity-100 flex items-center justify-center z-50 pointer-events-auto"
-                >
-                  <X className="w-3 h-3" />
-                </button>
+                <button onClick={(e) => { e.stopPropagation(); skipReminder(alert.id); }} className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-black/40 text-white/40 opacity-0 group-hover:opacity-100 flex items-center justify-center z-50 pointer-events-auto transition-opacity"><X className="w-3 h-3" /></button>
                 <div className={cn("w-8 h-8 rounded-full flex items-center justify-center shrink-0", alert.type === 'azan' ? "bg-accent/20" : alert.type === 'iqamah' ? "bg-emerald-400/20" : "bg-primary/20")}>{alert.type === 'azan' ? <Clock className="w-4 h-4 text-accent" /> : alert.type === 'iqamah' ? <Timer className="w-4 h-4 text-emerald-400" /> : <Bell className="w-4 h-4 text-primary" />}</div>
-                <div className="flex-1 flex flex-col items-center justify-center"><span className={cn("text-[0.8rem] font-black uppercase truncate max-w-[100px] leading-none mb-1", alert.isEnding ? "text-red-500" : "text-white/80")}>{alert.isEnding ? `END ${alert.name}` : alert.name}</span><div className="h-8 w-full"><GlassNumber text={alert.isExpired ? "الآن" : `${alert.diff >= 0 ? "-" : "+"}${formatCountdown(alert.diff)}`} id={`alert-${alert.id}`} size="2.2rem" colorClass={alert.color} /></div></div>
+                <div className="flex-1 flex flex-col items-center justify-center">
+                  <span className={cn("text-[0.8rem] font-black uppercase truncate max-w-[100px] leading-none mb-1", alert.isEnding ? "text-red-500" : "text-white/80")}>
+                    {alert.isEnding ? "انتهاء " + alert.name : alert.name}
+                  </span>
+                  <div className="h-8 w-full">
+                    <GlassNumber text={alert.isExpired ? "الآن" : `${alert.diff >= 0 ? "-" : "+"}${formatCountdown(alert.diff)}`} id={`alert-${alert.id}`} size="2.2rem" colorClass={alert.color} />
+                  </div>
+                </div>
               </div>
             ))}
-            {!activeGoal && sortedMatches[0] && (
-              <div className="pointer-events-auto premium-glass w-[18rem] h-[3.5rem] rounded-[2.5rem] overflow-hidden relative group border border-white/10 shadow-2xl">
-                <button onClick={(e) => { e.stopPropagation(); skipMatch(sortedMatches[0].id); }} className="absolute top-1 left-1 z-50 w-6 h-6 rounded-full bg-black/40 text-white/40 opacity-0 group-hover:opacity-100 flex items-center justify-center pointer-events-auto"><X className="w-3 h-3" /></button>
-                <div className="absolute inset-0 flex items-center justify-between px-2 overflow-hidden opacity-40"><img src={sortedMatches[0].homeLogo} className="h-full scale-150 translate-x-4" alt="" /><img src={sortedMatches[0].awayLogo} className="h-full scale-150 -translate-x-4" alt="" /></div>
-                <div className="relative z-10 h-full flex flex-col items-center justify-center">{sortedMatches[0].status === 'live' && <span className="absolute top-1 text-[10px] font-black text-primary bg-black/60 px-2 rounded-full border border-primary/20">{sortedMatches[0].minute}'</span>}<GlassNumber text={sortedMatches[0].status === 'upcoming' ? sortedMatches[0].startTime : `${sortedMatches[0].score?.away}-${sortedMatches[0].score?.home}`} id="main-match" /></div>
-              </div>
-            )}
           </div>
         )}
       </div>

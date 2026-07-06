@@ -97,7 +97,8 @@ export type AppAction =
   | 'player_next' | 'player_prev' | 'player_save' | 'player_fullscreen' | 'player_playlist' | 'player_minimize' | 'player_close' | 'player_settings'
   | 'focus_search' | 'focus_reciters' | 'focus_surahs'
   | 'goto_tab_appearance' | 'goto_tab_prayers' | 'goto_tab_reminders' | 'goto_tab_manuscripts' | 'goto_tab_buttonmap' | 'goto_tab_reciters'
-  | 'inc_zoom' | 'dec_zoom' | 'inc_font' | 'dec_font' | 'next_manuscript' | 'prev_manuscript';
+  | 'inc_zoom' | 'dec_zoom' | 'inc_font' | 'dec_font' | 'next_manuscript' | 'prev_manuscript'
+  | 'media_scroll_up' | 'media_scroll_down';
 
 interface MediaState {
   favoriteChannels: YouTubeChannel[];
@@ -170,12 +171,14 @@ interface MediaState {
   addChannel: (channel: YouTubeChannel) => void;
   removeChannel: (channelid: string) => void;
   reorderChannel: (id: string, dir: 'prev' | 'next') => void;
+  moveChannelToTop: (id: string) => void;
   reorderChannelTo: (fromId: string, toId: string) => void;
   addReciter: (channel: YouTubeChannel) => void;
   addRecitersBatch: (reciters: YouTubeChannel[]) => void;
   removeReciter: (channelid: string) => void;
   updateReciter: (id: string, name: string) => void;
   reorderReciter: (fromId: string, direction: 'prev' | 'next') => void;
+  moveReciterToTop: (id: string) => void;
   reorderReciterTo: (fromId: string, toId: string) => void;
   toggleSaveVideo: (video: YouTubeVideo) => void;
   removeVideo: (id: string) => void;
@@ -254,7 +257,8 @@ const updateBin = async (binId: string, data: any) => {
 const DEFAULT_GLOBAL_MAPPINGS: Record<string, string[]> = {
   nav_up: ['ArrowUp', '2'], nav_down: ['ArrowDown', '8'], nav_left: ['ArrowLeft', '4'], nav_right: ['ArrowRight', '6'], nav_ok: ['Enter', '5'], nav_back: ['Backspace', 'Escape', 'Back'],
   goto_home: ['H', '1'], goto_media: ['M', '3'], goto_quran: ['Q', '7'], goto_hihi2: ['F', '9'], goto_iptv: ['0'], goto_football: ['T'], goto_settings: ['SETTINGS'],
-  delete_item: ['Red'], toggle_star: ['Yellow'], toggle_reorder: ['Blue'], inc_zoom: ['33'], dec_zoom: ['99'], inc_font: ['66'], dec_font: ['44'], next_manuscript: ['88'], prev_manuscript: ['22']
+  delete_item: ['Red'], toggle_star: ['Yellow'], toggle_reorder: ['Blue'], inc_zoom: ['33'], dec_zoom: ['99'], inc_font: ['66'], dec_font: ['44'], next_manuscript: ['88'], prev_manuscript: ['22'],
+  media_scroll_up: ['PageUp'], media_scroll_down: ['PageDown']
 };
 
 const DEFAULT_CONTEXT_MAPPINGS: Record<string, Record<string, string[]>> = {
@@ -322,6 +326,7 @@ export const useMediaStore = create<MediaState>()(
       addChannel: (ch) => set((s) => { const n = [...s.favoriteChannels.filter(i => i.channelid !== ch.channelid), { ...ch, starred: false }]; setTimeout(() => get().saveChannelsReorder(), 100); return { favoriteChannels: n }; }),
       removeChannel: (id) => set((s) => { const n = s.favoriteChannels.filter(i => i.channelid !== id); setTimeout(() => get().saveChannelsReorder(), 100); return { favoriteChannels: n }; }),
       reorderChannel: (id, dir) => set((s) => { const l = [...s.favoriteChannels], idx = l.findIndex(c => c.channelid === id); if (idx === -1) return s; const nIdx = dir === 'next' ? idx + 1 : idx - 1; if (nIdx < 0 || nIdx >= l.length) return s; [l[idx], l[nIdx]] = [l[nIdx], l[idx]]; return { favoriteChannels: l }; }),
+      moveChannelToTop: (id) => set((s) => { const l = [...s.favoriteChannels], idx = l.findIndex(c => c.channelid === id); if (idx === -1) return s; const [m] = l.splice(idx, 1); l.unshift(m); return { favoriteChannels: l }; }),
       reorderChannelTo: (f, t) => set((s) => { const l = [...s.favoriteChannels], fI = l.findIndex(i => i.channelid === f), tI = l.findIndex(i => i.channelid === t); if (fI === -1 || tI === -1) return s; const [m] = l.splice(fI, 1); l.splice(tI, 0, m); return { favoriteChannels: l }; }),
       
       addReciter: (r) => set((s) => { const n = [...s.favoriteReciters.filter(i => i.channelid !== r.channelid), r]; setTimeout(() => get().saveRecitersReorder(), 100); return { favoriteReciters: n }; }),
@@ -329,6 +334,7 @@ export const useMediaStore = create<MediaState>()(
       removeReciter: (id) => set((s) => { const n = s.favoriteReciters.filter(i => i.channelid !== id); setTimeout(() => get().saveRecitersReorder(), 100); return { favoriteReciters: n }; }),
       updateReciter: (id, name) => set((s) => ({ favoriteReciters: s.favoriteReciters.map(r => r.channelid === id ? { ...r, name } : r) })),
       reorderReciter: (id, dir) => set((s) => { const l = [...s.favoriteReciters], idx = l.findIndex(r => r.channelid === id); if (idx === -1) return s; const nIdx = dir === 'next' ? idx + 1 : idx - 1; if (nIdx < 0 || nIdx >= l.length) return s; [l[idx], l[nIdx]] = [l[nIdx], l[idx]]; return { favoriteReciters: l }; }),
+      moveReciterToTop: (id) => set((s) => { const l = [...s.favoriteReciters], idx = l.findIndex(r => r.channelid === id); if (idx === -1) return s; const [m] = l.splice(idx, 1); l.unshift(m); return { favoriteReciters: l }; }),
       reorderReciterTo: (f, t) => set((s) => { const l = [...s.favoriteReciters], fI = l.findIndex(i => i.channelid === f), tI = l.findIndex(i => i.channelid === t); if (fI === -1 || tI === -1) return s; const [m] = l.splice(fI, 1); l.splice(tI, 0, m); return { favoriteReciters: l }; }),
 
       toggleSaveVideo: (v) => set((s) => { const e = s.savedVideos.some(i => i.id === v.id); const n = e ? s.savedVideos.filter(i => i.id !== v.id) : [{ ...v, progress: 0 }, ...s.savedVideos]; setTimeout(() => get().syncMasterBin(), 100); return { savedVideos: n }; }),
@@ -344,7 +350,7 @@ export const useMediaStore = create<MediaState>()(
       removeManuscript: (id) => set((s) => { const n = s.customManuscripts.filter(m => m.id !== id); setTimeout(() => get().saveManuscriptsReorder(), 100); return { customManuscripts: n }; }),
       reorderManuscript: (id, dir) => set((s) => { const l = [...s.customManuscripts], idx = l.findIndex(m => m.id === id); if (idx === -1) return s; const nIdx = dir === 'next' ? idx + 1 : idx - 1; if (nIdx < 0 || nIdx >= l.length) return s; [l[idx], l[nIdx]] = [l[nIdx], l[idx]]; return { customManuscripts: l }; }),
 
-      addCustomFont: (name, url) => set((s) => ({ customFonts: [...s.customFonts.filter(f => f.name !== name), { name, url }] })),
+      addCustomFont: (name, url) => set((s) => { const n = [...s.customFonts.filter(f => f.name !== name), { name, url }]; setTimeout(() => get().syncMasterBin(), 100); return { customFonts: n }; }),
       removeCustomFont: (name) => set((s) => ({ customFonts: s.customFonts.filter(f => f.name !== name) })),
       addCustomWallBackground: (url) => set((s) => { const n = [...s.customWallBackgrounds.filter(u => u !== url), url]; setTimeout(() => get().syncMasterBin(), 100); return { customWallBackgrounds: n }; }),
       removeCustomWallBackground: (url) => set((s) => { const n = s.customWallBackgrounds.filter(u => u !== url); setTimeout(() => get().syncMasterBin(), 100); return { customWallBackgrounds: n }; }),
@@ -383,7 +389,7 @@ export const useMediaStore = create<MediaState>()(
       setAiSuggestions: (s) => set({ aiSuggestions: s }),
     }),
     {
-      name: "drivecast-ready-v2600", 
+      name: "drivecast-ready-v2800", 
       partialize: (s) => ({ dockSide: s.dockSide, showIslands: s.showIslands, isAltModeActive: s.isAltModeActive, autoHideIsland: s.autoHideIsland, displayScale: s.displayScale, dockScale: s.dockScale, mapSettings: s.mapSettings }),
     }
   )
