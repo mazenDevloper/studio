@@ -58,6 +58,7 @@ export interface MapSettings {
   fontScale: number;
   manuscriptColor: string;
   showManuscriptOnMoon: boolean;
+  moonManuIdx: number;
   hue: number;
   saturation: number;
   brightness: number;
@@ -287,7 +288,7 @@ export const useMediaStore = create<MediaState>()(
   persist(
     (set, get) => ({
       favoriteChannels: [], savedVideos: [], videoProgress: {}, favoriteTeams: [], favoriteLeagueIds: [307, 39, 2, 140, 135], belledMatchIds: [], skippedMatchIds: [], skippedReminderIds: [], favoriteIptvChannels: [], favoriteReciters: [], iptvPlaylist: [], iptvPlaylistIndex: 0, prayerTimes: prayerTimesData, prayerSettings: DEFAULT_PRAYER_SETTINGS, reminders: DEFAULT_REMINDERS, customManuscripts: [], customFonts: [], customWallBackgrounds: [], customManuscriptColors: ['#ffffff', '#FFD700', '#C0C0C0', 'linear-gradient(to bottom, #fff, #999)'],
-      mapSettings: { zoom: 20.0, tilt: 65, carScale: 1.02, backgroundIndex: 0, showManuscriptBg: true, manuscriptBgUrl: "https://www.image2url.com/r2/default/images/1782382707952-d99447c6-bc60-475d-9406-5fd2ef320bd5.png", fontScale: 1.0, manuscriptColor: '#ffffff', showManuscriptOnMoon: false, hue: 0, saturation: 100, brightness: 100 },
+      mapSettings: { zoom: 20.0, tilt: 65, carScale: 1.02, backgroundIndex: 0, showManuscriptBg: true, manuscriptBgUrl: "https://www.image2url.com/r2/default/images/1782382707952-d99447c6-bc60-475d-9406-5fd2ef320bd5.png", fontScale: 1.0, manuscriptColor: '#ffffff', showManuscriptOnMoon: false, moonManuIdx: 0, hue: 0, saturation: 100, brightness: 100 },
       displayScale: 1.0, dockScale: 1.0, keyMappings: DEFAULT_CONTEXT_MAPPINGS, activeVideo: null, activeIptv: null, activeQuranUrl: "https://quran.com/ar/radio", playlist: [], playlistIndex: 0, isPlaying: false, isMinimized: false, isFullScreen: false, isPlayerControlsExpanded: false, gridMode: 'hidden', dockSide: 'left', showIslands: true, autoHideIsland: true, isSidebarShrinked: false, wallPlateType: null, wallPlateData: null, playerMode: 'api', isAltModeActive: true, isReorderMode: false, apiError: null, isRecordingKey: false, lastLiveUpdate: 0, isInitialLoading: false, aiSuggestions: [],
       pickedUpId: null, setPickedUpId: (id) => set({ pickedUpId: id }), setApiError: (v) => set({ apiError: v }), setIsRecordingKey: (v) => set({ isRecordingKey: v }), setDockScale: (v) => set({ dockScale: v }), setDisplayScale: (v) => set({ displayScale: v }), setIsSidebarShrinked: (v) => set({ isSidebarShrinked: v }),
       selectedChannel: null, channelVideos: [], videoResults: [], iptvSwitchingInfo: null, setIptvSwitchingInfo: (info) => set({ iptvSwitchingInfo: info }),
@@ -352,8 +353,8 @@ export const useMediaStore = create<MediaState>()(
 
       addCustomFont: (name, url) => set((s) => { const n = [...s.customFonts.filter(f => f.name !== name), { name, url }]; setTimeout(() => get().syncMasterBin(), 100); return { customFonts: n }; }),
       removeCustomFont: (name) => set((s) => ({ customFonts: s.customFonts.filter(f => f.name !== name) })),
-      addCustomWallBackground: (url) => set((s) => { const n = [...s.customWallBackgrounds.filter(u => u !== url), url]; setTimeout(() => get().syncMasterBin(), 100); return { customWallBackgrounds: n }; }),
-      removeCustomWallBackground: (url) => set((s) => { const n = s.customWallBackgrounds.filter(u => u !== url); setTimeout(() => get().syncMasterBin(), 100); return { customWallBackgrounds: n }; }),
+      addCustomWallBackground: (url) => set((s) => { const n = [...s.customWallBackgrounds.filter(u => u !== url), url]; return { customWallBackgrounds: n }; }),
+      removeCustomWallBackground: (url) => set((s) => { const n = s.customWallBackgrounds.filter(u => u !== url); return { customWallBackgrounds: n }; }),
 
       addReminder: (r) => set((s) => { const n = [...s.reminders.filter(x => x.id !== r.id), r]; setTimeout(() => get().syncMasterBin(), 100); return { reminders: n }; }),
       removeReminder: (id) => set((s) => { const n = s.reminders.filter(r => r.id !== id); setTimeout(() => get().syncMasterBin(), 100); return { reminders: n }; }),

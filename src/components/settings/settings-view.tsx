@@ -67,18 +67,22 @@ export function SettingsView() {
       if (target === 'bg') {
         addCustomWallBackground(dataUrl); 
         updateMapSettings({ manuscriptBgUrl: dataUrl });
+        // Auto-Sync after local background upload
+        setTimeout(() => syncMasterBin(), 500);
       } else if (target === 'manuscript') {
         addManuscript({ id: Date.now().toString(), type: 'image', content: dataUrl });
+        setTimeout(() => saveManuscriptsReorder(), 500);
       } else if (target === 'font') {
         const fontName = file.name.split('.')[0].replace(/\s+/g, '-');
         addCustomFont(fontName, dataUrl);
+        setTimeout(() => syncMasterBin(), 500);
       }
-      toast({ title: "تم الرفع بنجاح" });
+      toast({ title: "تم الرفع والحفظ بنجاح" });
     };
     reader.readAsDataURL(file);
   };
 
-  const handleSaveManuscript = () => {
+  const handleSaveManuscript = async () => {
     if (!manuscriptInput) return;
     if (editingManuscriptId) {
       updateManuscript(editingManuscriptId, { content: manuscriptInput, type: manuscriptType, fontFamily: selectedFont });
@@ -88,7 +92,9 @@ export function SettingsView() {
     }
     setManuscriptInput("");
     setSelectedFont("");
-    toast({ title: "تم حفظ المخطوطة" });
+    // Ensure persistence to JSONBin
+    await saveManuscriptsReorder();
+    toast({ title: "تم حفظ المخطوطة سحابياً" });
   };
 
   const loadManuscriptForEdit = (m: Manuscript) => {
@@ -99,13 +105,14 @@ export function SettingsView() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleSaveReminder = () => {
+  const handleSaveReminder = async () => {
     if (!newReminder.label) return;
     const id = editingReminderId || Date.now().toString();
     addReminder({ ...newReminder, id } as Reminder);
     setNewReminder({ label: "", color: "text-blue-400", iconType: "bell", startType: 'azan', startReference: 'fajr', startOffset: 0, endType: 'duration', endReference: 'fajr', endOffset: 0, showCountdown: true, showCountup: false, countdownWindow: 15, completed: false });
     setEditingReminderId(null);
-    toast({ title: editingReminderId ? "تم التعديل بنجاح" : "تمت إضافة التذكير" });
+    await syncMasterBin();
+    toast({ title: editingReminderId ? "تم التعديل والحفظ سحابياً" : "تمت إضافة التذكير والحفظ" });
   };
 
   const loadReminderForEdit = (r: Reminder) => {
@@ -114,13 +121,14 @@ export function SettingsView() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleImportReciters = () => {
+  const handleImportReciters = async () => {
     try {
       const parsed = JSON.parse(jsonReciters);
       const batch = Array.isArray(parsed) ? parsed : (parsed.reciters || []);
       addRecitersBatch(batch);
       setJsonReciters("");
-      toast({ title: "تم استيراد القراء بنجاح" });
+      await saveRecitersReorder();
+      toast({ title: "تم استيراد القراء وحفظهم" });
     } catch {
       toast({ variant: "destructive", title: "خطأ في نص JSON" });
     }
@@ -134,7 +142,7 @@ export function SettingsView() {
   return (
     <div className="p-12 space-y-12 max-w-7xl mx-auto pb-40 text-right dir-rtl bg-black min-h-full">
       <header className="flex items-center justify-between">
-        <div className="flex flex-col gap-2"><h1 className="text-6xl font-black text-white tracking-tighter flex items-center gap-6">الإعدادات السيادية <Settings className="w-12 h-12 text-primary animate-spin-slow" /></h1><p className="text-white/40 font-bold uppercase tracking-[0.6em] text-sm">Unified System Hub v3600.0</p></div>
+        <div className="flex flex-col gap-2"><h1 className="text-6xl font-black text-white tracking-tighter flex items-center gap-6">الإعدادات السيادية <Settings className="w-12 h-12 text-primary animate-spin-slow" /></h1><p className="text-white/40 font-bold uppercase tracking-[0.6em] text-sm">Unified System Hub v3700.0</p></div>
         <div className="flex gap-4">
           <Button onClick={handleManualRefresh} disabled={isRefreshing} className="bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-full h-14 px-8 font-black focusable shadow-glow">{isRefreshing ? <Loader2 className="w-5 h-5 animate-spin ml-2" /> : <RefreshCw className="w-5 h-5 ml-2" />} تحديث محلي</Button>
           <Button onClick={async () => { setIsSyncing(true); await syncMasterBin(); setIsSyncing(false); toast({ title: "تم المزامنة بنجاح" }); }} disabled={isSyncing} className="bg-primary text-white rounded-full h-14 px-8 font-black focusable shadow-glow">{isSyncing ? <Loader2 className="w-5 h-5 animate-spin ml-2" /> : <Zap className="w-5 h-5 ml-2" />} دفع عالمي</Button>
@@ -159,7 +167,7 @@ export function SettingsView() {
                  <span className="text-xs font-black text-white/40 uppercase">إضافة عن طريق الرابط</span>
                  <div className="flex gap-4">
                    <Input placeholder="رابط الصورة المباشر..." value={bgUrlInput} onChange={(e) => setBgUrlInput(e.target.value)} className="h-16 bg-white/5 border-white/10 text-xl font-bold rounded-2xl" />
-                   <Button onClick={() => { if(bgUrlInput) { addCustomWallBackground(bgUrlInput); updateMapSettings({ manuscriptBgUrl: bgUrlInput }); setBgUrlInput(""); toast({ title: "تمت الإضافة" }); } }} className="bg-blue-600 h-16 px-8 rounded-2xl font-black shadow-glow"><Link className="w-5 h-5 ml-2" /> إضافة</Button>
+                   <Button onClick={async () => { if(bgUrlInput) { addCustomWallBackground(bgUrlInput); updateMapSettings({ manuscriptBgUrl: bgUrlInput }); setBgUrlInput(""); await syncMasterBin(); toast({ title: "تمت الإضافة والحفظ" }); } }} className="bg-blue-600 h-16 px-8 rounded-2xl font-black shadow-glow"><Link className="w-5 h-5 ml-2" /> إضافة</Button>
                  </div>
               </div>
               <div className="p-8 bg-black/40 rounded-[3rem] border border-white/10 flex flex-col justify-center items-center gap-6">
@@ -171,14 +179,15 @@ export function SettingsView() {
 
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6 max-h-[400px] overflow-y-auto p-6 bg-black/20 rounded-[3rem] border border-white/5 custom-scrollbar">
               {customWallBackgrounds?.map((bg, i) => (
-                <div key={`${bg}-${i}`} onClick={() => { updateMapSettings({ manuscriptBgUrl: bg }); toast({ title: "تم اختيار الخلفية" }); }} className={cn("aspect-video rounded-[2rem] overflow-hidden border-4 cursor-pointer transition-all relative group shadow-2xl", mapSettings.manuscriptBgUrl === bg ? "border-primary shadow-glow scale-105" : "border-transparent opacity-60 hover:opacity-100")}>
+                <div key={`${bg}-${i}`} onClick={() => { updateMapSettings({ manuscriptBgUrl: bg }); syncMasterBin(); toast({ title: "تم اختيار الخلفية" }); }} className={cn("aspect-video rounded-[2rem] overflow-hidden border-4 cursor-pointer transition-all relative group shadow-2xl", mapSettings.manuscriptBgUrl === bg ? "border-primary shadow-glow scale-105" : "border-transparent opacity-60 hover:opacity-100")}>
                   <img src={bg} className="w-full h-full object-cover" alt="" />
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <button onClick={(e) => { e.stopPropagation(); removeCustomWallBackground(bg); }} className="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center shadow-2xl transform scale-75 group-hover:scale-100 transition-transform"><Trash2 className="w-5 h-5 text-white" /></button>
+                    <button onClick={async (e) => { e.stopPropagation(); removeCustomWallBackground(bg); await syncMasterBin(); }} className="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center shadow-2xl transform scale-75 group-hover:scale-100 transition-transform"><Trash2 className="w-5 h-5 text-white" /></button>
                   </div>
                 </div>
               ))}
             </div>
+            <Button onClick={syncMasterBin} className="w-full bg-primary h-20 rounded-[2.5rem] font-black shadow-glow text-2xl"><Save className="w-8 h-8 ml-3" /> حفظ كافة الأصول سحابياً</Button>
           </Card>
         </TabsContent>
 
@@ -292,12 +301,12 @@ export function SettingsView() {
                     <div className={cn("w-24 h-24 rounded-[1.8rem] flex items-center justify-center bg-white/5", r.color)}><Bell className="w-12 h-12 shadow-glow" /></div>
                     <div className="flex flex-col text-right">
                        <span className={cn("text-4xl font-black", r.color)}>{r.label}</span>
-                       <span className="text-xs font-bold text-white/20 uppercase tracking-widest mt-1">ID: {r.id} | {r.startType} ({r.startReference}) {"->"} {r.endType}</span>
+                       <span className="text-xs font-bold text-white/20 uppercase tracking-widest mt-1">ID: {r.id} | {r.startType} ({r.startReference}) {"\u2192"} {r.endType}</span>
                     </div>
                   </div>
                   <div className="flex gap-4 opacity-0 group-hover:opacity-100 transition-all">
                     <Button onClick={() => loadReminderForEdit(r)} className="w-16 h-16 rounded-full bg-blue-600/20 text-blue-400 border border-blue-500/30 focusable"><Edit2 className="w-8 h-8" /></Button>
-                    <Button onClick={() => removeReminder(r.id)} className="w-16 h-16 rounded-full bg-red-600/20 text-red-500 border border-red-600/20 focusable"><Trash2 className="w-8 h-8" /></Button>
+                    <Button onClick={async () => { removeReminder(r.id); await syncMasterBin(); }} className="w-16 h-16 rounded-full bg-red-600/20 text-red-500 border border-red-600/20 focusable"><Trash2 className="w-8 h-8" /></Button>
                   </div>
                 </div>
               ))}
@@ -329,7 +338,7 @@ export function SettingsView() {
                        <button onClick={() => reorderReciter(r.channelid, 'prev')} className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center text-white/40 hover:bg-emerald-600"><ChevronUp className="w-6 h-6" /></button>
                        <button onClick={() => reorderReciter(r.channelid, 'next')} className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center text-white/40 hover:bg-emerald-600"><ChevronDown className="w-6 h-6" /></button>
                     </div>
-                    <Button variant="ghost" onClick={() => removeReciter(r.channelid)} className="text-red-500 w-14 h-14 rounded-full hover:bg-red-600/20"><Trash2 className="w-7 h-7" /></Button>
+                    <Button variant="ghost" onClick={async () => { removeReciter(r.channelid); await saveRecitersReorder(); }} className="text-red-500 w-14 h-14 rounded-full hover:bg-red-600/20"><Trash2 className="w-7 h-7" /></Button>
                   </div>
                 </div>
               ))}
@@ -394,8 +403,8 @@ export function SettingsView() {
                 <div key={`${m.id}-${i}`} className="bg-black/40 border border-white/5 p-8 rounded-[2.5rem] flex items-center justify-between group hover:border-primary/40 transition-all shadow-xl">
                   <div className="flex-1 overflow-hidden flex items-center gap-8">
                     <div className="flex flex-col gap-2">
-                       <button onClick={() => reorderManuscript(m.id, 'prev')} className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/20 hover:bg-primary"><ChevronUp className="w-4 h-4" /></button>
-                       <button onClick={() => reorderManuscript(m.id, 'next')} className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/20 hover:bg-primary"><ChevronDown className="w-4 h-4" /></button>
+                       <button onClick={async () => { reorderManuscript(m.id, 'prev'); await saveManuscriptsReorder(); }} className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/20 hover:bg-primary"><ChevronUp className="w-4 h-4" /></button>
+                       <button onClick={async () => { reorderManuscript(m.id, 'next'); await saveManuscriptsReorder(); }} className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/20 hover:bg-primary"><ChevronDown className="w-4 h-4" /></button>
                     </div>
                     {m.type === 'text' ? (
                       <div className="flex flex-col">
@@ -406,11 +415,12 @@ export function SettingsView() {
                   </div>
                   <div className="flex gap-4 opacity-0 group-hover:opacity-100 transition-all">
                     <Button onClick={() => loadManuscriptForEdit(m)} className="w-14 h-14 rounded-full bg-blue-600/20 text-blue-400 border border-blue-500/30"><Edit2 className="w-7 h-7" /></Button>
-                    <Button onClick={() => removeManuscript(m.id)} className="w-14 h-14 rounded-full bg-red-600/20 text-red-500 border border-red-600/20"><Trash2 className="w-7 h-7" /></Button>
+                    <Button onClick={async () => { removeManuscript(m.id); await saveManuscriptsReorder(); }} className="w-14 h-14 rounded-full bg-red-600/20 text-red-500 border border-red-600/20"><Trash2 className="w-7 h-7" /></Button>
                   </div>
                 </div>
               ))}
             </div>
+            <Button onClick={saveManuscriptsReorder} className="w-full bg-primary h-20 rounded-[2.5rem] font-black mt-12 shadow-glow text-2xl"><Save className="w-8 h-8 ml-3" /> حفظ المخطوطات سحابياً</Button>
           </Card>
         </TabsContent>
 
@@ -427,12 +437,13 @@ export function SettingsView() {
                 <div key={action} className="bg-white/5 p-6 rounded-2xl flex items-center justify-between border border-white/5 group hover:border-primary/40 transition-all">
                   <div className="flex flex-col text-right"><span className="text-xl font-black text-white">{action.replace(/_/g, ' ').toUpperCase()}</span><span className="text-[10px] font-bold text-white/20 uppercase tracking-widest">Action Mapping System</span></div>
                   <div className="flex gap-2">
-                    {keyMappings[selectedContext]?.[action]?.map((key, i) => (<div key={i} className="px-4 py-2 bg-primary/20 text-primary border border-primary/40 rounded-xl font-black text-xs flex items-center gap-2">{key}<button onClick={() => removeSpecificKeyMapping(selectedContext, action, key)}><X className="w-3 h-3" /></button></div>))}
+                    {keyMappings[selectedContext]?.[action]?.map((key, i) => (<div key={i} className="px-4 py-2 bg-primary/20 text-primary border border-primary/40 rounded-xl font-black text-xs flex items-center gap-2">{key}<button onClick={async () => { removeSpecificKeyMapping(selectedContext, action, key); await syncMasterBin(); }}><X className="w-3 h-3" /></button></div>))}
                     <Button variant="ghost" onClick={() => {
                         toast({ title: "وضع التسجيل", description: `اضغط أي زر على الريموت لربطه بـ ${action}` });
-                        const handler = (e: KeyboardEvent) => {
+                        const handler = async (e: KeyboardEvent) => {
                           e.preventDefault();
                           setKeyMapping(selectedContext, action as AppAction, e.key);
+                          await syncMasterBin();
                           window.removeEventListener('keydown', handler);
                         };
                         window.addEventListener('keydown', handler);
@@ -441,6 +452,7 @@ export function SettingsView() {
                 </div>
               ))}
             </div>
+            <Button onClick={syncMasterBin} className="w-full bg-primary h-20 rounded-[2.5rem] font-black mt-12 shadow-glow text-2xl"><Save className="w-8 h-8 ml-3" /> حفظ خريطة الأزرار سحابياً</Button>
           </Card>
         </TabsContent>
       </Tabs>

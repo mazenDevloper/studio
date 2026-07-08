@@ -86,7 +86,18 @@ export function RemotePointer() {
   }, [pathname, activeVideo, activeIptv, isFullScreen, isMinimized]);
 
   const navigateManuscript = useCallback((direction: 'next' | 'prev') => {
-    if (!wallPlateData?.id || !customManuscripts.length) return;
+    if (!customManuscripts.length) return;
+
+    if (wallPlateType === 'moon') {
+      const currentIdx = mapSettings.moonManuIdx || 0;
+      let nextIdx = direction === 'next' ? currentIdx + 1 : currentIdx - 1;
+      if (nextIdx >= customManuscripts.length) nextIdx = 0;
+      if (nextIdx < 0) nextIdx = customManuscripts.length - 1;
+      updateMapSettings({ moonManuIdx: nextIdx });
+      return;
+    }
+
+    if (!wallPlateData?.id) return;
     const currentId = wallPlateData.id || wallPlateData.content;
     const currentIdx = customManuscripts.findIndex(m => m.id === currentId || m.content === currentId);
     if (currentIdx === -1) {
@@ -97,7 +108,7 @@ export function RemotePointer() {
     if (nextIdx >= customManuscripts.length) nextIdx = 0;
     if (nextIdx < 0) nextIdx = customManuscripts.length - 1;
     setWallPlate('manuscript', customManuscripts[nextIdx]);
-  }, [wallPlateData, customManuscripts, setWallPlate]);
+  }, [wallPlateData, wallPlateType, customManuscripts, setWallPlate, mapSettings.moonManuIdx, updateMapSettings]);
 
   const navigate = useCallback((direction: string) => {
     if (wallPlateType) return;
@@ -165,17 +176,15 @@ export function RemotePointer() {
     if (isAction(finalKey, 'next_manuscript')) { e?.preventDefault(); navigateManuscript('next'); return; }
     if (isAction(finalKey, 'prev_manuscript')) { e?.preventDefault(); navigateManuscript('prev'); return; }
 
-    // Media Scrolling Actions
+    // Global Browser Scrolling Actions
     if (isAction(finalKey, 'media_scroll_up')) {
       e?.preventDefault();
-      const main = document.querySelector('main');
-      if (main) main.scrollBy({ top: -400, behavior: 'smooth' });
+      window.scrollBy({ top: -600, behavior: 'smooth' });
       return;
     }
     if (isAction(finalKey, 'media_scroll_down')) {
       e?.preventDefault();
-      const main = document.querySelector('main');
-      if (main) main.scrollBy({ top: 400, behavior: 'smooth' });
+      window.scrollBy({ top: 600, behavior: 'smooth' });
       return;
     }
 

@@ -11,7 +11,7 @@ import Image from "next/image";
 
 /**
  * ActiveAzkarWidget v95.0 - Parallel Unified Engine
- * Features: High-precision font application and millisecond updates.
+ * Features: High-precision font application and live scaling via 44/66.
  */
 export function ActiveAzkarWidget() {
   const customManuscripts = useMediaStore(state => state.customManuscripts);
@@ -73,9 +73,10 @@ export function ActiveAzkarWidget() {
                   <div className="animate-in fade-in zoom-in-95 duration-700 w-full h-full flex justify-center items-center p-0 m-0 px-12">
                     {item.type === 'text' ? (
                       <p 
-                        className="w-full text-4xl md:text-5xl lg:text-6xl font-calligraphy text-white leading-tight drop-shadow-[0_0_30px_rgba(255,255,255,0.8)] text-center tracking-normal whitespace-pre-wrap break-words"
+                        className="w-full font-calligraphy text-white leading-tight drop-shadow-[0_0_30px_rgba(255,255,255,0.8)] text-center tracking-normal whitespace-pre-wrap break-words"
                         style={{ 
                           fontFamily: item.fontFamily || 'Aref Ruqaa',
+                          fontSize: `${(mapSettings.fontScale || 1.0) * 5.2}rem`
                         }}
                       >
                         {item.content}

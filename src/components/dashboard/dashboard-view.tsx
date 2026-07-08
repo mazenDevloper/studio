@@ -46,7 +46,18 @@ export function DashboardView() {
   }, []);
 
   const navigateWallPlate = (direction: 'next' | 'prev') => {
-    if (!wallPlateData?.id || !customManuscripts.length) return;
+    if (!customManuscripts.length) return;
+    
+    if (wallPlateType === 'moon') {
+      const currentIdx = mapSettings.moonManuIdx || 0;
+      let nextIdx = direction === 'next' ? currentIdx + 1 : currentIdx - 1;
+      if (nextIdx >= customManuscripts.length) nextIdx = 0;
+      if (nextIdx < 0) nextIdx = customManuscripts.length - 1;
+      updateMapSettings({ moonManuIdx: nextIdx });
+      return;
+    }
+
+    if (!wallPlateData?.id) return;
     const currentId = wallPlateData.id || wallPlateData.content;
     const currentIdx = customManuscripts.findIndex(m => m.id === currentId || m.content === currentId);
     if (currentIdx === -1) {
@@ -61,8 +72,11 @@ export function DashboardView() {
 
   const activeManuscript = useMemo(() => {
     if (!customManuscripts.length) return null;
-    return customManuscripts[0];
-  }, [customManuscripts]);
+    if (wallPlateType === 'moon') {
+      return customManuscripts[mapSettings.moonManuIdx || 0];
+    }
+    return wallPlateData || customManuscripts[0];
+  }, [customManuscripts, wallPlateType, mapSettings.moonManuIdx, wallPlateData]);
 
   return (
     <div className="h-full w-full pt-0 px-6 flex flex-col gap-8 relative overflow-y-auto pb-32 no-scrollbar bg-black">
@@ -72,7 +86,7 @@ export function DashboardView() {
             <button className="w-16 h-16 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-white focusable shadow-2xl backdrop-blur-3xl" onClick={() => updateWallPlate(null)}><X className="w-8 h-8" /></button>
           </div>
 
-          {wallPlateType === 'manuscript' && customManuscripts.length > 1 && (
+          {(wallPlateType === 'manuscript' || (wallPlateType === 'moon' && mapSettings.showManuscriptOnMoon)) && customManuscripts.length > 1 && (
             <><button onClick={() => navigateWallPlate('prev')} className="absolute left-10 top-1/2 -translate-y-1/2 w-20 h-20 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/20 transition-all z-[20002] focusable"><ChevronLeft className="w-12 h-12" /></button><button onClick={() => navigateWallPlate('next')} className="absolute right-10 top-1/2 -translate-y-1/2 w-20 h-20 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/20 transition-all z-[20002] focusable"><ChevronRight className="w-12 h-12" /></button></>
           )}
           
@@ -83,7 +97,7 @@ export function DashboardView() {
                 {mapSettings.showManuscriptOnMoon && activeManuscript && (
                   <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none p-12">
                     {activeManuscript.type === 'text' ? (
-                      <p className="text-6xl lg:text-[10rem] font-calligraphy text-center transition-all duration-700 leading-tight whitespace-pre-wrap" style={{ fontFamily: activeManuscript.fontFamily || 'Aref Ruqaa', color: mapSettings.manuscriptColor, fontSize: `${(mapSettings.fontScale || 1.0) * 10}rem`, filter: 'drop-shadow(0 0 40px rgba(0,0,0,0.9))' }}>{activeManuscript.content}</p>
+                      <p className="text-6xl lg:text-[10rem] font-calligraphy text-center transition-all duration-700 leading-tight whitespace-pre-wrap" style={{ fontFamily: activeManuscript.fontFamily || 'Aref Ruqaa', color: mapSettings.manuscriptColor, fontSize: `${(mapSettings.fontScale || 1.0) * 11.5}rem`, filter: 'drop-shadow(0 0 40px rgba(0,0,0,0.9))' }}>{activeManuscript.content}</p>
                     ) : <img src={activeManuscript.content} className="max-w-[80%] max-h-[60%] object-contain" style={{ filter: 'brightness(0) invert(1) drop-shadow(0 0 40px rgba(255,255,255,0.8))' }} />}
                   </div>
                 )}
@@ -95,7 +109,7 @@ export function DashboardView() {
                 <div className="absolute inset-0 z-0"><Image src={mapSettings.manuscriptBgUrl || "https://images.unsplash.com/photo-1578301978693-85fa9c0320b9?q=80&w=2000"} alt="" fill className="object-cover opacity-90" priority /></div>
                 <div className="relative z-10 w-full h-full flex items-center justify-center px-8 m-0 animate-in zoom-in-95 duration-700" style={{ filter: `hue-rotate(${mapSettings.hue || 0}deg) saturate(${mapSettings.saturation || 100}%) brightness(${mapSettings.brightness || 100}%)` }}>
                   {wallPlateData?.type === 'text' ? (
-                    <p className="text-6xl lg:text-[12rem] font-calligraphy text-center px-4 leading-[1.2] whitespace-pre-wrap tracking-wide drop-shadow-[0_0_80px_rgba(0,0,0,0.8)]" style={{ fontFamily: wallPlateData.fontFamily || 'Aref Ruqaa', color: mapSettings.manuscriptColor, fontSize: `${(mapSettings.fontScale || 1.0) * 12}rem` }}>{wallPlateData.content}</p>
+                    <p className="text-6xl lg:text-[12rem] font-calligraphy text-center px-4 leading-[1.2] whitespace-pre-wrap tracking-wide drop-shadow-[0_0_80px_rgba(0,0,0,0.8)]" style={{ fontFamily: wallPlateData.fontFamily || 'Aref Ruqaa', color: mapSettings.manuscriptColor, fontSize: `${(mapSettings.fontScale || 1.0) * 13.5}rem` }}>{wallPlateData.content}</p>
                   ) : <img src={wallPlateData.content} className="w-full h-full object-contain" style={{ filter: `brightness(0) invert(1) drop-shadow(0 0 40px ${mapSettings.manuscriptColor})` }} />}
                 </div>
               </div>
