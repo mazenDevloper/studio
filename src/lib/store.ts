@@ -118,6 +118,7 @@ interface MediaState {
   prayerSettings: PrayerSetting[];
   reminders: Reminder[];
   customManuscripts: Manuscript[];
+  manuscriptScales: Record<string, number>;
   customFonts: { name: string, url: string }[];
   customWallBackgrounds: string[];
   customManuscriptColors: string[];
@@ -191,6 +192,7 @@ interface MediaState {
   skipReminder: (id: string) => void;
   addManuscript: (manuscript: Manuscript) => void;
   updateManuscript: (id: string, update: Partial<Manuscript>) => void;
+  updateManuscriptScale: (id: string, delta: number) => void;
   removeManuscript: (id: string) => void;
   reorderManuscript: (id: string, dir: 'prev' | 'next') => void;
   addCustomFont: (name: string, url: string) => void;
@@ -287,7 +289,7 @@ const DEFAULT_REMINDERS: Reminder[] = [
 export const useMediaStore = create<MediaState>()(
   persist(
     (set, get) => ({
-      favoriteChannels: [], savedVideos: [], videoProgress: {}, favoriteTeams: [], favoriteLeagueIds: [307, 39, 2, 140, 135], belledMatchIds: [], skippedMatchIds: [], skippedReminderIds: [], favoriteIptvChannels: [], favoriteReciters: [], iptvPlaylist: [], iptvPlaylistIndex: 0, prayerTimes: prayerTimesData, prayerSettings: DEFAULT_PRAYER_SETTINGS, reminders: DEFAULT_REMINDERS, customManuscripts: [], customFonts: [], customWallBackgrounds: [], customManuscriptColors: ['#ffffff', '#FFD700', '#C0C0C0', 'linear-gradient(to bottom, #fff, #999)'],
+      favoriteChannels: [], savedVideos: [], videoProgress: {}, favoriteTeams: [], favoriteLeagueIds: [307, 39, 2, 140, 135], belledMatchIds: [], skippedMatchIds: [], skippedReminderIds: [], favoriteIptvChannels: [], favoriteReciters: [], iptvPlaylist: [], iptvPlaylistIndex: 0, prayerTimes: prayerTimesData, prayerSettings: DEFAULT_PRAYER_SETTINGS, reminders: DEFAULT_REMINDERS, customManuscripts: [], manuscriptScales: {}, customFonts: [], customWallBackgrounds: [], customManuscriptColors: ['#ffffff', '#FFD700', '#C0C0C0', 'linear-gradient(to bottom, #fff, #999)'],
       mapSettings: { zoom: 20.0, tilt: 65, carScale: 1.02, backgroundIndex: 0, showManuscriptBg: true, manuscriptBgUrl: "https://www.image2url.com/r2/default/images/1782382707952-d99447c6-bc60-475d-9406-5fd2ef320bd5.png", fontScale: 1.0, manuscriptColor: '#ffffff', showManuscriptOnMoon: false, moonManuIdx: 0, hue: 0, saturation: 100, brightness: 100 },
       displayScale: 1.0, dockScale: 1.0, keyMappings: DEFAULT_CONTEXT_MAPPINGS, activeVideo: null, activeIptv: null, activeQuranUrl: "https://quran.com/ar/radio", playlist: [], playlistIndex: 0, isPlaying: false, isMinimized: false, isFullScreen: false, isPlayerControlsExpanded: false, gridMode: 'hidden', dockSide: 'left', showIslands: true, autoHideIsland: true, isSidebarShrinked: false, wallPlateType: null, wallPlateData: null, playerMode: 'api', isAltModeActive: true, isReorderMode: false, apiError: null, isRecordingKey: false, lastLiveUpdate: 0, isInitialLoading: false, aiSuggestions: [],
       pickedUpId: null, setPickedUpId: (id) => set({ pickedUpId: id }), setApiError: (v) => set({ apiError: v }), setIsRecordingKey: (v) => set({ isRecordingKey: v }), setDockScale: (v) => set({ dockScale: v }), setDisplayScale: (v) => set({ displayScale: v }), setIsSidebarShrinked: (v) => set({ isSidebarShrinked: v }),
@@ -348,6 +350,7 @@ export const useMediaStore = create<MediaState>()(
 
       addManuscript: (m) => set((s) => { const n = [...s.customManuscripts.filter(x => x.id !== m.id), m]; setTimeout(() => get().saveManuscriptsReorder(), 100); return { customManuscripts: n }; }),
       updateManuscript: (id, u) => set((s) => ({ customManuscripts: s.customManuscripts.map(m => m.id === id ? { ...m, ...u } : m) })),
+      updateManuscriptScale: (id, delta) => set((s) => ({ manuscriptScales: { ...s.manuscriptScales, [id]: Math.max(0.1, (s.manuscriptScales[id] || 1.0) + delta) } })),
       removeManuscript: (id) => set((s) => { const n = s.customManuscripts.filter(m => m.id !== id); setTimeout(() => get().saveManuscriptsReorder(), 100); return { customManuscripts: n }; }),
       reorderManuscript: (id, dir) => set((s) => { const l = [...s.customManuscripts], idx = l.findIndex(m => m.id === id); if (idx === -1) return s; const nIdx = dir === 'next' ? idx + 1 : idx - 1; if (nIdx < 0 || nIdx >= l.length) return s; [l[idx], l[nIdx]] = [l[nIdx], l[idx]]; return { customManuscripts: l }; }),
 
@@ -391,7 +394,7 @@ export const useMediaStore = create<MediaState>()(
     }),
     {
       name: "drivecast-ready-v2800", 
-      partialize: (s) => ({ dockSide: s.dockSide, showIslands: s.showIslands, isAltModeActive: s.isAltModeActive, autoHideIsland: s.autoHideIsland, displayScale: s.displayScale, dockScale: s.dockScale, mapSettings: s.mapSettings }),
+      partialize: (s) => ({ dockSide: s.dockSide, showIslands: s.showIslands, isAltModeActive: s.isAltModeActive, autoHideIsland: s.autoHideIsland, displayScale: s.displayScale, dockScale: s.dockScale, mapSettings: s.mapSettings, manuscriptScales: s.manuscriptScales }),
     }
   )
 );
