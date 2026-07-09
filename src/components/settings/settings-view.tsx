@@ -75,6 +75,7 @@ export function SettingsView() {
       } else if (target === 'font') {
         const fontName = file.name.split('.')[0].replace(/\s+/g, '-');
         addCustomFont(fontName, dataUrl);
+        // addCustomFont already calls syncMasterBin in store.ts
         setTimeout(() => syncMasterBin(), 500);
       }
       toast({ title: "تم الرفع والحفظ بنجاح" });
@@ -142,7 +143,7 @@ export function SettingsView() {
   return (
     <div className="p-12 space-y-12 max-w-7xl mx-auto pb-40 text-right dir-rtl bg-black min-h-full">
       <header className="flex items-center justify-between">
-        <div className="flex flex-col gap-2"><h1 className="text-6xl font-black text-white tracking-tighter flex items-center gap-6">الإعدادات السيادية <Settings className="w-12 h-12 text-primary animate-spin-slow" /></h1><p className="text-white/40 font-bold uppercase tracking-[0.6em] text-sm">Unified System Hub v3700.0</p></div>
+        <div className="flex flex-col gap-2"><h1 className="text-6xl font-black text-white tracking-tighter flex items-center gap-6">الإعدادات السيادية <Settings className="w-12 h-12 text-primary animate-spin-slow" /></h1><p className="text-white/40 font-bold uppercase tracking-[0.6em] text-sm">Unified System Hub v4000.0</p></div>
         <div className="flex gap-4">
           <Button onClick={handleManualRefresh} disabled={isRefreshing} className="bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-full h-14 px-8 font-black focusable shadow-glow">{isRefreshing ? <Loader2 className="w-5 h-5 animate-spin ml-2" /> : <RefreshCw className="w-5 h-5 ml-2" />} تحديث محلي</Button>
           <Button onClick={async () => { setIsSyncing(true); await syncMasterBin(); setIsSyncing(false); toast({ title: "تم المزامنة بنجاح" }); }} disabled={isSyncing} className="bg-primary text-white rounded-full h-14 px-8 font-black focusable shadow-glow">{isSyncing ? <Loader2 className="w-5 h-5 animate-spin ml-2" /> : <Zap className="w-5 h-5 ml-2" />} دفع عالمي</Button>

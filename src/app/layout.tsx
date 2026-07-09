@@ -12,18 +12,25 @@ import { MainLayoutShell } from "@/components/layout/main-layout-shell";
 import { CarDock } from "@/components/layout/car-dock";
 import Script from 'next/script';
 import { useMediaStore } from '@/lib/store';
+import { useEffect } from 'react';
 
 /**
  * RootLayoutWrapper component - Global container
+ * Features: Global Data Sync & Dynamic Font Injection
  */
 function RootLayoutWrapper({ children }: { children: React.ReactNode }) {
-  const { customFonts } = useMediaStore();
+  const { customFonts, fetchPriorityData } = useMediaStore();
+
+  // Unified System Sync: Fetch all cloud data on boot
+  useEffect(() => {
+    fetchPriorityData('all');
+  }, [fetchPriorityData]);
   
   return (
     <div className="w-full h-screen overflow-hidden bg-black relative flex">
-      {/* Dynamic Font Face Injection for TTF */}
+      {/* Dynamic Font Face Injection for TTF - Syncs across all devices */}
       <style dangerouslySetInnerHTML={{ __html: 
-        customFonts.map(f => `
+        (customFonts || []).map(f => `
           @font-face {
             font-family: '${f.name}';
             src: url('${f.url}') format('truetype');
