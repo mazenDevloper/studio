@@ -239,7 +239,38 @@ export function MediaView() {
             <section className="py-2"><div className="flex items-center gap-3 w-full"><Input placeholder="ابحث عن تلاوات، أهداف، أو فيديوهات..." value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && performSearch()} className="h-16 bg-white/5 border-none rounded-[2rem] pr-10 text-xl font-bold text-right focusable text-white flex-1" /><button onClick={() => performSearch()} className="h-16 px-10 rounded-[2rem] bg-red-600 text-white font-black text-lg focusable flex items-center shrink-0 relative"><Youtube className="w-6 h-6 ml-3" /> استكشاف</button></div></section>
             
             <section className={rowWrapperClass}><div className={horizontalListClass}><button onClick={() => { setSelectedStyle(null); }} className={cn(itemScaleClass, "px-8 py-4 rounded-full font-black text-sm focusable border-2 text-white", !selectedStyle ? "bg-primary border-primary/40" : "bg-white/5 border-transparent")} tabIndex={0}>الكل</button>{READING_STYLES.map((style, i) => (<button key={style} data-nav-id={`style-${i}`} onClick={() => handleStyleClick(style)} className={cn(itemScaleClass, "px-8 py-4 rounded-full font-black text-sm focusable border-2 text-white", selectedStyle === style ? "bg-primary border-primary/40 shadow-glow" : "bg-white/5 border-white/5")} tabIndex={0}>{style}</button>))}</div></section>
-            <section className={rowWrapperClass}><div className={horizontalListClass}><button onClick={() => setIsAddReciterOpen(true)} className={cn(itemScaleClass, "flex flex-col items-center gap-3 px-4 py-2 rounded-[2rem] focusable border-2 border-transparent hover:bg-emerald-600/10")} tabIndex={0}><div className="w-24 h-24 rounded-full flex items-center justify-center bg-emerald-500/10 border-2 border-dashed border-emerald-500/30 text-emerald-400"><Plus className="w-10 h-10" /></div></button>{favoriteReciters.map((r, i) => (<button key={r.channelid + i} onClick={() => handleReciterClick(r.name)} className={cn(itemScaleClass, "flex flex-col items-center gap-3 px-4 py-2 rounded-[2rem] focusable border-2 transition-all relative group", selectedReciter === r.name ? "border-emerald-500 bg-emerald-500/10" : "border-transparent hover:bg-emerald-600/10")} tabIndex={0} data-nav-id={`reciter-${i}`}><div className="w-24 h-24 rounded-full overflow-hidden border-2 border-emerald-500/30 shadow-2xl"><img src={r.image} className="w-full h-full object-cover" alt="" /></div><span className="text-[10px] font-black truncate max-w-[120px] text-white">{r.name}</span></button>))}</div></section>
+            
+            {/* Reciters Area - Scaled 3x */}
+            <section className={rowWrapperClass}>
+              <div className={cn(horizontalListClass, "gap-8")}>
+                <button 
+                  onClick={() => setIsAddReciterOpen(true)} 
+                  className={cn(itemScaleClass, "flex flex-col items-center gap-6 px-8 py-4 rounded-[3rem] focusable border-2 border-transparent hover:bg-emerald-600/10")} 
+                  tabIndex={0}
+                >
+                  <div className="w-72 h-72 rounded-full flex items-center justify-center bg-emerald-500/10 border-4 border-dashed border-emerald-500/30 text-emerald-400">
+                    <Plus className="w-24 h-24" />
+                  </div>
+                </button>
+                {favoriteReciters.map((r, i) => (
+                  <button 
+                    key={r.channelid + i} 
+                    onClick={() => handleReciterClick(r.name)} 
+                    className={cn(itemScaleClass, "flex flex-col items-center gap-6 px-8 py-4 rounded-[3rem] focusable border-2 transition-all relative group", selectedReciter === r.name ? "border-emerald-500 bg-emerald-500/10" : "border-transparent hover:bg-emerald-600/10")} 
+                    tabIndex={0} 
+                    data-nav-id={`reciter-${i}`}
+                  >
+                    <div className="w-72 h-72 rounded-full overflow-hidden border-4 border-emerald-500/30 shadow-2xl">
+                      <img src={r.image} className="w-full h-full object-cover" alt="" />
+                    </div>
+                    <span className="text-3xl font-black truncate max-w-[320px] text-white">
+                      {r.name}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </section>
+
             <section className={rowWrapperClass}><div className={horizontalListClass}>{surahs.map((s, i) => (<button key={i} data-nav-id={`surah-${i}`} onClick={() => handleSurahClick(s.name_arabic)} className={cn(itemScaleClass, "px-10 py-5 rounded-full bg-white/5 border border-white/10 text-white font-black text-sm hover:bg-blue-600/20 focusable", selectedSurah === s.name_arabic ? "bg-blue-600 border-blue-400 shadow-glow" : "")} tabIndex={0}>{s.name_arabic}</button>))}</div></section>
 
             {isSmallScreen && (
