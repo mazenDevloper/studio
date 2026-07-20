@@ -10,8 +10,8 @@ import { useToast } from "@/hooks/use-toast";
 import { getDisplayNumber } from "@/lib/constants";
 
 /**
- * Ultimate Routing Engine v750.0 - Spatial Focus & Hyper-Shortcuts
- * Features: Restored geometric navigation with blue-glow indicator and 44/66/22/88 shortcuts.
+ * Ultimate Routing Engine v9700.0 - Level Isolation & Jump-to-Last Row logic
+ * Features: Professional vertical navigation isolation in Media page.
  */
 export function RemotePointer() {
   const pathname = usePathname();
@@ -37,7 +37,6 @@ export function RemotePointer() {
     catch (e) { console.warn(e); }
   }, []);
 
-  // AUTO-FOCUS ON LOAD
   useEffect(() => {
     const timer = setTimeout(() => {
       const activeDockBtn = document.querySelector('[data-nav-id^="dock-"].bg-blue-600\\/10') as HTMLElement;
@@ -49,7 +48,6 @@ export function RemotePointer() {
     return () => clearTimeout(timer);
   }, [pathname]);
 
-  // SIDEBAR AUTO-EXPAND LOGIC
   useEffect(() => {
     const handleFocusIn = (e: FocusEvent) => {
       if (pathname !== '/media') return;
@@ -143,6 +141,48 @@ export function RemotePointer() {
     let minDistance = Infinity;
     let next: HTMLElement | null = null;
 
+    // --- MEDIA SOVEREIGN NAVIGATION: Isolated Levels & Vertical Jump to Last ---
+    if (pathname === '/media' && isVertical) {
+      const container = current.closest('nav, aside, main');
+      if (container) {
+        const isDown = direction === "ArrowDown";
+        const candidates = focusables.filter(el => {
+          if (!container.contains(el)) return false;
+          const r = el.getBoundingClientRect();
+          return isDown ? r.top > currentRect.bottom + 5 : r.bottom < currentRect.top - 5;
+        });
+
+        if (candidates.length > 0) {
+          const rows: { y: number, items: HTMLElement[] }[] = [];
+          candidates.forEach(el => {
+            const r = el.getBoundingClientRect();
+            const targetY = isDown ? r.top : r.bottom;
+            let row = rows.find(row => Math.abs(row.y - targetY) < 40);
+            if (!row) {
+              row = { y: targetY, items: [] };
+              rows.push(row);
+            }
+            row.items.push(el);
+          });
+
+          rows.sort((a, b) => isDown ? a.y - b.y : b.y - a.y);
+          const targetRow = rows[0];
+
+          if (targetRow) {
+            // Jump to LAST of row (Leftmost in RTL)
+            next = targetRow.items.sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left)[0];
+            if (next) {
+              next.focus();
+              next.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+              return;
+            }
+          }
+        }
+        return; // Isolation: Prevent vertical movement out of context
+      }
+    }
+
+    // Fallback Geometric Navigation
     for (const el of focusables) {
       if (el === current) continue;
       
@@ -165,18 +205,16 @@ export function RemotePointer() {
       next.focus(); 
       next.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' }); 
     }
-  }, [wallPlateType, pickedUpId, reorderChannel, reorderReciter, reorderIptvChannel]);
+  }, [wallPlateType, pickedUpId, reorderChannel, reorderReciter, reorderIptvChannel, pathname]);
 
   const executeAction = useCallback((finalKey: string, e: KeyboardEvent | null) => {
     const activeEl = document.activeElement as HTMLElement;
 
-    // Hyper-Shortcuts for WallPlate
     if (isAction(finalKey, 'inc_font')) { e?.preventDefault(); updateMapSettings({ fontScale: Math.min(2.0, (mapSettings.fontScale || 1.0) + 0.1) }); return; }
     if (isAction(finalKey, 'dec_font')) { e?.preventDefault(); updateMapSettings({ fontScale: Math.max(0.3, (mapSettings.fontScale || 1.0) - 0.1) }); return; }
     if (isAction(finalKey, 'next_manuscript')) { e?.preventDefault(); navigateManuscript('next'); return; }
     if (isAction(finalKey, 'prev_manuscript')) { e?.preventDefault(); navigateManuscript('prev'); return; }
 
-    // Global Browser Scrolling Actions
     if (isAction(finalKey, 'media_scroll_up')) {
       e?.preventDefault();
       window.scrollBy({ top: -600, behavior: 'smooth' });

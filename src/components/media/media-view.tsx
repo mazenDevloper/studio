@@ -158,7 +158,6 @@ export function MediaView() {
   }, [favoriteChannels]);
 
   useEffect(() => {
-    // التحديث الفوري عند التحميل
     fetchPriorityData('media');
     fetchFeeds();
     
@@ -279,7 +278,7 @@ export function MediaView() {
                 {/* خيار ربط الآيات الملون */}
                 <button 
                   onClick={() => handleStyleClick("ربط الآيات")} 
-                  className={cn(itemScaleClass, "px-8 py-4 rounded-full font-black text-sm focusable border-2 text-white bg-gradient-to-r from-red-500 via-yellow-500 to-blue-500 border-white/40 shadow-[0_0_20px_rgba(255,255,255,0.4)]")} 
+                  className={cn(itemScaleClass, "px-8 py-4 rounded-full font-bold text-sm focusable border-2 text-white bg-blue-600 border-blue-400 shadow-[0_0_20px_rgba(37,99,235,0.4)]")} 
                   tabIndex={0}
                 >
                   ربط الآيات
@@ -296,7 +295,7 @@ export function MediaView() {
                 <button 
                   onClick={() => setIsAddReciterOpen(true)} 
                   className={cn(itemScaleClass, "flex flex-col items-center gap-6 px-6 py-4 rounded-[2.5rem] focusable border-2 border-transparent hover:bg-emerald-600/10")} 
-                  tabIndex={0}
+                  tabIndex={0} 
                 >
                   <div className="w-52 h-52 rounded-full flex items-center justify-center bg-emerald-500/10 border-4 border-dashed border-emerald-500/30 text-emerald-400">
                     <Plus className="w-16 h-16" />
