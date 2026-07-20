@@ -10,8 +10,8 @@ import { useToast } from "@/hooks/use-toast";
 import { getDisplayNumber } from "@/lib/constants";
 
 /**
- * Sovereign Routing Engine v9800.0 - Professional Level Isolation & Last-Item Target
- * Features: Absolute vertical isolation between Sidebars and Content in Media.
+ * Sovereign Routing Engine v9900.0 - Row-Specific Targeting
+ * Features: Absolute vertical targeting (Link Verses, Add Reciter, Juz 15, Kahf) and isolation.
  */
 export function RemotePointer() {
   const pathname = usePathname();
@@ -138,51 +138,47 @@ export function RemotePointer() {
     const currentRect = current.getBoundingClientRect();
     const isVertical = direction === "ArrowUp" || direction === "ArrowDown";
     
-    let minDistance = Infinity;
-    let next: HTMLElement | null = null;
-
-    // --- SOVEREIGN MEDIA ISOLATION: Vertical Jump to LAST of row (Leftmost in RTL) ---
+    // --- MEDIA SOVEREIGN NAVIGATION: Row-Specific Targeting & Isolation ---
     if (pathname === '/media' && isVertical) {
       const container = current.closest('nav, aside, main');
       if (container) {
         const isDown = direction === "ArrowDown";
-        const candidates = focusables.filter(el => {
-          if (!container.contains(el)) return false;
-          const r = el.getBoundingClientRect();
-          return isDown ? r.top > currentRect.bottom + 5 : r.bottom < currentRect.top - 5;
-        });
-
-        if (candidates.length > 0) {
-          const rows: { y: number, items: HTMLElement[] }[] = [];
-          candidates.forEach(el => {
-            const r = el.getBoundingClientRect();
-            const targetY = isDown ? r.top : r.bottom;
-            let row = rows.find(row => Math.abs(row.y - targetY) < 40);
-            if (!row) {
-              row = { y: targetY, items: [] };
-              rows.push(row);
-            }
-            row.items.push(el);
-          });
-
-          rows.sort((a, b) => isDown ? a.y - b.y : b.y - a.y);
-          const targetRow = rows[0];
-
-          if (targetRow) {
-            // Jump to LAST item of row (Smallest left in RTL)
-            next = targetRow.items.sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left)[0];
-            if (next) {
-              next.focus();
-              next.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
-              return;
-            }
+        const currentRow = current.closest('[data-row-id]');
+        const allRows = Array.from(container.querySelectorAll('[data-row-id]'));
+        const currentIdx = allRows.indexOf(currentRow as Element);
+        
+        const nextRow = isDown ? allRows[currentIdx + 1] : allRows[currentIdx - 1];
+        
+        if (nextRow) {
+          const rowId = nextRow.getAttribute('data-row-id');
+          let targetNavId = '';
+          
+          if (rowId === 'row-styles') targetNavId = 'style-link-verses';
+          else if (rowId === 'row-reciters') targetNavId = 'reciter-add';
+          else if (rowId === 'row-juz') targetNavId = 'juz-15';
+          else if (rowId === 'row-surahs') targetNavId = 'surah-17'; // Kahf
+          else if (rowId?.startsWith('row-vids-')) {
+             const listId = rowId.split('row-vids-')[1];
+             targetNavId = `row-${listId}-video-0`;
+          }
+          
+          let next = (targetNavId ? nextRow.querySelector(`[data-nav-id="${targetNavId}"]`) : nextRow.querySelector('.focusable')) as HTMLElement;
+          if (!next) next = nextRow.querySelector('.focusable') as HTMLElement;
+          
+          if (next) {
+            next.focus();
+            next.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return;
           }
         }
-        return; // Isolation enforced: Do not escape context vertically
+        return; // Enforce isolation: do not escape context vertically
       }
     }
 
-    // Fallback Geometric Navigation
+    // Fallback Geometric Navigation for other areas
+    let minDistance = Infinity;
+    let next: HTMLElement | null = null;
+
     for (const el of focusables) {
       if (el === current) continue;
       
