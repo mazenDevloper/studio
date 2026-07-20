@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { 
   Search, Plus, Loader2, X, List, 
-  Youtube, Star, Mic, Play, Clock, ChevronRight, AlertCircle, BookmarkPlus, ArrowRightLeft, ChevronUp, ChevronDown, Save, ArrowUpCircle
+  Youtube, Star, Mic, Play, Clock, ChevronRight, AlertCircle, BookmarkPlus, ArrowRightLeft, ChevronUp, ChevronDown, Save, ArrowUpCircle, Layers
 } from "lucide-react";
 import { useMediaStore, YouTubeChannel, YouTubeVideo } from "@/lib/store";
 import { searchYouTubeChannels, fetchChannelVideos, searchYouTubeVideos } from "@/lib/youtube";
@@ -23,6 +23,25 @@ import {
 
 const READING_STYLES = [
   "مرتل", "مجود", "الحدر", "التدوير", "التحقيق", "القراءة المفسرة", "بالمقامات", "تلاوة خاشعة"
+];
+
+// مصفوفة ألوان إشعاعية متباينة للأجزاء (30 لون)
+const JUZ_COLORS = [
+  "shadow-[0_0_15px_#ff0000] border-red-500/50", "shadow-[0_0_15px_#ff7f00] border-orange-500/50",
+  "shadow-[0_0_15px_#ffff00] border-yellow-500/50", "shadow-[0_0_15px_#00ff00] border-green-500/50",
+  "shadow-[0_0_15px_#0000ff] border-blue-500/50", "shadow-[0_0_15px_#4b0082] border-indigo-500/50",
+  "shadow-[0_0_15px_#9400d3] border-violet-500/50", "shadow-[0_0_15px_#ff1493] border-pink-500/50",
+  "shadow-[0_0_15px_#00ffff] border-cyan-500/50", "shadow-[0_0_15px_#adff2f] border-lime-500/50",
+  "shadow-[0_0_15px_#ff4500] border-orangered-500/50", "shadow-[0_0_15px_#1e90ff] border-dodgerblue-500/50",
+  "shadow-[0_0_15px_#da70d6] border-orchid-500/50", "shadow-[0_0_15px_#32cd32] border-limegreen-500/50",
+  "shadow-[0_0_15px_#ffd700] border-gold-500/50", "shadow-[0_0_15px_#ff69b4] border-hotpink-500/50",
+  "shadow-[0_0_15px_#8a2be2] border-blueviolet-500/50", "shadow-[0_0_15px_#00fa9a] border-mediumspringgreen-500/50",
+  "shadow-[0_0_15px_#ff8c00] border-darkorange-500/50", "shadow-[0_0_15px_#20b2aa] border-lightseagreen-500/50",
+  "shadow-[0_0_15px_#f08080] border-lightcoral-500/50", "shadow-[0_0_15px_#7cfc00] border-lawngreen-500/50",
+  "shadow-[0_0_15px_#00bfff] border-deepskyblue-500/50", "shadow-[0_0_15px_#ff00ff] border-magenta-500/50",
+  "shadow-[0_0_15px_#fa8072] border-salmon-500/50", "shadow-[0_0_15px_#00ff7f] border-springgreen-500/50",
+  "shadow-[0_0_15px_#eee8aa] border-palegoldenrod-500/50", "shadow-[0_0_15px_#b0c4de] border-lightsteelblue-500/50",
+  "shadow-[0_0_15px_#dda0dd] border-plum-500/50", "shadow-[0_0_15px_#7fffd4] border-aquamarine-500/50"
 ];
 
 function AddContentModal({ 
@@ -107,50 +126,10 @@ export function MediaView() {
   const [selectedStyle, setSelectedStyle] = useState<string | null>(null);
   const [selectedReciter, setSelectedReciter] = useState<string | null>(null);
   const [selectedSurah, setSelectedSurah] = useState<string | null>(null);
+  const [selectedJuz, setSelectedJuz] = useState<number | null>(null);
 
   const isDockLeft = dockSide === 'left';
   const isSmallScreen = windowWidth < 968;
-
-  useEffect(() => {
-    fetchPriorityData('media');
-    const handleResize = () => setWindowWidth(window.innerWidth);
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    fetch("https://api.quran.com/api/v4/chapters?language=ar").then(r => r.json()).then(d => setSurahs(d.chapters || []));
-    const q = searchParams.get('q');
-    if (q) { setSearch(q); performSearch(q); }
-    return () => window.removeEventListener('resize', handleResize);
-  }, [searchParams]);
-
-  const performSearch = async (overrideQuery?: string) => {
-    const queryToUse = overrideQuery || search;
-    if (!queryToUse.trim()) return;
-    setLoading(true); 
-    setIsIsolatedViewActive(true); 
-    setIsSidebarShrinked(true); 
-    setSelectedChannel(null);
-    try { 
-      const res = await searchYouTubeVideos(queryToUse); 
-      setSearchResults(res || []);
-    } finally { setLoading(false); }
-  };
-
-  const handleStyleClick = (style: string) => { 
-    setSelectedStyle(style); 
-    setTimeout(() => { document.querySelector('[data-nav-id="reciter-0"]')?.focus(); }, 200);
-  };
-
-  const handleReciterClick = (name: string) => { 
-    setSelectedReciter(name); 
-    setTimeout(() => { document.querySelector('[data-nav-id="surah-0"]')?.focus(); }, 200);
-  };
-
-  const handleSurahClick = (name: string) => { 
-    setSelectedSurah(name); 
-    const query = `${selectedReciter || ""} سورة ${name} ${selectedStyle || ""}`.trim();
-    setSearch(query);
-    performSearch(query); 
-  };
 
   const fetchFeeds = useCallback(async () => {
     if (!favoriteChannels.length) return;
@@ -178,7 +157,58 @@ export function MediaView() {
     } catch (e) {}
   }, [favoriteChannels]);
 
-  useEffect(() => { fetchFeeds(); }, [fetchFeeds]);
+  useEffect(() => {
+    // التحديث الفوري عند التحميل
+    fetchPriorityData('media');
+    fetchFeeds();
+    
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    fetch("https://api.quran.com/api/v4/chapters?language=ar").then(r => r.json()).then(d => setSurahs(d.chapters || []));
+    const q = searchParams.get('q');
+    if (q) { setSearch(q); performSearch(q); }
+    return () => window.removeEventListener('resize', handleResize);
+  }, [searchParams, fetchPriorityData, fetchFeeds]);
+
+  const performSearch = async (overrideQuery?: string) => {
+    const queryToUse = overrideQuery || search;
+    if (!queryToUse.trim()) return;
+    setLoading(true); 
+    setIsIsolatedViewActive(true); 
+    setIsSidebarShrinked(true); 
+    setSelectedChannel(null);
+    try { 
+      const res = await searchYouTubeVideos(queryToUse); 
+      setSearchResults(res || []);
+    } finally { setLoading(false); }
+  };
+
+  const handleStyleClick = (style: string) => { 
+    setSelectedStyle(style); 
+    setTimeout(() => { document.querySelector('[data-nav-id="reciter-0"]')?.focus(); }, 200);
+  };
+
+  const handleReciterClick = (name: string) => { 
+    setSelectedReciter(name); 
+    setTimeout(() => { document.querySelector('[data-nav-id="surah-0"]')?.focus(); }, 200);
+  };
+
+  const handleSurahClick = (name: string) => { 
+    setSelectedSurah(name); 
+    setSelectedJuz(null);
+    const query = `${selectedReciter || ""} سورة ${name} ${selectedStyle || ""}`.trim();
+    setSearch(query);
+    performSearch(query); 
+  };
+
+  const handleJuzClick = (juzNum: number) => {
+    setSelectedJuz(juzNum);
+    setSelectedSurah(null);
+    const query = `${selectedReciter || ""} الجزء ${juzNum} ${selectedStyle || ""}`.trim();
+    setSearch(query);
+    performSearch(query);
+  };
 
   useEffect(() => {
     if (selectedChannel) {
@@ -189,13 +219,19 @@ export function MediaView() {
     }
   }, [selectedChannel, setChannelVideos, setIsSidebarShrinked]);
 
-  const resetView = () => { setSelectedChannel(null); setSearchResults([]); setSearch(""); setIsIsolatedViewActive(false); setIsSidebarShrinked(false); setSelectedStyle(null); setSelectedReciter(null); setSelectedSurah(null); };
+  const resetView = () => { setSelectedChannel(null); setSearchResults([]); setSearch(""); setIsIsolatedViewActive(false); setIsSidebarShrinked(false); setSelectedStyle(null); setSelectedReciter(null); setSelectedSurah(null); setSelectedJuz(null); };
 
   const activeGridVideos = selectedChannel ? channelVideos : searchResults;
   const showIsolatedView = isIsolatedViewActive || !!selectedChannel || searchResults.length > 0;
   const horizontalListClass = "w-full flex gap-4 px-8 py-0 overflow-x-auto no-scrollbar scroll-smooth justify-start items-center";
   const rowWrapperClass = "group/row transition-all duration-700 relative py-2 mb-0";
   const itemScaleClass = "transition-all duration-500 scale-[0.9] group-focus-within/row:scale-[1.2] group-focus-within/row:mx-8 focus:z-50 shrink-0";
+
+  // دالة لتوزيع السور على الأجزاء تقريبياً للتلوين
+  const getSurahColorClass = (idx: number) => {
+    const juzIndex = Math.floor(idx / (114 / 30));
+    return JUZ_COLORS[juzIndex % 30];
+  };
 
   return (
     <div className={cn("h-screen flex bg-transparent overflow-hidden relative", isDockLeft ? "flex-row-reverse" : "flex-row")}>
@@ -238,32 +274,46 @@ export function MediaView() {
           <>
             <section className="py-2"><div className="flex items-center gap-3 w-full"><Input placeholder="ابحث عن تلاوات، أهداف، أو فيديوهات..." value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && performSearch()} className="h-16 bg-white/5 border-none rounded-[2rem] pr-10 text-xl font-bold text-right focusable text-white flex-1" /><button onClick={() => performSearch()} className="h-16 px-10 rounded-[2rem] bg-red-600 text-white font-black text-lg focusable flex items-center shrink-0 relative"><Youtube className="w-6 h-6 ml-3" /> استكشاف</button></div></section>
             
-            <section className={rowWrapperClass}><div className={horizontalListClass}><button onClick={() => { setSelectedStyle(null); }} className={cn(itemScaleClass, "px-8 py-4 rounded-full font-black text-sm focusable border-2 text-white", !selectedStyle ? "bg-primary border-primary/40" : "bg-white/5 border-transparent")} tabIndex={0}>الكل</button>{READING_STYLES.map((style, i) => (<button key={style} data-nav-id={`style-${i}`} onClick={() => handleStyleClick(style)} className={cn(itemScaleClass, "px-8 py-4 rounded-full font-black text-sm focusable border-2 text-white", selectedStyle === style ? "bg-primary border-primary/40 shadow-glow" : "bg-white/5 border-white/5")} tabIndex={0}>{style}</button>))}</div></section>
+            <section className={rowWrapperClass}>
+              <div className={horizontalListClass}>
+                {/* خيار ربط الآيات الملون */}
+                <button 
+                  onClick={() => handleStyleClick("ربط الآيات")} 
+                  className={cn(itemScaleClass, "px-8 py-4 rounded-full font-black text-sm focusable border-2 text-white bg-gradient-to-r from-red-500 via-yellow-500 to-blue-500 border-white/40 shadow-[0_0_20px_rgba(255,255,255,0.4)]")} 
+                  tabIndex={0}
+                >
+                  ربط الآيات
+                </button>
+                
+                <button onClick={() => { setSelectedStyle(null); }} className={cn(itemScaleClass, "px-8 py-4 rounded-full font-black text-sm focusable border-2 text-white", !selectedStyle ? "bg-primary border-primary/40" : "bg-white/5 border-transparent")} tabIndex={0}>الكل</button>
+                {READING_STYLES.map((style, i) => (<button key={style} data-nav-id={`style-${i}`} onClick={() => handleStyleClick(style)} className={cn(itemScaleClass, "px-8 py-4 rounded-full font-black text-sm focusable border-2 text-white", selectedStyle === style ? "bg-primary border-primary/40 shadow-glow" : "bg-white/5 border-white/5")} tabIndex={0}>{style}</button>))}
+              </div>
+            </section>
             
-            {/* Reciters Area - Scaled 3x */}
+            {/* Reciters Area - Scaled to 75% of previous (3x * 0.75 = 2.25x) */}
             <section className={rowWrapperClass}>
               <div className={cn(horizontalListClass, "gap-8")}>
                 <button 
                   onClick={() => setIsAddReciterOpen(true)} 
-                  className={cn(itemScaleClass, "flex flex-col items-center gap-6 px-8 py-4 rounded-[3rem] focusable border-2 border-transparent hover:bg-emerald-600/10")} 
+                  className={cn(itemScaleClass, "flex flex-col items-center gap-6 px-6 py-4 rounded-[2.5rem] focusable border-2 border-transparent hover:bg-emerald-600/10")} 
                   tabIndex={0}
                 >
-                  <div className="w-72 h-72 rounded-full flex items-center justify-center bg-emerald-500/10 border-4 border-dashed border-emerald-500/30 text-emerald-400">
-                    <Plus className="w-24 h-24" />
+                  <div className="w-52 h-52 rounded-full flex items-center justify-center bg-emerald-500/10 border-4 border-dashed border-emerald-500/30 text-emerald-400">
+                    <Plus className="w-16 h-16" />
                   </div>
                 </button>
                 {favoriteReciters.map((r, i) => (
                   <button 
                     key={r.channelid + i} 
                     onClick={() => handleReciterClick(r.name)} 
-                    className={cn(itemScaleClass, "flex flex-col items-center gap-6 px-8 py-4 rounded-[3rem] focusable border-2 transition-all relative group", selectedReciter === r.name ? "border-emerald-500 bg-emerald-500/10" : "border-transparent hover:bg-emerald-600/10")} 
+                    className={cn(itemScaleClass, "flex flex-col items-center gap-6 px-6 py-4 rounded-[2.5rem] focusable border-2 transition-all relative group", selectedReciter === r.name ? "border-emerald-500 bg-emerald-500/10" : "border-transparent hover:bg-emerald-600/10")} 
                     tabIndex={0} 
                     data-nav-id={`reciter-${i}`}
                   >
-                    <div className="w-72 h-72 rounded-full overflow-hidden border-4 border-emerald-500/30 shadow-2xl">
+                    <div className="w-52 h-52 rounded-full overflow-hidden border-4 border-emerald-500/30 shadow-2xl">
                       <img src={r.image} className="w-full h-full object-cover" alt="" />
                     </div>
-                    <span className="text-3xl font-black truncate max-w-[320px] text-white">
+                    <span className="text-2xl font-black truncate max-w-[240px] text-white">
                       {r.name}
                     </span>
                   </button>
@@ -271,7 +321,52 @@ export function MediaView() {
               </div>
             </section>
 
-            <section className={rowWrapperClass}><div className={horizontalListClass}>{surahs.map((s, i) => (<button key={i} data-nav-id={`surah-${i}`} onClick={() => handleSurahClick(s.name_arabic)} className={cn(itemScaleClass, "px-10 py-5 rounded-full bg-white/5 border border-white/10 text-white font-black text-sm hover:bg-blue-600/20 focusable", selectedSurah === s.name_arabic ? "bg-blue-600 border-blue-400 shadow-glow" : "")} tabIndex={0}>{s.name_arabic}</button>))}</div></section>
+            {/* نظام اختيار الأجزاء والسور الملون */}
+            <section className={rowWrapperClass}>
+              <div className={horizontalListClass}>
+                <div className="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-full border border-white/10 shrink-0">
+                  <Layers className="w-4 h-4 text-accent" />
+                  <span className="text-[10px] font-black text-white/40 uppercase">الأجزاء</span>
+                </div>
+                {[...Array(30).keys()].map(i => {
+                  const juzNum = i + 1;
+                  return (
+                    <button 
+                      key={`juz-${juzNum}`} 
+                      onClick={() => handleJuzClick(juzNum)} 
+                      className={cn(
+                        itemScaleClass, 
+                        "px-8 py-4 rounded-full text-white font-black text-sm focusable border-2 transition-all",
+                        selectedJuz === juzNum ? "bg-white text-black border-white shadow-glow" : JUZ_COLORS[i]
+                      )} 
+                      tabIndex={0}
+                    >
+                      الجزء {juzNum}
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+
+            <section className={rowWrapperClass}>
+              <div className={horizontalListClass}>
+                {surahs.map((s, i) => (
+                  <button 
+                    key={i} 
+                    data-nav-id={`surah-${i}`} 
+                    onClick={() => handleSurahClick(s.name_arabic)} 
+                    className={cn(
+                      itemScaleClass, 
+                      "px-10 py-5 rounded-full border text-white font-black text-sm hover:bg-blue-600/20 focusable transition-all", 
+                      selectedSurah === s.name_arabic ? "bg-blue-600 border-blue-400 shadow-glow" : getSurahColorClass(i)
+                    )} 
+                    tabIndex={0}
+                  >
+                    {s.name_arabic}
+                  </button>
+                ))}
+              </div>
+            </section>
 
             {isSmallScreen && (
               <section className="py-6 px-8 animate-in fade-in duration-700">
@@ -301,7 +396,7 @@ export function MediaView() {
           </>
         ) : (
           <section className="space-y-10 animate-in slide-in-from-top-10 duration-500 min-h-[500px] relative origin-center">
-            <div className="flex justify-between items-center sticky top-0 z-[120] bg-black/70 backdrop-blur-2xl p-8 rounded-[3rem] border border-white/10 shadow-2xl"><button onClick={resetView} className="h-14 px-10 rounded-full bg-red-600 text-white font-black text-base focusable flex items-center gap-4" tabIndex={0}><X className="w-6 h-6" /><span>العودة للمكتبة</span></button><div className="flex flex-col items-end text-right"><h2 className="text-4xl font-black text-white tracking-tighter">{selectedChannel ? selectedChannel.name : `رادار البحث: ${search}`}</h2><p className="text-[11px] text-white/40 uppercase tracking-[0.5em] font-bold mt-1">Deep Neural Content Scan</p></div></div>
+            <div className="flex justify-between items-center sticky top-0 z-[120] bg-black/70 backdrop-blur-2xl p-8 rounded-[3rem] border border-white/10 shadow-2xl"><button onClick={resetView} className="h-14 px-10 rounded-full bg-red-600 text-white font-black text-base focusable flex items-center gap-4" tabIndex={0}><X className="w-6 h-6" /><span>العودة للمكتبة</span></button><div className="flex flex-col items-end text-right"><h2 className="text-4xl font-black text-white tracking-tighter">{selectedChannel ? selectedChannel.name : selectedJuz ? `الجزء ${selectedJuz}` : `رادار البحث: ${search}`}</h2><p className="text-[11px] text-white/40 uppercase tracking-[0.5em] font-bold mt-1">Deep Neural Content Scan</p></div></div>
             {loading && activeGridVideos.length === 0 ? (<div className="flex flex-col items-center justify-center py-40 gap-6"><Loader2 className="w-20 h-20 animate-spin text-primary" /><p className="text-white/20 font-black uppercase tracking-[0.8em] text-sm animate-pulse">Syncing Streams...</p></div>) : (
               <div className={cn("grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 transition-opacity duration-300", loading && "opacity-50 grayscale")}>
                 {activeGridVideos.map((v, i) => {
