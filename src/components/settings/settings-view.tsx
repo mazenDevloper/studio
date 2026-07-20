@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -17,6 +16,10 @@ import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 
+/**
+ * SettingsView v4000.0 - Sovereign Edition (Match cc61600)
+ * Features: Giant Typography, Global Push (Zap), and Unified System Sync.
+ */
 export function SettingsView() {
   const { 
     addReminder, removeReminder, updateReminder, reminders,
@@ -54,7 +57,7 @@ export function SettingsView() {
 
   useEffect(() => { 
     fetchPriorityData('all'); 
-    // Sovereign Auto-Refresh On Load
+    // Sovereign Auto-Refresh On Load (v4000 Logic)
     const timer = setTimeout(() => {
       handleManualRefresh();
     }, 1000);
@@ -63,7 +66,14 @@ export function SettingsView() {
 
   const handleManualRefresh = async () => {
     setIsRefreshing(true);
-    try { await fetchPriorityData('all'); toast({ title: "تم تحديث البيانات سحابياً" }); } finally { setIsRefreshing(false); }
+    try { 
+      await fetchPriorityData('all'); 
+      toast({ title: "تم تحديث البيانات سحابياً" }); 
+    } catch (e) {
+      console.error("Refresh Error:", e);
+    } finally { 
+      setIsRefreshing(false); 
+    }
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, target: 'bg' | 'manuscript' | 'font') => {
@@ -147,10 +157,19 @@ export function SettingsView() {
   return (
     <div className="p-12 space-y-12 max-w-7xl mx-auto pb-40 text-right dir-rtl bg-black min-h-full">
       <header className="flex items-center justify-between">
-        <div className="flex flex-col gap-2"><h1 className="text-6xl font-black text-white tracking-tighter flex items-center gap-6">الإعدادات السيادية <Settings className="w-12 h-12 text-primary animate-spin-slow" /></h1><p className="text-white/40 font-bold uppercase tracking-[0.6em] text-sm">Unified System Hub v4000.0</p></div>
+        <div className="flex flex-col gap-2">
+          <h1 className="text-6xl font-black text-white tracking-tighter flex items-center gap-6">
+            الإعدادات السيادية <Settings className="w-12 h-12 text-primary animate-spin-slow" />
+          </h1>
+          <p className="text-white/40 font-bold uppercase tracking-[0.6em] text-sm">Unified System Hub v4000.0</p>
+        </div>
         <div className="flex gap-4">
-          <Button onClick={handleManualRefresh} disabled={isRefreshing} className="bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-full h-14 px-8 font-black focusable shadow-glow">{isRefreshing ? <Loader2 className="w-5 h-5 animate-spin ml-2" /> : <RefreshCw className="w-5 h-5 ml-2" />} تحديث محلي</Button>
-          <Button onClick={async () => { setIsSyncing(true); await syncMasterBin(); setIsSyncing(false); toast({ title: "تم المزامنة بنجاح" }); }} disabled={isSyncing} className="bg-primary text-white rounded-full h-14 px-8 font-black focusable shadow-glow">{isSyncing ? <Loader2 className="w-5 h-5 animate-spin ml-2" /> : <Zap className="w-5 h-5 ml-2" />} دفع عالمي</Button>
+          <Button onClick={handleManualRefresh} disabled={isRefreshing} className="bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-full h-14 px-8 font-black focusable shadow-glow">
+            {isRefreshing ? <Loader2 className="w-5 h-5 animate-spin ml-2" /> : <RefreshCw className="w-5 h-5 ml-2" />} تحديث محلي
+          </Button>
+          <Button onClick={async () => { setIsSyncing(true); await syncMasterBin(); setIsSyncing(false); toast({ title: "تم المزامنة بنجاح" }); }} disabled={isSyncing} className="bg-primary text-white rounded-full h-14 px-8 font-black focusable shadow-glow">
+            {isSyncing ? <Loader2 className="w-5 h-5 animate-spin ml-2" /> : <Zap className="w-5 h-5 ml-2" />} دفع عالمي
+          </Button>
         </div>
       </header>
 
@@ -224,6 +243,7 @@ export function SettingsView() {
                   <span className={cn("text-4xl font-black", r.color)}>{r.label}</span>
                   <div className="flex gap-4">
                     <Button onClick={() => loadReminderForEdit(r)} className="w-16 h-16 rounded-full bg-blue-600/20 text-blue-400 border border-blue-500/30 focusable"><Edit2 className="w-8 h-8" /></Button>
+                    <Button onClick={async () => { removeReminder(r.id); await syncMasterBin(); }} className="w-16 h-16 rounded-full bg-red-600/20 text-red-500 border border-red-500/30 focusable"><Trash2 className="w-8 h-8" /></Button>
                   </div>
                 </div>
               ))}
@@ -236,15 +256,106 @@ export function SettingsView() {
             <CardTitle className="text-4xl font-black text-white flex items-center gap-6 mb-12"><Type className="w-12 h-12 text-primary" />مخزن المخطوطات والخطوط</CardTitle>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
               <div className="p-8 bg-black/40 rounded-[3rem] border border-white/10 space-y-6">
-                <Select value={manuscriptType} onValueChange={(v) => setManuscriptType(v as any)}>
-                  <SelectTrigger className="w-40 h-16 bg-white/5 text-white font-black rounded-xl"><SelectValue /></SelectTrigger>
-                  <SelectContent className="bg-zinc-950 text-white dir-rtl"><SelectItem value="text">نصية</SelectItem><SelectItem value="image">صورة رابط</SelectItem></SelectContent>
-                </Select>
-                <Input placeholder="أدخل المحتوى..." value={manuscriptInput} onChange={(e) => setManuscriptInput(e.target.value)} className="h-16 flex-1 bg-white/5 px-6 rounded-xl" />
-                <Button onClick={handleSaveManuscript} className="h-16 w-full bg-primary rounded-xl shadow-glow font-black text-xl">حفظ</Button>
+                <div className="flex items-center gap-4">
+                  <Select value={manuscriptType} onValueChange={(v) => setManuscriptType(v as any)}>
+                    <SelectTrigger className="w-40 h-16 bg-white/5 text-white font-black rounded-xl"><SelectValue /></SelectTrigger>
+                    <SelectContent className="bg-zinc-950 text-white dir-rtl"><SelectItem value="text">نصية</SelectItem><SelectItem value="image">صورة رابط</SelectItem></SelectContent>
+                  </Select>
+                  <Input placeholder="أدخل المحتوى..." value={manuscriptInput} onChange={(e) => setManuscriptInput(e.target.value)} className="h-16 flex-1 bg-white/5 px-6 rounded-xl text-xl font-bold" />
+                </div>
+                <div className="flex gap-4">
+                  <Select value={selectedFont} onValueChange={setSelectedFont}>
+                    <SelectTrigger className="h-16 flex-1 bg-white/5 text-white font-bold rounded-xl"><SelectValue placeholder="اختر الخط..." /></SelectTrigger>
+                    <SelectContent className="bg-zinc-950 text-white dir-rtl">
+                      <SelectItem value="Amiri">Amiri</SelectItem>
+                      <SelectItem value="Reem Kufi">Reem Kufi</SelectItem>
+                      <SelectItem value="Aref Ruqaa">Aref Ruqaa</SelectItem>
+                      <SelectItem value="Alkalami">Alkalami</SelectItem>
+                      <SelectItem value="Gulzar">Gulzar</SelectItem>
+                      {customFonts?.map(f => <SelectItem key={f.name} value={f.name}>{f.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Button onClick={handleSaveManuscript} className="h-16 px-10 bg-primary rounded-xl shadow-glow font-black text-xl">حفظ</Button>
+                </div>
+              </div>
+              <div className="p-8 bg-black/40 rounded-[3rem] border border-white/10 flex flex-col justify-center items-center gap-4">
+                 <input type="file" hidden ref={fontFileRef} accept=".ttf,.otf" onChange={(e) => handleFileUpload(e, 'font')} />
+                 <Button onClick={() => fontFileRef.current?.click()} className="w-full h-16 bg-purple-600/20 text-purple-400 border border-purple-500/30 rounded-xl font-black shadow-glow"><Upload className="w-5 h-5 ml-2" /> رفع خط مخصص (TTF)</Button>
+                 <div className="flex gap-2 flex-wrap justify-center">
+                    {customFonts?.map(f => (
+                      <div key={f.name} className="bg-white/10 px-4 py-2 rounded-full border border-white/10 flex items-center gap-3">
+                        <span className="text-xs font-bold text-white/60">{f.name}</span>
+                        <button onClick={() => removeCustomFont(f.name)} className="text-red-500 hover:text-red-400"><X className="w-4 h-4" /></button>
+                      </div>
+                    ))}
+                 </div>
               </div>
             </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-h-[600px] overflow-y-auto custom-scrollbar p-4">
+              {customManuscripts.map((m) => (
+                <div key={m.id} className="bg-black/60 p-10 rounded-[3rem] border border-white/10 flex flex-col items-center justify-between group relative shadow-2xl">
+                  <div className="w-full flex-1 flex items-center justify-center min-h-[120px] mb-6">
+                    {m.type === 'text' ? (
+                      <p className="text-4xl text-center leading-relaxed" style={{ fontFamily: m.fontFamily || 'inherit' }}>{m.content}</p>
+                    ) : <img src={m.content} className="max-h-32 object-contain" alt="" />}
+                  </div>
+                  <div className="flex gap-3 w-full">
+                    <Button onClick={() => loadManuscriptForEdit(m)} className="flex-1 h-14 bg-blue-600/20 text-blue-400 border border-blue-500/30 rounded-2xl focusable"><Edit2 className="w-6 h-6" /></Button>
+                    <Button onClick={() => removeManuscript(m.id)} className="flex-1 h-14 bg-red-600/20 text-red-500 border border-red-500/30 rounded-2xl focusable"><Trash2 className="w-6 h-6" /></Button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="reciters" className="space-y-8">
+          <Card className="bg-white/5 border-white/10 p-10 rounded-[3.5rem]">
+            <CardTitle className="text-4xl font-black text-white flex items-center gap-6 mb-12"><Mic className="w-12 h-12 text-primary" />إدارة القراء والمبدعين</CardTitle>
+            <div className="bg-black/40 p-10 rounded-[3rem] border border-white/10 mb-12 space-y-6">
+               <span className="text-xs font-black text-white/40 uppercase">استيراد جماعي (JSON)</span>
+               <textarea value={jsonReciters} onChange={(e) => setJsonReciters(e.target.value)} placeholder='[{"name": "...", "channelid": "...", "image": "..."}]' className="w-full h-40 bg-black/60 border border-white/10 rounded-2xl p-6 text-emerald-400 font-mono text-sm custom-scrollbar" />
+               <Button onClick={handleImportReciters} className="w-full h-16 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-2xl font-black shadow-glow"><ArrowUpCircle className="w-6 h-6 ml-2" /> استيراد وحفظ سحابي</Button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+              {favoriteReciters.map((r) => (
+                <div key={r.channelid} className="bg-black/60 p-8 rounded-[3rem] border border-white/10 flex flex-col items-center gap-6 shadow-2xl group relative overflow-hidden">
+                  <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-white/10"><img src={r.image} className="w-full h-full object-cover" /></div>
+                  <h4 className="text-xl font-black text-white text-center truncate w-full">{r.name}</h4>
+                  <div className="flex gap-3 w-full">
+                    <Button onClick={async () => { removeReciter(r.channelid); await saveRecitersReorder(); }} className="flex-1 h-12 bg-red-600/20 text-red-500 border border-red-500/30 rounded-xl focusable"><Trash2 className="w-5 h-5" /></Button>
+                    <Button onClick={() => moveReciterToTop(r.channelid)} className="flex-1 h-12 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-xl focusable"><ChevronUp className="w-5 h-5" /></Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="buttonmap" className="space-y-8">
+           <Card className="bg-white/5 border-white/10 p-10 rounded-[3.5rem]">
+              <CardTitle className="text-4xl font-black text-white flex items-center gap-6 mb-12"><Keyboard className="w-12 h-12 text-primary" />خارطة الأزرار والتحكم</CardTitle>
+              <div className="flex gap-4 mb-10 overflow-x-auto pb-4 no-scrollbar">
+                {Object.keys(keyMappings).map(ctx => (
+                  <Button key={ctx} onClick={() => setSelectedContext(ctx as MappingContext)} variant={selectedContext === ctx ? "default" : "outline"} className={cn("rounded-full px-8 h-14 font-black text-lg focusable", selectedContext === ctx ? "bg-primary shadow-glow" : "bg-white/5 border-white/10")}>{ctx.toUpperCase()}</Button>
+                ))}
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {Object.entries(keyMappings[selectedContext] || {}).map(([action, keys]) => (
+                  <div key={action} className="bg-black/40 p-8 rounded-[2.5rem] border border-white/5 space-y-4 shadow-xl">
+                    <span className="text-xs font-black text-white/40 uppercase tracking-widest">{action}</span>
+                    <div className="flex gap-3 flex-wrap">
+                       {Array.isArray(keys) && keys.map(k => (
+                         <div key={k} className="bg-primary/20 px-5 py-2.5 rounded-xl border border-primary/40 flex items-center gap-4">
+                           <span className="text-xl font-black text-primary">{k}</span>
+                           <button onClick={() => removeSpecificKeyMapping(selectedContext, action as AppAction, k)} className="text-white/40 hover:text-red-500"><X className="w-4 h-4" /></button>
+                         </div>
+                       ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+           </Card>
         </TabsContent>
       </Tabs>
     </div>
