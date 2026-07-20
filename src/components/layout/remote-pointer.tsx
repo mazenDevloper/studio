@@ -10,8 +10,8 @@ import { useToast } from "@/hooks/use-toast";
 import { getDisplayNumber } from "@/lib/constants";
 
 /**
- * Ultimate Routing Engine v9700.0 - Level Isolation & Jump-to-Last Row logic
- * Features: Professional vertical navigation isolation in Media page.
+ * Sovereign Routing Engine v9800.0 - Professional Level Isolation & Last-Item Target
+ * Features: Absolute vertical isolation between Sidebars and Content in Media.
  */
 export function RemotePointer() {
   const pathname = usePathname();
@@ -21,8 +21,8 @@ export function RemotePointer() {
   const { 
     wallPlateType, setWallPlate, isFullScreen, isMinimized, 
     activeVideo, activeIptv, 
-    isAltModeActive, toggleAltMode, removeChannel, removeReciter, toggleStarChannel,
-    pickedUpId, setPickedUpId, reorderChannel, reorderReciter, reorderIptvChannel, removeVideo,
+    isAltModeActive, toggleAltMode,
+    pickedUpId, setPickedUpId, reorderChannel, reorderReciter, reorderIptvChannel,
     isReorderMode, toggleReorderMode, setIsSidebarShrinked, isRecordingKey,
     displayScale, setDisplayScale, favoriteIptvChannels, setActiveIptv,
     mapSettings, updateMapSettings, customManuscripts, wallPlateData
@@ -141,7 +141,7 @@ export function RemotePointer() {
     let minDistance = Infinity;
     let next: HTMLElement | null = null;
 
-    // --- MEDIA SOVEREIGN NAVIGATION: Isolated Levels & Vertical Jump to Last ---
+    // --- SOVEREIGN MEDIA ISOLATION: Vertical Jump to LAST of row (Leftmost in RTL) ---
     if (pathname === '/media' && isVertical) {
       const container = current.closest('nav, aside, main');
       if (container) {
@@ -169,7 +169,7 @@ export function RemotePointer() {
           const targetRow = rows[0];
 
           if (targetRow) {
-            // Jump to LAST of row (Leftmost in RTL)
+            // Jump to LAST item of row (Smallest left in RTL)
             next = targetRow.items.sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left)[0];
             if (next) {
               next.focus();
@@ -178,7 +178,7 @@ export function RemotePointer() {
             }
           }
         }
-        return; // Isolation: Prevent vertical movement out of context
+        return; // Isolation enforced: Do not escape context vertically
       }
     }
 
@@ -227,10 +227,6 @@ export function RemotePointer() {
     }
 
     if (/^\d+$/.test(finalKey)) {
-      const blockedCombos = ['22', '44', '66', '88', '24', '26', '28', '82', '84', '86', '42', '46', '48', '62', '64', '68', '25', '45', '65', '85', '52', '54', '56', '58', '55', '33', '99'];
-      const hasHyperAction = ['inc_font', 'dec_font', 'next_manuscript', 'prev_manuscript', 'inc_zoom', 'dec_zoom'].some(act => isAction(finalKey, act as AppAction));
-      if (blockedCombos.includes(finalKey) && !hasHyperAction) return;
-
       const displayNum = parseInt(finalKey);
       const target = favoriteIptvChannels.find((_, idx) => getDisplayNumber(idx) === displayNum);
       if (target) {

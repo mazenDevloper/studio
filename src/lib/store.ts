@@ -299,6 +299,27 @@ export const useMediaStore = create<MediaState>()(
       fetchPriorityData: async (context) => {
         set({ isInitialLoading: true });
         const fetchB = async (id: string) => { try { const r = await fetch(`https://api.jsonbin.io/v3/b/${id}/latest`, { headers: { 'X-Master-Key': JSONBIN_MASTER_KEY }, cache: 'no-store' }); return r.ok ? (await r.json()).record : null; } catch { return null; } };
+        
+        // Priority stage 1: Contextual critical data
+        if (context === 'dashboard') {
+          const [p, manu, ma] = await Promise.allSettled([fetchB(JSONBIN_PRAYER_TIMES_BIN_ID), fetchB(JSONBIN_MANUSCRIPTS_BIN_ID), fetchB(JSONBIN_MASTER_BIN_ID)]);
+          if (p.status === 'fulfilled' && p.value) set({ prayerTimes: Array.isArray(p.value) ? p.value : (p.value.prayers || []) });
+          if (manu.status === 'fulfilled' && manu.value) set({ customManuscripts: Array.isArray(manu.value) ? manu.value : (manu.value.manuscripts || []) });
+          if (ma.status === 'fulfilled' && ma.value) {
+            const v = ma.value;
+            set({ reminders: v.reminders || DEFAULT_REMINDERS, prayerSettings: v.prayerSettings || DEFAULT_PRAYER_SETTINGS, mapSettings: { ...get().mapSettings, ...v.mapSettings } });
+          }
+        } else if (context === 'media') {
+          const [subs, rec, ma] = await Promise.allSettled([fetchB(JSONBIN_CHANNELS_BIN_ID), fetchB(JSONBIN_POPULAR_RECITERS_BIN_ID), fetchB(JSONBIN_MASTER_BIN_ID)]);
+          if (subs.status === 'fulfilled' && subs.value) set({ favoriteChannels: Array.isArray(subs.value) ? subs.value : (subs.value.channels || []) });
+          if (rec.status === 'fulfilled' && rec.value) set({ favoriteReciters: Array.isArray(rec.value) ? rec.value : (rec.value.reciters || []) });
+          if (ma.status === 'fulfilled' && ma.value) {
+             const v = ma.value;
+             set({ favoriteIptvChannels: v.favoriteIptvChannels || [], savedVideos: v.savedVideos || [] });
+          }
+        }
+
+        // Priority stage 2: Comprehensive background sync
         const [p, ma, manu, rec, subs] = await Promise.allSettled([fetchB(JSONBIN_PRAYER_TIMES_BIN_ID), fetchB(JSONBIN_MASTER_BIN_ID), fetchB(JSONBIN_MANUSCRIPTS_BIN_ID), fetchB(JSONBIN_POPULAR_RECITERS_BIN_ID), fetchB(JSONBIN_CHANNELS_BIN_ID)]);
         
         if (p.status === 'fulfilled' && p.value) set({ prayerTimes: Array.isArray(p.value) ? p.value : (p.value.prayers || []) });
