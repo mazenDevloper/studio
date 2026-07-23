@@ -9,14 +9,16 @@ import { useMediaStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
 /**
- * MoonWidget v215.0 - Integrated Manuscript Engine
- * Features: Manuscript on Moon switcher and natural aspect display.
+ * MoonWidget v218.0 - Sovereign Date Hub
+ * Features: Hijri/Gregorian month names in dima-story font.
  */
 export function MoonWidget() {
   const [loading, setLoading] = useState(true);
   const [cycleIndex, setCycleIndex] = useState(0); // 0: Hijri, 1: Gregorian, 2: Temp
   const [hijriDay, setHijriDay] = useState(1);
   const [hijriDisplay, setHijriDisplay] = useState("١");
+  const [hijriMonth, setHijriMonth] = useState("");
+  const [gregMonth, setGregMonth] = useState("");
   const [temperature, setTemperature] = useState<string>("--");
   const [windowWidth, setWindowWidth] = useState(0);
   
@@ -43,10 +45,15 @@ export function MoonWidget() {
 
     try {
       const today = new Date();
-      const hijriFormatter = new Intl.DateTimeFormat('en-u-ca-islamic-umalqura-nu-latn', {day: 'numeric'});
-      const dayNum = parseInt(hijriFormatter.format(today), 10);
+      const hijriFormatter = new Intl.DateTimeFormat('en-u-ca-islamic-umalqura-nu-latn', {day: 'numeric', month: 'long'});
+      const hijriParts = hijriFormatter.formatToParts(today);
+      const dayNum = parseInt(hijriParts.find(p => p.type === 'day')?.value || "1", 10);
+      const monthName = hijriParts.find(p => p.type === 'month')?.value || "";
+      
       const validDay = dayNum > 30 ? 30 : (dayNum < 1 ? 1 : dayNum);
       setHijriDay(validDay);
+      setHijriMonth(monthName);
+      setGregMonth(today.toLocaleDateString('ar-EG', { month: 'long' }));
 
       const arabicDigits = ['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'];
       const formattedDay = dayNum.toString().split('').map(d => arabicDigits[parseInt(d)]).join('');
@@ -69,6 +76,7 @@ export function MoonWidget() {
 
   const gregorianDay = new Date().getDate().toString();
   const displayValue = cycleIndex === 0 ? hijriDisplay : cycleIndex === 1 ? gregorianDay : temperature;
+  const subLabel = cycleIndex === 0 ? hijriMonth : cycleIndex === 1 ? gregMonth : "الطقس الآن";
   const label = cycleIndex === 0 ? "اليوم الهجري" : cycleIndex === 1 ? "اليوم الميلادي" : "درجة الحرارة";
   const isWide = windowWidth > 968;
 
@@ -116,27 +124,28 @@ export function MoonWidget() {
             </div>
           ) : (
             <div className="relative w-full mx-auto">
-              <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none transition-all duration-1000"
-                   style={{ transform: isWide ? (cycleIndex === 0 ? 'scale(4.8)' : 'scale(2.8)') : 'scale(3.8)' }}>
-                <svg className="w-full h-full overflow-visible" viewBox="0 0 100 100">
-                  <defs>
-                    <linearGradient id="moonFill" x1="100%" y1="0%" x2="0%" y2="100%">
-                      <stop offset="0%" stopColor="rgba(255,255,255,0.95)" />
-                      <stop offset="100%" stopColor="rgba(255,255,255,0)" />
-                    </linearGradient>
-                    <linearGradient id="moonStroke" x1="0%" y1="100%" x2="100%" y2="0%">
-                      <stop offset="0%" stopColor="rgba(255,255,255,1)" />
-                      <stop offset="100%" stopColor="rgba(255,255,255,0)" />
-                    </linearGradient>
-                  </defs>
-                  <text 
-                    x="50%" y="50%" textAnchor="middle" dominantBaseline="central" className="font-black"
-                    style={{ fontSize: isWide ? (cycleIndex === 2 ? '16px' : '28px') : '30px' }} 
-                    fill="url(#moonFill)" stroke="url(#moonStroke)" strokeWidth="0.5"
-                  >
-                    {displayValue}
-                  </text>
-                </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center z-20 pointer-events-none transition-all duration-1000">
+                <div style={{ transform: isWide ? (cycleIndex === 0 ? 'scale(4.8)' : 'scale(2.8)') : 'scale(3.8)' }}>
+                  <svg className="w-full h-full overflow-visible" viewBox="0 0 100 100">
+                    <defs>
+                      <linearGradient id="moonFill" x1="100%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stopColor="rgba(255,255,255,0.95)" />
+                        <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+                      </linearGradient>
+                    </defs>
+                    <text 
+                      x="50%" y="50%" textAnchor="middle" dominantBaseline="central" className="font-black"
+                      style={{ fontSize: isWide ? (cycleIndex === 2 ? '16px' : '28px') : '30px' }} 
+                      fill="url(#moonFill)"
+                    >
+                      {displayValue}
+                    </text>
+                  </svg>
+                </div>
+                {/* Month Name Injection with dima-story */}
+                <span className="text-white/60 font-black tracking-widest mt-4 uppercase animate-in fade-in slide-in-from-bottom-2 duration-700" style={{ fontFamily: 'dima-story, Aref Ruqaa', fontSize: isWide ? '1.8rem' : '1.4rem' }}>
+                  {subLabel}
+                </span>
               </div>
 
               <div className="relative w-full overflow-hidden bg-black transition-transform group-hover:scale-105 duration-700">

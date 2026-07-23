@@ -301,7 +301,6 @@ export const useMediaStore = create<MediaState>()(
         set({ isInitialLoading: true });
         const fetchB = async (id: string) => { try { const r = await fetch(`https://api.jsonbin.io/v3/b/${id}/latest`, { headers: { 'X-Master-Key': JSONBIN_MASTER_KEY }, cache: 'no-store' }); return r.ok ? (await r.json()).record : null; } catch { return null; } };
         
-        // Priority stage 1: Contextual critical data
         if (context === 'dashboard' || context === 'all') {
           const [p, manu, ma] = await Promise.allSettled([fetchB(JSONBIN_PRAYER_TIMES_BIN_ID), fetchB(JSONBIN_MANUSCRIPTS_BIN_ID), fetchB(JSONBIN_MASTER_BIN_ID)]);
           if (p.status === 'fulfilled' && p.value) set({ prayerTimes: Array.isArray(p.value) ? p.value : (p.value.prayers || []) });
