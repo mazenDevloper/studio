@@ -282,26 +282,26 @@ export function MediaView() {
               <div className={cn(horizontalListClass, "gap-8")}>
                 <button 
                   onClick={() => setIsAddReciterOpen(true)} 
-                  className={cn(itemScaleClass, "flex flex-col items-center gap-6 px-6 py-4 rounded-[2.5rem] focusable border-2 border-transparent hover:bg-emerald-600/10")} 
+                  className="flex flex-col items-center gap-4 px-4 py-2 rounded-[2rem] focusable border-2 border-transparent hover:bg-emerald-600/10 transition-all duration-500 focus:z-50 shrink-0" 
                   tabIndex={0} 
                   data-nav-id="reciter-add"
                 >
-                  <div className="w-52 h-52 rounded-full flex items-center justify-center bg-emerald-500/10 border-4 border-dashed border-emerald-500/30 text-emerald-400">
-                    <Plus className="w-16 h-16" />
+                  <div className="w-40 h-40 rounded-full flex items-center justify-center bg-emerald-500/10 border-4 border-dashed border-emerald-500/30 text-emerald-400">
+                    <Plus className="w-12 h-12" />
                   </div>
                 </button>
                 {favoriteReciters.map((r, i) => (
                   <button 
                     key={r.channelid + i} 
                     onClick={() => handleReciterClick(r.name)} 
-                    className={cn(itemScaleClass, "flex flex-col items-center gap-6 px-6 py-4 rounded-[2.5rem] focusable border-2 transition-all relative group", selectedReciter === r.name ? "border-emerald-500 bg-emerald-500/10" : "border-transparent hover:bg-emerald-600/10")} 
+                    className={cn("flex flex-col items-center gap-4 px-4 py-2 rounded-[2rem] focusable border-2 transition-all duration-500 focus:z-50 shrink-0 relative group", selectedReciter === r.name ? "border-emerald-500 bg-emerald-500/10" : "border-transparent hover:bg-emerald-600/10")} 
                     tabIndex={0} 
                     data-nav-id={`reciter-${i}`}
                   >
-                    <div className="w-52 h-52 rounded-full overflow-hidden border-4 border-emerald-500/30 shadow-2xl">
+                    <div className="w-40 h-40 rounded-full overflow-hidden border-4 border-emerald-500/30 shadow-2xl">
                       <img src={r.image} className="w-full h-full object-cover" alt="" />
                     </div>
-                    <span className="text-2xl font-black truncate max-w-[240px] text-white">
+                    <span className="text-xl font-black truncate max-w-[200px] text-white">
                       {r.name}
                     </span>
                   </button>

@@ -34,7 +34,9 @@ export function DashboardView() {
   const [api, setApi] = useState<CarouselApi>();
 
   useEffect(() => {
-    fetchPriorityData('dashboard');
+    // Sovereign Instant Refresh
+    fetchPriorityData('all');
+    
     const timer = setTimeout(() => {
       const target = document.querySelector('[data-nav-id="dash-col-1"]') as HTMLElement;
       if (target) {

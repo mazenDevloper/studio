@@ -295,21 +295,24 @@ export const useMediaStore = create<MediaState>()(
       pickedUpId: null, setPickedUpId: (id) => set({ pickedUpId: id }), setApiError: (v) => set({ apiError: v }), setIsRecordingKey: (v) => set({ isRecordingKey: v }), setDockScale: (v) => set({ dockScale: v }), setDisplayScale: (v) => set({ displayScale: v }), setIsSidebarShrinked: (v) => set({ isSidebarShrinked: v }),
       selectedChannel: null, channelVideos: [], videoResults: [], iptvSwitchingInfo: null, setIptvSwitchingInfo: (info) => set({ iptvSwitchingInfo: info }),
       setSelectedChannel: (v) => set({ selectedChannel: v }), setChannelVideos: (v) => set({ channelVideos: v }), setVideoResults: (v) => set({ videoResults: v }),
+      setIsPlayerControlsExpanded: (v) => set({ isPlayerControlsExpanded: v }), setGridMode: (v) => set({ gridMode: v }),
 
       fetchPriorityData: async (context) => {
         set({ isInitialLoading: true });
         const fetchB = async (id: string) => { try { const r = await fetch(`https://api.jsonbin.io/v3/b/${id}/latest`, { headers: { 'X-Master-Key': JSONBIN_MASTER_KEY }, cache: 'no-store' }); return r.ok ? (await r.json()).record : null; } catch { return null; } };
         
         // Priority stage 1: Contextual critical data
-        if (context === 'dashboard') {
+        if (context === 'dashboard' || context === 'all') {
           const [p, manu, ma] = await Promise.allSettled([fetchB(JSONBIN_PRAYER_TIMES_BIN_ID), fetchB(JSONBIN_MANUSCRIPTS_BIN_ID), fetchB(JSONBIN_MASTER_BIN_ID)]);
           if (p.status === 'fulfilled' && p.value) set({ prayerTimes: Array.isArray(p.value) ? p.value : (p.value.prayers || []) });
           if (manu.status === 'fulfilled' && manu.value) set({ customManuscripts: Array.isArray(manu.value) ? manu.value : (manu.value.manuscripts || []) });
           if (ma.status === 'fulfilled' && ma.value) {
             const v = ma.value;
-            set({ reminders: v.reminders || DEFAULT_REMINDERS, prayerSettings: v.prayerSettings || DEFAULT_PRAYER_SETTINGS, mapSettings: { ...get().mapSettings, ...v.mapSettings } });
+            set({ reminders: v.reminders || DEFAULT_REMINDERS, prayerSettings: v.prayerSettings || DEFAULT_PRAYER_SETTINGS, mapSettings: { ...get().mapSettings, ...v.mapSettings }, customFonts: v.customFonts || [] });
           }
-        } else if (context === 'media') {
+        }
+        
+        if (context === 'media' || context === 'all') {
           const [subs, rec, ma] = await Promise.allSettled([fetchB(JSONBIN_CHANNELS_BIN_ID), fetchB(JSONBIN_POPULAR_RECITERS_BIN_ID), fetchB(JSONBIN_MASTER_BIN_ID)]);
           if (subs.status === 'fulfilled' && subs.value) set({ favoriteChannels: Array.isArray(subs.value) ? subs.value : (subs.value.channels || []) });
           if (rec.status === 'fulfilled' && rec.value) set({ favoriteReciters: Array.isArray(rec.value) ? rec.value : (rec.value.reciters || []) });
@@ -319,19 +322,6 @@ export const useMediaStore = create<MediaState>()(
           }
         }
 
-        // Priority stage 2: Comprehensive background sync
-        const [p, ma, manu, rec, subs] = await Promise.allSettled([fetchB(JSONBIN_PRAYER_TIMES_BIN_ID), fetchB(JSONBIN_MASTER_BIN_ID), fetchB(JSONBIN_MANUSCRIPTS_BIN_ID), fetchB(JSONBIN_POPULAR_RECITERS_BIN_ID), fetchB(JSONBIN_CHANNELS_BIN_ID)]);
-        
-        if (p.status === 'fulfilled' && p.value) set({ prayerTimes: Array.isArray(p.value) ? p.value : (p.value.prayers || []) });
-        if (ma.status === 'fulfilled' && ma.value) {
-          const maV = ma.value;
-          set({ 
-            favoriteTeams: maV.favoriteTeams || [], reminders: maV.reminders || DEFAULT_REMINDERS, prayerSettings: maV.prayerSettings || DEFAULT_PRAYER_SETTINGS, mapSettings: { ...get().mapSettings, ...maV.mapSettings }, customFonts: maV.customFonts || [], customWallBackgrounds: maV.customWallBackgrounds || [], keyMappings: maV.keyMappings || DEFAULT_CONTEXT_MAPPINGS, displayScale: maV.displayScale ?? 1.0, dockScale: maV.dockScale ?? 1.0, isAltModeActive: maV.isAltModeActive ?? true, autoHideIsland: maV.autoHideIsland ?? true, favoriteIptvChannels: maV.favoriteIptvChannels || [], savedVideos: maV.savedVideos || [] 
-          });
-        }
-        if (manu.status === 'fulfilled' && manu.value) set({ customManuscripts: Array.isArray(manu.value) ? manu.value : (manu.value.manuscripts || []) });
-        if (rec.status === 'fulfilled' && rec.value) set({ favoriteReciters: Array.isArray(rec.value) ? rec.value : (rec.value.reciters || []) });
-        if (subs.status === 'fulfilled' && subs.value) set({ favoriteChannels: Array.isArray(subs.value) ? subs.value : (subs.value.channels || []) });
         set({ isInitialLoading: false });
       },
 
