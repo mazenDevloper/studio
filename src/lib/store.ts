@@ -301,13 +301,19 @@ export const useMediaStore = create<MediaState>()(
         set({ isInitialLoading: true });
         const fetchB = async (id: string) => { try { const r = await fetch(`https://api.jsonbin.io/v3/b/${id}/latest`, { headers: { 'X-Master-Key': JSONBIN_MASTER_KEY }, cache: 'no-store' }); return r.ok ? (await r.json()).record : null; } catch { return null; } };
         
+        // Priority stage: Fonts and Manuscripts (needed for correct appearance)
         if (context === 'dashboard' || context === 'all') {
           const [p, manu, ma] = await Promise.allSettled([fetchB(JSONBIN_PRAYER_TIMES_BIN_ID), fetchB(JSONBIN_MANUSCRIPTS_BIN_ID), fetchB(JSONBIN_MASTER_BIN_ID)]);
           if (p.status === 'fulfilled' && p.value) set({ prayerTimes: Array.isArray(p.value) ? p.value : (p.value.prayers || []) });
           if (manu.status === 'fulfilled' && manu.value) set({ customManuscripts: Array.isArray(manu.value) ? manu.value : (manu.value.manuscripts || []) });
           if (ma.status === 'fulfilled' && ma.value) {
             const v = ma.value;
-            set({ reminders: v.reminders || DEFAULT_REMINDERS, prayerSettings: v.prayerSettings || DEFAULT_PRAYER_SETTINGS, mapSettings: { ...get().mapSettings, ...v.mapSettings }, customFonts: v.customFonts || [] });
+            set({ 
+              reminders: v.reminders || DEFAULT_REMINDERS, 
+              prayerSettings: v.prayerSettings || DEFAULT_PRAYER_SETTINGS, 
+              mapSettings: { ...get().mapSettings, ...v.mapSettings },
+              customFonts: v.customFonts || [] 
+            });
           }
         }
         
@@ -379,8 +385,24 @@ export const useMediaStore = create<MediaState>()(
       toggleBelledMatch: (matchId) => set((s) => ({ belledMatchIds: s.belledMatchIds.includes(matchId) ? s.belledMatchIds.filter(i => i !== matchId) : [...s.belledMatchIds, matchId] })),
       skipMatch: (matchId) => set((s) => ({ skippedMatchIds: [...s.skippedMatchIds, matchId] })),
       updateMapSettings: (s) => set((st) => ({ mapSettings: { ...st.mapSettings, ...s } })),
-      setKeyMapping: (ctx, act, key) => set((s) => { const m = { ...s.keyMappings }; if (!m[ctx]) m[ctx] = {}; let k = Array.isArray(m[ctx][act]) ? [...m[ctx][act]] : []; if (k.includes(key)) return s; k.push(key); m[ctx][act] = k.slice(-2); return { keyMappings: m }; }),
-      removeSpecificKeyMapping: (ctx, act, key) => set((s) => { const m = { ...s.keyMappings }; if (m[ctx] && m[ctx][act]) { m[ctx][act] = m[ctx][act].filter(v => v !== key); return { keyMappings: m }; } return s; }),
+      
+      setKeyMapping: (ctx, act, key) => set((s) => { 
+        const m = { ...s.keyMappings }; 
+        if (!m[ctx]) m[ctx] = {}; 
+        let k = Array.isArray(m[ctx][act]) ? [...m[ctx][act]] : []; 
+        if (k.includes(key)) return s; 
+        k.push(key); 
+        m[ctx][act] = k.slice(-2); 
+        return { keyMappings: m }; 
+      }),
+      removeSpecificKeyMapping: (ctx, act, key) => set((s) => { 
+        const m = { ...s.keyMappings }; 
+        if (m[ctx] && m[ctx][act]) { 
+          m[ctx][act] = m[ctx][act].filter(v => v !== key); 
+          return { keyMappings: m }; 
+        } 
+        return s; 
+      }),
       
       setActiveVideo: (v, ctx) => { if (v) { const pl = ctx && ctx.length > 0 ? ctx : [v]; const idx = pl.findIndex(i => i.id === v.id); set({ playlist: pl, playlistIndex: idx > -1 ? idx : 0, activeVideo: v, activeIptv: null, isPlaying: true, isMinimized: false, isFullScreen: true }); } else set({ activeVideo: null, isPlaying: false, isFullScreen: false }); },
       setActiveIptv: (ch, ctx) => { if (!ch) { set({ activeIptv: null, isPlaying: false, isMinimized: false, isFullScreen: false, gridMode: 'hidden' }); return; } const processed = { ...ch, type: 'web', url: ch.url || `http://playstop.watch:2095/live/W87d737/Pd37qj34/${ch.stream_id}.m3u8` }; const pl = (ctx?.length) ? ctx : (get().favoriteIptvChannels.length ? get().favoriteIptvChannels : [processed]); const idx = pl.findIndex(c => c.stream_id === processed.stream_id); set({ iptvPlaylist: pl, iptvPlaylistIndex: idx > -1 ? idx : 0, activeIptv: processed, activeVideo: null, isPlaying: true, isMinimized: false, isFullScreen: true, gridMode: 'hidden' }); },
@@ -403,8 +425,12 @@ export const useMediaStore = create<MediaState>()(
       setAiSuggestions: (s) => set({ aiSuggestions: s }),
     }),
     {
-      name: "drivecast-ready-v2800", 
-      partialize: (s) => ({ dockSide: s.dockSide, showIslands: s.showIslands, isAltModeActive: s.isAltModeActive, autoHideIsland: s.autoHideIsland, displayScale: s.displayScale, dockScale: s.dockScale, mapSettings: s.mapSettings, manuscriptScales: s.manuscriptScales }),
+      name: "drivecast-ready-v2900", 
+      partialize: (s) => ({ 
+        dockSide: s.dockSide, showIslands: s.showIslands, isAltModeActive: s.isAltModeActive, 
+        autoHideIsland: s.autoHideIsland, displayScale: s.displayScale, dockScale: s.dockScale, 
+        mapSettings: s.mapSettings, manuscriptScales: s.manuscriptScales 
+      }),
     }
   )
 );

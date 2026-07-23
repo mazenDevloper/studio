@@ -9,8 +9,8 @@ import { useMediaStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
 /**
- * MoonWidget v218.0 - Sovereign Date Hub
- * Features: Hijri/Gregorian month names in dima-story font.
+ * MoonWidget v220.0 - Sovereign Date Hub
+ * Features: Hijri/Gregorian month names directly under day with larger size.
  */
 export function MoonWidget() {
   const [loading, setLoading] = useState(true);
@@ -22,9 +22,12 @@ export function MoonWidget() {
   const [temperature, setTemperature] = useState<string>("--");
   const [windowWidth, setWindowWidth] = useState(0);
   
-  const { setWallPlate, mapSettings, updateMapSettings } = useMediaStore();
+  const { setWallPlate, mapSettings, updateMapSettings, fetchPriorityData } = useMediaStore();
 
   useEffect(() => {
+    // Sovereign immediate fetch on boot
+    fetchPriorityData('dashboard');
+
     const handleResize = () => setWindowWidth(window.innerWidth);
     handleResize();
     window.addEventListener('resize', handleResize);
@@ -66,13 +69,13 @@ export function MoonWidget() {
     fetchTemperature();
     setLoading(false);
 
-    const cycleTimer = setInterval(() => setCycleIndex(p => (p + 1) % 3), 5000);
+    const cycleTimer = setInterval(() => setCycleIndex(p => (p + 1) % 3), 6000);
     
     return () => { 
       clearInterval(cycleTimer); 
       window.removeEventListener('resize', handleResize);
     };
-  }, []);
+  }, [fetchPriorityData]);
 
   const gregorianDay = new Date().getDate().toString();
   const displayValue = cycleIndex === 0 ? hijriDisplay : cycleIndex === 1 ? gregorianDay : temperature;
@@ -117,7 +120,7 @@ export function MoonWidget() {
       </div>
 
       <CardContent className="p-0 h-full flex flex-col items-center justify-center gap-4 relative z-10 w-full text-center">
-        <div className={cn("relative flex-shrink-0 mx-auto transition-all duration-1000", isWide ? "w-80" : "w-56")}>
+        <div className={cn("relative flex-shrink-0 mx-auto transition-all duration-1000", isWide ? "w-80" : "w-64")}>
           {loading ? (
             <div className="w-full h-56 rounded-[2rem] bg-white/5 flex items-center justify-center border border-white/10">
               <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
@@ -125,7 +128,7 @@ export function MoonWidget() {
           ) : (
             <div className="relative w-full mx-auto">
               <div className="absolute inset-0 flex flex-col items-center justify-center z-20 pointer-events-none transition-all duration-1000">
-                <div style={{ transform: isWide ? (cycleIndex === 0 ? 'scale(4.8)' : 'scale(2.8)') : 'scale(3.8)' }}>
+                <div style={{ transform: isWide ? (cycleIndex === 0 ? 'scale(5.2)' : 'scale(3.2)') : 'scale(4.2)' }}>
                   <svg className="w-full h-full overflow-visible" viewBox="0 0 100 100">
                     <defs>
                       <linearGradient id="moonFill" x1="100%" y1="0%" x2="0%" y2="100%">
@@ -142,13 +145,13 @@ export function MoonWidget() {
                     </text>
                   </svg>
                 </div>
-                {/* Month Name Injection with dima-story */}
-                <span className="text-white/60 font-black tracking-widest mt-4 uppercase animate-in fade-in slide-in-from-bottom-2 duration-700" style={{ fontFamily: 'dima-story, Aref Ruqaa', fontSize: isWide ? '1.8rem' : '1.4rem' }}>
+                {/* Bigger Month Name directly under day */}
+                <span className="text-white/80 font-black tracking-widest mt-6 uppercase animate-in fade-in slide-in-from-bottom-2 duration-1000" style={{ fontFamily: 'dima-story, Aref Ruqaa', fontSize: isWide ? '4.2rem' : '3.2rem', filter: 'drop-shadow(0 0 20px rgba(0,0,0,0.8))' }}>
                   {subLabel}
                 </span>
               </div>
 
-              <div className="relative w-full overflow-hidden bg-black transition-transform group-hover:scale-105 duration-700">
+              <div className="relative w-full overflow-hidden bg-black transition-transform group-hover:scale-105 duration-1000">
                 <Image 
                   src={moonImageUrl} 
                   alt={`Moon Phase ${hijriDay}`} 
@@ -158,13 +161,13 @@ export function MoonWidget() {
                   unoptimized 
                   priority
                 />
-                <div className="absolute inset-0 bg-gradient-to-tr from-black/60 via-transparent to-white/5 pointer-events-none" />
+                <div className="absolute inset-0 bg-gradient-to-tr from-black/80 via-transparent to-white/5 pointer-events-none" />
               </div>
             </div>
           )}
         </div>
         
-        <div className="flex flex-col items-center gap-1 w-full">
+        <div className="flex flex-col items-center gap-1 w-full mt-2">
           <div className="flex items-center gap-2 bg-white/5 px-5 py-1 rounded-full border border-white/10 backdrop-blur-md">
             {cycleIndex === 0 ? <MoonIcon className="w-3.5 h-3.5 text-blue-400" /> : cycleIndex === 1 ? <Calendar className="w-3.5 h-3.5 text-emerald-400" /> : <Cloud className="w-3.5 h-3.5 text-orange-400" />}
             <span className="text-[8px] font-black uppercase tracking-[0.3em] text-white/60">
