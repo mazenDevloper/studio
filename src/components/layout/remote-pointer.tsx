@@ -9,10 +9,6 @@ import { init } from "@noriginmedia/norigin-spatial-navigation";
 import { useToast } from "@/hooks/use-toast";
 import { getDisplayNumber } from "@/lib/constants";
 
-/**
- * Sovereign Routing Engine v9997.0 - Vertical Navigation Fix
- * Features: Absolute vertical targeting for targeted rows, standard navigation for sidebar and search grid.
- */
 export function RemotePointer() {
   const pathname = usePathname();
   const router = useRouter();
@@ -23,19 +19,48 @@ export function RemotePointer() {
     activeVideo, activeIptv, 
     isAltModeActive, toggleAltMode,
     pickedUpId, setPickedUpId, reorderChannel, reorderReciter, reorderIptvChannel,
-    isReorderMode, toggleReorderMode, setIsSidebarShrinked, isRecordingKey,
+    isReorderMode, toggleReorderMode, setIsSidebarShrinked, isRecordingKey, setIsRecordingKey,
     displayScale, setDisplayScale, favoriteIptvChannels, setActiveIptv,
-    mapSettings, updateMapSettings, customManuscripts, wallPlateData
+    mapSettings, updateMapSettings, customManuscripts, wallPlateData, setKeyMapping
   } = useMediaStore();
 
   const [pressedKey, setPressedKey] = useState<string | null>(null);
   const [displayBuffer, setDisplayBuffer] = useState<string>("");
   const bufferTimerRef = useRef<any>(null);
+  const recordingActionRef = useRef<{ ctx: MappingContext, act: AppAction } | null>(null);
 
   useEffect(() => {
     try { init({ debug: false, visualDebug: false }); } 
     catch (e) { console.warn(e); }
   }, []);
+
+  // Sync recording ref with state
+  useEffect(() => {
+    if (!isRecordingKey) recordingActionRef.current = null;
+  }, [isRecordingKey]);
+
+  // Global listener for recording
+  useEffect(() => {
+    if (!isRecordingKey) return;
+    
+    const handleCapture = (e: KeyboardEvent) => {
+      const activeRecording = (window as any).activeRecordingAction;
+      if (!activeRecording) return;
+      
+      e.preventDefault();
+      e.stopPropagation();
+      
+      const key = normalizeKey(e);
+      setKeyMapping(activeRecording.ctx, activeRecording.act, key);
+      setIsRecordingKey(false);
+      delete (window as any).activeRecordingAction;
+      
+      toast({ title: "تم تسجيل الزر", description: `تم تعيين مفتاح ${key} لـ ${activeRecording.act}` });
+    };
+
+    window.addEventListener("keydown", handleCapture, true);
+    return () => window.removeEventListener("keydown", handleCapture, true);
+  }, [isRecordingKey, setKeyMapping, setIsRecordingKey, toast]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -138,14 +163,12 @@ export function RemotePointer() {
     const currentRect = current.getBoundingClientRect();
     const isVertical = direction === "ArrowUp" || direction === "ArrowDown";
     
-    // --- MEDIA SOVEREIGN NAVIGATION: Targeted Jumping for Row Isolation ---
     if (pathname === '/media' && isVertical) {
       const container = current.closest('nav, aside, main');
       if (container && container.tagName !== 'ASIDE') {
         const currentRow = current.closest('[data-row-id]');
         const rowId = currentRow?.getAttribute('data-row-id');
         
-        // Skip targeted logic if we are in the results grid (let geometric fallback handle it)
         if (rowId !== 'row-grid-content') {
           const isDown = direction === "ArrowDown";
           const allRows = Array.from(container.querySelectorAll('[data-row-id]'));
@@ -159,7 +182,7 @@ export function RemotePointer() {
             if (nextRowId === 'row-styles') targetNavId = 'style-link-verses';
             else if (nextRowId === 'row-reciters') targetNavId = 'reciter-add';
             else if (nextRowId === 'row-juz') targetNavId = 'juz-15';
-            else if (nextRowId === 'row-surahs') targetNavId = 'surah-17'; // Kahf
+            else if (nextRowId === 'row-surahs') targetNavId = 'surah-17';
             else if (nextRowId?.startsWith('row-vids-')) {
                const listId = nextRowId.split('row-vids-')[1];
                targetNavId = `row-${listId}-video-0`;
@@ -178,7 +201,6 @@ export function RemotePointer() {
       }
     }
 
-    // Fallback Geometric Navigation (Handles Sidebar, Grids, and fallback jumps)
     let minDistance = Infinity;
     let next: HTMLElement | null = null;
 
@@ -207,6 +229,8 @@ export function RemotePointer() {
   }, [wallPlateType, pickedUpId, reorderChannel, reorderReciter, reorderIptvChannel, pathname]);
 
   const executeAction = useCallback((finalKey: string, e: KeyboardEvent | null) => {
+    if (isRecordingKey) return; // Block while recording
+
     const activeEl = document.activeElement as HTMLElement;
 
     if (isAction(finalKey, 'inc_font')) { e?.preventDefault(); updateMapSettings({ fontScale: Math.min(2.0, (mapSettings.fontScale || 1.0) + 0.1) }); return; }
@@ -227,7 +251,7 @@ export function RemotePointer() {
 
     if (/^\d+$/.test(finalKey)) {
       const displayNum = parseInt(finalKey);
-      const target = favoriteIptvChannels.find((_, idx) => getDisplayNumber(idx) === displayNum);
+      const target = favoriteIptvChannels.find((_, idx) => getGlobalDisplayNumber(idx) === displayNum);
       if (target) {
         e?.preventDefault();
         setActiveIptv(target, favoriteIptvChannels);
@@ -264,10 +288,12 @@ export function RemotePointer() {
         e?.preventDefault(); activeEl.click();
       }
     }
-  }, [navigate, isAction, wallPlateType, setWallPlate, pathname, favoriteIptvChannels, setActiveIptv, router, mapSettings, updateMapSettings, navigateManuscript, displayScale, setDisplayScale, isReorderMode, pickedUpId, setPickedUpId, toggleReorderMode]);
+  }, [navigate, isAction, wallPlateType, setWallPlate, pathname, favoriteIptvChannels, setActiveIptv, router, mapSettings, updateMapSettings, navigateManuscript, displayScale, setDisplayScale, isReorderMode, pickedUpId, setPickedUpId, toggleReorderMode, isRecordingKey]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (isRecordingKey) return; // Handled by separate listener
+      
       const activeEl = document.activeElement as HTMLElement;
       let rawKey = normalizeKey(e); 
       
@@ -290,9 +316,8 @@ export function RemotePointer() {
       const isNumeric = /^\d$/.test(rawKey);
       const isDualKey = isAltModeActive && ['2','4','6','8','5'].includes(rawKey);
 
-      if (!isRecordingKey && isNumeric) {
+      if (isNumeric) {
         if (bufferTimerRef.current) clearTimeout(bufferTimerRef.current);
-        
         const nextBuffer = displayBuffer + rawKey;
         setDisplayBuffer(nextBuffer);
 

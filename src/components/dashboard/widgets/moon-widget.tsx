@@ -9,12 +9,12 @@ import { useMediaStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
 /**
- * MoonWidget v220.0 - Sovereign Date Hub
- * Features: Hijri/Gregorian month names directly under day with larger size.
+ * MoonWidget v12000.0 - Ultra-Clear Sovereign Date Hub
+ * Features: Direct clear moon image background (No Overlay) -> Today -> 3px Line -> Month.
  */
 export function MoonWidget() {
   const [loading, setLoading] = useState(true);
-  const [cycleIndex, setCycleIndex] = useState(0); // 0: Hijri, 1: Gregorian, 2: Temp
+  const [cycleIndex, setCycleIndex] = useState(0);
   const [hijriDay, setHijriDay] = useState(1);
   const [hijriDisplay, setHijriDisplay] = useState("١");
   const [hijriMonth, setHijriMonth] = useState("");
@@ -22,12 +22,9 @@ export function MoonWidget() {
   const [temperature, setTemperature] = useState<string>("--");
   const [windowWidth, setWindowWidth] = useState(0);
   
-  const { setWallPlate, mapSettings, updateMapSettings, fetchPriorityData } = useMediaStore();
+  const { setWallPlate, mapSettings, updateMapSettings, isInitialLoading } = useMediaStore();
 
   useEffect(() => {
-    // Sovereign immediate fetch on boot
-    fetchPriorityData('dashboard');
-
     const handleResize = () => setWindowWidth(window.innerWidth);
     handleResize();
     window.addEventListener('resize', handleResize);
@@ -41,9 +38,7 @@ export function MoonWidget() {
             setTemperature(`${Math.round(data.current.temperature_2m)}°`);
           }
         }
-      } catch (e) {
-        console.error("Temp fetch error:", e);
-      }
+      } catch (e) {}
     }
 
     try {
@@ -75,7 +70,7 @@ export function MoonWidget() {
       clearInterval(cycleTimer); 
       window.removeEventListener('resize', handleResize);
     };
-  }, [fetchPriorityData]);
+  }, []);
 
   const gregorianDay = new Date().getDate().toString();
   const displayValue = cycleIndex === 0 ? hijriDisplay : cycleIndex === 1 ? gregorianDay : temperature;
@@ -85,97 +80,78 @@ export function MoonWidget() {
 
   const moonImageUrl = `https://phasesmoon.com/moonpng/220/moon-phase-${hijriDay}.webp`;
 
-  const toggleManuscriptOnMoon = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    updateMapSettings({ showManuscriptOnMoon: !mapSettings.showManuscriptOnMoon });
-  };
-
   return (
     <div 
-      className="h-full w-full bg-black rounded-[2.5rem] overflow-hidden relative flex flex-col items-center justify-center p-1 outline-none border-2 border-transparent group focusable"
+      className="h-full w-full bg-black rounded-[2.5rem] overflow-hidden relative flex flex-col items-center justify-center p-1 outline-none group focusable"
       tabIndex={0}
       onClick={() => setWallPlate('moon', { image: moonImageUrl, day: displayValue, label })}
     >
+      {/* Ultra-Clear Moon Background - 100% Clarity as Requested */}
+      <div className="absolute inset-0 z-0 flex items-center justify-center bg-black">
+        <Image 
+          src={moonImageUrl} 
+          alt="Moon Background" 
+          width={600}
+          height={600}
+          className="w-[90%] h-auto object-contain pointer-events-none group-hover:scale-105 transition-transform duration-[10s] unoptimized"
+          priority
+          unoptimized 
+        />
+      </div>
+
       <div className="absolute top-6 left-6 flex items-center gap-3 z-50 opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-all">
         <button 
           className={cn(
             "w-12 h-12 rounded-full backdrop-blur-md border flex items-center justify-center transition-all focusable",
-            mapSettings.showManuscriptOnMoon ? "bg-primary text-white border-primary shadow-glow" : "bg-white/10 text-white/40 border-white/10 hover:bg-white/20"
+            mapSettings.showManuscriptOnMoon ? "bg-primary text-white border-primary shadow-glow" : "bg-white/10 text-white/40 border-white/10"
           )}
-          onClick={toggleManuscriptOnMoon}
-          title="عرض المخطوطة على القمر"
+          onClick={(e) => { e.stopPropagation(); updateMapSettings({ showManuscriptOnMoon: !mapSettings.showManuscriptOnMoon }); }}
         >
           <Type className="w-6 h-6" />
         </button>
-
         <button 
-          className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/20 transition-all focusable"
-          onClick={(e) => {
-            e.stopPropagation();
-            setWallPlate('moon', { image: moonImageUrl, day: displayValue, label });
-          }}
+          className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/40 hover:text-white transition-all focusable"
+          onClick={(e) => { e.stopPropagation(); setWallPlate('moon', { image: moonImageUrl, day: displayValue, label }); }}
         >
           <Maximize2 className="w-6 h-6" />
         </button>
       </div>
 
-      <CardContent className="p-0 h-full flex flex-col items-center justify-center gap-4 relative z-10 w-full text-center">
-        <div className={cn("relative flex-shrink-0 mx-auto transition-all duration-1000", isWide ? "w-80" : "w-64")}>
-          {loading ? (
-            <div className="w-full h-56 rounded-[2rem] bg-white/5 flex items-center justify-center border border-white/10">
-              <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
+      <CardContent className="p-0 h-full flex flex-col items-center justify-center gap-0 relative z-10 w-full text-center">
+        {(loading || isInitialLoading) ? (
+          <Loader2 className="w-12 h-12 animate-spin text-primary" />
+        ) : (
+          <div className="flex flex-col items-center justify-center w-full">
+            {/* Today Number */}
+            <div className="relative">
+               <svg className="w-64 h-32 overflow-visible drop-shadow-[0_0_50px_rgba(0,0,0,1)]" viewBox="0 0 200 100">
+                 <defs>
+                   <linearGradient id="moonTextFill" x1="0%" y1="0%" x2="100%" y2="100%">
+                     <stop offset="0%" stopColor="rgba(255,255,255,1)" />
+                     <stop offset="100%" stopColor="rgba(255,255,255,0.4)" />
+                   </linearGradient>
+                 </defs>
+                 <text x="50%" y="50%" textAnchor="middle" dominantBaseline="central" className="font-black" style={{ fontSize: '80px' }} fill="url(#moonTextFill)">
+                   {displayValue}
+                 </text>
+               </svg>
             </div>
-          ) : (
-            <div className="relative w-full mx-auto">
-              <div className="absolute inset-0 flex flex-col items-center justify-center z-20 pointer-events-none transition-all duration-1000">
-                <div style={{ transform: isWide ? (cycleIndex === 0 ? 'scale(5.2)' : 'scale(3.2)') : 'scale(4.2)' }}>
-                  <svg className="w-full h-full overflow-visible" viewBox="0 0 100 100">
-                    <defs>
-                      <linearGradient id="moonFill" x1="100%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" stopColor="rgba(255,255,255,0.95)" />
-                        <stop offset="100%" stopColor="rgba(255,255,255,0)" />
-                      </linearGradient>
-                    </defs>
-                    <text 
-                      x="50%" y="50%" textAnchor="middle" dominantBaseline="central" className="font-black"
-                      style={{ fontSize: isWide ? (cycleIndex === 2 ? '16px' : '28px') : '30px' }} 
-                      fill="url(#moonFill)"
-                    >
-                      {displayValue}
-                    </text>
-                  </svg>
-                </div>
-                {/* Bigger Month Name directly under day */}
-                <span className="text-white/80 font-black tracking-widest mt-6 uppercase animate-in fade-in slide-in-from-bottom-2 duration-1000" style={{ fontFamily: 'dima-story, Aref Ruqaa', fontSize: isWide ? '4.2rem' : '3.2rem', filter: 'drop-shadow(0 0 20px rgba(0,0,0,0.8))' }}>
-                  {subLabel}
-                </span>
-              </div>
 
-              <div className="relative w-full overflow-hidden bg-black transition-transform group-hover:scale-105 duration-1000">
-                <Image 
-                  src={moonImageUrl} 
-                  alt={`Moon Phase ${hijriDay}`} 
-                  width={400}
-                  height={400}
-                  className="w-full h-auto transition-transform duration-1000 object-contain" 
-                  unoptimized 
-                  priority
-                />
-                <div className="absolute inset-0 bg-gradient-to-tr from-black/80 via-transparent to-white/5 pointer-events-none" />
-              </div>
-            </div>
-          )}
-        </div>
-        
-        <div className="flex flex-col items-center gap-1 w-full mt-2">
-          <div className="flex items-center gap-2 bg-white/5 px-5 py-1 rounded-full border border-white/10 backdrop-blur-md">
-            {cycleIndex === 0 ? <MoonIcon className="w-3.5 h-3.5 text-blue-400" /> : cycleIndex === 1 ? <Calendar className="w-3.5 h-3.5 text-emerald-400" /> : <Cloud className="w-3.5 h-3.5 text-orange-400" />}
-            <span className="text-[8px] font-black uppercase tracking-[0.3em] text-white/60">
-              {cycleIndex === 0 ? "Hijri Hub" : cycleIndex === 1 ? "Gregorian Hub" : "Weather Hub"}
+            {/* 3px Sovereign Line */}
+            <div className="h-[3px] w-32 bg-primary rounded-full my-4 shadow-glow" />
+
+            {/* Month Name - بخط dima-story ملكي ضخم */}
+            <span className="text-white font-black tracking-widest uppercase animate-in fade-in slide-in-from-bottom-4 duration-1000 leading-none" style={{ fontFamily: 'dima-story, Amiri', fontSize: isWide ? '5.5rem' : '4rem', filter: 'drop-shadow(0 0 40px rgba(0,0,0,1))' }}>
+              {subLabel}
             </span>
+
+            {/* Label Badge */}
+            <div className="mt-8 flex items-center gap-2 bg-black/60 px-6 py-2 rounded-full border border-white/10 backdrop-blur-md">
+               {cycleIndex === 0 ? <MoonIcon className="w-4 h-4 text-blue-400" /> : cycleIndex === 1 ? <Calendar className="w-4 h-4 text-emerald-400" /> : <Cloud className="w-4 h-4 text-orange-400" />}
+               <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/60">{label}</span>
+            </div>
           </div>
-          <h3 className="text-base font-black text-white leading-none drop-shadow-2xl">{label}</h3>
-        </div>
+        )}
       </CardContent>
     </div>
   );

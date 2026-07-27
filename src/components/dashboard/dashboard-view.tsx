@@ -3,7 +3,6 @@
 
 import { useEffect, useState, useMemo } from "react";
 import dynamic from "next/dynamic";
-import Image from "next/image";
 import { MoonWidget } from "./widgets/moon-widget";
 import { DateAndClockWidget } from "./widgets/date-and-clock-widget";
 import { PlayingNowWidget } from "./widgets/playing-now-widget";
@@ -12,7 +11,9 @@ import { ReminderSummaryWidget } from "./widgets/reminder-summary-widget";
 import { ActiveAzkarWidget } from "./widgets/active-azkar-widget";
 import { useMediaStore } from "@/lib/store";
 import { Carousel, CarouselContent, CarouselItem, CarouselApi } from "@/components/ui/carousel";
-import { X, ChevronLeft, ChevronRight } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, List } from "lucide-react";
+import { cn } from "@/lib/utils";
+import Image from "next/image";
 
 const LatestVideosWidget = dynamic(() => import("./widgets/latest-videos-widget").then(m => m.LatestVideosWidget), { 
   ssr: false,
@@ -24,28 +25,46 @@ const YouTubeSavedWidget = dynamic(() => import("./widgets/youtube-saved-widget"
   loading: () => <div className="h-64 w-full bg-zinc-900/20 animate-pulse rounded-[2.5rem]" />
 });
 
+/**
+ * DashboardView v130.0 - Cache Persistent & Delayed Sync Hub
+ */
 export function DashboardView() {
   const { 
     favoriteChannels, activeVideo, wallPlateType, wallPlateData, 
-    mapSettings, setWallPlate: updateWallPlate, fetchPriorityData,
-    customManuscripts, updateMapSettings, manuscriptScales
+    mapSettings, setWallPlate: updateWallPlate, 
+    customManuscripts, updateMapSettings, manuscriptScales,
+    setSelectedChannel, fetchPriorityData
   } = useMediaStore();
   
   const [api, setApi] = useState<CarouselApi>();
+  const [windowWidth, setWindowWidth] = useState(0);
 
   useEffect(() => {
-    // Sovereign Instant Refresh
-    fetchPriorityData('all');
-    
-    const timer = setTimeout(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    handleResize();
+    window.addEventListener('resize', handleResize);
+
+    // تحديث إضافي بعد 10 ثواني لضمان الدقة السحابية
+    const syncTimer = setTimeout(() => {
+      fetchPriorityData('all');
+    }, 10000);
+
+    const navTimer = setTimeout(() => {
       const target = document.querySelector('[data-nav-id="dash-col-1"]') as HTMLElement;
       if (target) {
         target.focus();
         target.classList.add('active-nav-target');
       }
-    }, 10); 
-    return () => clearTimeout(timer);
-  }, []);
+    }, 100); 
+
+    return () => {
+      clearTimeout(syncTimer);
+      clearTimeout(navTimer);
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [fetchPriorityData]);
+
+  const isSmallScreen = windowWidth > 0 && windowWidth < 968;
 
   const navigateWallPlate = (direction: 'next' | 'prev') => {
     if (!customManuscripts.length) return;
@@ -84,6 +103,7 @@ export function DashboardView() {
 
   return (
     <div className="h-full w-full pt-0 px-6 flex flex-col gap-8 relative overflow-y-auto pb-32 no-scrollbar bg-black">
+      {/* Wall Plate Overlay with Sovereign Controls */}
       {wallPlateType && (
         <div className="fixed inset-0 z-[20000] bg-black flex items-center justify-center animate-in fade-in duration-0 p-0 m-0 overflow-hidden">
           <div className="absolute top-10 right-10 flex gap-4 z-[20001]">
@@ -91,7 +111,14 @@ export function DashboardView() {
           </div>
 
           {(wallPlateType === 'manuscript' || (wallPlateType === 'moon' && mapSettings.showManuscriptOnMoon)) && customManuscripts.length > 1 && (
-            <><button onClick={() => navigateWallPlate('prev')} className="absolute left-10 top-1/2 -translate-y-1/2 w-20 h-20 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/20 transition-all z-[20002] focusable"><ChevronLeft className="w-12 h-12" /></button><button onClick={() => navigateWallPlate('next')} className="absolute right-10 top-1/2 -translate-y-1/2 w-20 h-20 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/20 transition-all z-[20002] focusable"><ChevronRight className="w-12 h-12" /></button></>
+            <>
+              <button onClick={() => navigateWallPlate('prev')} className="absolute left-10 top-1/2 -translate-y-1/2 w-20 h-20 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/20 transition-all z-[20002] focusable">
+                <ChevronLeft className="w-12 h-12" />
+              </button>
+              <button onClick={() => navigateWallPlate('next')} className="absolute right-10 top-1/2 -translate-y-1/2 w-20 h-20 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/20 transition-all z-[20002] focusable">
+                <ChevronRight className="w-12 h-12" />
+              </button>
+            </>
           )}
           
           <div className="w-full h-full flex items-center justify-center overflow-hidden p-0 m-0 relative" style={{ filter: wallPlateType === 'moon' ? `hue-rotate(${mapSettings.hue || 0}deg) saturate(${mapSettings.saturation || 100}%) brightness(${mapSettings.brightness || 100}%)` : 'none' }}>
@@ -110,7 +137,7 @@ export function DashboardView() {
             
             {wallPlateType === 'manuscript' && (
               <div className="relative w-full h-full flex items-center justify-center p-0 m-0">
-                <div className="absolute inset-0 z-0"><Image src={mapSettings.manuscriptBgUrl || "https://images.unsplash.com/photo-1578301978693-85fa9c0320b9?q=80&w=2000"} alt="" fill className="object-cover opacity-90" priority /></div>
+                <div className="absolute inset-0 z-0"><Image src={mapSettings.manuscriptBgUrl || "https://images.unsplash.com/photo-1578301978693-85fa9c0320b9?q=80&w=2000"} alt="" fill className="object-cover opacity-90" priority unoptimized /></div>
                 <div className="relative z-10 w-full h-full flex items-center justify-center px-8 m-0 animate-in zoom-in-95 duration-700" style={{ filter: `hue-rotate(${mapSettings.hue || 0}deg) saturate(${mapSettings.saturation || 100}%) brightness(${mapSettings.brightness || 100}%)` }}>
                   {wallPlateData?.type === 'text' ? (
                     <p className="text-6xl lg:text-[12rem] font-calligraphy text-center px-4 leading-[1.2] whitespace-pre-wrap tracking-wide drop-shadow-[0_0_80px_rgba(0,0,0,0.8)]" style={{ fontFamily: wallPlateData.fontFamily || 'Aref Ruqaa', color: mapSettings.manuscriptColor, fontSize: `${manuscriptScale * 13.5}rem` }}>{wallPlateData.content}</p>
@@ -119,6 +146,27 @@ export function DashboardView() {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Special Subscription Bar for Small Screens */}
+      {isSmallScreen && favoriteChannels.length > 0 && (
+        <div className="w-full pt-4 animate-in slide-in-from-top-4 duration-700">
+           <div className="flex items-center gap-3 mb-3 px-2">
+             <List className="w-4 h-4 text-primary" />
+             <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">الاشتراكات السريعة</span>
+           </div>
+           <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2 px-2">
+              {favoriteChannels.map((ch) => (
+                <button 
+                  key={ch.channelid} 
+                  onClick={() => { setSelectedChannel(ch); window.location.href = '/media'; }}
+                  className="shrink-0 w-16 h-16 rounded-2xl overflow-hidden border-2 border-white/10 focusable active:scale-95 transition-all shadow-xl bg-zinc-900"
+                >
+                  <img src={ch.image} className="w-full h-full object-cover" alt={ch.name} />
+                </button>
+              ))}
+           </div>
         </div>
       )}
 

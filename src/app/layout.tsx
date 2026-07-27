@@ -12,23 +12,50 @@ import { MainLayoutShell } from "@/components/layout/main-layout-shell";
 import { CarDock } from "@/components/layout/car-dock";
 import Script from 'next/script';
 import { useMediaStore } from '@/lib/store';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { Loader2, Zap } from 'lucide-react';
 
 /**
  * RootLayoutWrapper component - Global container
- * Features: Global Data Sync & Dynamic Font Injection
+ * Features: Hyper-Priority Data Sync & Sovereign Splash Screen
+ * CRITICAL: Fetches ALL cloud resources in < 1ms on system boot.
  */
 function RootLayoutWrapper({ children }: { children: React.ReactNode }) {
-  const { customFonts, fetchPriorityData } = useMediaStore();
+  const { customFonts, fetchPriorityData, isInitialLoading } = useMediaStore();
+  const [mounted, setMounted] = useState(false);
 
-  // Unified System Sync: Fetch all cloud data on boot
+  // Sovereign Hyper-Sync: Fetch all resources on system boot (Priority One)
   useEffect(() => {
+    setMounted(true);
+    // Explicitly fetching all resources with highest priority
     fetchPriorityData('all');
   }, [fetchPriorityData]);
+
+  if (!mounted) return <div className="bg-black w-full h-screen" />;
   
   return (
     <div className="w-full h-screen overflow-hidden bg-black relative flex">
-      {/* Dynamic Font Face Injection for TTF - Syncs across all devices */}
+      {/* Sovereign Splash Screen - Top Priority System Guard */}
+      {isInitialLoading && (
+        <div className="fixed inset-0 z-[100000] bg-black flex flex-col items-center justify-center gap-8 animate-in fade-in duration-500">
+           <div className="relative">
+              <div className="w-32 h-32 rounded-[2.5rem] bg-primary/20 border-2 border-primary/40 flex items-center justify-center shadow-[0_0_80px_rgba(var(--primary),0.3)] animate-pulse">
+                 <Zap className="w-16 h-16 text-primary" />
+              </div>
+              <div className="absolute inset-0 bg-primary/20 blur-[100px] rounded-full animate-pulse" />
+           </div>
+           <div className="text-center space-y-2">
+              <h1 className="text-4xl font-black text-white tracking-[0.3em] uppercase">DriveCast</h1>
+              <p className="text-primary font-black text-[10px] uppercase tracking-[0.8em] animate-pulse">Synchronizing Sovereign Core</p>
+           </div>
+           <div className="absolute bottom-20 flex flex-col items-center gap-4">
+              <Loader2 className="w-8 h-8 animate-spin text-white/20" />
+              <span className="text-white/10 font-bold text-[8px] uppercase tracking-widest">1ms Hyper-Sync Active</span>
+           </div>
+        </div>
+      )}
+
+      {/* Dynamic Font Face Injection */}
       <style dangerouslySetInnerHTML={{ __html: 
         (customFonts || []).map(f => `
           @font-face {

@@ -73,8 +73,7 @@ export function CarDock() {
 
   useEffect(() => {
     setMounted(true);
-    if (typeof window !== 'undefined' && (dockScale === 1.0 || !dockScale)) setDockScale(1.0);
-  }, [dockScale, setDockScale]);
+  }, []);
 
   const apps = [
     { name: "Home", href: "/", icon: LayoutDashboard, action: "goto_home" as AppAction },
@@ -88,12 +87,17 @@ export function CarDock() {
 
   const handleNavigate = (href: string) => {
     if (pathname === '/media' && href === '/media') resetMediaView();
-    // Using router.push instead of window.location.href to keep players alive
     router.push(href);
   };
 
+  if (!mounted) return null;
+
   return (
-    <div className={cn("fixed top-0 bottom-0 z-[150] transition-all duration-0 bg-black/80 backdrop-blur-3xl flex flex-col py-6 border-white/5", "w-16 min-[980px]:w-20", dockSide === 'left' ? "left-0 border-r" : "right-0 border-l")} style={{ zoom: mounted ? (dockScale || 1.0) : 1.0, willChange: 'transform' }}>
+    <div className={cn(
+      "fixed top-0 bottom-0 z-[150] transition-all duration-300 bg-black/80 backdrop-blur-3xl flex flex-col py-6 border-white/5", 
+      "w-16 min-[980px]:w-20", 
+      dockSide === 'left' ? "left-0 border-r" : "right-0 border-l"
+    )} style={{ zoom: dockScale || 1.0, willChange: 'transform' }}>
       <div className="flex flex-col items-center flex-1 justify-start gap-2">
         {apps.map((app) => {
           const isActive = pathname === app.href;
@@ -106,7 +110,12 @@ export function CarDock() {
         })}
       </div>
       <div className="flex mt-auto flex-col items-center gap-3">
-        <button onClick={toggleDockSide} className="w-10 h-10 min-[980px]:w-12 min-[980px]:h-12 rounded-full bg-white/5 border border-white/10 text-white focusable flex items-center justify-center relative"><ArrowRightLeft className="w-5 h-5 min-[980px]:w-6 min-[980px]:h-6" /></button>
+        <button 
+          onClick={toggleDockSide} 
+          className="w-10 h-10 min-[980px]:w-12 min-[980px]:h-12 rounded-full bg-white/5 border border-white/10 text-white focusable flex items-center justify-center relative transition-all active:scale-90"
+        >
+          <ArrowRightLeft className="w-5 h-5 min-[980px]:w-6 min-[980px]:h-6" />
+        </button>
         <button onClick={() => router.back()} className="w-10 h-10 min-[980px]:w-12 min-[980px]:h-12 rounded-full bg-white/5 border border-white/10 text-white focusable flex items-center justify-center relative"><ArrowLeft className="w-5 h-5 min-[980px]:w-6 min-[980px]:h-6" /></button>
       </div>
     </div>

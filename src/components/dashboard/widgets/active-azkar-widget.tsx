@@ -2,46 +2,52 @@
 "use client";
 
 import { useMediaStore } from "@/lib/store";
-import { useState, useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
-import { Maximize2, Plus, Minus } from "lucide-react";
-import useEmblaCarousel from "embla-carousel-react";
-import Autoplay from "embla-carousel-autoplay";
+import { Maximize2, ChevronLeft, ChevronRight } from "lucide-react";
 import Image from "next/image";
+import { useEffect, useState } from "react";
 
 /**
- * ActiveAzkarWidget v110.0 - Individual Scaling Module
- * Features: + and - controls for per-manuscript size customization saved per device.
+ * ActiveAzkarWidget v130.0 - Sovereign Cycling Engine
+ * Features: Cycles through manuscripts one by one to prevent overlap.
+ * Added: Next/Prev buttons for manual navigation.
  */
 export function ActiveAzkarWidget() {
   const customManuscripts = useMediaStore(state => state.customManuscripts);
   const manuscriptScales = useMediaStore(state => state.manuscriptScales);
-  const updateManuscriptScale = useMediaStore(state => state.updateManuscriptScale);
   const setWallPlate = useMediaStore(state => state.setWallPlate);
   const mapSettings = useMediaStore(state => state.mapSettings);
-  const [isPaused, setIsPaused] = useState(false);
-
-  const [emblaRef, emblaApi] = useEmblaCarousel({ 
-    loop: true, 
-    direction: 'rtl' 
-  }, [
-    Autoplay({ delay: 10000, stopOnInteraction: false, playOnInit: true })
-  ]);
-
-  const togglePause = () => {
-    if (!emblaApi) return;
-    const autoplay = emblaApi.plugins().autoplay;
-    if (isPaused) {
-      autoplay.play();
-    } else {
-      autoplay.stop();
-    }
-    setIsPaused(!isPaused);
-  };
+  
+  const [activeIndex, setActiveIndex] = useState(0);
 
   useEffect(() => {
-    if (emblaApi) emblaApi.reInit();
-  }, [emblaApi, customManuscripts]);
+    if (!customManuscripts?.length) return;
+    const interval = setInterval(() => {
+      setActiveIndex(prev => (prev + 1) % customManuscripts.length);
+    }, 15000); // Cycle every 15 seconds
+    return () => clearInterval(interval);
+  }, [customManuscripts]);
+
+  const activeItem = customManuscripts?.[activeIndex];
+
+  const getDynamicFontSize = (text: string, baseScale: number) => {
+    const length = text.length;
+    let base = 4.2;
+    if (length > 15) base = 3.5;
+    if (length > 25) base = 2.8;
+    if (length > 40) base = 2.0;
+    return `${baseScale * base}rem`;
+  };
+
+  const nextManu = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setActiveIndex(prev => (prev + 1) % customManuscripts.length);
+  };
+
+  const prevManu = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setActiveIndex(prev => (prev - 1 + customManuscripts.length) % customManuscripts.length);
+  };
 
   return (
     <div 
@@ -52,81 +58,95 @@ export function ActiveAzkarWidget() {
     >
       {mapSettings.showManuscriptBg && mapSettings.manuscriptBgUrl && (
         <div className="absolute inset-0 z-0">
-          <Image src={mapSettings.manuscriptBgUrl} alt="Card Background" fill className="object-cover opacity-60" priority unoptimized />
+          <Image src={mapSettings.manuscriptBgUrl} alt="Card Background" fill className="object-cover opacity-40" priority unoptimized />
         </div>
       )}
       
-      <div className="relative z-20 flex-1 flex flex-col items-center justify-center overflow-hidden no-scrollbar p-0 m-0">
-        <div className="w-full h-full overflow-hidden no-scrollbar" ref={emblaRef}>
-          <div className="flex h-full p-0 m-0">
-            {customManuscripts?.length > 0 ? (
-              customManuscripts.map((item, i) => {
-                const itemScale = manuscriptScales[item.id] || 1.0;
+      <div className="relative z-20 flex-1 w-full h-full p-0 m-0 overflow-hidden">
+        {activeItem ? (
+          <div className="contents">
+            {activeItem.type === 'text' && activeItem.words ? (
+              activeItem.words.map((word) => {
+                const itemScale = (word.scale || 1.0) * (manuscriptScales[activeItem.id] || 1.0);
                 return (
-                  <div key={item.id + i} className="flex-[0_0_100%] min-w-0 h-full flex items-center justify-center cursor-pointer relative p-0 m-0" onClick={() => togglePause()}>
-                    <div className="absolute top-6 left-6 flex items-center gap-3 z-50 opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-all">
-                      <button 
-                        className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/20 transition-all focusable"
-                        onClick={(e) => { e.stopPropagation(); setWallPlate('manuscript', item); }}
-                        title="Full Screen"
-                      >
-                        <Maximize2 className="w-6 h-6" />
-                      </button>
-                      <button 
-                        className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/40 hover:text-white transition-all focusable"
-                        onClick={(e) => { e.stopPropagation(); updateManuscriptScale(item.id, 0.1); }}
-                        title="Increase Size"
-                      >
-                        <Plus className="w-5 h-5" />
-                      </button>
-                      <button 
-                        className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/40 hover:text-white transition-all focusable"
-                        onClick={(e) => { e.stopPropagation(); updateManuscriptScale(item.id, -0.1); }}
-                        title="Decrease Size"
-                      >
-                        <Minus className="w-5 h-5" />
-                      </button>
-                    </div>
-
-                    <div className="animate-in fade-in zoom-in-95 duration-700 w-full h-full flex justify-center items-center p-0 m-0 px-12 overflow-hidden">
-                      {item.type === 'text' ? (
-                        <p 
-                          className="w-full font-calligraphy text-white leading-tight drop-shadow-[0_0_30px_rgba(255,255,255,0.8)] text-center tracking-normal whitespace-pre-wrap break-words"
-                          style={{ 
-                            fontFamily: item.fontFamily || 'Aref Ruqaa',
-                            fontSize: `${itemScale * 4.2}rem`
-                          }}
-                        >
-                          {item.content}
-                        </p>
-                      ) : (
-                        <img 
-                          src={item.content} 
-                          alt="Manuscript"
-                          className="h-full w-full object-contain p-0 m-0 transition-transform duration-500"
-                          style={{ 
-                            filter: 'brightness(0) invert(1) drop-shadow(0 0 30px rgba(255,255,255,0.8))',
-                            transform: `scale(${itemScale})`
-                          }}
-                        />
-                      )}
-                    </div>
-                    
-                    {isPaused && (
-                      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-white/10 px-4 py-1.5 rounded-full backdrop-blur-md border border-white/5 animate-pulse">
-                        <span className="text-[10px] text-white/60 font-black uppercase tracking-widest">Paused</span>
-                      </div>
-                    )}
+                  <div 
+                    key={word.id} 
+                    style={{ 
+                      position: 'absolute', 
+                      left: `${word.x}%`, 
+                      top: `${word.y}%`, 
+                      transform: 'translate(-50%, -50%)',
+                      width: 'max-content',
+                    }}
+                    className="animate-in fade-in zoom-in-95 duration-700 flex items-center justify-center p-0 m-0"
+                  >
+                    <p 
+                      className="font-calligraphy text-white leading-none drop-shadow-[0_0_30px_rgba(255,255,255,0.6)] text-center tracking-normal whitespace-nowrap"
+                      style={{ 
+                        fontFamily: activeItem.fontFamily || 'Aref Ruqaa',
+                        fontSize: getDynamicFontSize(word.text, itemScale)
+                      }}
+                    >
+                      {word.text}
+                    </p>
                   </div>
                 );
               })
             ) : (
-              <div className="flex-[0_0_100%] flex items-center justify-center opacity-20">
-                <p className="text-white font-black uppercase tracking-widest text-xs">أضف محتوى من الإعدادات</p>
+              <div 
+                style={{ 
+                  position: 'absolute', 
+                  left: `${activeItem.x ?? 50}%`, 
+                  top: `${activeItem.y ?? 50}%`, 
+                  transform: 'translate(-50%, -50%)',
+                }}
+                className="animate-in fade-in zoom-in-95 duration-700"
+              >
+                {activeItem.type === 'image' && (
+                  <img 
+                    src={activeItem.content} 
+                    alt="Manuscript"
+                    className="object-contain p-0 m-0"
+                    style={{ 
+                      filter: 'brightness(0) invert(1) drop-shadow(0 0 30px rgba(255,255,255,0.6))',
+                      maxHeight: '400px',
+                      transform: `scale(${(activeItem.scale || 1.0) * (manuscriptScales[activeItem.id] || 1.0)})`
+                    }}
+                  />
+                )}
               </div>
             )}
           </div>
-        </div>
+        ) : (
+          <div className="w-full h-full flex items-center justify-center opacity-20">
+            <p className="text-white font-black uppercase tracking-widest text-xs">أضف محتوى من الإعدادات</p>
+          </div>
+        )}
+      </div>
+
+      {/* Sovereign Navigation Buttons */}
+      <div className="absolute bottom-6 left-6 flex items-center gap-3 z-50 opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-all">
+        <button 
+          className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/40 hover:text-white transition-all focusable shadow-glow"
+          onClick={prevManu}
+          title="المخطوطة السابقة"
+        >
+          <ChevronRight className="w-6 h-6" />
+        </button>
+        <button 
+          className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/40 hover:text-white transition-all focusable shadow-glow"
+          onClick={nextManu}
+          title="المخطوطة التالية"
+        >
+          <ChevronLeft className="w-6 h-6" />
+        </button>
+        <div className="w-px h-6 bg-white/10 mx-1" />
+        <button 
+          className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/40 hover:text-white transition-all focusable shadow-glow"
+          onClick={() => activeItem && setWallPlate('manuscript', activeItem)}
+        >
+          <Maximize2 className="w-6 h-6" />
+        </button>
       </div>
     </div>
   );

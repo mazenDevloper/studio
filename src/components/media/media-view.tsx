@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -95,14 +95,16 @@ function AddContentModal({
   );
 }
 
+/**
+ * MediaView v130.0 - Sovereign Delayed Sync Engine
+ */
 export function MediaView() {
   const searchParams = useSearchParams();
   const { 
     favoriteChannels, addChannel, setActiveVideo, dockSide, isSidebarShrinked, setIsSidebarShrinked,
     selectedChannel, setSelectedChannel, channelVideos, setChannelVideos,
     favoriteReciters, addReciter, toggleSaveVideo, savedVideos, videoProgress,
-    fetchPriorityData, isReorderMode, toggleReorderMode, reorderChannel, moveChannelToTop,
-    saveChannelsReorder
+    fetchPriorityData, isReorderMode, toggleReorderMode
   } = useMediaStore();
 
   const { toast } = useToast();
@@ -128,7 +130,7 @@ export function MediaView() {
   const [selectedJuz, setSelectedJuz] = useState<number | null>(null);
 
   const isDockLeft = dockSide === 'left';
-  const isSmallScreen = windowWidth < 968;
+  const isSmallScreen = windowWidth > 0 && windowWidth < 968;
 
   const fetchFeeds = useCallback(async () => {
     if (!favoriteChannels.length) return;
@@ -157,16 +159,25 @@ export function MediaView() {
   }, [favoriteChannels]);
 
   useEffect(() => {
-    fetchPriorityData('media');
     fetchFeeds();
     
+    // تحديث إضافي بعد 10 ثواني لضمان الدقة السحابية
+    const syncTimer = setTimeout(() => {
+      fetchPriorityData('all');
+      fetchFeeds();
+    }, 10000);
+
     const handleResize = () => setWindowWidth(window.innerWidth);
     handleResize();
     window.addEventListener('resize', handleResize);
     fetch("https://api.quran.com/api/v4/chapters?language=ar").then(r => r.json()).then(d => setSurahs(d.chapters || []));
     const q = searchParams.get('q');
     if (q) { setSearch(q); performSearch(q); }
-    return () => window.removeEventListener('resize', handleResize);
+    
+    return () => {
+      clearTimeout(syncTimer);
+      window.removeEventListener('resize', handleResize);
+    }
   }, [searchParams, fetchPriorityData, fetchFeeds]);
 
   const performSearch = async (overrideQuery?: string) => {
@@ -236,7 +247,7 @@ export function MediaView() {
 
   return (
     <div className={cn("h-screen flex bg-transparent overflow-hidden relative", isDockLeft ? "flex-row-reverse" : "flex-row")}>
-      {!isSmallScreen && (
+      {!isSmallScreen ? (
         <aside className={cn("h-full z-[110] transition-all duration-0 premium-glass flex flex-col shrink-0 border-white/5 bg-black/40 shadow-2xl", isSidebarShrinked ? "w-[6%]" : "w-[28%]", isDockLeft ? "border-l" : "border-r")}>
           <div className="p-4 flex items-center justify-between border-b border-white/5">
             {!isSidebarShrinked && (
@@ -256,23 +267,49 @@ export function MediaView() {
             ))}
           </div>
         </aside>
-      )}
+      ) : null}
 
       <main className="flex-1 overflow-y-auto custom-scrollbar relative pt-0 pb-40 px-10 no-scrollbar" style={{ direction: 'rtl' }}>
+        {isSmallScreen && (
+          <div className="w-full py-4 mb-4 animate-in fade-in slide-in-from-top-2 duration-500">
+             <div className="flex items-center justify-between mb-4">
+               <div className="flex items-center gap-3">
+                 <List className="w-5 h-5 text-primary" />
+                 <span className="text-sm font-black text-white/60 uppercase tracking-widest">القنوات والاشتراكات</span>
+               </div>
+               <button onClick={() => setIsAddChannelOpen(true)} className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center border border-primary/20 focusable"><Plus className="w-5 h-5 text-primary" /></button>
+             </div>
+             <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2">
+                <button 
+                  onClick={resetView} 
+                  className={cn("shrink-0 px-8 h-12 rounded-full border border-white/10 font-black text-sm flex items-center gap-2 transition-all", !selectedChannel ? "bg-primary text-white border-primary shadow-glow" : "bg-white/5 text-white/40")}
+                >
+                  الكل
+                </button>
+                {favoriteChannels.map((ch) => (
+                  <button 
+                    key={ch.channelid} 
+                    onClick={() => { setSearchResults([]); setSelectedChannel(ch); }}
+                    className={cn(
+                      "shrink-0 px-6 h-12 rounded-full border border-white/10 font-black text-sm flex items-center gap-3 transition-all",
+                      selectedChannel?.channelid === ch.channelid ? "bg-primary text-white border-primary shadow-glow" : "bg-white/5 text-white/40"
+                    )}
+                  >
+                    <img src={ch.image} className="w-6 h-6 rounded-full object-cover border border-white/10" alt="" />
+                    {ch.name}
+                  </button>
+                ))}
+             </div>
+          </div>
+        )}
+
         {!showIsolatedView ? (
           <>
             <section data-row-id="row-search" className="py-2"><div className="flex items-center gap-3 w-full"><Input placeholder="ابحث عن تلاوات، أهداف، أو فيديوهات..." value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && performSearch()} className="h-16 bg-white/5 border-none rounded-[2rem] pr-10 text-xl font-bold text-right focusable text-white flex-1" data-nav-id="main-search-input" /><button onClick={() => performSearch()} className="h-16 px-10 rounded-[2rem] bg-red-600 text-white font-black text-lg focusable flex items-center shrink-0 relative"><Youtube className="w-6 h-6 ml-3" /> استكشاف</button></div></section>
             
             <section data-row-id="row-styles" className={rowWrapperClass}>
               <div className={horizontalListClass}>
-                <button 
-                  onClick={() => handleStyleClick("ربط الآيات")} 
-                  className={cn(itemScaleClass, "px-8 py-4 rounded-full font-bold text-sm focusable border-2 text-white bg-blue-600 border-blue-400 shadow-[0_0_20px_rgba(37,99,235,0.4)]")} 
-                  tabIndex={0}
-                  data-nav-id="style-link-verses"
-                >
-                  ربط الآيات
-                </button>
+                <button onClick={() => handleStyleClick("ربط الآيات")} className={cn(itemScaleClass, "px-8 py-4 rounded-full font-bold text-sm focusable border-2 text-white bg-blue-600 border-blue-400 shadow-[0_0_20px_rgba(37,99,235,0.4)]")} tabIndex={0} data-nav-id="style-link-verses">ربط الآيات</button>
                 <button onClick={() => { setSelectedStyle(null); }} className={cn(itemScaleClass, "px-8 py-4 rounded-full font-black text-sm focusable border-2 text-white", !selectedStyle ? "bg-primary border-primary/40" : "bg-white/5 border-transparent")} tabIndex={0} data-nav-id="style-all">الكل</button>
                 {READING_STYLES.map((style, i) => (<button key={style} data-nav-id={`style-${i}`} onClick={() => handleStyleClick(style)} className={cn(itemScaleClass, "px-8 py-4 rounded-full font-black text-sm focusable border-2 text-white", selectedStyle === style ? "bg-primary border-primary/40 shadow-glow" : "bg-white/5 border-white/5")} tabIndex={0}>{style}</button>))}
               </div>
@@ -280,80 +317,17 @@ export function MediaView() {
             
             <section data-row-id="row-reciters" className={rowWrapperClass}>
               <div className={cn(horizontalListClass, "gap-8")}>
-                <button 
-                  onClick={() => setIsAddReciterOpen(true)} 
-                  className="flex flex-col items-center gap-4 px-4 py-2 rounded-[2rem] focusable border-2 border-transparent hover:bg-emerald-600/10 transition-all duration-500 focus:z-50 shrink-0" 
-                  tabIndex={0} 
-                  data-nav-id="reciter-add"
-                >
-                  <div className="w-40 h-40 rounded-full flex items-center justify-center bg-emerald-500/10 border-4 border-dashed border-emerald-500/30 text-emerald-400">
-                    <Plus className="w-12 h-12" />
-                  </div>
-                </button>
-                {favoriteReciters.map((r, i) => (
-                  <button 
-                    key={r.channelid + i} 
-                    onClick={() => handleReciterClick(r.name)} 
-                    className={cn("flex flex-col items-center gap-4 px-4 py-2 rounded-[2rem] focusable border-2 transition-all duration-500 focus:z-50 shrink-0 relative group", selectedReciter === r.name ? "border-emerald-500 bg-emerald-500/10" : "border-transparent hover:bg-emerald-600/10")} 
-                    tabIndex={0} 
-                    data-nav-id={`reciter-${i}`}
-                  >
-                    <div className="w-40 h-40 rounded-full overflow-hidden border-4 border-emerald-500/30 shadow-2xl">
-                      <img src={r.image} className="w-full h-full object-cover" alt="" />
-                    </div>
-                    <span className="text-xl font-black truncate max-w-[200px] text-white">
-                      {r.name}
-                    </span>
-                  </button>
-                ))}
+                <button onClick={() => setIsAddReciterOpen(true)} className="flex flex-col items-center gap-4 px-4 py-2 rounded-[2rem] focusable border-2 border-transparent hover:bg-emerald-600/10 transition-all duration-500 focus:z-50 shrink-0" tabIndex={0} data-nav-id="reciter-add"><div className="w-40 h-40 rounded-full flex items-center justify-center bg-emerald-500/10 border-4 border-dashed border-emerald-500/30 text-emerald-400"><Plus className="w-12 h-12" /></div></button>
+                {favoriteReciters.map((r, i) => (<button key={r.channelid + i} onClick={() => handleReciterClick(r.name)} className={cn("flex flex-col items-center gap-4 px-4 py-2 rounded-[2rem] focusable border-2 transition-all duration-500 focus:z-50 shrink-0 relative group", selectedReciter === r.name ? "border-emerald-500 bg-emerald-500/10" : "border-transparent hover:bg-emerald-600/10")} tabIndex={0} data-nav-id={`reciter-${i}`}><div className="w-40 h-40 rounded-full overflow-hidden border-4 border-emerald-500/30 shadow-2xl"><img src={r.image} className="w-full h-full object-cover" alt="" /></div><span className="text-xl font-black truncate max-w-[200px] text-white">{r.name}</span></button>))}
               </div>
             </section>
 
             <section data-row-id="row-juz" className={rowWrapperClass}>
-              <div className={horizontalListClass}>
-                <div className="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-full border border-white/10 shrink-0">
-                  <Layers className="w-4 h-4 text-accent" />
-                  <span className="text-[10px] font-black text-white/40 uppercase">الأجزاء</span>
-                </div>
-                {[...Array(30).keys()].map(i => {
-                  const juzNum = i + 1;
-                  return (
-                    <button 
-                      key={`juz-${juzNum}`} 
-                      onClick={() => handleJuzClick(juzNum)} 
-                      className={cn(
-                        itemScaleClass, 
-                        "px-8 py-4 rounded-full text-white font-black text-sm focusable border-2 transition-all",
-                        selectedJuz === juzNum ? "bg-white text-black border-white shadow-glow" : JUZ_COLORS[i]
-                      )} 
-                      tabIndex={0}
-                      data-nav-id={`juz-${juzNum}`}
-                    >
-                      الجزء {juzNum}
-                    </button>
-                  );
-                })}
-              </div>
+              <div className={horizontalListClass}><div className="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-full border border-white/10 shrink-0"><Layers className="w-4 h-4 text-accent" /><span className="text-[10px] font-black text-white/40 uppercase">الأجزاء</span></div>{[...Array(30).keys()].map(i => { const juzNum = i + 1; return (<button key={`juz-${juzNum}`} onClick={() => handleJuzClick(juzNum)} className={cn(itemScaleClass, "px-8 py-4 rounded-full text-white font-black text-sm focusable border-2 transition-all", selectedJuz === juzNum ? "bg-white text-black border-white shadow-glow" : JUZ_COLORS[i])} tabIndex={0} data-nav-id={`juz-${juzNum}`}>الجزء {juzNum}</button>); })}</div>
             </section>
 
             <section data-row-id="row-surahs" className={rowWrapperClass}>
-              <div className={horizontalListClass}>
-                {surahs.map((s, i) => (
-                  <button 
-                    key={i} 
-                    data-nav-id={`surah-${i}`} 
-                    onClick={() => handleSurahClick(s.name_arabic)} 
-                    className={cn(
-                      itemScaleClass, 
-                      "px-10 py-5 rounded-full border text-white font-black text-sm hover:bg-blue-600/20 focusable transition-all", 
-                      selectedSurah === s.name_arabic ? "bg-blue-600 border-blue-400 shadow-glow" : getSurahColorClass(i)
-                    )} 
-                    tabIndex={0}
-                  >
-                    {s.name_arabic}
-                  </button>
-                ))}
-              </div>
+              <div className={horizontalListClass}>{surahs.map((s, i) => (<button key={i} data-nav-id={`surah-${i}`} onClick={() => handleSurahClick(s.name_arabic)} className={cn(itemScaleClass, "px-10 py-5 rounded-full border text-white font-black text-sm hover:bg-blue-600/20 focusable transition-all", selectedSurah === s.name_arabic ? "bg-blue-600 border-blue-400 shadow-glow" : getSurahColorClass(i))} tabIndex={0}>{s.name_arabic}</button>))}</div>
             </section>
 
             <section data-row-id="row-vids-starred" className={rowWrapperClass}><div className={horizontalListClass}>{starredVideos.map((v, idx) => (<div key={v.id + idx} data-nav-id={`row-starred-video-${idx}`} onClick={() => setActiveVideo(v, starredVideos)} className={cn(itemScaleClass, "w-72 group relative overflow-hidden bg-zinc-900/80 border border-white/10 rounded-[1.8rem] focusable cursor-pointer shadow-2xl")} tabIndex={0}><div className="aspect-video relative overflow-hidden"><img src={v.thumbnail} className="w-full h-full object-cover" alt="" /></div><div className="p-4 text-right"><h3 className="font-bold text-xs truncate text-white">{v.title}</h3></div></div>))}</div></section>

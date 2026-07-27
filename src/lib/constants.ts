@@ -1,4 +1,3 @@
-
 export const AI_ASSISTANT_API_KEY = 'AIzaSyBMmtON9ww4dJxMHrl1wKyWTvI0ipJXJws'; 
 export const WEATHER_API_KEY = '7acefc26deee4904a2393917252207'; 
 export const GOOGLE_MAPS_API_KEY = 'AIzaSyBRqAHJ2elbE_Z7NXXYC50XZpqi6HbG6Rk';
@@ -8,7 +7,6 @@ export const FOOTBALL_API_BASE_URL = 'https://v3.football.api-sports.io';
 export const YT_KEYS_POOL = [
   "AIzaSyCANadeSR-riPkSf7wEJGSfJQREIn7dTi4",
   "AIzaSyBQj0_RN0bVEYcPcmII709P3-BUGKCcClM",
-  "AIzaSyCANadeSR-riPkSf7wEJGSfJQREIn7dTi4",
   "AIzaSyBiR5Aw4N5sawPfiBjx1YvnxCD4MQOTDUk",
   "AIzaSyD3gFYKChgOrYCrJeYP_zu6AolEh2ZEpvU",
   "AIzaSyBBr2Wszx3vI1CZ09FcKl40tp4e3RSTd84", 
@@ -37,14 +35,17 @@ export const YT_KEYS_POOL = [
 ];
 
 export const JSONBIN_MASTER_KEY = '$2a$10$SYrYv.ct8hiMU9YeUxEQ.ecRkOrTqs.TDchJRV3wW.aKJnDXy2oVy';
+
+// المصادر السحابية السيادية الثلاثة المعتمدة
+export const JSONBIN_IPTV_FAVS_BIN_ID = '69a87b8bd0ea881f40eeec0c'; 
+export const JSONBIN_MASTER_BIN_ID = '69c782cbb7ec241ddcb0b99a'; 
+export const JSONBIN_BACKGROUNDS_BIN_ID = '69b63cb1c3097a1dd5278bf4'; 
+
+// المصادر الفرعية
 export const JSONBIN_CHANNELS_BIN_ID = '68ef1b3dd0ea881f40a38bd1'; 
 export const JSONBIN_SAVED_VIDEOS_BIN_ID = '68e4ac20d0ea881f4098138c'; 
-export const JSONBIN_IPTV_FAVS_BIN_ID = '69a87b8bd0ea881f40eeec0c'; 
 export const JSONBIN_PRAYER_TIMES_BIN_ID = '69a00f6eae596e708f4b7291'; 
 export const JSONBIN_MANUSCRIPTS_BIN_ID = '69b63c5cc3097a1dd5278b25'; 
-export const JSONBIN_MASTER_BIN_ID = '69c782cbb7ec241ddcb0b99a'; 
-export const JSONBIN_MATCHES_SCHEDULE_BIN_ID = '69c782cbb7ec241ddcb0b99a'; // Point to Master for schedule integration
-export const JSONBIN_CLUBS_CACHE_BIN_ID = '69b6a00bc3097a1dd527b3fa';
 export const JSONBIN_POPULAR_RECITERS_BIN_ID = '6909c1cd43b1c97be997b522';
 
 export const prayerTimesData = [
@@ -67,9 +68,6 @@ export function convertTo12Hour(time24h: string | undefined): string {
     return `${hours12}:${minutes}`;
 }
 
-/**
- * Advanced Display Number Logic: Skips navigation-dangerous combinations.
- */
 export const getDisplayNumber = (index: number) => {
   const blockedDigits = [2, 4, 5, 6, 8];
   let currentNum = 11;
