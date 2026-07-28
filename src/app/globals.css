@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -33,24 +32,33 @@
     @apply border-border;
     -webkit-tap-highlight-color: transparent !important;
     outline: none !important;
-    transition-duration: 0ms !important; /* Zero Latency Global Enforcement */
+    /* Zero Latency Sovereign Enforcement */
+    transition-duration: 0ms !important;
+    transition-delay: 0ms !important;
+    animation-duration: 0ms !important;
   }
+  
+  /* Essential animations only */
+  .animate-spin, .animate-pulse, .animate-bounce {
+    animation-duration: 1s !important;
+  }
+
   body {
     @apply bg-background text-foreground font-body w-full h-screen overflow-hidden;
     background: radial-gradient(circle at 50% 50%, #0a0a1a 0%, #000000 100%);
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
   }
+  
   button, [role="button"] {
     @apply active:scale-95;
     transition: none !important;
   }
 }
 
-/* Optimized for Speed */
 .premium-glass {
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0) 100%);
-  backdrop-filter: blur(25px); /* Reduced for performance */
+  backdrop-filter: blur(25px);
   -webkit-backdrop-filter: blur(25px);
   position: relative;
   overflow: hidden;
@@ -79,6 +87,3 @@
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
 .shadow-glow { box-shadow: 0 0 35px #0088ff, 0 0 10px rgba(0, 136, 255, 0.5); }
-
-@keyframes marquee-end { 0% { transform: translateX(0); } 100% { transform: translateX(-30%); } }
-.animate-marquee-end { animation: marquee-end 3s ease-in-out forwards; }

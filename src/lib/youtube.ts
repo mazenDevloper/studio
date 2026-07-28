@@ -122,7 +122,7 @@ async function fetchWithRotation(endpoint: string, params: Record<string, string
   return null;
 }
 
-export async function searchYouTubeVideos(query: string, limit = 20): Promise<YouTubeVideo[]> {
+export async function searchYouTubeVideos(query: string, limit = 40): Promise<YouTubeVideo[]> {
   const data = await fetchWithRotation('search', {
     part: 'snippet',
     q: query,
@@ -177,7 +177,7 @@ export async function searchYouTubeVideos(query: string, limit = 20): Promise<Yo
   return results.sort((a, b) => (a.isLive === b.isLive) ? 0 : a.isLive ? -1 : 1);
 }
 
-export async function fetchChannelVideos(channelId: string, limit = 15): Promise<YouTubeVideo[]> {
+export async function fetchChannelVideos(channelId: string, limit = 30): Promise<YouTubeVideo[]> {
   const [liveSearchData, chanData] = await Promise.all([
     fetchWithRotation('search', { part: 'snippet', channelId, eventType: 'live', type: 'video', maxResults: '2' }),
     fetchWithRotation('channels', { part: 'contentDetails,snippet', id: channelId })

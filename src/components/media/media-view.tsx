@@ -96,7 +96,7 @@ function AddContentModal({
 }
 
 /**
- * MediaView v130.0 - Sovereign Delayed Sync Engine
+ * MediaView v140.0 - Unified Small Screen Top Bar & Interaction
  */
 export function MediaView() {
   const searchParams = useSearchParams();
@@ -270,33 +270,29 @@ export function MediaView() {
       ) : null}
 
       <main className="flex-1 overflow-y-auto custom-scrollbar relative pt-0 pb-40 px-10 no-scrollbar" style={{ direction: 'rtl' }}>
-        {isSmallScreen && (
+        {isSmallScreen && favoriteChannels.length > 0 && (
           <div className="w-full py-4 mb-4 animate-in fade-in slide-in-from-top-2 duration-500">
-             <div className="flex items-center justify-between mb-4">
+             <div className="flex items-center justify-between mb-4 px-2">
                <div className="flex items-center gap-3">
-                 <List className="w-5 h-5 text-primary" />
-                 <span className="text-sm font-black text-white/60 uppercase tracking-widest">القنوات والاشتراكات</span>
+                 <List className="w-4 h-4 text-primary" />
+                 <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">الاشتراكات السريعة</span>
                </div>
-               <button onClick={() => setIsAddChannelOpen(true)} className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center border border-primary/20 focusable"><Plus className="w-5 h-5 text-primary" /></button>
+               <div className="flex gap-2">
+                 <button onClick={resetView} className={cn("px-4 py-1.5 rounded-full text-[10px] font-black transition-all", !selectedChannel ? "bg-primary text-white shadow-glow" : "bg-white/5 text-white/20")}>الكل</button>
+                 <button onClick={() => setIsAddChannelOpen(true)} className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center border border-primary/20 focusable"><Plus className="w-4 h-4 text-primary" /></button>
+               </div>
              </div>
-             <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2">
-                <button 
-                  onClick={resetView} 
-                  className={cn("shrink-0 px-8 h-12 rounded-full border border-white/10 font-black text-sm flex items-center gap-2 transition-all", !selectedChannel ? "bg-primary text-white border-primary shadow-glow" : "bg-white/5 text-white/40")}
-                >
-                  الكل
-                </button>
+             <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2 px-2">
                 {favoriteChannels.map((ch) => (
                   <button 
                     key={ch.channelid} 
                     onClick={() => { setSearchResults([]); setSelectedChannel(ch); }}
                     className={cn(
-                      "shrink-0 px-6 h-12 rounded-full border border-white/10 font-black text-sm flex items-center gap-3 transition-all",
-                      selectedChannel?.channelid === ch.channelid ? "bg-primary text-white border-primary shadow-glow" : "bg-white/5 text-white/40"
+                      "shrink-0 w-16 h-16 rounded-2xl overflow-hidden border-2 transition-all shadow-xl bg-zinc-900",
+                      selectedChannel?.channelid === ch.channelid ? "border-primary shadow-glow scale-110" : "border-white/10"
                     )}
                   >
-                    <img src={ch.image} className="w-6 h-6 rounded-full object-cover border border-white/10" alt="" />
-                    {ch.name}
+                    <img src={ch.image} className="w-full h-full object-cover" alt="" />
                   </button>
                 ))}
              </div>

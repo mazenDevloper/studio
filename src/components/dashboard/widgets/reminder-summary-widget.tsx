@@ -17,6 +17,7 @@ interface ReminderItem {
   icon: any;
   color: string;
   targetTimeStr: string;
+  endTimeStr?: string;
   window: number;
   isNearingEnd?: boolean;
 }
@@ -100,7 +101,9 @@ export function ReminderSummaryWidget() {
               list.push({ 
                 id: rem.id, name: rem.label, label: "تذكير", diff: sDiff, expDiff: eDiff,
                 icon: rem.iconType === 'play' ? Timer : Bell, color: rem.color, 
-                targetTimeStr: formatTargetTime(startSecs), window: windowSecs,
+                targetTimeStr: formatTargetTime(startSecs), 
+                endTimeStr: formatTargetTime(endSecs),
+                window: windowSecs,
                 isNearingEnd: eDiff > 0 && eDiff <= 600
               });
             }
@@ -140,7 +143,13 @@ export function ReminderSummaryWidget() {
 
         return (
           <div key={rem.id + idx} className={cn("flex flex-col items-center justify-center relative py-1 w-full", idx < processedReminders.length - 1 ? "border-b border-white/5" : "", idx === 0 ? "opacity-100" : "opacity-50")}>
-            <div className="flex items-center gap-3 mb-[-4px]"><RemIcon className={cn("w-6 h-6", rem.isNearingEnd ? "text-red-500 animate-pulse" : rem.color)} /><span className={cn("text-2xl font-black uppercase", rem.isNearingEnd ? "text-red-500" : rem.color)}>{rem.name}</span></div>
+            <div className="flex items-center gap-3 mb-[-4px]">
+               <RemIcon className={cn("w-6 h-6", rem.isNearingEnd ? "text-red-500 animate-pulse" : rem.color)} />
+               <span className={cn("text-2xl font-black uppercase", rem.isNearingEnd ? "text-red-500" : rem.color)}>{rem.name}</span>
+               {rem.endTimeStr && !showCountdown && !showEndCountdown && (
+                 <span className="text-[10px] text-white/20 font-bold ml-2">حتى {rem.endTimeStr}</span>
+               )}
+            </div>
             <div className={cn("w-[95%] px-2", (idx === 0 && (showCountdown || showEndCountdown)) ? "h-24" : "h-16")}><GlassNumber text={displayVal} id={`sum-${rem.id}`} size={(idx === 0 && (showCountdown || showEndCountdown)) ? "5.5rem" : "4.5rem"} /></div>
           </div>
         );

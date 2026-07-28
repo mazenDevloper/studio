@@ -1,4 +1,3 @@
-
 "use client";
 
 import { create } from "zustand";
@@ -191,6 +190,7 @@ interface MediaState {
   reorderChannelTo: (fromId: string, toId: string) => void;
   addReciter: (channel: YouTubeChannel) => void;
   removeReciter: (channelid: string) => void;
+  updateReciterName: (channelid: string, newName: string) => void;
   reorderReciter: (fromId: string, direction: 'prev' | 'next') => void;
   reorderReciterTo: (fromId: string, toId: string) => void;
   toggleSaveVideo: (video: YouTubeVideo) => void;
@@ -301,9 +301,6 @@ export const useMediaStore = create<MediaState>()(
       setSelectedChannel: (v) => set({ selectedChannel: v }), setChannelVideos: (v) => set({ channelVideos: v }), setVideoResults: (v) => set({ videoResults: v }),
 
       fetchPriorityData: async (context) => {
-        // لا تظهر شاشة التحميل إذا كانت هناك بيانات في الكاش (لكن اظهرها في البوت الأول)
-        if (get().customManuscripts.length === 0) set({ isInitialLoading: true });
-        
         const fetchB = async (id: string) => { 
           try { 
             const r = await fetch(`https://api.jsonbin.io/v3/b/${id}/latest`, { 
@@ -314,6 +311,7 @@ export const useMediaStore = create<MediaState>()(
           } catch { return null; } 
         };
         
+        // Parallel fetch for speed
         const results = await Promise.allSettled([
           fetchB(JSONBIN_PRAYER_TIMES_BIN_ID), 
           fetchB(JSONBIN_MANUSCRIPTS_BIN_ID), 
@@ -352,10 +350,10 @@ export const useMediaStore = create<MediaState>()(
         });
       },
 
-      saveIptvReorder: async () => await updateBin(JSONBIN_IPTV_FAVS_BIN_ID, get().favoriteIptvChannels),
-      saveChannelsReorder: async () => await updateBin(JSONBIN_CHANNELS_BIN_ID, get().favoriteChannels),
-      saveRecitersReorder: async () => await updateBin(JSONBIN_POPULAR_RECITERS_BIN_ID, get().favoriteReciters),
-      saveManuscriptsReorder: async () => await updateBin(JSONBIN_MANUSCRIPTS_BIN_ID, get().customManuscripts),
+      saveIptvReorder: async () => await updateBin(JSONBIN_IPTV_FAVS_BIN_ID, { channels: get().favoriteIptvChannels }),
+      saveChannelsReorder: async () => await updateBin(JSONBIN_CHANNELS_BIN_ID, { channels: get().favoriteChannels }),
+      saveRecitersReorder: async () => await updateBin(JSONBIN_POPULAR_RECITERS_BIN_ID, { reciters: get().favoriteReciters }),
+      saveManuscriptsReorder: async () => await updateBin(JSONBIN_MANUSCRIPTS_BIN_ID, { manuscripts: get().customManuscripts }),
 
       addChannel: (ch) => set((s) => { const n = [...s.favoriteChannels.filter(i => i.channelid !== ch.channelid), { ...ch, starred: false }]; setTimeout(() => get().saveChannelsReorder(), 100); return { favoriteChannels: n }; }),
       removeChannel: (id) => set((s) => { const n = s.favoriteChannels.filter(i => i.channelid !== id); setTimeout(() => get().saveChannelsReorder(), 100); return { favoriteChannels: n }; }),
@@ -364,6 +362,7 @@ export const useMediaStore = create<MediaState>()(
       
       addReciter: (r) => set((s) => { const n = [...s.favoriteReciters.filter(i => i.channelid !== r.channelid), r]; setTimeout(() => get().saveRecitersReorder(), 100); return { favoriteReciters: n }; }),
       removeReciter: (id) => set((s) => { const n = s.favoriteReciters.filter(i => i.channelid !== id); setTimeout(() => get().saveRecitersReorder(), 100); return { favoriteReciters: n }; }),
+      updateReciterName: (id, name) => set((s) => { const n = s.favoriteReciters.map(r => r.channelid === id ? { ...r, name } : r); setTimeout(() => get().saveRecitersReorder(), 100); return { favoriteReciters: n }; }),
       reorderReciter: (id, dir) => set((s) => { const l = [...s.favoriteReciters], idx = l.findIndex(r => r.channelid === id); if (idx === -1) return s; const nIdx = dir === 'next' ? idx + 1 : idx - 1; if (nIdx < 0 || nIdx >= l.length) return s; [l[idx], l[nIdx]] = [l[nIdx], l[idx]]; return { favoriteReciters: l }; }),
       reorderReciterTo: (f, t) => set((s) => { const l = [...s.favoriteReciters], fI = l.findIndex(i => i.channelid === f), tI = l.findIndex(i => i.channelid === t); if (fI === -1 || tI === -1) return s; const [m] = l.splice(fI, 1); l.splice(tI, 0, m); return { favoriteReciters: l }; }),
 
@@ -379,7 +378,7 @@ export const useMediaStore = create<MediaState>()(
         setTimeout(() => get().saveManuscriptsReorder(), 100); 
         return { customManuscripts: n }; 
       }),
-      updateManuscript: (id, u) => set((s) => ({ customManuscripts: s.customManuscripts.map(m => m.id === id ? { ...m, ...u } : m) })),
+      updateManuscript: (id, u) => set((s) => { const n = s.customManuscripts.map(m => m.id === id ? { ...m, ...u } : m); setTimeout(() => get().saveManuscriptsReorder(), 100); return { customManuscripts: n }; }),
       updateManuscriptScale: (id, delta) => set((s) => ({ manuscriptScales: { ...s.manuscriptScales, [id]: Math.max(0.1, (s.manuscriptScales[id] || 1.0) + delta) } })),
       updateManuscriptTransform: (id, x, y, scale) => set((s) => ({ customManuscripts: s.customManuscripts.map(m => m.id === id ? { ...m, x, y, scale } : m) })),
       updateWordTransform: (manId, wordId, x, y, scale) => set((s) => ({
@@ -392,7 +391,7 @@ export const useMediaStore = create<MediaState>()(
       removeManuscript: (id) => set((s) => { const n = s.customManuscripts.filter(m => m.id !== id); setTimeout(() => get().saveManuscriptsReorder(), 100); return { customManuscripts: n }; }),
 
       addCustomFont: (name, url) => set((s) => { const n = [...s.customFonts.filter(f => f.name !== name), { name, url }]; setTimeout(() => get().syncMasterBin(), 100); return { customFonts: n }; }),
-      addCustomWallBackground: (url) => set((s) => { const n = [...s.customWallBackgrounds.filter(u => u !== url), url]; setTimeout(() => updateBin(JSONBIN_BACKGROUNDS_BIN_ID, n), 100); return { customWallBackgrounds: n }; }),
+      addCustomWallBackground: (url) => set((s) => { const n = [...s.customWallBackgrounds.filter(u => u !== url), url]; setTimeout(() => updateBin(JSONBIN_BACKGROUNDS_BIN_ID, { backgrounds: n }), 100); return { customWallBackgrounds: n }; }),
 
       addReminder: (r) => set((s) => { const n = [...s.reminders.filter(x => x.id !== r.id), r]; setTimeout(() => get().syncMasterBin(), 100); return { reminders: n }; }),
       removeReminder: (id) => set((s) => { const n = s.reminders.filter(r => r.id !== id); setTimeout(() => get().syncMasterBin(), 100); return { reminders: n }; }),

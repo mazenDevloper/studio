@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useMediaStore } from "@/lib/store";
@@ -8,9 +7,9 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 
 /**
- * ActiveAzkarWidget v130.0 - Sovereign Cycling Engine
- * Features: Cycles through manuscripts one by one to prevent overlap.
- * Added: Next/Prev buttons for manual navigation.
+ * ActiveAzkarWidget v17000.0 - Atomic Freeze System
+ * Features: Fixed aspect ratio container (4/3) with relative font scaling.
+ * This prevents horizontal gaps from expanding on wide screens.
  */
 export function ActiveAzkarWidget() {
   const customManuscripts = useMediaStore(state => state.customManuscripts);
@@ -24,28 +23,26 @@ export function ActiveAzkarWidget() {
     if (!customManuscripts?.length) return;
     const interval = setInterval(() => {
       setActiveIndex(prev => (prev + 1) % customManuscripts.length);
-    }, 15000); // Cycle every 15 seconds
+    }, 15000); 
     return () => clearInterval(interval);
   }, [customManuscripts]);
 
   const activeItem = customManuscripts?.[activeIndex];
 
-  const getDynamicFontSize = (text: string, baseScale: number) => {
-    const length = text.length;
-    let base = 4.2;
-    if (length > 15) base = 3.5;
-    if (length > 25) base = 2.8;
-    if (length > 40) base = 2.0;
-    return `${baseScale * base}rem`;
+  // Using container-relative units (vw) within a fixed-ratio parent ensures stable gaps
+  const getDynamicFontSize = (baseScale: number) => {
+    return `${baseScale * 3.2}vw`; 
   };
 
   const nextManu = (e?: React.MouseEvent) => {
     e?.stopPropagation();
+    if (!customManuscripts.length) return;
     setActiveIndex(prev => (prev + 1) % customManuscripts.length);
   };
 
   const prevManu = (e?: React.MouseEvent) => {
     e?.stopPropagation();
+    if (!customManuscripts.length) return;
     setActiveIndex(prev => (prev - 1 + customManuscripts.length) % customManuscripts.length);
   };
 
@@ -62,9 +59,10 @@ export function ActiveAzkarWidget() {
         </div>
       )}
       
-      <div className="relative z-20 flex-1 w-full h-full p-0 m-0 overflow-hidden">
+      <div className="relative z-20 w-full flex-1 p-8 m-0 overflow-hidden flex items-center justify-center">
         {activeItem ? (
-          <div className="contents">
+          /* Fixed Aspect Ratio Container to 'Freeze' the layout */
+          <div className="relative w-full aspect-[4/3] flex items-center justify-center max-h-full">
             {activeItem.type === 'text' && activeItem.words ? (
               activeItem.words.map((word) => {
                 const itemScale = (word.scale || 1.0) * (manuscriptScales[activeItem.id] || 1.0);
@@ -77,14 +75,16 @@ export function ActiveAzkarWidget() {
                       top: `${word.y}%`, 
                       transform: 'translate(-50%, -50%)',
                       width: 'max-content',
+                      transition: 'none', 
                     }}
-                    className="animate-in fade-in zoom-in-95 duration-700 flex items-center justify-center p-0 m-0"
+                    className="flex items-center justify-center p-0 m-0"
                   >
                     <p 
-                      className="font-calligraphy text-white leading-none drop-shadow-[0_0_30px_rgba(255,255,255,0.6)] text-center tracking-normal whitespace-nowrap"
+                      className="font-calligraphy text-white leading-none drop-shadow-[0_0_40px_rgba(255,255,255,0.7)] text-center tracking-normal whitespace-nowrap"
                       style={{ 
                         fontFamily: activeItem.fontFamily || 'Aref Ruqaa',
-                        fontSize: getDynamicFontSize(word.text, itemScale)
+                        fontSize: getDynamicFontSize(itemScale),
+                        transition: 'none'
                       }}
                     >
                       {word.text}
@@ -100,7 +100,6 @@ export function ActiveAzkarWidget() {
                   top: `${activeItem.y ?? 50}%`, 
                   transform: 'translate(-50%, -50%)',
                 }}
-                className="animate-in fade-in zoom-in-95 duration-700"
               >
                 {activeItem.type === 'image' && (
                   <img 
@@ -108,9 +107,10 @@ export function ActiveAzkarWidget() {
                     alt="Manuscript"
                     className="object-contain p-0 m-0"
                     style={{ 
-                      filter: 'brightness(0) invert(1) drop-shadow(0 0 30px rgba(255,255,255,0.6))',
-                      maxHeight: '400px',
-                      transform: `scale(${(activeItem.scale || 1.0) * (manuscriptScales[activeItem.id] || 1.0)})`
+                      filter: 'brightness(0) invert(1) drop-shadow(0 0 40px rgba(255,255,255,0.6))',
+                      maxHeight: '80%',
+                      transform: `scale(${(activeItem.scale || 1.0) * (manuscriptScales[activeItem.id] || 1.0)})`,
+                      transition: 'none'
                     }}
                   />
                 )}
@@ -124,25 +124,22 @@ export function ActiveAzkarWidget() {
         )}
       </div>
 
-      {/* Sovereign Navigation Buttons */}
-      <div className="absolute bottom-6 left-6 flex items-center gap-3 z-50 opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-all">
+      <div className="absolute bottom-6 left-6 flex items-center gap-3 z-50 opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-none">
         <button 
-          className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/40 hover:text-white transition-all focusable shadow-glow"
+          className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/40 hover:text-white transition-none focusable shadow-glow"
           onClick={prevManu}
-          title="المخطوطة السابقة"
         >
           <ChevronRight className="w-6 h-6" />
         </button>
         <button 
-          className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/40 hover:text-white transition-all focusable shadow-glow"
+          className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/40 hover:text-white transition-none focusable shadow-glow"
           onClick={nextManu}
-          title="المخطوطة التالية"
         >
           <ChevronLeft className="w-6 h-6" />
         </button>
         <div className="w-px h-6 bg-white/10 mx-1" />
         <button 
-          className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/40 hover:text-white transition-all focusable shadow-glow"
+          className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/40 hover:text-white transition-none focusable shadow-glow"
           onClick={() => activeItem && setWallPlate('manuscript', activeItem)}
         >
           <Maximize2 className="w-6 h-6" />
