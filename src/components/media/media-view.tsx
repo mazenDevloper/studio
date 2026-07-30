@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -40,8 +40,19 @@ const JUZ_COLORS = [
   "shadow-[0_0_15px_#00bfff] border-deepskyblue-500/50", "shadow-[0_0_15px_#ff00ff] border-magenta-500/50",
   "shadow-[0_0_15px_#fa8072] border-salmon-500/50", "shadow-[0_0_15px_#00ff7f] border-springgreen-500/50",
   "shadow-[0_0_15px_#eee8aa] border-palegoldenrod-500/50", "shadow-[0_0_15px_#b0c4de] border-lightsteelblue-500/50",
-  "shadow-[0_0_15px_#dda0dd] border-plum-500/50", "shadow-[0_0_15px_#7fffd4] border-aquamarine-500/50"
+  "shadow-[0_0_15px_#dda0dd] border-plum-500/50", "shadow-[0_0_15_#7fffd4] border-aquamarine-500/50"
 ];
+
+// Precise Juz to Surah Index Mapping (1-based)
+const JUZ_SURAH_MAP: Record<number, number[]> = {
+  1: [1, 2], 2: [2], 3: [2, 3], 4: [3, 4], 5: [4], 6: [4, 5], 7: [5, 6], 8: [6, 7], 9: [7, 8], 10: [8, 9],
+  11: [9, 10, 11], 12: [11, 12], 13: [12, 13, 14], 14: [15, 16], 15: [17, 18], 16: [18, 19, 20], 17: [21, 22],
+  18: [23, 24, 25], 19: [25, 26, 27], 20: [27, 28, 29], 21: [29, 30, 31, 32, 33], 22: [33, 34, 35, 36],
+  23: [36, 37, 38, 39], 24: [39, 40, 41], 25: [42, 43, 44, 45], 26: [46, 47, 48, 49, 50, 51],
+  27: [51, 52, 53, 54, 55, 56, 57], 28: [58, 59, 60, 61, 62, 63, 64, 65, 66],
+  29: [67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77],
+  30: [78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114]
+};
 
 function AddContentModal({ 
   type, isOpen, onOpenChange, onAdd 
@@ -95,16 +106,13 @@ function AddContentModal({
   );
 }
 
-/**
- * MediaView v140.0 - Unified Small Screen Top Bar & Interaction
- */
 export function MediaView() {
   const searchParams = useSearchParams();
   const { 
     favoriteChannels, addChannel, setActiveVideo, dockSide, isSidebarShrinked, setIsSidebarShrinked,
     selectedChannel, setSelectedChannel, channelVideos, setChannelVideos,
     favoriteReciters, addReciter, toggleSaveVideo, savedVideos, videoProgress,
-    fetchPriorityData, isReorderMode, toggleReorderMode
+    fetchPriorityData, isReorderMode, toggleReorderMode, incrementReciterClick
   } = useMediaStore();
 
   const { toast } = useToast();
@@ -112,13 +120,11 @@ export function MediaView() {
   const [searchResults, setSearchResults] = useState<YouTubeVideo[]>([]);
   const [loading, setLoading] = useState(false);
   const [surahs, setSurahs] = useState<any[]>([]);
+  const [allSurahs, setAllSurahs] = useState<any[]>([]);
   const [windowWidth, setWindowWidth] = useState(0);
+  const [lastJuzClick, setLastJuzClick] = useState<{ id: number, time: number }>({ id: 0, time: 0 });
   
   const [starredVideos, setStarredVideos] = useState<YouTubeVideo[]>([]);
-  const [firstChannelVids, setFirstChannelVids] = useState<YouTubeVideo[]>([]);
-  const [secondChannelVids, setSecondChannelVids] = useState<YouTubeVideo[]>([]);
-  const [kidsVideos, setKidsVideos] = useState<YouTubeVideo[]>([]);
-  const [matchGoals, setMatchGoals] = useState<YouTubeVideo[]>([]);
   const [isIsolatedViewActive, setIsIsolatedViewActive] = useState(false);
 
   const [isAddChannelOpen, setIsAddChannelOpen] = useState(false);
@@ -141,44 +147,31 @@ export function MediaView() {
       const combinedStarred: YouTubeVideo[] = [];
       results.forEach(vids => combinedStarred.push(...vids));
       setStarredVideos(combinedStarred.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()));
-
-      if (favoriteChannels.length >= 1) fetchChannelVideos(favoriteChannels[0].channelid, 15).then(v => setFirstChannelVids(v));
-      if (favoriteChannels.length >= 2) fetchChannelVideos(favoriteChannels[1].channelid, 15).then(v => setSecondChannelVids(v));
-
-      searchYouTubeVideos("أهداف مباريات اليوم ملخص", 15).then(v => setMatchGoals(v));
-      
-      const ryanRes = await searchYouTubeVideos("كلمات الطفل الأولى ريان بالعربي", 10);
-      const kidsRes = await searchYouTubeVideos("كيدز بالعربي كلمات الطفل الأولى", 10);
-      const combinedKids: YouTubeVideo[] = [];
-      for (let i = 0; i < 10; i++) {
-        if (ryanRes[i]) combinedKids.push(ryanRes[i]);
-        if (kidsRes[i]) combinedKids.push(kidsRes[i]);
-      }
-      setKidsVideos(combinedKids);
     } catch (e) {}
   }, [favoriteChannels]);
 
   useEffect(() => {
     fetchFeeds();
-    
-    // تحديث إضافي بعد 10 ثواني لضمان الدقة السحابية
-    const syncTimer = setTimeout(() => {
-      fetchPriorityData('all');
-      fetchFeeds();
-    }, 10000);
-
     const handleResize = () => setWindowWidth(window.innerWidth);
     handleResize();
     window.addEventListener('resize', handleResize);
-    fetch("https://api.quran.com/api/v4/chapters?language=ar").then(r => r.json()).then(d => setSurahs(d.chapters || []));
+    
+    // Sovereignty Sync: Local update after 10 seconds
+    const syncTimer = setTimeout(() => {
+      fetchPriorityData('all');
+    }, 10000);
+
+    fetch("https://api.quran.com/api/v4/chapters?language=ar").then(r => r.json()).then(d => {
+      setSurahs(d.chapters || []);
+      setAllSurahs(d.chapters || []);
+    });
     const q = searchParams.get('q');
     if (q) { setSearch(q); performSearch(q); }
-    
     return () => {
       clearTimeout(syncTimer);
       window.removeEventListener('resize', handleResize);
-    }
-  }, [searchParams, fetchPriorityData, fetchFeeds]);
+    };
+  }, [searchParams, fetchFeeds, fetchPriorityData]);
 
   const performSearch = async (overrideQuery?: string) => {
     const queryToUse = overrideQuery || search;
@@ -188,7 +181,7 @@ export function MediaView() {
     setIsSidebarShrinked(true); 
     setSelectedChannel(null);
     try { 
-      const res = await searchYouTubeVideos(queryToUse); 
+      const res = await searchYouTubeVideos(queryToUse, 40); 
       setSearchResults(res || []);
     } finally { setLoading(false); }
   };
@@ -196,31 +189,62 @@ export function MediaView() {
   const handleStyleClick = (style: string) => { 
     setSelectedStyle(style); 
     if (style === "ربط الآيات") {
-      setTimeout(() => { document.querySelector('[data-nav-id="surah-0"]')?.focus(); }, 200);
+      setTimeout(() => {
+        const target = document.querySelector('[data-nav-id="style-link-verses"]') as HTMLElement;
+        target?.focus();
+        target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 100);
     } else {
-      setTimeout(() => { document.querySelector('[data-nav-id="reciter-0"]')?.focus(); }, 200);
+      setTimeout(() => {
+        const target = document.querySelector('[data-nav-id^="reciter-"]') as HTMLElement;
+        target?.focus();
+        target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 100);
     }
   };
 
-  const handleReciterClick = (name: string) => { 
-    setSelectedReciter(name); 
-    setTimeout(() => { document.querySelector('[data-nav-id="surah-0"]')?.focus(); }, 200);
+  const handleReciterClick = (r: any) => { 
+    setSelectedReciter(r.name); 
+    incrementReciterClick(r.channelid);
+    setTimeout(() => {
+       const target = document.querySelector('[data-nav-id^="surah-"]') as HTMLElement;
+       target?.focus();
+       target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 100);
   };
 
   const handleSurahClick = (name: string) => { 
     setSelectedSurah(name); 
-    setSelectedJuz(null);
     const query = `${selectedReciter || ""} سورة ${name} ${selectedStyle || ""}`.trim();
     setSearch(query);
     performSearch(query); 
   };
 
   const handleJuzClick = (juzNum: number) => {
+    const now = Date.now();
+    if (lastJuzClick.id === juzNum && (now - lastJuzClick.time < 500)) {
+      const query = `الجزء ${juzNum}`;
+      setSearch(query);
+      performSearch(query);
+      return;
+    }
+    setLastJuzClick({ id: juzNum, time: now });
     setSelectedJuz(juzNum);
     setSelectedSurah(null);
-    const query = `${selectedReciter || ""} الجزء ${juzNum} ${selectedStyle || ""}`.trim();
-    setSearch(query);
-    performSearch(query);
+    
+    // Precise Juz-Surah Filtering
+    const surahIds = JUZ_SURAH_MAP[juzNum] || [];
+    const surahsInJuz = allSurahs.filter(s => surahIds.includes(s.id));
+    setSurahs(surahsInJuz.length > 0 ? surahsInJuz : allSurahs);
+
+    // Sovereign Focus Shift: Move cursor to Juz button in Surah row immediately
+    setTimeout(() => {
+      const target = (document.querySelector('[data-nav-id="juz-whole-btn"]') || document.querySelector('[data-nav-id="surah-0"]')) as HTMLElement;
+      if (target) {
+        target.focus();
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 100);
   };
 
   useEffect(() => {
@@ -228,27 +252,22 @@ export function MediaView() {
       setLoading(true); 
       setIsIsolatedViewActive(true);
       setIsSidebarShrinked(true);
-      fetchChannelVideos(selectedChannel.channelid, 20).then(v => { setChannelVideos(v || []); setLoading(false); }).catch(() => setLoading(false));
+      fetchChannelVideos(selectedChannel.channelid, 30).then(v => { setChannelVideos(v || []); setLoading(false); }).catch(() => setLoading(false));
     }
   }, [selectedChannel, setChannelVideos, setIsSidebarShrinked]);
 
-  const resetView = () => { setSelectedChannel(null); setSearchResults([]); setSearch(""); setIsIsolatedViewActive(false); setIsSidebarShrinked(false); setSelectedStyle(null); setSelectedReciter(null); setSelectedSurah(null); setSelectedJuz(null); };
+  const resetView = () => { setSelectedChannel(null); setSearchResults([]); setSearch(""); setIsIsolatedViewActive(false); setIsSidebarShrinked(false); setSelectedStyle(null); setSelectedReciter(null); setSelectedSurah(null); setSelectedJuz(null); setSurahs(allSurahs); };
 
   const activeGridVideos = selectedChannel ? channelVideos : searchResults;
   const showIsolatedView = isIsolatedViewActive || !!selectedChannel || searchResults.length > 0;
   const horizontalListClass = "w-full flex gap-4 px-8 py-0 overflow-x-auto no-scrollbar scroll-smooth justify-start items-center";
-  const rowWrapperClass = "group/row transition-all duration-700 relative py-2 mb-0";
-  const itemScaleClass = "transition-all duration-500 scale-[0.9] group-focus-within/row:scale-[1.2] group-focus-within/row:mx-8 focus:z-50 shrink-0";
-
-  const getSurahColorClass = (idx: number) => {
-    const juzIndex = Math.floor(idx / (114 / 30));
-    return JUZ_COLORS[juzIndex % 30];
-  };
+  const rowWrapperClass = "group/row relative py-2 mb-0";
+  const itemScaleClass = "transition-all duration-0 shrink-0";
 
   return (
     <div className={cn("h-screen flex bg-transparent overflow-hidden relative", isDockLeft ? "flex-row-reverse" : "flex-row")}>
-      {!isSmallScreen ? (
-        <aside className={cn("h-full z-[110] transition-all duration-0 premium-glass flex flex-col shrink-0 border-white/5 bg-black/40 shadow-2xl", isSidebarShrinked ? "w-[6%]" : "w-[28%]", isDockLeft ? "border-l" : "border-r")}>
+      {!isSmallScreen && (
+        <aside className={cn("h-full z-[110] premium-glass flex flex-col shrink-0 border-white/5 bg-black/40 shadow-2xl transition-all duration-0", isSidebarShrinked ? "w-[6%]" : "w-[28%]", isDockLeft ? "border-l" : "border-r")}>
           <div className="p-4 flex items-center justify-between border-b border-white/5">
             {!isSidebarShrinked && (
               <button onClick={toggleReorderMode} className={cn("w-10 h-10 rounded-full flex items-center justify-center transition-all", isReorderMode ? "bg-blue-600 text-white shadow-glow" : "bg-white/5 text-white/40")}>
@@ -258,42 +277,27 @@ export function MediaView() {
             <button onClick={() => setIsAddChannelOpen(true)} className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center focusable border border-primary/20" tabIndex={0} data-nav-id="add-channel-btn"><Plus className="w-5 h-5 text-white" /></button>
           </div>
           <div className="flex-1 overflow-y-auto custom-scrollbar py-2 flex flex-col gap-1">
-            <div data-row-id="subs-all" onClick={resetView} className={cn("flex items-center gap-3 p-3 cursor-pointer focusable w-[94%] mx-auto rounded-xl", !selectedChannel && !searchResults.length && !isIsolatedViewActive ? "bg-primary text-white" : "hover:bg-white/5 text-white/60")} tabIndex={0} data-nav-id="subs-0"><div className="w-10 h-10 rounded-xl flex items-center justify-center bg-white/10 shrink-0"><List className="w-5 h-5" /></div>{!isSidebarShrinked && <span className="flex-1 text-right font-black text-sm block overflow-hidden whitespace-nowrap px-1">الكل</span>}</div>
+            <div onClick={resetView} className={cn("flex items-center gap-3 p-3 cursor-pointer focusable w-[94%] mx-auto rounded-xl", !selectedChannel && !searchResults.length && !isIsolatedViewActive ? "bg-primary text-white" : "hover:bg-white/5 text-white/60")} tabIndex={0} data-nav-id="subs-0"><div className="w-10 h-10 rounded-xl flex items-center justify-center bg-white/10 shrink-0"><List className="w-5 h-5" /></div>{!isSidebarShrinked && <span className="flex-1 text-right font-black text-sm block overflow-hidden whitespace-nowrap px-1">الكل</span>}</div>
             {favoriteChannels.map((ch, idx) => (
-              <div key={ch.channelid + idx} data-row-id={`sub-item-${idx}`} onClick={() => { if(!isReorderMode) { setSearchResults([]); setSelectedChannel(ch); } }} className={cn("flex flex-row-reverse items-center p-3 rounded-xl w-[94%] mx-auto gap-3 cursor-pointer focusable shrink-0 border-2", selectedChannel?.channelid === ch.channelid ? "bg-primary text-white" : "hover:bg-white/5 text-white/60", "border-transparent relative group")} tabIndex={0} data-nav-id={`subs-${idx + 1}`} data-type="channel" data-id={ch.channelid}>
+              <div key={ch.channelid + idx} onClick={() => { if(!isReorderMode) { setSearchResults([]); setSelectedChannel(ch); } }} className={cn("flex flex-row-reverse items-center p-3 rounded-xl w-[94%] mx-auto gap-3 cursor-pointer focusable shrink-0 border-2", selectedChannel?.channelid === ch.channelid ? "bg-primary text-white" : "hover:bg-white/5 text-white/60", "border-transparent relative group")} tabIndex={0} data-nav-id={`subs-${idx + 1}`} data-type="channel" data-id={ch.channelid}>
                 <div className="w-10 h-10 rounded-xl overflow-hidden border border-white/10 shrink-0 relative"><img src={ch.image} className="w-full h-full object-cover" alt="" />{ch.starred && <div className="absolute top-0 right-0 w-2.5 h-2.5 bg-yellow-500 rounded-full border border-black" />}</div>
                 {!isSidebarShrinked && <span className="font-black text-sm flex-1 text-right leading-none text-white block overflow-hidden whitespace-nowrap px-1">{ch.name}</span>}
               </div>
             ))}
           </div>
         </aside>
-      ) : null}
+      )}
 
-      <main className="flex-1 overflow-y-auto custom-scrollbar relative pt-0 pb-40 px-10 no-scrollbar" style={{ direction: 'rtl' }}>
+      <main className="flex-1 overflow-y-auto custom-scrollbar relative pt-0 pb-40 px-10 no-scrollbar transition-all duration-0" style={{ direction: 'rtl' }}>
         {isSmallScreen && favoriteChannels.length > 0 && (
-          <div className="w-full py-4 mb-4 animate-in fade-in slide-in-from-top-2 duration-500">
+          <div className="w-full py-4 mb-4">
              <div className="flex items-center justify-between mb-4 px-2">
-               <div className="flex items-center gap-3">
-                 <List className="w-4 h-4 text-primary" />
-                 <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">الاشتراكات السريعة</span>
-               </div>
-               <div className="flex gap-2">
-                 <button onClick={resetView} className={cn("px-4 py-1.5 rounded-full text-[10px] font-black transition-all", !selectedChannel ? "bg-primary text-white shadow-glow" : "bg-white/5 text-white/20")}>الكل</button>
-                 <button onClick={() => setIsAddChannelOpen(true)} className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center border border-primary/20 focusable"><Plus className="w-4 h-4 text-primary" /></button>
-               </div>
+               <div className="flex items-center gap-3"><List className="w-4 h-4 text-primary" /><span className="text-[10px] font-black text-white/40 uppercase tracking-widest">الاشتراكات السريعة</span></div>
+               <div className="flex gap-2"><button onClick={resetView} className={cn("px-4 py-1.5 rounded-full text-[10px] font-black", !selectedChannel ? "bg-primary text-white shadow-glow" : "bg-white/5 text-white/20")}>الكل</button><button onClick={() => setIsAddChannelOpen(true)} className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center border border-primary/20 focusable"><Plus className="w-4 h-4 text-primary" /></button></div>
              </div>
              <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2 px-2">
                 {favoriteChannels.map((ch) => (
-                  <button 
-                    key={ch.channelid} 
-                    onClick={() => { setSearchResults([]); setSelectedChannel(ch); }}
-                    className={cn(
-                      "shrink-0 w-16 h-16 rounded-2xl overflow-hidden border-2 transition-all shadow-xl bg-zinc-900",
-                      selectedChannel?.channelid === ch.channelid ? "border-primary shadow-glow scale-110" : "border-white/10"
-                    )}
-                  >
-                    <img src={ch.image} className="w-full h-full object-cover" alt="" />
-                  </button>
+                  <button key={ch.channelid} onClick={() => { setSearchResults([]); setSelectedChannel(ch); }} className={cn("shrink-0 w-16 h-16 rounded-2xl overflow-hidden border-2 transition-all shadow-xl bg-zinc-900", selectedChannel?.channelid === ch.channelid ? "border-primary shadow-glow scale-110" : "border-white/10")}><img src={ch.image} className="w-full h-full object-cover" alt="" /></button>
                 ))}
              </div>
           </div>
@@ -305,38 +309,50 @@ export function MediaView() {
             
             <section data-row-id="row-styles" className={rowWrapperClass}>
               <div className={horizontalListClass}>
-                <button onClick={() => handleStyleClick("ربط الآيات")} className={cn(itemScaleClass, "px-8 py-4 rounded-full font-bold text-sm focusable border-2 text-white bg-blue-600 border-blue-400 shadow-[0_0_20px_rgba(37,99,235,0.4)]")} tabIndex={0} data-nav-id="style-link-verses">ربط الآيات</button>
-                <button onClick={() => { setSelectedStyle(null); }} className={cn(itemScaleClass, "px-8 py-4 rounded-full font-black text-sm focusable border-2 text-white", !selectedStyle ? "bg-primary border-primary/40" : "bg-white/5 border-transparent")} tabIndex={0} data-nav-id="style-all">الكل</button>
-                {READING_STYLES.map((style, i) => (<button key={style} data-nav-id={`style-${i}`} onClick={() => handleStyleClick(style)} className={cn(itemScaleClass, "px-8 py-4 rounded-full font-black text-sm focusable border-2 text-white", selectedStyle === style ? "bg-primary border-primary/40 shadow-glow" : "bg-white/5 border-white/5")} tabIndex={0}>{style}</button>))}
+                <button onClick={() => handleStyleClick("ربط الآيات")} className={cn(itemScaleClass, "px-10 py-6 rounded-full font-black text-lg focusable border-2 text-white bg-blue-600 border-blue-400 shadow-[0_0_30px_rgba(37,99,235,0.6)]")} tabIndex={0} data-nav-id="style-link-verses">ربط الآيات</button>
+                <button onClick={() => setSelectedStyle(null)} className={cn(itemScaleClass, "px-10 py-6 rounded-full font-black text-lg focusable border-2 text-white", !selectedStyle ? "bg-primary border-primary/40 shadow-glow" : "bg-white/5 border-transparent")} tabIndex={0}>الكل</button>
+                {READING_STYLES.map((style, i) => (<button key={style} data-nav-id={`style-${i}`} onClick={() => handleStyleClick(style)} className={cn(itemScaleClass, "px-10 py-6 rounded-full font-black text-lg focusable border-2 text-white", selectedStyle === style ? "bg-primary border-primary/40 shadow-glow" : "bg-white/5 border-white/5")} tabIndex={0}>{style}</button>))}
               </div>
             </section>
             
             <section data-row-id="row-reciters" className={rowWrapperClass}>
               <div className={cn(horizontalListClass, "gap-8")}>
-                <button onClick={() => setIsAddReciterOpen(true)} className="flex flex-col items-center gap-4 px-4 py-2 rounded-[2rem] focusable border-2 border-transparent hover:bg-emerald-600/10 transition-all duration-500 focus:z-50 shrink-0" tabIndex={0} data-nav-id="reciter-add"><div className="w-40 h-40 rounded-full flex items-center justify-center bg-emerald-500/10 border-4 border-dashed border-emerald-500/30 text-emerald-400"><Plus className="w-12 h-12" /></div></button>
-                {favoriteReciters.map((r, i) => (<button key={r.channelid + i} onClick={() => handleReciterClick(r.name)} className={cn("flex flex-col items-center gap-4 px-4 py-2 rounded-[2rem] focusable border-2 transition-all duration-500 focus:z-50 shrink-0 relative group", selectedReciter === r.name ? "border-emerald-500 bg-emerald-500/10" : "border-transparent hover:bg-emerald-600/10")} tabIndex={0} data-nav-id={`reciter-${i}`}><div className="w-40 h-40 rounded-full overflow-hidden border-4 border-emerald-500/30 shadow-2xl"><img src={r.image} className="w-full h-full object-cover" alt="" /></div><span className="text-xl font-black truncate max-w-[200px] text-white">{r.name}</span></button>))}
+                <button onClick={() => setIsAddReciterOpen(true)} className="flex flex-col items-center gap-4 px-6 py-4 rounded-[3rem] focusable border-2 border-transparent hover:bg-emerald-600/10 transition-all duration-0 shrink-0" tabIndex={0} data-nav-id="reciter-add"><div className="w-48 h-40 rounded-full flex items-center justify-center bg-emerald-500/10 border-4 border-dashed border-emerald-500/30 text-emerald-400"><Plus className="w-14 h-14" /></div></button>
+                {favoriteReciters.map((r, i) => (<button key={r.channelid + i} onClick={() => handleReciterClick(r)} className={cn("flex flex-col items-center gap-4 px-6 py-4 rounded-[3rem] focusable border-2 transition-all duration-0 shrink-0 relative group", selectedReciter === r.name ? "border-emerald-500 bg-emerald-500/10" : "border-transparent hover:bg-emerald-600/10")} tabIndex={0} data-nav-id={`reciter-${i}`}><div className="w-48 h-48 rounded-full overflow-hidden border-4 border-emerald-500/30 shadow-2xl"><img src={r.image} className="w-full h-full object-cover" alt="" /></div><span className="text-2xl font-black truncate max-w-[240px] text-white">{r.name}</span></button>))}
               </div>
             </section>
 
             <section data-row-id="row-juz" className={rowWrapperClass}>
-              <div className={horizontalListClass}><div className="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-full border border-white/10 shrink-0"><Layers className="w-4 h-4 text-accent" /><span className="text-[10px] font-black text-white/40 uppercase">الأجزاء</span></div>{[...Array(30).keys()].map(i => { const juzNum = i + 1; return (<button key={`juz-${juzNum}`} onClick={() => handleJuzClick(juzNum)} className={cn(itemScaleClass, "px-8 py-4 rounded-full text-white font-black text-sm focusable border-2 transition-all", selectedJuz === juzNum ? "bg-white text-black border-white shadow-glow" : JUZ_COLORS[i])} tabIndex={0} data-nav-id={`juz-${juzNum}`}>الجزء {juzNum}</button>); })}</div>
+              <div className={horizontalListClass}><div className="flex items-center gap-3 px-6 py-3 bg-white/5 rounded-full border border-white/10 shrink-0"><Layers className="w-6 h-6 text-accent" /><span className="text-[12px] font-black text-white/40 uppercase">الأجزاء</span></div>{[...Array(30).keys()].map(i => { const juzNum = i + 1; return (<button key={`juz-${juzNum}`} onClick={() => handleJuzClick(juzNum)} className={cn(itemScaleClass, "px-12 py-6 rounded-full text-white font-black text-xl focusable border-2 transition-all duration-0", selectedJuz === juzNum ? "bg-white text-black border-white shadow-glow" : JUZ_COLORS[i])} tabIndex={0} data-nav-id={`juz-${juzNum}`}>الجزء {juzNum}</button>); })}</div>
             </section>
 
             <section data-row-id="row-surahs" className={rowWrapperClass}>
-              <div className={horizontalListClass}>{surahs.map((s, i) => (<button key={i} data-nav-id={`surah-${i}`} onClick={() => handleSurahClick(s.name_arabic)} className={cn(itemScaleClass, "px-10 py-5 rounded-full border text-white font-black text-sm hover:bg-blue-600/20 focusable transition-all", selectedSurah === s.name_arabic ? "bg-blue-600 border-blue-400 shadow-glow" : getSurahColorClass(i))} tabIndex={0}>{s.name_arabic}</button>))}</div>
+              <div className={horizontalListClass}>
+                {selectedJuz && (
+                  <button 
+                    onClick={() => {
+                      const query = `الجزء ${selectedJuz}`;
+                      setSearch(query);
+                      performSearch(query);
+                    }}
+                    className={cn(itemScaleClass, "px-14 py-7 rounded-full border-2 text-white font-black text-xl hover:bg-blue-600/20 focusable transition-all duration-0 bg-blue-600 border-blue-400 shadow-glow")}
+                    tabIndex={0}
+                    data-nav-id="juz-whole-btn"
+                  >
+                    الجزء {selectedJuz}
+                  </button>
+                )}
+                {surahs.map((s, i) => (<button key={i} data-nav-id={`surah-${i}`} onClick={() => handleSurahClick(s.name_arabic)} className={cn(itemScaleClass, "px-14 py-7 rounded-full border-2 text-white font-black text-xl hover:bg-blue-600/20 focusable transition-all duration-0", selectedSurah === s.name_arabic ? "bg-blue-600 border-blue-400 shadow-glow" : "bg-white/5 border-white/10")} tabIndex={0}>{s.name_arabic}</button>))}
+              </div>
             </section>
 
-            <section data-row-id="row-vids-starred" className={rowWrapperClass}><div className={horizontalListClass}>{starredVideos.map((v, idx) => (<div key={v.id + idx} data-nav-id={`row-starred-video-${idx}`} onClick={() => setActiveVideo(v, starredVideos)} className={cn(itemScaleClass, "w-72 group relative overflow-hidden bg-zinc-900/80 border border-white/10 rounded-[1.8rem] focusable cursor-pointer shadow-2xl")} tabIndex={0}><div className="aspect-video relative overflow-hidden"><img src={v.thumbnail} className="w-full h-full object-cover" alt="" /></div><div className="p-4 text-right"><h3 className="font-bold text-xs truncate text-white">{v.title}</h3></div></div>))}</div></section>
-            <section data-row-id="row-vids-ch1" className={rowWrapperClass}><div className={horizontalListClass}>{firstChannelVids.map((v, idx) => (<div key={v.id + idx} data-nav-id={`row-ch1-video-${idx}`} onClick={() => setActiveVideo(v, firstChannelVids)} className={cn(itemScaleClass, "w-72 group relative overflow-hidden bg-zinc-900/80 border-b-2 border-primary/20 rounded-[1.8rem] focusable cursor-pointer shadow-2xl")} tabIndex={0}><div className="aspect-video relative overflow-hidden"><img src={v.thumbnail} className="w-full h-full object-cover" alt="" /></div><div className="p-4 text-right"><h3 className="font-bold text-xs truncate text-white">{v.title}</h3></div></div>))}</div></section>
-            <section data-row-id="row-vids-goals" className={rowWrapperClass}><div className={horizontalListClass}>{matchGoals.map((v, idx) => (<div key={v.id + idx} data-nav-id={`row-goals-video-${idx}`} onClick={() => setActiveVideo(v, matchGoals)} className={cn(itemScaleClass, "w-72 group relative overflow-hidden bg-zinc-900/80 border-b-4 border-blue-600/40 rounded-[1.8rem] focusable cursor-pointer shadow-2xl")} tabIndex={0}><div className="aspect-video relative overflow-hidden"><img src={v.thumbnail} className="w-full h-full object-cover" alt="" /></div><div className="p-4 text-right"><h3 className="font-bold text-xs truncate text-white">{v.title}</h3></div></div>))}</div></section>
-            <section data-row-id="row-vids-ch2" className={rowWrapperClass}><div className={horizontalListClass}>{secondChannelVids.map((v, idx) => (<div key={v.id + idx} data-nav-id={`row-ch2-video-${idx}`} onClick={() => setActiveVideo(v, secondChannelVids)} className={cn(itemScaleClass, "w-72 group relative overflow-hidden bg-zinc-900/80 border-b-2 border-primary/20 rounded-[1.8rem] focusable cursor-pointer shadow-2xl")} tabIndex={0}><div className="aspect-video relative overflow-hidden"><img src={v.thumbnail} className="w-full h-full object-cover" alt="" /></div><div className="p-4 text-right"><h3 className="font-bold text-xs truncate text-white">{v.title}</h3></div></div>))}</div></section>
-            <section data-row-id="row-vids-kids" className={rowWrapperClass}><div className={horizontalListClass}>{kidsVideos.map((v, idx) => (<div key={v.id + idx} data-nav-id={`row-kids-video-${idx}`} onClick={() => setActiveVideo(v, kidsVideos)} className={cn(itemScaleClass, "w-72 group relative overflow-hidden bg-zinc-900/80 border-b-4 border-emerald-500/40 rounded-[1.8rem] focusable cursor-pointer shadow-2xl")} tabIndex={0}><div className="aspect-video relative overflow-hidden"><img src={v.thumbnail} className="w-full h-full object-cover" alt="" /></div><div className="p-4 text-right"><h3 className="font-bold text-xs truncate text-white">{v.title}</h3></div></div>))}</div></section>
+            <section data-row-id="row-vids-starred" className={rowWrapperClass}><div className={horizontalListClass}>{starredVideos.map((v, idx) => (<div key={v.id + idx} onClick={() => setActiveVideo(v, starredVideos)} className={cn(itemScaleClass, "w-80 group relative overflow-hidden bg-zinc-900/80 border border-white/10 rounded-[2rem] focusable cursor-pointer shadow-2xl")} tabIndex={0}><div className="aspect-video relative overflow-hidden"><img src={v.thumbnail} className="w-full h-full object-cover" alt="" /></div><div className="p-5 text-right"><h3 className="font-bold text-sm truncate text-white">{v.title}</h3></div></div>))}</div></section>
           </>
         ) : (
-          <section className="space-y-10 animate-in slide-in-from-top-10 duration-500 min-h-[500px] relative origin-center">
-            <div data-row-id="row-back-bar" className="flex justify-between items-center sticky top-0 z-[120] bg-black/70 backdrop-blur-2xl p-8 rounded-[3rem] border border-white/10 shadow-2xl"><button onClick={resetView} className="h-14 px-10 rounded-full bg-red-600 text-white font-black text-base focusable flex items-center gap-4" tabIndex={0} data-nav-id="back-to-library"><X className="w-6 h-6" /><span>العودة للمكتبة</span></button><div className="flex flex-col items-end text-right"><h2 className="text-4xl font-black text-white tracking-tighter">{selectedChannel ? selectedChannel.name : selectedJuz ? `الجزء ${selectedJuz}` : `رادار البحث: ${search}`}</h2><p className="text-[11px] text-white/40 uppercase tracking-[0.5em] font-bold mt-1">Deep Neural Content Scan</p></div></div>
+          <section className="space-y-10 min-h-[500px] relative origin-center">
+            <div className="flex justify-between items-center sticky top-0 z-[120] bg-black/70 backdrop-blur-2xl p-8 rounded-[3rem] border border-white/10 shadow-2xl"><button onClick={resetView} className="h-14 px-10 rounded-full bg-red-600 text-white font-black text-base focusable flex items-center gap-4" tabIndex={0} data-nav-id="back-to-library"><X className="w-6 h-6" /><span>العودة للمكتبة</span></button><div className="flex flex-col items-end text-right"><h2 className="text-4xl font-black text-white tracking-tighter">{selectedChannel ? selectedChannel.name : selectedJuz ? `الجزء ${selectedJuz}` : `رادار البحث: ${search}`}</h2><p className="text-[11px] text-white/40 uppercase tracking-[0.5em] font-bold mt-1">Deep Neural Content Scan</p></div></div>
             {loading && activeGridVideos.length === 0 ? (<div className="flex flex-col items-center justify-center py-40 gap-6"><Loader2 className="w-20 h-20 animate-spin text-primary" /><p className="text-white/20 font-black uppercase tracking-[0.8em] text-sm animate-pulse">Syncing Streams...</p></div>) : (
-              <div data-row-id="row-grid-content" className={cn("grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 transition-opacity duration-300", loading && "opacity-50 grayscale")}>
+              <div className={cn("grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8", loading && "opacity-50 grayscale")}>
                 {activeGridVideos.map((v, i) => {
                   const isSaved = savedVideos.some(s => s.id === v.id);
                   const progress = videoProgress[v.id] || 0;
@@ -345,21 +361,10 @@ export function MediaView() {
                       <div className="w-full h-full relative">
                         <img src={v.thumbnail} className="w-full h-full object-cover opacity-70 group-hover:opacity-100" alt="" />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent flex flex-col justify-end p-6 text-right">
-                          <div className="w-full mb-auto flex justify-between items-start">
-                             <div className="opacity-0 group-hover:opacity-100 transition-all">
-                                <button onClick={(e) => { e.stopPropagation(); toggleSaveVideo(v); }} className={cn("w-12 h-12 rounded-full backdrop-blur-xl border border-white/20 flex items-center justify-center transition-all", isSaved ? "bg-accent text-black shadow-glow" : "bg-white/10 text-white/60")}><BookmarkPlus className="w-6 h-6" /></button>
-                             </div>
-                          </div>
-                          <div className="w-full mb-3">
-                             <h3 className="text-base md:text-lg font-black text-white line-clamp-2 drop-shadow-[0_4px_12px_rgba(0,0,0,1)] leading-snug tracking-tight">
-                               {v.title}
-                             </h3>
-                          </div>
+                          <div className="w-full mb-auto flex justify-between items-start"><div className="opacity-0 group-hover:opacity-100"><button onClick={(e) => { e.stopPropagation(); toggleSaveVideo(v); }} className={cn("w-12 h-12 rounded-full backdrop-blur-xl border border-white/20 flex items-center justify-center", isSaved ? "bg-accent text-black shadow-glow" : "bg-white/10 text-white/60")}><BookmarkPlus className="w-6 h-6" /></button></div></div>
+                          <div className="w-full mb-3"><h3 className="text-base md:text-lg font-black text-white line-clamp-2 drop-shadow-[0_4px_12px_rgba(0,0,0,1)] leading-snug tracking-tight">{v.title}</h3></div>
                           {progress > 0 && <div className="h-1 w-full bg-white/10 rounded-full overflow-hidden mb-2"><div className="h-full bg-accent shadow-glow" style={{ width: `${Math.min(100, (progress / 3600) * 100)}%` }} /></div>}
-                          <div className="flex items-center justify-between w-full opacity-60">
-                             <div className="flex items-center gap-2"><Clock className="w-3 h-3 text-white" /><span className="text-[10px] font-black text-white uppercase tracking-widest">{v.duration || "FEED"}</span></div>
-                             {v.isLive && <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse" /><span className="text-[10px] font-black text-red-500 uppercase tracking-widest">LIVE</span></div>}
-                          </div>
+                          <div className="flex items-center justify-between w-full opacity-60"><div className="flex items-center gap-2"><Clock className="w-3 h-3 text-white" /><span className="text-[10px] font-black text-white uppercase tracking-widest">{v.duration || "FEED"}</span></div>{v.isLive && <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse" /><span className="text-[10px] font-black text-red-500 uppercase tracking-widest">LIVE</span></div>}</div>
                         </div>
                       </div>
                     </Card>
@@ -371,7 +376,7 @@ export function MediaView() {
         )}
       </main>
       <AddContentModal type="channel" isOpen={isAddChannelOpen} onOpenChange={setIsAddChannelOpen} onAdd={(ch) => { addChannel(ch); toast({ title: "تمت الإضافة" }); }} />
-      <AddContentModal type="reciter" isOpen={isAddReciterOpen} onOpenChange={setIsAddReciterOpen} onAdd={(r) => { addReciter(r); handleReciterClick(r.name); toast({ title: "تمت الإضافة" }); }} />
+      <AddContentModal type="reciter" isOpen={isAddReciterOpen} onOpenChange={setIsAddReciterOpen} onAdd={(r) => { addReciter(r); resetView(); toast({ title: "تمت الإضافة" }); }} />
     </div>
   );
 }

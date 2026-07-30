@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 
 /**
  * MoonWidget v12000.0 - Ultra-Clear Sovereign Date Hub
- * Features: Direct clear moon image background (No Overlay) -> Today -> 3px Line -> Month.
+ * Features: Arabic Hijri months retrieved via Intl.DateTimeFormat 'ar' locale.
  */
 export function MoonWidget() {
   const [loading, setLoading] = useState(true);
@@ -43,7 +43,8 @@ export function MoonWidget() {
 
     try {
       const today = new Date();
-      const hijriFormatter = new Intl.DateTimeFormat('en-u-ca-islamic-umalqura-nu-latn', {day: 'numeric', month: 'long'});
+      // Using 'ar' locale for Arabic month names explicitly
+      const hijriFormatter = new Intl.DateTimeFormat('ar-u-ca-islamic-umalqura-nu-latn', {day: 'numeric', month: 'long'});
       const hijriParts = hijriFormatter.formatToParts(today);
       const dayNum = parseInt(hijriParts.find(p => p.type === 'day')?.value || "1", 10);
       const monthName = hijriParts.find(p => p.type === 'month')?.value || "";
@@ -86,7 +87,7 @@ export function MoonWidget() {
       tabIndex={0}
       onClick={() => setWallPlate('moon', { image: moonImageUrl, day: displayValue, label })}
     >
-      {/* Ultra-Clear Moon Background - 100% Clarity as Requested */}
+      {/* Ultra-Clear Moon Background - 100% Clarity */}
       <div className="absolute inset-0 z-0 flex items-center justify-center bg-black">
         <Image 
           src={moonImageUrl} 
@@ -140,8 +141,8 @@ export function MoonWidget() {
             {/* 3px Sovereign Line */}
             <div className="h-[3px] w-32 bg-primary rounded-full my-4 shadow-glow" />
 
-            {/* Month Name - بخط dima-story ملكي ضخم */}
-            <span className="text-white font-black tracking-widest uppercase animate-in fade-in slide-in-from-bottom-4 duration-1000 leading-none" style={{ fontFamily: 'dima-story, Amiri', fontSize: isWide ? '5.5rem' : '4rem', filter: 'drop-shadow(0 0 40px rgba(0,0,0,1))' }}>
+            {/* Month Name - ضخم وواضح */}
+            <span className="text-white font-black tracking-widest uppercase animate-in fade-in slide-in-from-bottom-4 duration-1000 leading-none" style={{ fontFamily: 'Amiri, Inter', fontSize: isWide ? '5.5rem' : '4rem', filter: 'drop-shadow(0 0 40px rgba(0,0,0,1))' }}>
               {subLabel}
             </span>
 

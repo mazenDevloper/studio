@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -32,15 +33,21 @@
     @apply border-border;
     -webkit-tap-highlight-color: transparent !important;
     outline: none !important;
-    /* Zero Latency Sovereign Enforcement */
+    /* ZERO LATENCY SOVEREIGN ENFORCEMENT */
     transition-duration: 0ms !important;
     transition-delay: 0ms !important;
     animation-duration: 0ms !important;
+    transition-property: none !important;
   }
   
-  /* Essential animations only */
-  .animate-spin, .animate-pulse, .animate-bounce {
+  .animate-spin {
+    animation: spin 1s linear infinite !important;
     animation-duration: 1s !important;
+  }
+  
+  .animate-pulse {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite !important;
+    animation-duration: 2s !important;
   }
 
   body {
@@ -73,7 +80,7 @@
 }
 
 .focusable:focus {
-  @apply scale-[1.04] border-primary z-50;
+  @apply border-primary z-50;
   box-shadow: 
     0 0 0 4px rgba(0, 136, 255, 0.6),
     0 0 100px rgba(0, 136, 255, 1.0),
@@ -87,3 +94,13 @@
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
 .shadow-glow { box-shadow: 0 0 35px #0088ff, 0 0 10px rgba(0, 136, 255, 0.5); }
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .5; }
+}

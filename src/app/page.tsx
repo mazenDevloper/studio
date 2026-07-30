@@ -1,10 +1,10 @@
 
-import { DashboardView } from "@/components/dashboard/dashboard-view";
+import { redirect } from 'next/navigation';
 
+/**
+ * نقطة البداية السيادية - التوجيه اللحظي للميديا
+ * تم الضبط لتبدأ الرحلة من الميديا مع بقاء الداشبورد متاحاً.
+ */
 export default function Home() {
-  return (
-    <main className="w-full min-h-full relative">
-      <DashboardView />
-    </main>
-  );
+  redirect('/media');
 }

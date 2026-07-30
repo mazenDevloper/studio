@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useMediaStore } from "@/lib/store";
@@ -9,8 +8,8 @@ import { Button } from "@/components/ui/button";
 import { ShortcutBadge } from "@/components/layout/car-dock";
 
 /**
- * GlobalVideoPlayer v110.0 - Resident Audio Engine
- * Features: Media Session API for background playback & Deep Session Recovery.
+ * GlobalVideoPlayer v120.0 - Smart Procedural Resume Engine
+ * Resume logic: Duration > 15m AND progress is in middle 1/3.
  */
 export function GlobalVideoPlayer() {
   const { 
@@ -32,12 +31,26 @@ export function GlobalVideoPlayer() {
 
   const startSeconds = useMemo(() => {
     if (activeVideo?.id && videoProgress[activeVideo.id]) {
-      return Math.floor(videoProgress[activeVideo.id]);
+      const progress = videoProgress[activeVideo.id];
+      const durStr = activeVideo.duration || "0:00";
+      
+      // Parse duration to seconds (Format: HH:MM:SS or MM:SS)
+      const parts = durStr.split(':').map(Number);
+      let totalSeconds = 0;
+      if (parts.length === 3) totalSeconds = parts[0] * 3600 + parts[1] * 60 + parts[2];
+      else if (parts.length === 2) totalSeconds = parts[0] * 60 + parts[1];
+
+      // Logic: Resume only if > 15m and progress is in the middle third
+      const isLong = totalSeconds > 900;
+      const isMiddleThird = progress > (totalSeconds / 3) && progress < (2 * totalSeconds / 3);
+
+      if (isLong && isMiddleThird) {
+        return Math.floor(progress);
+      }
     }
     return 0;
-  }, [activeVideo?.id, videoProgress]);
+  }, [activeVideo, videoProgress]);
 
-  // --- AUTO-FULLSCREEN FOR IDEB ---
   useEffect(() => {
     if (activeIptv?.stream_id === 'ideb-live') {
       setIsFullScreen(true);
@@ -45,7 +58,6 @@ export function GlobalVideoPlayer() {
     }
   }, [activeIptv?.stream_id, setIsFullScreen, setIsMinimized]);
 
-  // --- MEDIA SESSION API: BACKGROUND PERSISTENCE ---
   useEffect(() => {
     if ('mediaSession' in navigator && isActive) {
       const metadata = {
@@ -156,7 +168,6 @@ export function GlobalVideoPlayer() {
   };
 
   if (!mounted) return null;
-  const currentPlaylist = activeIptv ? iptvPlaylist : playlist;
 
   return (
     <div 

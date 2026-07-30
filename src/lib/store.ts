@@ -1,3 +1,4 @@
+
 "use client";
 
 import { create } from "zustand";
@@ -191,6 +192,7 @@ interface MediaState {
   addReciter: (channel: YouTubeChannel) => void;
   removeReciter: (channelid: string) => void;
   updateReciterName: (channelid: string, newName: string) => void;
+  incrementReciterClick: (channelid: string) => void;
   reorderReciter: (fromId: string, direction: 'prev' | 'next') => void;
   reorderReciterTo: (fromId: string, toId: string) => void;
   toggleSaveVideo: (video: YouTubeVideo) => void;
@@ -311,7 +313,6 @@ export const useMediaStore = create<MediaState>()(
           } catch { return null; } 
         };
         
-        // Parallel fetch for speed
         const results = await Promise.allSettled([
           fetchB(JSONBIN_PRAYER_TIMES_BIN_ID), 
           fetchB(JSONBIN_MANUSCRIPTS_BIN_ID), 
@@ -332,12 +333,16 @@ export const useMediaStore = create<MediaState>()(
             mapSettings: { ...get().mapSettings, ...v.mapSettings },
             customFonts: v.customFonts || [],
             keyMappings: v.keyMappings || DEFAULT_CONTEXT_MAPPINGS,
-            savedVideos: v.savedVideos || []
+            savedVideos: v.savedVideos || [],
+            manuscriptScales: v.manuscriptScales || {}
           });
         }
         if (results[3].status === 'fulfilled' && results[3].value) set({ customWallBackgrounds: Array.isArray(results[3].value) ? results[3].value : (results[3].value.backgrounds || []) });
         if (results[4].status === 'fulfilled' && results[4].value) set({ favoriteIptvChannels: Array.isArray(results[4].value) ? results[4].value : (results[4].value.channels || []) });
-        if (results[5].status === 'fulfilled' && results[5].value) set({ favoriteReciters: Array.isArray(results[5].value) ? results[5].value : (results[5].value.reciters || []) });
+        if (results[5].status === 'fulfilled' && results[5].value) {
+          const reciters = Array.isArray(results[5].value) ? results[5].value : (results[5].value.reciters || []);
+          set({ favoriteReciters: reciters.sort((a: any, b: any) => (b.clickschannel || 0) - (a.clickschannel || 0)) });
+        }
         if (results[6].status === 'fulfilled' && results[6].value) set({ favoriteChannels: Array.isArray(results[6].value) ? results[6].value : (results[6].value.channels || []) });
 
         set({ isInitialLoading: false });
@@ -346,7 +351,7 @@ export const useMediaStore = create<MediaState>()(
       syncMasterBin: async () => {
         const s = get();
         await updateBin(JSONBIN_MASTER_BIN_ID, { 
-          favoriteTeams: s.favoriteTeams, favoriteLeagueIds: s.favoriteLeagueIds, belledMatchIds: s.belledMatchIds, skippedMatchIds: s.skippedMatchIds, prayerSettings: s.prayerSettings, reminders: s.reminders, mapSettings: s.mapSettings, customFonts: s.customFonts, keyMappings: s.keyMappings, isAltModeActive: s.isAltModeActive, autoHideIsland: s.autoHideIsland, displayScale: s.displayScale, dockScale: s.dockScale, savedVideos: s.savedVideos 
+          favoriteTeams: s.favoriteTeams, favoriteLeagueIds: s.favoriteLeagueIds, belledMatchIds: s.belledMatchIds, skippedMatchIds: s.skippedMatchIds, prayerSettings: s.prayerSettings, reminders: s.reminders, mapSettings: s.mapSettings, customFonts: s.customFonts, keyMappings: s.keyMappings, isAltModeActive: s.isAltModeActive, autoHideIsland: s.autoHideIsland, displayScale: s.displayScale, dockScale: s.dockScale, savedVideos: s.savedVideos, manuscriptScales: s.manuscriptScales 
         });
       },
 
@@ -360,9 +365,15 @@ export const useMediaStore = create<MediaState>()(
       reorderChannel: (id, dir) => set((s) => { const l = [...s.favoriteChannels], idx = l.findIndex(c => c.channelid === id); if (idx === -1) return s; const nIdx = dir === 'next' ? idx + 1 : idx - 1; if (nIdx < 0 || nIdx >= l.length) return s; [l[idx], l[nIdx]] = [l[nIdx], l[idx]]; return { favoriteChannels: l }; }),
       reorderChannelTo: (f, t) => set((s) => { const l = [...s.favoriteChannels], fI = l.findIndex(i => i.channelid === f), tI = l.findIndex(i => i.channelid === t); if (fI === -1 || tI === -1) return s; const [m] = l.splice(fI, 1); l.splice(tI, 0, m); return { favoriteChannels: l }; }),
       
-      addReciter: (r) => set((s) => { const n = [...s.favoriteReciters.filter(i => i.channelid !== r.channelid), r]; setTimeout(() => get().saveRecitersReorder(), 100); return { favoriteReciters: n }; }),
+      addReciter: (r) => set((s) => { const n = [...s.favoriteReciters.filter(i => i.channelid !== r.channelid), { ...r, clickschannel: 0 }]; setTimeout(() => get().saveRecitersReorder(), 100); return { favoriteReciters: n }; }),
       removeReciter: (id) => set((s) => { const n = s.favoriteReciters.filter(i => i.channelid !== id); setTimeout(() => get().saveRecitersReorder(), 100); return { favoriteReciters: n }; }),
       updateReciterName: (id, name) => set((s) => { const n = s.favoriteReciters.map(r => r.channelid === id ? { ...r, name } : r); setTimeout(() => get().saveRecitersReorder(), 100); return { favoriteReciters: n }; }),
+      incrementReciterClick: (id) => set((s) => { 
+        const n = s.favoriteReciters.map(r => r.channelid === id ? { ...r, clickschannel: (r.clickschannel || 0) + 1 } : r)
+                                     .sort((a, b) => (b.clickschannel || 0) - (a.clickschannel || 0));
+        setTimeout(() => get().saveRecitersReorder(), 100);
+        return { favoriteReciters: n };
+      }),
       reorderReciter: (id, dir) => set((s) => { const l = [...s.favoriteReciters], idx = l.findIndex(r => r.channelid === id); if (idx === -1) return s; const nIdx = dir === 'next' ? idx + 1 : idx - 1; if (nIdx < 0 || nIdx >= l.length) return s; [l[idx], l[nIdx]] = [l[nIdx], l[idx]]; return { favoriteReciters: l }; }),
       reorderReciterTo: (f, t) => set((s) => { const l = [...s.favoriteReciters], fI = l.findIndex(i => i.channelid === f), tI = l.findIndex(i => i.channelid === t); if (fI === -1 || tI === -1) return s; const [m] = l.splice(fI, 1); l.splice(tI, 0, m); return { favoriteReciters: l }; }),
 
@@ -379,7 +390,11 @@ export const useMediaStore = create<MediaState>()(
         return { customManuscripts: n }; 
       }),
       updateManuscript: (id, u) => set((s) => { const n = s.customManuscripts.map(m => m.id === id ? { ...m, ...u } : m); setTimeout(() => get().saveManuscriptsReorder(), 100); return { customManuscripts: n }; }),
-      updateManuscriptScale: (id, delta) => set((s) => ({ manuscriptScales: { ...s.manuscriptScales, [id]: Math.max(0.1, (s.manuscriptScales[id] || 1.0) + delta) } })),
+      updateManuscriptScale: (id, delta) => set((s) => {
+        const uS = { ...s.manuscriptScales, [id]: Math.max(0.1, (s.manuscriptScales[id] || 1.0) + delta) };
+        setTimeout(() => get().syncMasterBin(), 100);
+        return { manuscriptScales: uS };
+      }),
       updateManuscriptTransform: (id, x, y, scale) => set((s) => ({ customManuscripts: s.customManuscripts.map(m => m.id === id ? { ...m, x, y, scale } : m) })),
       updateWordTransform: (manId, wordId, x, y, scale) => set((s) => ({
         customManuscripts: s.customManuscripts.map(m => {
@@ -441,7 +456,7 @@ export const useMediaStore = create<MediaState>()(
       setAiSuggestions: (s) => set({ aiSuggestions: s }),
     }),
     {
-      name: "drivecast-final-v13k", 
+      name: "drivecast-final-v25k", 
       partialize: (s) => ({ 
         dockSide: s.dockSide, showIslands: s.showIslands, isAltModeActive: s.isAltModeActive, 
         displayScale: s.displayScale, dockScale: s.dockScale, 

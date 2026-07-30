@@ -33,7 +33,7 @@ export function ShortcutBadge({ action, className, context = 'default' }: { acti
   const isPlayerActive = (activeVideo || activeIptv) && isFullScreen && !isMinimized;
   
   const screenMap: Record<string, MappingContext> = { 
-    '/': 'dashboard', '/media': 'media', '/quran': 'quran', 
+    '/dashboard': 'dashboard', '/media': 'media', '/quran': 'quran', 
     '/football': 'football', '/iptv': 'iptv', '/settings': 'settings' 
   };
   const pageCtx = screenMap[pathname] || 'global';
@@ -68,7 +68,7 @@ export function ShortcutBadge({ action, className, context = 'default' }: { acti
 export function CarDock() {
   const pathname = usePathname();
   const router = useRouter();
-  const { dockSide, toggleDockSide, resetMediaView, dockScale, setDockScale } = useMediaStore();
+  const { dockSide, toggleDockSide, resetMediaView, dockScale } = useMediaStore();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -76,8 +76,8 @@ export function CarDock() {
   }, []);
 
   const apps = [
-    { name: "Home", href: "/", icon: LayoutDashboard, action: "goto_home" as AppAction },
     { name: "Media", href: "/media", icon: Radio, action: "goto_media" as AppAction },
+    { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard, action: "goto_home" as AppAction },
     { name: "Quran", href: "/quran", icon: BookOpen, action: "goto_quran" as AppAction },
     { name: "Hihi2", href: "/hihi2", icon: FootballBallIcon, action: "goto_hihi2" as AppAction },
     { name: "IPTV", href: "/iptv", icon: Tv, action: "goto_iptv" as AppAction },
@@ -86,7 +86,7 @@ export function CarDock() {
   ];
 
   const handleNavigate = (href: string) => {
-    if (pathname === '/media' && href === '/media') resetMediaView();
+    if (pathname === href && href === '/media') resetMediaView();
     router.push(href);
   };
 

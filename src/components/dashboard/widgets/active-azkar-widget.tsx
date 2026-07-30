@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useMediaStore } from "@/lib/store";
@@ -7,9 +8,9 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 
 /**
- * ActiveAzkarWidget v17000.0 - Atomic Freeze System
- * Features: Fixed aspect ratio container (4/3) with relative font scaling.
- * This prevents horizontal gaps from expanding on wide screens.
+ * ActiveAzkarWidget v18000.0 - Atomic Freeze System v2
+ * Features: Uses 'cqw' units to ensure absolute spatial stability regardless of viewport size.
+ * Treatment of manuscript as a unified block via Container Units.
  */
 export function ActiveAzkarWidget() {
   const customManuscripts = useMediaStore(state => state.customManuscripts);
@@ -29,9 +30,9 @@ export function ActiveAzkarWidget() {
 
   const activeItem = customManuscripts?.[activeIndex];
 
-  // Using container-relative units (vw) within a fixed-ratio parent ensures stable gaps
+  // Using cqw (Container Query Width) ensures font size stays perfectly proportional to the box
   const getDynamicFontSize = (baseScale: number) => {
-    return `${baseScale * 3.2}vw`; 
+    return `${baseScale * 8.5}cqw`; 
   };
 
   const nextManu = (e?: React.MouseEvent) => {
@@ -59,10 +60,10 @@ export function ActiveAzkarWidget() {
         </div>
       )}
       
-      <div className="relative z-20 w-full flex-1 p-8 m-0 overflow-hidden flex items-center justify-center">
+      <div className="relative z-20 w-full flex-1 p-0 m-0 overflow-hidden flex items-center justify-center">
         {activeItem ? (
-          /* Fixed Aspect Ratio Container to 'Freeze' the layout */
-          <div className="relative w-full aspect-[4/3] flex items-center justify-center max-h-full">
+          /* Fixed Aspect Ratio Container to 'Freeze' the layout using Container Queries */
+          <div className="relative w-full aspect-[4/3] flex items-center justify-center max-h-full [container-type:inline-size]">
             {activeItem.type === 'text' && activeItem.words ? (
               activeItem.words.map((word) => {
                 const itemScale = (word.scale || 1.0) * (manuscriptScales[activeItem.id] || 1.0);
