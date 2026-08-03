@@ -40,6 +40,7 @@ export const JSONBIN_MASTER_KEY = '$2a$10$SYrYv.ct8hiMU9YeUxEQ.ecRkOrTqs.TDchJRV
 export const JSONBIN_IPTV_FAVS_BIN_ID = '69a87b8bd0ea881f40eeec0c'; 
 export const JSONBIN_MASTER_BIN_ID = '69c782cbb7ec241ddcb0b99a'; 
 export const JSONBIN_BACKGROUNDS_BIN_ID = '69b63cb1c3097a1dd5278bf4'; 
+export const JSONBIN_FONTS_BIN_ID = '6a573cdbf5f4af5e29915034';
 
 // المصادر الفرعية
 export const JSONBIN_CHANNELS_BIN_ID = '68ef1b3dd0ea881f40a38bd1'; 

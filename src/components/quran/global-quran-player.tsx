@@ -5,10 +5,11 @@ import { useMediaStore } from "@/lib/store";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { SovereignIframe } from "@/components/ui/sovereign-iframe";
 
 /**
- * GlobalQuranPlayer - يعمل في الخلفية لضمان استمرار الصوت عند التنقل
- * يتم تغيير موقعه برمجياً بدلاً من حذفه لضمان عدم انقطاع الصوت
+ * GlobalQuranPlayer v5.0 - Background Persistence Engine
+ * Uses SovereignIframe for robust cross-page audio maintenance.
  */
 export function GlobalQuranPlayer() {
   const { activeQuranUrl } = useMediaStore();
@@ -32,11 +33,9 @@ export function GlobalQuranPlayer() {
           : "top-[-9999px] left-[-9999px] w-1 h-1 opacity-0 pointer-events-none overflow-hidden"
       )}
     >
-      <iframe
+      <SovereignIframe
         src={`${activeQuranUrl}${activeQuranUrl.includes('?') ? '&' : '?'}autoplay=1`}
-        allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
-        className="w-full h-full border-none"
-        style={{ background: '#000' }}
+        title="Background Quran Engine"
       />
     </div>
   );

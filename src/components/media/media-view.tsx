@@ -1,29 +1,18 @@
 
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { 
-  Search, Plus, Loader2, X, List, 
-  Youtube, Star, Mic, Play, Clock, ChevronRight, AlertCircle, BookmarkPlus, ArrowRightLeft, ChevronUp, ChevronDown, Save, ArrowUpCircle, Layers
+  Plus, Loader2, X, List, Youtube, Star, Mic, Layers, Sparkles, Trophy, Clock
 } from "lucide-react";
 import { useMediaStore, YouTubeChannel, YouTubeVideo } from "@/lib/store";
-import { searchYouTubeChannels, fetchChannelVideos, searchYouTubeVideos } from "@/lib/youtube";
+import { fetchChannelVideos, searchYouTubeVideos } from "@/lib/youtube";
 import { cn } from "@/lib/utils";
-import { useToast } from "@/hooks/use-toast";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 
-const READING_STYLES = [
-  "مرتل", "مجود", "الحدر", "التدوير", "التحقيق", "القراءة المفسرة", "بالمقامات", "تلاوة خاشعة"
-];
+const READING_STYLES = ["مرتل", "مجود", "الحدر", "التدوير", "التحقيق", "القراءة المفسرة", "بالمقامات", "تلاوة خاشعة"];
 
 const JUZ_COLORS = [
   "shadow-[0_0_15px_#ff0000] border-red-500/50", "shadow-[0_0_15px_#ff7f00] border-orange-500/50",
@@ -43,7 +32,6 @@ const JUZ_COLORS = [
   "shadow-[0_0_15px_#dda0dd] border-plum-500/50", "shadow-[0_0_15_#7fffd4] border-aquamarine-500/50"
 ];
 
-// Precise Juz to Surah Index Mapping (1-based)
 const JUZ_SURAH_MAP: Record<number, number[]> = {
   1: [1, 2], 2: [2], 3: [2, 3], 4: [3, 4], 5: [4], 6: [4, 5], 7: [5, 6], 8: [6, 7], 9: [7, 8], 10: [8, 9],
   11: [9, 10, 11], 12: [11, 12], 13: [12, 13, 14], 14: [15, 16], 15: [17, 18], 16: [18, 19, 20], 17: [21, 22],
@@ -54,329 +42,239 @@ const JUZ_SURAH_MAP: Record<number, number[]> = {
   30: [78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114]
 };
 
-function AddContentModal({ 
-  type, isOpen, onOpenChange, onAdd 
-}: { 
-  type: 'channel' | 'reciter', isOpen: boolean, onOpenChange: (val: boolean) => void, onAdd: (item: YouTubeChannel) => void 
-}) {
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState<YouTubeChannel[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  const handleSearch = async (val: string) => {
-    setQuery(val);
-    if (val.length < 3) { setResults([]); return; }
-    setLoading(true);
-    try {
-      const res = await searchYouTubeChannels(val);
-      setResults(res || []);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <Dialog open={isOpen} onOpenChange={(val) => { onOpenChange(val); if(!val) { setResults([]); setQuery(""); } }}>
-      <DialogContent className="bg-zinc-950/95 backdrop-blur-3xl border-white/10 text-white max-w-2xl max-h-[85vh] flex flex-col p-0 rounded-[3rem] overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.8)] outline-none">
-        <div className="p-8 pb-4 border-b border-white/5 bg-black/40">
-          <DialogHeader><DialogTitle className="text-3xl font-black flex items-center gap-4 tracking-tighter text-right text-white">
-            <div className="w-12 h-12 rounded-2xl bg-primary/20 flex items-center justify-center border border-primary/20 shadow-glow">
-              {type === 'channel' ? <Youtube className="w-7 h-7 text-primary" /> : <Mic className="w-7 h-7 text-emerald-400" />}
-            </div>
-            {type === 'channel' ? "إضافة قناة اشتراك" : "إضافة قارئ أو مبدع"}
-          </DialogTitle></DialogHeader>
-          <div className="relative mt-8">
-            <Input placeholder={type === 'channel' ? "ابحث عن قنوات يوتيوب..." : "ابحث عن قراء ومبتهلين..."} value={query} onChange={(e) => handleSearch(e.target.value)} className="h-16 bg-white/5 border-white/10 rounded-2xl pr-14 text-xl focusable text-right text-white" autoFocus />
-            <div className="absolute right-5 top-1/2 -translate-y-1/2 text-white/20">{loading ? <Loader2 className="w-6 h-6 animate-spin text-primary" /> : <Search className="w-6 h-6" />}</div>
-          </div>
-        </div>
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-8 pt-4 space-y-3">
-          {results.map((item, i) => (
-            <div key={item.channelid + i} onClick={() => { onAdd(item); onOpenChange(false); }} className="flex items-center gap-5 p-5 rounded-[2rem] bg-white/5 hover:bg-white/10 transition-all cursor-pointer border-4 border-transparent group focusable outline-none" tabIndex={0}>
-              <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-white/10 shadow-2xl flex-shrink-0"><img src={item.image} className="w-full h-full object-cover" alt="" /></div>
-              <div className="flex-1 min-w-0 text-right"><h4 className="font-black text-xl truncate text-white">{item.name}</h4><p className="text-[10px] text-white/30 uppercase tracking-[0.2em] mt-1 font-bold">YouTube Official Content</p></div>
-              <div className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all shadow-xl"><Plus className="w-6 h-6" /></div>
-            </div>
-          ))}
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
+/**
+ * MediaView v46.0 - Autonomous Level Selection & Periodic Sync
+ */
 export function MediaView() {
   const searchParams = useSearchParams();
   const { 
-    favoriteChannels, addChannel, setActiveVideo, dockSide, isSidebarShrinked, setIsSidebarShrinked,
+    favoriteChannels, setActiveVideo, dockSide, isSidebarShrinked, setIsSidebarShrinked,
     selectedChannel, setSelectedChannel, channelVideos, setChannelVideos,
-    favoriteReciters, addReciter, toggleSaveVideo, savedVideos, videoProgress,
-    fetchPriorityData, isReorderMode, toggleReorderMode, incrementReciterClick
+    favoriteReciters, incrementReciterClick, fetchPriorityData
   } = useMediaStore();
 
-  const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [searchResults, setSearchResults] = useState<YouTubeVideo[]>([]);
   const [loading, setLoading] = useState(false);
   const [surahs, setSurahs] = useState<any[]>([]);
   const [allSurahs, setAllSurahs] = useState<any[]>([]);
-  const [windowWidth, setWindowWidth] = useState(0);
-  const [lastJuzClick, setLastJuzClick] = useState<{ id: number, time: number }>({ id: 0, time: 0 });
-  
-  const [starredVideos, setStarredVideos] = useState<YouTubeVideo[]>([]);
+  const [starredLists, setStarredLists] = useState<Record<string, any>>({});
+  const [childWords, setChildWords] = useState<YouTubeVideo[]>([]);
+  const [matchHighlights, setMatchHighlights] = useState<YouTubeVideo[]>([]);
   const [isIsolatedViewActive, setIsIsolatedViewActive] = useState(false);
-
-  const [isAddChannelOpen, setIsAddChannelOpen] = useState(false);
-  const [isAddReciterOpen, setIsAddReciterOpen] = useState(false);
-
   const [selectedStyle, setSelectedStyle] = useState<string | null>(null);
   const [selectedReciter, setSelectedReciter] = useState<string | null>(null);
   const [selectedSurah, setSelectedSurah] = useState<string | null>(null);
   const [selectedJuz, setSelectedJuz] = useState<number | null>(null);
 
   const isDockLeft = dockSide === 'left';
-  const isSmallScreen = windowWidth > 0 && windowWidth < 968;
 
-  const fetchFeeds = useCallback(async () => {
-    if (!favoriteChannels.length) return;
-    try {
-      const starred = favoriteChannels.filter(c => c.starred);
-      const allStarredPromises = starred.map(c => fetchChannelVideos(c.channelid, 10));
-      const results = await Promise.all(allStarredPromises);
-      const combinedStarred: YouTubeVideo[] = [];
-      results.forEach(vids => combinedStarred.push(...vids));
-      setStarredVideos(combinedStarred.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()));
-    } catch (e) {}
+  const fetchExtraLists = useCallback(async () => {
+    const starred = favoriteChannels.filter(c => c.starred).slice(0, 3);
+    for (let i = 0; i < 3; i++) {
+        if (starred[i]) {
+            const vids = await fetchChannelVideos(starred[i].channelid, 15);
+            setStarredLists(prev => ({ ...prev, [i]: vids, [`name-${i}`]: starred[i].name }));
+        } else {
+            setStarredLists(prev => ({ ...prev, [i]: [], [`name-${i}`]: "" }));
+        }
+    }
+    searchYouTubeVideos("كلمات الطفل الأولى تعليم النطق", 15).then(setChildWords);
+    searchYouTubeVideos("ملخص مباريات كرة القدم الأمس", 15).then(setMatchHighlights);
   }, [favoriteChannels]);
 
+  // Initial Level Selection & 10s Hyper-Sync
   useEffect(() => {
-    fetchFeeds();
-    const handleResize = () => setWindowWidth(window.innerWidth);
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    
-    // Sovereignty Sync: Local update after 10 seconds
-    const syncTimer = setTimeout(() => {
-      fetchPriorityData('all');
-    }, 10000);
-
+    fetchExtraLists();
     fetch("https://api.quran.com/api/v4/chapters?language=ar").then(r => r.json()).then(d => {
-      setSurahs(d.chapters || []);
-      setAllSurahs(d.chapters || []);
+      setSurahs(d.chapters || []); setAllSurahs(d.chapters || []);
     });
-    const q = searchParams.get('q');
-    if (q) { setSearch(q); performSearch(q); }
-    return () => {
-      clearTimeout(syncTimer);
-      window.removeEventListener('resize', handleResize);
-    };
-  }, [searchParams, fetchFeeds, fetchPriorityData]);
-
-  const performSearch = async (overrideQuery?: string) => {
-    const queryToUse = overrideQuery || search;
-    if (!queryToUse.trim()) return;
-    setLoading(true); 
-    setIsIsolatedViewActive(true); 
-    setIsSidebarShrinked(true); 
-    setSelectedChannel(null);
-    try { 
-      const res = await searchYouTubeVideos(queryToUse, 40); 
-      setSearchResults(res || []);
-    } finally { setLoading(false); }
-  };
-
-  const handleStyleClick = (style: string) => { 
-    setSelectedStyle(style); 
-    if (style === "ربط الآيات") {
-      setTimeout(() => {
-        const target = document.querySelector('[data-nav-id="style-link-verses"]') as HTMLElement;
-        target?.focus();
-        target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 100);
-    } else {
-      setTimeout(() => {
-        const target = document.querySelector('[data-nav-id^="reciter-"]') as HTMLElement;
-        target?.focus();
-        target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 100);
-    }
-  };
-
-  const handleReciterClick = (r: any) => { 
-    setSelectedReciter(r.name); 
-    incrementReciterClick(r.channelid);
-    setTimeout(() => {
-       const target = document.querySelector('[data-nav-id^="surah-"]') as HTMLElement;
-       target?.focus();
-       target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }, 100);
-  };
-
-  const handleSurahClick = (name: string) => { 
-    setSelectedSurah(name); 
-    const query = `${selectedReciter || ""} سورة ${name} ${selectedStyle || ""}`.trim();
-    setSearch(query);
-    performSearch(query); 
-  };
-
-  const handleJuzClick = (juzNum: number) => {
-    const now = Date.now();
-    if (lastJuzClick.id === juzNum && (now - lastJuzClick.time < 500)) {
-      const query = `الجزء ${juzNum}`;
-      setSearch(query);
-      performSearch(query);
-      return;
-    }
-    setLastJuzClick({ id: juzNum, time: now });
-    setSelectedJuz(juzNum);
-    setSelectedSurah(null);
     
-    // Precise Juz-Surah Filtering
-    const surahIds = JUZ_SURAH_MAP[juzNum] || [];
-    const surahsInJuz = allSurahs.filter(s => surahIds.includes(s.id));
-    setSurahs(surahsInJuz.length > 0 ? surahsInJuz : allSurahs);
-
-    // Sovereign Focus Shift: Move cursor to Juz button in Surah row immediately
+    // Level-Based Initial Focus (0ms Response)
     setTimeout(() => {
-      const target = (document.querySelector('[data-nav-id="juz-whole-btn"]') || document.querySelector('[data-nav-id="surah-0"]')) as HTMLElement;
-      if (target) {
-        target.focus();
-        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const searchInput = document.querySelector('[data-nav-id="content-search-input"]') as HTMLElement;
+      if (searchInput) searchInput.focus();
+      else {
+         const firstSub = document.querySelector('[data-nav-id="sidebar-channel-0"]') as HTMLElement;
+         if (firstSub) firstSub.focus();
+         else {
+            const firstReciter = document.querySelector('[data-nav-id="reciter-item-0"]') as HTMLElement;
+            if (firstReciter) firstReciter.focus();
+         }
       }
-    }, 100);
-  };
+    }, 1200);
+
+    const q = searchParams.get('q'); if (q) { setSearch(q); performSearch(q); }
+
+    // 10s Sovereign Update Cycle
+    const syncInterval = setInterval(() => fetchPriorityData('media'), 10000);
+    return () => clearInterval(syncInterval);
+  }, [searchParams, fetchExtraLists, fetchPriorityData]);
 
   useEffect(() => {
     if (selectedChannel) {
-      setLoading(true); 
-      setIsIsolatedViewActive(true);
-      setIsSidebarShrinked(true);
-      fetchChannelVideos(selectedChannel.channelid, 30).then(v => { setChannelVideos(v || []); setLoading(false); }).catch(() => setLoading(false));
+      setLoading(true);
+      fetchChannelVideos(selectedChannel.channelid, 40).then(vids => {
+        setChannelVideos(vids);
+        setLoading(false);
+      });
     }
-  }, [selectedChannel, setChannelVideos, setIsSidebarShrinked]);
+  }, [selectedChannel, setChannelVideos]);
 
-  const resetView = () => { setSelectedChannel(null); setSearchResults([]); setSearch(""); setIsIsolatedViewActive(false); setIsSidebarShrinked(false); setSelectedStyle(null); setSelectedReciter(null); setSelectedSurah(null); setSelectedJuz(null); setSurahs(allSurahs); };
+  const performSearch = async (query?: string) => {
+    const q = query || search; if (!q.trim()) return;
+    setLoading(true); setIsIsolatedViewActive(true); setIsSidebarShrinked(true); setSelectedChannel(null);
+    try { 
+      const res = await searchYouTubeVideos(q, 40); 
+      setSearchResults(res || []); 
+      setTimeout(() => { (document.querySelector('[data-nav-id="grid-item-0"]') as HTMLElement)?.focus(); }, 500);
+    } finally { setLoading(false); }
+  };
 
-  const activeGridVideos = selectedChannel ? channelVideos : searchResults;
-  const showIsolatedView = isIsolatedViewActive || !!selectedChannel || searchResults.length > 0;
+  const handleReciterClick = (r: any) => {
+    setSelectedReciter(r.name);
+    incrementReciterClick(r.channelid);
+    setSearch(prev => `${prev} ${r.name}`.trim());
+    setTimeout(() => { (document.querySelector('[data-nav-id="juz-item-0"]') as HTMLElement)?.focus(); }, 100);
+  };
+
+  const handleJuzClick = (juzNum: number) => {
+    setSelectedJuz(juzNum); setSelectedSurah(null);
+    const surahIds = JUZ_SURAH_MAP[juzNum] || [];
+    setSurahs(allSurahs.filter(s => surahIds.includes(s.id)));
+    setTimeout(() => { (document.querySelector('[data-nav-id="surah-0"]') as HTMLElement)?.focus(); }, 100);
+  };
+
+  const handleSurahClick = (name: string) => {
+    setSelectedSurah(name);
+    const finalQuery = `${search} سورة ${name}`.trim();
+    setSearch(finalQuery);
+    performSearch(finalQuery);
+  };
+
+  const resetView = () => { 
+    setSelectedChannel(null); setSearchResults([]); setSearch(""); setIsIsolatedViewActive(false); 
+    setIsSidebarShrinked(false); setSelectedStyle(null); setSelectedReciter(null); 
+    setSelectedSurah(null); setSelectedJuz(null); setSurahs(allSurahs); 
+  };
+
   const horizontalListClass = "w-full flex gap-4 px-8 py-0 overflow-x-auto no-scrollbar scroll-smooth justify-start items-center";
-  const rowWrapperClass = "group/row relative py-2 mb-0";
-  const itemScaleClass = "transition-all duration-0 shrink-0";
 
   return (
     <div className={cn("h-screen flex bg-transparent overflow-hidden relative", isDockLeft ? "flex-row-reverse" : "flex-row")}>
-      {!isSmallScreen && (
-        <aside className={cn("h-full z-[110] premium-glass flex flex-col shrink-0 border-white/5 bg-black/40 shadow-2xl transition-all duration-0", isSidebarShrinked ? "w-[6%]" : "w-[28%]", isDockLeft ? "border-l" : "border-r")}>
-          <div className="p-4 flex items-center justify-between border-b border-white/5">
-            {!isSidebarShrinked && (
-              <button onClick={toggleReorderMode} className={cn("w-10 h-10 rounded-full flex items-center justify-center transition-all", isReorderMode ? "bg-blue-600 text-white shadow-glow" : "bg-white/5 text-white/40")}>
-                <ArrowRightLeft className="w-5 h-5" />
-              </button>
-            )}
-            <button onClick={() => setIsAddChannelOpen(true)} className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center focusable border border-primary/20" tabIndex={0} data-nav-id="add-channel-btn"><Plus className="w-5 h-5 text-white" /></button>
-          </div>
-          <div className="flex-1 overflow-y-auto custom-scrollbar py-2 flex flex-col gap-1">
-            <div onClick={resetView} className={cn("flex items-center gap-3 p-3 cursor-pointer focusable w-[94%] mx-auto rounded-xl", !selectedChannel && !searchResults.length && !isIsolatedViewActive ? "bg-primary text-white" : "hover:bg-white/5 text-white/60")} tabIndex={0} data-nav-id="subs-0"><div className="w-10 h-10 rounded-xl flex items-center justify-center bg-white/10 shrink-0"><List className="w-5 h-5" /></div>{!isSidebarShrinked && <span className="flex-1 text-right font-black text-sm block overflow-hidden whitespace-nowrap px-1">الكل</span>}</div>
-            {favoriteChannels.map((ch, idx) => (
-              <div key={ch.channelid + idx} onClick={() => { if(!isReorderMode) { setSearchResults([]); setSelectedChannel(ch); } }} className={cn("flex flex-row-reverse items-center p-3 rounded-xl w-[94%] mx-auto gap-3 cursor-pointer focusable shrink-0 border-2", selectedChannel?.channelid === ch.channelid ? "bg-primary text-white" : "hover:bg-white/5 text-white/60", "border-transparent relative group")} tabIndex={0} data-nav-id={`subs-${idx + 1}`} data-type="channel" data-id={ch.channelid}>
-                <div className="w-10 h-10 rounded-xl overflow-hidden border border-white/10 shrink-0 relative"><img src={ch.image} className="w-full h-full object-cover" alt="" />{ch.starred && <div className="absolute top-0 right-0 w-2.5 h-2.5 bg-yellow-500 rounded-full border border-black" />}</div>
-                {!isSidebarShrinked && <span className="font-black text-sm flex-1 text-right leading-none text-white block overflow-hidden whitespace-nowrap px-1">{ch.name}</span>}
-              </div>
-            ))}
-          </div>
-        </aside>
-      )}
+      <aside data-nav-zone="sidebar" className={cn("h-full z-[110] premium-glass flex flex-col shrink-0 border-white/5 bg-black/40 transition-all duration-300", isSidebarShrinked ? "w-[80px]" : "w-[28%]", isDockLeft ? "border-l" : "border-r")}>
+        <div className="p-4 flex items-center justify-between border-b border-white/5">
+          <button className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center focusable border border-primary/20" tabIndex={0} data-nav-id="sidebar-add-btn"><Plus className="w-5 h-5" /></button>
+        </div>
+        <div className="flex-1 overflow-y-auto py-2 no-scrollbar">
+          <div onClick={resetView} className={cn("flex items-center justify-center gap-3 p-3 cursor-pointer focusable w-[90%] mx-auto rounded-xl", !selectedChannel && !isIsolatedViewActive ? "bg-primary text-white" : "hover:bg-white/5")} tabIndex={0} data-nav-id="sidebar-all-btn"><List className="w-5 h-5" />{!isSidebarShrinked && <span className="font-black text-sm">الكل</span>}</div>
+          {favoriteChannels.map((ch, idx) => (
+            <div key={idx} onClick={() => { setSearchResults([]); setSelectedChannel(ch); setIsIsolatedViewActive(true); }} className={cn("flex items-center justify-center p-3 rounded-xl w-[90%] mx-auto gap-3 cursor-pointer focusable", selectedChannel?.channelid === ch.channelid ? "bg-primary text-white" : "hover:bg-white/5 text-white/60")} tabIndex={0} data-nav-id={`sidebar-channel-${idx}`}>
+              <div className="w-8 h-8 rounded-xl overflow-hidden relative shrink-0"><img src={ch.image} className="w-full h-full object-cover" alt="" /></div>
+              {!isSidebarShrinked && <span className="font-black text-sm flex-1 truncate text-right">{ch.name}</span>}
+            </div>
+          ))}
+        </div>
+      </aside>
 
-      <main className="flex-1 overflow-y-auto custom-scrollbar relative pt-0 pb-40 px-10 no-scrollbar transition-all duration-0" style={{ direction: 'rtl' }}>
-        {isSmallScreen && favoriteChannels.length > 0 && (
-          <div className="w-full py-4 mb-4">
-             <div className="flex items-center justify-between mb-4 px-2">
-               <div className="flex items-center gap-3"><List className="w-4 h-4 text-primary" /><span className="text-[10px] font-black text-white/40 uppercase tracking-widest">الاشتراكات السريعة</span></div>
-               <div className="flex gap-2"><button onClick={resetView} className={cn("px-4 py-1.5 rounded-full text-[10px] font-black", !selectedChannel ? "bg-primary text-white shadow-glow" : "bg-white/5 text-white/20")}>الكل</button><button onClick={() => setIsAddChannelOpen(true)} className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center border border-primary/20 focusable"><Plus className="w-4 h-4 text-primary" /></button></div>
-             </div>
-             <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2 px-2">
-                {favoriteChannels.map((ch) => (
-                  <button key={ch.channelid} onClick={() => { setSearchResults([]); setSelectedChannel(ch); }} className={cn("shrink-0 w-16 h-16 rounded-2xl overflow-hidden border-2 transition-all shadow-xl bg-zinc-900", selectedChannel?.channelid === ch.channelid ? "border-primary shadow-glow scale-110" : "border-white/10")}><img src={ch.image} className="w-full h-full object-cover" alt="" /></button>
-                ))}
-             </div>
-          </div>
-        )}
-
-        {!showIsolatedView ? (
+      <main data-nav-zone="content" className="flex-1 overflow-y-auto relative pt-0 pb-40 px-10 no-scrollbar" style={{ direction: 'rtl' }}>
+        {!isIsolatedViewActive && !selectedChannel ? (
           <>
-            <section data-row-id="row-search" className="py-2"><div className="flex items-center gap-3 w-full"><Input placeholder="ابحث عن تلاوات، أهداف، أو فيديوهات..." value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && performSearch()} className="h-16 bg-white/5 border-none rounded-[2rem] pr-10 text-xl font-bold text-right focusable text-white flex-1" data-nav-id="main-search-input" /><button onClick={() => performSearch()} className="h-16 px-10 rounded-[2rem] bg-red-600 text-white font-black text-lg focusable flex items-center shrink-0 relative"><Youtube className="w-6 h-6 ml-3" /> استكشاف</button></div></section>
+            <section data-row-id="row-search" className="py-4"><div className="flex gap-3"><Input placeholder="ابحث عن أي شيء..." value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && performSearch()} className="h-16 bg-white/5 border-none rounded-[2rem] pr-10 text-xl font-bold focusable flex-1" data-nav-id="content-search-input" /><button onClick={() => performSearch()} className="h-16 px-10 rounded-[2rem] bg-red-600 text-white font-black text-lg focusable flex items-center" data-nav-id="content-search-btn"><Youtube className="w-6 h-6 ml-3" /> استكشاف</button></div></section>
             
-            <section data-row-id="row-styles" className={rowWrapperClass}>
-              <div className={horizontalListClass}>
-                <button onClick={() => handleStyleClick("ربط الآيات")} className={cn(itemScaleClass, "px-10 py-6 rounded-full font-black text-lg focusable border-2 text-white bg-blue-600 border-blue-400 shadow-[0_0_30px_rgba(37,99,235,0.6)]")} tabIndex={0} data-nav-id="style-link-verses">ربط الآيات</button>
-                <button onClick={() => setSelectedStyle(null)} className={cn(itemScaleClass, "px-10 py-6 rounded-full font-black text-lg focusable border-2 text-white", !selectedStyle ? "bg-primary border-primary/40 shadow-glow" : "bg-white/5 border-transparent")} tabIndex={0}>الكل</button>
-                {READING_STYLES.map((style, i) => (<button key={style} data-nav-id={`style-${i}`} onClick={() => handleStyleClick(style)} className={cn(itemScaleClass, "px-10 py-6 rounded-full font-black text-lg focusable border-2 text-white", selectedStyle === style ? "bg-primary border-primary/40 shadow-glow" : "bg-white/5 border-white/5")} tabIndex={0}>{style}</button>))}
-              </div>
-            </section>
-            
-            <section data-row-id="row-reciters" className={rowWrapperClass}>
-              <div className={cn(horizontalListClass, "gap-8")}>
-                <button onClick={() => setIsAddReciterOpen(true)} className="flex flex-col items-center gap-4 px-6 py-4 rounded-[3rem] focusable border-2 border-transparent hover:bg-emerald-600/10 transition-all duration-0 shrink-0" tabIndex={0} data-nav-id="reciter-add"><div className="w-48 h-40 rounded-full flex items-center justify-center bg-emerald-500/10 border-4 border-dashed border-emerald-500/30 text-emerald-400"><Plus className="w-14 h-14" /></div></button>
-                {favoriteReciters.map((r, i) => (<button key={r.channelid + i} onClick={() => handleReciterClick(r)} className={cn("flex flex-col items-center gap-4 px-6 py-4 rounded-[3rem] focusable border-2 transition-all duration-0 shrink-0 relative group", selectedReciter === r.name ? "border-emerald-500 bg-emerald-500/10" : "border-transparent hover:bg-emerald-600/10")} tabIndex={0} data-nav-id={`reciter-${i}`}><div className="w-48 h-48 rounded-full overflow-hidden border-4 border-emerald-500/30 shadow-2xl"><img src={r.image} className="w-full h-full object-cover" alt="" /></div><span className="text-2xl font-black truncate max-w-[240px] text-white">{r.name}</span></button>))}
-              </div>
-            </section>
+            <section data-row-id="row-styles" className="py-2"><div className={horizontalListClass}>
+              <button onClick={() => { setSelectedStyle(null); setSearch(""); }} className={cn("px-10 py-6 rounded-full font-black text-lg focusable border-2 shrink-0", !selectedStyle ? "bg-primary border-primary/40 shadow-glow" : "bg-white/5 border-transparent")} tabIndex={0} data-nav-id="style-item-all">الكل</button>
+              {READING_STYLES.map((s, i) => (<button key={i} onClick={() => { setSelectedStyle(s); setSearch(prev => `${prev} ${s}`.trim()); }} className={cn("px-10 py-6 rounded-full font-black text-lg focusable border-2 shrink-0", selectedStyle === s ? "bg-primary border-primary/40 shadow-glow" : "bg-white/5 border-white/5")} tabIndex={0} data-nav-id={`style-item-${i}`}>{s}</button>))}
+            </div></section>
 
-            <section data-row-id="row-juz" className={rowWrapperClass}>
-              <div className={horizontalListClass}><div className="flex items-center gap-3 px-6 py-3 bg-white/5 rounded-full border border-white/10 shrink-0"><Layers className="w-6 h-6 text-accent" /><span className="text-[12px] font-black text-white/40 uppercase">الأجزاء</span></div>{[...Array(30).keys()].map(i => { const juzNum = i + 1; return (<button key={`juz-${juzNum}`} onClick={() => handleJuzClick(juzNum)} className={cn(itemScaleClass, "px-12 py-6 rounded-full text-white font-black text-xl focusable border-2 transition-all duration-0", selectedJuz === juzNum ? "bg-white text-black border-white shadow-glow" : JUZ_COLORS[i])} tabIndex={0} data-nav-id={`juz-${juzNum}`}>الجزء {juzNum}</button>); })}</div>
-            </section>
+            <section data-row-id="row-reciters" className="py-2"><div className={cn(horizontalListClass, "gap-8")}>
+              {favoriteReciters.map((r, i) => (<button key={i} onClick={() => handleReciterClick(r)} className={cn("flex flex-col items-center gap-4 px-4 py-4 rounded-[2.5rem] focusable border-2 shrink-0 group", selectedReciter === r.name ? "border-emerald-500 bg-emerald-500/10" : "border-transparent hover:bg-emerald-600/10")} tabIndex={0} data-nav-id={`reciter-item-${i}`}><div className="w-32 h-32 rounded-full overflow-hidden border-4 border-emerald-500/30 shadow-2xl"><img src={r.image} className="w-full h-full object-cover" alt="" /></div><span className="text-xs font-black text-white">{r.name}</span></button>))}
+            </div></section>
 
-            <section data-row-id="row-surahs" className={rowWrapperClass}>
-              <div className={horizontalListClass}>
-                {selectedJuz && (
-                  <button 
-                    onClick={() => {
-                      const query = `الجزء ${selectedJuz}`;
-                      setSearch(query);
-                      performSearch(query);
-                    }}
-                    className={cn(itemScaleClass, "px-14 py-7 rounded-full border-2 text-white font-black text-xl hover:bg-blue-600/20 focusable transition-all duration-0 bg-blue-600 border-blue-400 shadow-glow")}
-                    tabIndex={0}
-                    data-nav-id="juz-whole-btn"
-                  >
-                    الجزء {selectedJuz}
-                  </button>
-                )}
-                {surahs.map((s, i) => (<button key={i} data-nav-id={`surah-${i}`} onClick={() => handleSurahClick(s.name_arabic)} className={cn(itemScaleClass, "px-14 py-7 rounded-full border-2 text-white font-black text-xl hover:bg-blue-600/20 focusable transition-all duration-0", selectedSurah === s.name_arabic ? "bg-blue-600 border-blue-400 shadow-glow" : "bg-white/5 border-white/10")} tabIndex={0}>{s.name_arabic}</button>))}
-              </div>
-            </section>
+            <section data-row-id="row-juz" className="py-2"><div className={horizontalListClass}><div className="flex items-center gap-3 px-6 py-3 bg-white/5 rounded-full border border-white/10 shrink-0"><Layers className="w-6 h-6 text-accent" /><span className="text-[12px] font-black text-white/40 uppercase">الأجزاء</span></div>{[...Array(30).keys()].map(i => (<button key={i} onClick={() => handleJuzClick(i+1)} className={cn("px-12 py-6 rounded-full text-white font-black text-xl focusable border-2 shrink-0", selectedJuz === i+1 ? "bg-white text-black border-white shadow-glow" : JUZ_COLORS[i])} tabIndex={0} data-nav-id={`juz-item-${i}`}>الجزء {i+1}</button>))}</div></section>
 
-            <section data-row-id="row-vids-starred" className={rowWrapperClass}><div className={horizontalListClass}>{starredVideos.map((v, idx) => (<div key={v.id + idx} onClick={() => setActiveVideo(v, starredVideos)} className={cn(itemScaleClass, "w-80 group relative overflow-hidden bg-zinc-900/80 border border-white/10 rounded-[2rem] focusable cursor-pointer shadow-2xl")} tabIndex={0}><div className="aspect-video relative overflow-hidden"><img src={v.thumbnail} className="w-full h-full object-cover" alt="" /></div><div className="p-5 text-right"><h3 className="font-bold text-sm truncate text-white">{v.title}</h3></div></div>))}</div></section>
+            <section data-row-id="row-surahs" className="py-2"><div className={horizontalListClass}>
+              {selectedJuz && (
+                <button onClick={() => performSearch(`${search} الجزء ${selectedJuz}`)} className="px-14 py-7 rounded-full border-2 text-white font-black text-xl focusable bg-white/5 border-white/10 hover:bg-blue-600/20 shadow-glow shrink-0" tabIndex={0} data-nav-id="juz-whole-btn">الجزء {selectedJuz}</button>
+              )}
+              {surahs.map((s, i) => (<button key={i} onClick={() => handleSurahClick(s.name_arabic)} className={cn("px-14 py-7 rounded-full border-2 text-white font-black text-xl focusable shrink-0", selectedSurah === s.name_arabic ? "bg-blue-600 border-blue-400 shadow-glow" : "bg-white/5 border-white/10")} tabIndex={0} data-nav-id={`surah-${i}`}>سورة {s.name_arabic}</button>))}
+            </div></section>
+
+            {[0, 1, 2].map(idx => starredLists[idx]?.length > 0 && (
+              <section key={idx} data-row-id={`row-vids-${idx}`} className="py-4"><div className="px-10 mb-4 flex items-center gap-4"><div className="w-8 h-8 rounded-lg bg-yellow-500 flex items-center justify-center"><Star className="w-5 h-5 text-black fill-current" /></div><h2 className="text-xl font-black text-white uppercase tracking-widest">ترددات {starredLists[`name-${idx}`]}</h2></div><div className={horizontalListClass}>{starredLists[idx].map((v, i) => (<div key={i} onClick={() => setActiveVideo(v, starredLists[idx])} className="w-80 group relative overflow-hidden bg-zinc-900/80 border border-white/10 rounded-[2rem] focusable cursor-pointer shrink-0" tabIndex={0} data-nav-id={`row-vids-${idx}-${i}`}><img src={v.thumbnail} className="aspect-video object-cover w-full" alt="" /><div className="p-5 text-right font-bold text-sm truncate text-white">{v.title}</div></div>))}</div></section>
+            ))}
+
+            {childWords.length > 0 && (
+              <section data-row-id="row-child-words" className="py-4">
+                <div className="px-10 mb-4 flex items-center gap-4">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center"><Sparkles className="w-5 h-5 text-black" /></div>
+                  <h2 className="text-xl font-black text-white uppercase tracking-widest">كلمات الطفل الأولى</h2>
+                </div>
+                <div className={horizontalListClass}>
+                  {childWords.map((v, i) => (
+                    <div key={i} onClick={() => setActiveVideo(v, childWords)} className="w-80 group relative overflow-hidden bg-zinc-900/80 border border-white/10 rounded-[2rem] focusable cursor-pointer shrink-0" tabIndex={0} data-nav-id={`child-word-${i}`}>
+                      <img src={v.thumbnail} className="aspect-video object-cover w-full" alt="" />
+                      <div className="p-5 text-right font-bold text-sm truncate text-white">{v.title}</div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {matchHighlights.length > 0 && (
+              <section data-row-id="row-match-highlights" className="py-4">
+                <div className="px-10 mb-4 flex items-center gap-4">
+                  <div className="w-8 h-8 rounded-lg bg-yellow-500 flex items-center justify-center"><Trophy className="w-5 h-5 text-black" /></div>
+                  <h2 className="text-xl font-black text-white uppercase tracking-widest">ملخصات مباريات الأمس</h2>
+                </div>
+                <div className={horizontalListClass}>
+                  {matchHighlights.map((v, i) => (
+                    <div key={i} onClick={() => setActiveVideo(v, matchHighlights)} className="w-80 group relative overflow-hidden bg-zinc-900/80 border border-white/10 rounded-[2rem] focusable cursor-pointer shrink-0" tabIndex={0} data-nav-id={`match-highlight-${i}`}>
+                      <img src={v.thumbnail} className="aspect-video object-cover w-full" alt="" />
+                      <div className="p-5 text-right font-bold text-sm truncate text-white">{v.title}</div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
           </>
         ) : (
-          <section className="space-y-10 min-h-[500px] relative origin-center">
-            <div className="flex justify-between items-center sticky top-0 z-[120] bg-black/70 backdrop-blur-2xl p-8 rounded-[3rem] border border-white/10 shadow-2xl"><button onClick={resetView} className="h-14 px-10 rounded-full bg-red-600 text-white font-black text-base focusable flex items-center gap-4" tabIndex={0} data-nav-id="back-to-library"><X className="w-6 h-6" /><span>العودة للمكتبة</span></button><div className="flex flex-col items-end text-right"><h2 className="text-4xl font-black text-white tracking-tighter">{selectedChannel ? selectedChannel.name : selectedJuz ? `الجزء ${selectedJuz}` : `رادار البحث: ${search}`}</h2><p className="text-[11px] text-white/40 uppercase tracking-[0.5em] font-bold mt-1">Deep Neural Content Scan</p></div></div>
-            {loading && activeGridVideos.length === 0 ? (<div className="flex flex-col items-center justify-center py-40 gap-6"><Loader2 className="w-20 h-20 animate-spin text-primary" /><p className="text-white/20 font-black uppercase tracking-[0.8em] text-sm animate-pulse">Syncing Streams...</p></div>) : (
-              <div className={cn("grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8", loading && "opacity-50 grayscale")}>
-                {activeGridVideos.map((v, i) => {
-                  const isSaved = savedVideos.some(s => s.id === v.id);
-                  const progress = videoProgress[v.id] || 0;
-                  return (
-                    <Card key={v.id + i} className="group bg-zinc-900/40 border-none rounded-[2.8rem] cursor-pointer focusable overflow-hidden shadow-2xl aspect-[16/10] relative" tabIndex={0} data-nav-id={`grid-video-${i}`} onClick={() => setActiveVideo(v, activeGridVideos)}>
-                      <div className="w-full h-full relative">
-                        <img src={v.thumbnail} className="w-full h-full object-cover opacity-70 group-hover:opacity-100" alt="" />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent flex flex-col justify-end p-6 text-right">
-                          <div className="w-full mb-auto flex justify-between items-start"><div className="opacity-0 group-hover:opacity-100"><button onClick={(e) => { e.stopPropagation(); toggleSaveVideo(v); }} className={cn("w-12 h-12 rounded-full backdrop-blur-xl border border-white/20 flex items-center justify-center", isSaved ? "bg-accent text-black shadow-glow" : "bg-white/10 text-white/60")}><BookmarkPlus className="w-6 h-6" /></button></div></div>
-                          <div className="w-full mb-3"><h3 className="text-base md:text-lg font-black text-white line-clamp-2 drop-shadow-[0_4px_12px_rgba(0,0,0,1)] leading-snug tracking-tight">{v.title}</h3></div>
-                          {progress > 0 && <div className="h-1 w-full bg-white/10 rounded-full overflow-hidden mb-2"><div className="h-full bg-accent shadow-glow" style={{ width: `${Math.min(100, (progress / 3600) * 100)}%` }} /></div>}
-                          <div className="flex items-center justify-between w-full opacity-60"><div className="flex items-center gap-2"><Clock className="w-3 h-3 text-white" /><span className="text-[10px] font-black text-white uppercase tracking-widest">{v.duration || "FEED"}</span></div>{v.isLive && <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse" /><span className="text-[10px] font-black text-red-500 uppercase tracking-widest">LIVE</span></div>}</div>
+          <div className="space-y-10 min-h-screen">
+            <div data-row-id="row-back-bar" className="flex justify-between items-center sticky top-0 z-[120] bg-black/70 backdrop-blur-2xl p-8 rounded-[3rem] border border-white/10">
+              <button onClick={resetView} className="h-14 px-10 rounded-full bg-red-600 text-white font-black focusable flex items-center gap-4" tabIndex={0} data-nav-id="grid-back-btn">
+                <X className="w-6 h-6" /><span>العودة للمكتبة</span>
+              </button>
+              <h2 className="text-4xl font-black text-white truncate max-w-[50%]">
+                {selectedChannel ? selectedChannel.name : selectedJuz ? `الجزء ${selectedJuz}` : `نتائج البحث: ${search}`}
+              </h2>
+            </div>
+
+            <section data-row-id="row-grid" className="relative mt-10">
+              {loading ? (
+                <div className="flex flex-col items-center justify-center py-40 gap-6">
+                  <Loader2 className="w-16 h-16 animate-spin text-primary" />
+                  <p className="text-white/40 font-black uppercase tracking-[0.5em] animate-pulse">Deep Scan Active...</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 pb-40">
+                  {searchResults.concat(channelVideos).map((v, i) => (
+                    <Card key={v.id + i} className="group bg-zinc-900/40 border-none rounded-[2.8rem] cursor-pointer focusable overflow-hidden relative aspect-[16/10]" tabIndex={0} onClick={() => setActiveVideo(v)} data-nav-id={`grid-item-${i}`}>
+                      <img src={v.thumbnail} className="w-full h-full object-cover opacity-70 group-hover:opacity-100" alt="" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 p-6 flex flex-col justify-end text-right">
+                        <h3 className="text-base font-black text-white line-clamp-2">{v.title}</h3>
+                        <div className="mt-2 flex items-center gap-2 opacity-60">
+                          <Clock className="w-3 h-3" />
+                          <span className="text-[10px] font-black">{v.duration || "FEED"}</span>
                         </div>
                       </div>
                     </Card>
-                  );
-                })}
-              </div>
-            )}
-          </section>
+                  ))}
+                </div>
+              )}
+            </section>
+          </div>
         )}
       </main>
-      <AddContentModal type="channel" isOpen={isAddChannelOpen} onOpenChange={setIsAddChannelOpen} onAdd={(ch) => { addChannel(ch); toast({ title: "تمت الإضافة" }); }} />
-      <AddContentModal type="reciter" isOpen={isAddReciterOpen} onOpenChange={setIsAddReciterOpen} onAdd={(r) => { addReciter(r); resetView(); toast({ title: "تمت الإضافة" }); }} />
     </div>
   );
 }

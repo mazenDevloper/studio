@@ -2,11 +2,11 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useMediaStore, Reminder, Manuscript, MappingContext, AppAction, ManuscriptWord } from "@/lib/store";
+import { useMediaStore, Reminder, Manuscript, MappingContext, AppAction, ManuscriptWord, IptvChannel } from "@/lib/store";
 import { 
-  Settings, Bell, Trash2, Edit2, Plus, Minus, Palette, Keyboard, Timer, ArrowRightLeft, 
-  Loader2, RefreshCw, Mic, X, Type, Zap, Save, Sparkles, Upload, Clock, Youtube, Tv, LayoutGrid, Star, CheckCircle2, Circle, Magnet,
-  ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Maximize, Minimize
+  Settings, Bell, Trash2, Edit2, Plus, Minus, Keyboard, Timer, ArrowRightLeft, 
+  Loader2, RefreshCw, Mic, X, Type, Zap, Sparkles, Upload, Clock, Youtube, Tv, Star, Magnet,
+  ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Maximize, Minimize, Image as ImageIcon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,8 +17,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 /**
- * SettingsView v25000.0 - Sovereign Control & Atomic Freeze
- * Features: Full Reminder details, Starred Subscriptions, Atomic Manuscript Studio.
+ * SettingsView v80.0 - Sovereign Control & Vision Hub
+ * Features: Background Management, Full IPTV CRUD, Manuscript Studio.
  */
 export function SettingsView() {
   const { 
@@ -30,11 +30,14 @@ export function SettingsView() {
     favoriteChannels, removeChannel, toggleStarChannel,
     fetchPriorityData, syncMasterBin, saveRecitersReorder, saveChannelsReorder, saveIptvReorder,
     customFonts, addCustomFont, saveManuscriptsReorder, setIsRecordingKey,
-    manuscriptScales, updateManuscriptScale, isReorderMode, toggleReorderMode
+    manuscriptScales, updateManuscriptScale, isReorderMode, toggleReorderMode,
+    customWallBackgrounds, addCustomWallBackground, removeCustomWallBackground,
+    updateIptvChannel
   } = useMediaStore();
   
   const { toast } = useToast();
   const fontFileRef = useRef<HTMLInputElement>(null);
+  const bgFileRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   
   const [isSyncing, setIsSyncing] = useState(false);
@@ -49,6 +52,9 @@ export function SettingsView() {
   const [currentWords, setCurrentWords] = useState<ManuscriptWord[]>([]);
   const [draggingWord, setDraggingWord] = useState<{ wordId: string } | null>(null);
   const [selectedWordId, setSelectedWordId] = useState<string | null>(null);
+
+  const [editingIptvId, setEditingIptvId] = useState<string | null>(null);
+  const [iptvEditForm, setIptvEditInput] = useState<Partial<IptvChannel>>({});
 
   const [editingReminderId, setEditingReminderId] = useState<string | null>(null);
   const [newReminder, setNewReminder] = useState<Partial<Reminder>>({
@@ -94,7 +100,12 @@ export function SettingsView() {
     const reader = new FileReader();
     reader.onload = async (res) => {
       const dataUrl = res.target?.result as string;
-      if (target === 'font') { const name = file.name.split('.')[0].replace(/\s+/g, '-'); addCustomFont(name, dataUrl); }
+      if (target === 'font') { 
+        const name = file.name.split('.')[0].replace(/\s+/g, '-'); 
+        addCustomFont(name, dataUrl); 
+      } else if (target === 'bg') {
+        addCustomWallBackground(dataUrl);
+      }
       toast({ title: "تم الرفع بنجاح" });
     };
     reader.readAsDataURL(file);
@@ -151,7 +162,6 @@ export function SettingsView() {
   const startRecording = (ctx: MappingContext, act: AppAction) => {
     setIsRecordingKey(true);
     setActiveRecordingAction({ ctx, act });
-    (window as any).activeRecordingAction = { ctx, act };
     toast({ title: "وضع التسجيل نشط" });
   };
 
@@ -161,6 +171,18 @@ export function SettingsView() {
     else addReminder({ ...newReminder as Reminder, id: Date.now().toString() });
     setEditingReminderId(null);
     setNewReminder({ label: "", color: "text-blue-400", iconType: "bell", startType: 'azan', startReference: 'fajr', startOffset: 0, endType: 'duration', endReference: 'fajr', endOffset: 0, showCountdown: true, showCountup: false, countdownWindow: 15, completed: false, manualStartTime: "00:00", manualEndTime: "00:00", durationMinutes: 30 });
+  };
+
+  const startEditIptv = (ch: IptvChannel) => {
+    setEditingIptvId(ch.stream_id);
+    setIptvEditInput({ name: ch.name, url: ch.url, stream_icon: ch.stream_icon });
+  };
+
+  const handleSaveIptv = async () => {
+    if (!editingIptvId) return;
+    updateIptvChannel(editingIptvId, iptvEditForm);
+    setEditingIptvId(null);
+    toast({ title: "تم تحديث القناة وحفظها سحابياً" });
   };
 
   const startEditReciter = (r: any) => { setEditingReciterId(r.channelid); setReciterNameInput(r.name); };
@@ -173,7 +195,7 @@ export function SettingsView() {
       <header className="flex items-center justify-between">
         <div className="flex flex-col gap-2">
           <h1 className="text-6xl font-black text-white tracking-tighter flex items-center gap-6">الإعدادات السيادية <Settings className="w-12 h-12 text-primary" /></h1>
-          <p className="text-white/40 font-bold uppercase tracking-[0.6em] text-sm">Unified System Hub v25k</p>
+          <p className="text-white/40 font-bold uppercase tracking-[0.6em] text-sm">Unified System Hub v80k</p>
         </div>
         <div className="flex gap-4">
           <Button onClick={handleManualRefresh} disabled={isRefreshing} className="bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-full h-14 px-8 font-black focusable"><RefreshCw className={cn("w-5 h-5 ml-2", isRefreshing && "animate-spin")} /> تحديث محلي</Button>
@@ -187,6 +209,7 @@ export function SettingsView() {
           <TabsTrigger value="reminders" className="rounded-full px-8 h-full font-black text-lg data-[state=active]:bg-primary transition-none">التذكيرات</TabsTrigger>
           <TabsTrigger value="subscriptions" className="rounded-full px-8 h-full font-black text-lg data-[state=active]:bg-primary transition-none">الاشتراكات</TabsTrigger>
           <TabsTrigger value="iptv" className="rounded-full px-8 h-full font-black text-lg data-[state=active]:bg-primary transition-none">قنوات IPTV</TabsTrigger>
+          <TabsTrigger value="backgrounds" className="rounded-full px-8 h-full font-black text-lg data-[state=active]:bg-primary transition-none">الخلفيات</TabsTrigger>
           <TabsTrigger value="reciters" className="rounded-full px-8 h-full font-black text-lg data-[state=active]:bg-primary transition-none">القراء</TabsTrigger>
           <TabsTrigger value="buttonmap" className="rounded-full px-8 h-full font-black text-lg data-[state=active]:bg-primary transition-none">الأزرار</TabsTrigger>
         </TabsList>
@@ -194,7 +217,7 @@ export function SettingsView() {
         <TabsContent value="manuscripts" className="space-y-8 animate-in fade-in duration-0">
           <Card className="bg-white/5 border-white/10 p-10 rounded-[3.5rem] relative overflow-hidden shadow-2xl">
             <div className="flex items-center justify-between mb-8 relative z-10">
-              <CardTitle className="text-4xl font-black text-white flex items-center gap-6"><Type className="w-12 h-12 text-primary" />استوديو التجميد v25.0</CardTitle>
+              <CardTitle className="text-4xl font-black text-white flex items-center gap-6"><Type className="w-12 h-12 text-primary" />استوديو التجميد v80.0</CardTitle>
               <div className="flex gap-4">
                  <div className="bg-black/40 p-1.5 rounded-full border border-white/10 flex gap-2">
                     <button onClick={() => setManuscriptMode('write')} className={cn("px-6 h-11 rounded-full text-sm font-black transition-none focusable", manuscriptMode === 'write' ? "bg-primary text-white" : "text-white/40")}>وضع الكتابة</button>
@@ -361,6 +384,80 @@ export function SettingsView() {
            </Card>
         </TabsContent>
 
+        <TabsContent value="iptv" className="space-y-8 animate-in fade-in duration-0">
+          <Card className="bg-white/5 border-white/10 p-10 rounded-[3.5rem] shadow-2xl">
+            <div className="flex justify-between items-center mb-12">
+              <CardTitle className="text-4xl font-black text-white flex items-center gap-6"><Tv className="w-12 h-12 text-emerald-500" /> إدارة قنوات IPTV السيادية</CardTitle>
+              <Button onClick={saveIptvReorder} className="bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-full h-14 px-8 font-black focusable shadow-glow">حفظ السحابة</Button>
+            </div>
+
+            {editingIptvId && (
+              <div className="bg-black/60 p-10 rounded-[3rem] border-2 border-primary/40 mb-12 shadow-2xl animate-in zoom-in-95 duration-200">
+                <h3 className="text-2xl font-black text-white mb-8 flex items-center gap-4">تعديل بيانات القناة <Edit2 className="w-6 h-6 text-primary" /></h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+                  <div className="space-y-4"><label className="text-xs font-black text-white/40 uppercase tracking-widest mr-4">اسم القناة</label><Input value={iptvEditForm.name} onChange={(e) => setIptvEditInput({ ...iptvEditForm, name: e.target.value })} className="h-16 bg-white/5 text-white text-xl font-black rounded-2xl focusable" /></div>
+                  <div className="space-y-4"><label className="text-xs font-black text-white/40 uppercase tracking-widest mr-4">رابط البث</label><Input value={iptvEditForm.url} onChange={(e) => setIptvEditInput({ ...iptvEditForm, url: e.target.value })} className="h-16 bg-white/5 text-white text-lg font-bold rounded-2xl focusable dir-ltr" /></div>
+                  <div className="space-y-4"><label className="text-xs font-black text-white/40 uppercase tracking-widest mr-4">رابط الأيقونة</label><Input value={iptvEditForm.stream_icon} onChange={(e) => setIptvEditInput({ ...iptvEditForm, stream_icon: e.target.value })} className="h-16 bg-white/5 text-white text-lg font-bold rounded-2xl focusable dir-ltr" /></div>
+                </div>
+                <div className="flex gap-4">
+                  <Button onClick={handleSaveIptv} className="flex-1 h-16 bg-primary text-white text-xl font-black rounded-2xl shadow-glow focusable">حفظ التغييرات</Button>
+                  <Button onClick={() => setEditingIptvId(null)} className="w-16 h-16 bg-white/5 text-white/40 rounded-2xl focusable"><X className="w-8 h-8" /></Button>
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              {favoriteIptvChannels.map((ch) => (
+                <div key={ch.stream_id} className="bg-black/60 p-8 rounded-[3rem] border border-white/10 flex flex-col items-center gap-6 relative group shadow-xl transition-none">
+                  <div className="w-24 h-24 rounded-3xl overflow-hidden border-2 border-white/10 bg-zinc-950">
+                    {ch.stream_icon ? <img src={ch.stream_icon} className="w-full h-full object-cover" alt="" /> : <Tv className="w-full h-full p-6 text-white/10" />}
+                  </div>
+                  <span className="text-xl font-black text-white truncate w-full text-center">{ch.name}</span>
+                  <div className="flex gap-3 w-full">
+                    <Button onClick={() => startEditIptv(ch)} className="flex-1 h-12 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-2xl flex items-center justify-center focusable"><Edit2 className="w-5 h-5 ml-2" /> تعديل</Button>
+                    <button onClick={() => toggleFavoriteIptvChannel(ch)} className="w-12 h-12 bg-red-600/20 text-red-500 border border-red-500/30 rounded-2xl flex items-center justify-center focusable"><Trash2 className="w-5 h-5" /></button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="backgrounds" className="space-y-8 animate-in fade-in duration-0">
+          <Card className="bg-white/5 border-white/10 p-10 rounded-[3.5rem] shadow-2xl">
+            <div className="flex justify-between items-center mb-12">
+              <CardTitle className="text-4xl font-black text-white flex items-center gap-6"><ImageIcon className="w-12 h-12 text-primary" /> خلفيات النظام السيادية</CardTitle>
+              <div className="flex gap-4">
+                <input type="file" hidden ref={bgFileRef} accept="image/*" onChange={(e) => handleFileUpload(e, 'bg')} />
+                <Button onClick={() => bgFileRef.current?.click()} className="bg-primary text-white rounded-full h-14 px-8 font-black shadow-glow focusable"><Upload className="w-5 h-5 ml-2" /> رفع خلفية جديدة</Button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {customWallBackgrounds.map((bgUrl, idx) => (
+                <div key={idx} className={cn(
+                  "relative aspect-video rounded-[3rem] overflow-hidden border-4 cursor-pointer transition-all group shadow-2xl",
+                  mapSettings.manuscriptBgUrl === bgUrl ? "border-primary shadow-glow scale-105" : "border-white/5 hover:border-white/20"
+                )} onClick={() => updateMapSettings({ manuscriptBgUrl: bgUrl })}>
+                  <img src={bgUrl} className="w-full h-full object-cover" alt="" />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <span className="text-white font-black text-lg uppercase tracking-widest">تعيين كخلفية</span>
+                  </div>
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); removeCustomWallBackground(bgUrl); }}
+                    className="absolute top-4 right-4 w-10 h-10 rounded-full bg-red-600/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity focusable"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
+                  {mapSettings.manuscriptBgUrl === bgUrl && (
+                    <div className="absolute top-4 left-4 bg-primary text-white px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-glow">النشطة</div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="reciters" className="space-y-8 animate-in fade-in duration-0">
            <Card className="bg-white/5 border-white/10 p-10 rounded-[3.5rem] shadow-2xl">
              <div className="flex justify-between items-center mb-12">
@@ -374,7 +471,7 @@ export function SettingsView() {
                     {editingReciterId === r.channelid ? (
                       <div className="flex flex-col gap-3 w-full"><Input value={reciterNameInput} onChange={(e) => setReciterNameInput(e.target.value)} className="h-10 bg-white/10 text-white text-center rounded-xl focusable" /><div className="flex gap-2"><Button onClick={handleSaveReciterName} className="flex-1 bg-emerald-500 text-black rounded-xl h-10 focusable">حفظ</Button><Button onClick={() => setEditingReciterId(null)} className="w-10 h-10 bg-white/10 rounded-xl focusable"><X className="w-4 h-4" /></Button></div></div>
                     ) : (
-                      <><span className="text-xl font-black text-white truncate w-full text-center">{r.name}</span><div className="flex gap-2 w-full"><button onClick={() => startEditReciter(r)} className="flex-1 h-12 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-2xl flex items-center justify-center transition-none focusable"><Edit2 className="w-5 h-5" /></button><button onClick={() => removeReciter(r.channelid)} className="w-12 h-12 bg-red-600/20 text-red-500 rounded-2xl flex items-center justify-center transition-none focusable"><Trash2 className="w-5 h-5" /></button></div></>
+                      <><span className="text-xl font-black text-white truncate w-full text-center">{r.name}</span><div className="flex gap-2 w-full"><button onClick={() => startEditReciter(r)} className="flex-1 h-12 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-2xl flex items-center justify-center transition-none focusable"><Edit2 className="w-5 h-5 ml-2" /> تحرير</button><button onClick={() => removeReciter(r.channelid)} className="w-12 h-12 bg-red-600/20 text-red-500 rounded-2xl flex items-center justify-center transition-none focusable"><Trash2 className="w-5 h-5" /></button></div></>
                     )}
                   </div>
                 ))}

@@ -120,6 +120,18 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'footnow.info',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'www.winwin.com',
+        port: '',
+        pathname: '/**',
+      },
     ],
   },
 };

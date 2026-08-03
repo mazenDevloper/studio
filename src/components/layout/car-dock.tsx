@@ -1,7 +1,7 @@
 
 "use client";
 
-import { LayoutDashboard, Radio, Settings, ArrowLeft, Trophy, ArrowRightLeft, Tv, BookOpen } from "lucide-react";
+import { LayoutDashboard, Radio, Settings, ArrowLeft, Trophy, ArrowRightLeft, Tv, BookOpen, Sparkles } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useMediaStore, AppAction, MappingContext } from "@/lib/store";
@@ -71,17 +71,15 @@ export function CarDock() {
   const { dockSide, toggleDockSide, resetMediaView, dockScale } = useMediaStore();
   const [mounted, setMounted] = useState(false);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  useEffect(() => { setMounted(true); }, []);
 
   const apps = [
     { name: "Media", href: "/media", icon: Radio, action: "goto_media" as AppAction },
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard, action: "goto_home" as AppAction },
     { name: "Quran", href: "/quran", icon: BookOpen, action: "goto_quran" as AppAction },
-    { name: "Hihi2", href: "/hihi2", icon: FootballBallIcon, action: "goto_hihi2" as AppAction },
+    { name: "الرياضة", href: "/hihi2", icon: FootballBallIcon, action: "goto_hihi2" as AppAction },
     { name: "IPTV", href: "/iptv", icon: Tv, action: "goto_iptv" as AppAction },
-    { name: "Football", href: "/football", icon: Trophy, action: "goto_football" as AppAction },
+    { name: "Azkar", href: "/football", icon: Sparkles, action: "goto_football" as AppAction },
     { name: "Settings", href: "/settings", icon: Settings, action: "goto_settings" as AppAction },
   ];
 
@@ -93,7 +91,7 @@ export function CarDock() {
   if (!mounted) return null;
 
   return (
-    <div className={cn(
+    <div data-nav-zone="dock" className={cn(
       "fixed top-0 bottom-0 z-[150] transition-all duration-300 bg-black/80 backdrop-blur-3xl flex flex-col py-6 border-white/5", 
       "w-16 min-[980px]:w-20", 
       dockSide === 'left' ? "left-0 border-r" : "right-0 border-l"
@@ -110,12 +108,7 @@ export function CarDock() {
         })}
       </div>
       <div className="flex mt-auto flex-col items-center gap-3">
-        <button 
-          onClick={toggleDockSide} 
-          className="w-10 h-10 min-[980px]:w-12 min-[980px]:h-12 rounded-full bg-white/5 border border-white/10 text-white focusable flex items-center justify-center relative transition-all active:scale-90"
-        >
-          <ArrowRightLeft className="w-5 h-5 min-[980px]:w-6 min-[980px]:h-6" />
-        </button>
+        <button onClick={toggleDockSide} className="w-10 h-10 min-[980px]:w-12 min-[980px]:h-12 rounded-full bg-white/5 border border-white/10 text-white focusable flex items-center justify-center relative transition-all active:scale-90"><ArrowRightLeft className="w-5 h-5 min-[980px]:w-6 min-[980px]:h-6" /></button>
         <button onClick={() => router.back()} className="w-10 h-10 min-[980px]:w-12 min-[980px]:h-12 rounded-full bg-white/5 border border-white/10 text-white focusable flex items-center justify-center relative"><ArrowLeft className="w-5 h-5 min-[980px]:w-6 min-[980px]:h-6" /></button>
       </div>
     </div>
