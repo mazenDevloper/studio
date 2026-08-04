@@ -4,7 +4,7 @@
 import { useMediaStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { 
-  Sparkles, Youtube, Search, Trophy, RefreshCw, Activity, BookOpen, Loader2 
+  Sparkles, Youtube, Search, Trophy, RefreshCw, Activity, BookOpen, Loader2, MonitorPlay 
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useEffect, useCallback } from "react";
@@ -17,7 +17,7 @@ export function SovereignShortcutsWidget() {
   const router = useRouter();
   const { toast } = useToast();
   const { 
-    setActiveQuranUrl, lastPlayedVideo, setActiveVideo,
+    setActiveQuranUrl, lastPlayedVideo, setActiveVideo, setActiveIptv,
     favoriteChannels, syncMasterBin, fetchPriorityData
   } = useMediaStore();
 
@@ -25,8 +25,11 @@ export function SovereignShortcutsWidget() {
   const [isAiDiscoveryActive, setIsAiDiscoveryActive] = useState(false);
   const [isSystemRefreshing, setIsSystemRefreshing] = useState(false);
   const [isQuranProcessing, setIsQuranProcessing] = useState(false);
+  const [isOmanProcessing, setIsOmanProcessing] = useState(false);
 
   const QURAN_CHANNEL_AVATAR = "https://yt3.ggpht.com/ytc/AIdro_mesiGG76gww2WnpFVUFbMz-s2d4IjJJVhDqJuCVscqKLY=s88-c-k-c0xffffffff-no-rj-mo";
+  const OMAN_TV_AVATAR = "https://gallery-images.me/pics/arabicfta/oman.png";
+  const OMAN_LIVE_PLAYER = "https://player.mangomolo.com/v1/live?id=MTY4&channelid=MTYx&countries=Q0M=&w=100%25&h=100%25&filter=DENY&signature=3fd1e8dd84138a41bf33d93afd4a7f09&language=en&app_id=&fullscreen=yes&player_profile=&base_url=aHR0cHM6Ly9heW4ub20vbGl2ZS8xNjEvJUQ5JTgyJUQ5JTg2JUQ4JUE3JUQ4JUE5LSVEOCVCOSVEOSU4NSVEOCVBNyVEOSU4Ni0lRDklODUlRDglQTglRDglQTclRDglQjQlRDglQjE=&autoplay=true&vast=true";
 
   const executeSpiritualPulse = useCallback(async () => {
     setIsQuranProcessing(true);
@@ -45,6 +48,25 @@ export function SovereignShortcutsWidget() {
       setIsQuranProcessing(false);
     }
   }, [setActiveVideo, setActiveQuranUrl, router, toast]);
+
+  const executeOmanLive = useCallback(async () => {
+    setIsOmanProcessing(true);
+    toast({ title: "عمان مباشر", description: "جاري استدعاء البث الرسمي لسلطنة عمان..." });
+    try {
+      setActiveIptv({
+        stream_id: "oman-tv-live",
+        name: "قناة عمان مباشر",
+        stream_icon: OMAN_TV_AVATAR,
+        category_id: "direct",
+        url: OMAN_LIVE_PLAYER,
+        type: 'web'
+      });
+    } catch (e) {
+      toast({ variant: "destructive", title: "خطأ", description: "فشل استدعاء بث عمان" });
+    } finally {
+      setIsOmanProcessing(false);
+    }
+  }, [setActiveIptv, toast]);
 
   const executeAIDiscovery = useCallback(async () => {
     if (isAiDiscoveryActive) return;
@@ -101,6 +123,16 @@ export function SovereignShortcutsWidget() {
       isLoading: isQuranProcessing
     },
     {
+      id: "oman-live",
+      label: "عمان مباشر",
+      sublabel: isOmanProcessing ? "جاري الاتصال..." : "البث الرسمي الحكومي",
+      icon: MonitorPlay,
+      avatar: OMAN_TV_AVATAR,
+      gradient: "from-blue-600/20 to-blue-950/60",
+      action: executeOmanLive,
+      isLoading: isOmanProcessing
+    },
+    {
       id: "ai-discovery",
       label: "اكتشاف الذكاء",
       sublabel: "توصيات AI مؤتمتة",
@@ -136,16 +168,8 @@ export function SovereignShortcutsWidget() {
       gradient: "from-blue-600/20 to-blue-950/60",
       action: executeSystemOptimizer,
       isLoading: isSystemRefreshing
-    },
-    {
-      id: "media-radar",
-      label: "رادار الميديا",
-      sublabel: "البحث الصوتي الذكي",
-      icon: Search,
-      gradient: "from-zinc-600/20 to-zinc-950/60",
-      action: () => router.push('/media')
     }
-  ], [lastPlayedVideo, footballHeadline, isAiDiscoveryActive, isSystemRefreshing, isQuranProcessing, executeSpiritualPulse, executeAIDiscovery, executeSystemOptimizer, router, setActiveVideo]);
+  ], [lastPlayedVideo, footballHeadline, isAiDiscoveryActive, isSystemRefreshing, isQuranProcessing, isOmanProcessing, executeSpiritualPulse, executeOmanLive, executeAIDiscovery, executeSystemOptimizer, router, setActiveVideo]);
 
   return (
     <div className="grid grid-cols-6 gap-6 p-8 h-full items-center">

@@ -8,9 +8,9 @@ import { useState, useEffect, useMemo } from "react";
 import { SovereignIframe } from "@/components/ui/sovereign-iframe";
 
 /**
- * GlobalVideoPlayer v45.0 - Absolute Floating Engine
+ * GlobalVideoPlayer v46.0 - Absolute Floating Engine
  * FIX: All modes (Popup/Minimized) are now Fixed and Floating.
- * ZERO impact on background layout space.
+ * Responsive controls and atomic mode cycling.
  */
 export function GlobalVideoPlayer() {
   const { 
@@ -47,12 +47,12 @@ export function GlobalVideoPlayer() {
       rel: '0',
       modestbranding: '1', 
       enablejsapi: '1', 
-      origin: 'https://www.youtube.com',
-      widget_referrer: 'https://www.youtube.com',
+      origin: window.location.origin,
+      widget_referrer: window.location.origin,
       hl: 'ar'
     });
     return `https://www.youtube.com/embed/${activeVideo.id}?${params.toString()}`;
-  }, [activeVideo?.id, startSeconds]);
+  }, [activeVideo?.id, startSeconds, mounted]);
 
   const handleClose = () => { 
     setActiveVideo(null); 
@@ -65,10 +65,6 @@ export function GlobalVideoPlayer() {
 
   return (
     <>
-      {/* 
-        FLOATING PLAYER CONTAINER
-        Using fixed positioning for ALL non-fullscreen modes.
-      */}
       <div className={cn(
         "fixed z-[99999] shadow-[0_0_100px_rgba(0,0,0,0.9)] transition-all duration-500 overflow-hidden pointer-events-auto", 
         isMinimized ? (isDockLeft ? "bottom-8 left-8" : "bottom-8 right-8") + " w-[420px] h-24 rounded-[2rem] premium-glass bg-black/80 border border-white/20" : 
@@ -100,7 +96,6 @@ export function GlobalVideoPlayer() {
         )}
       </div>
 
-      {/* DETACHED FLOATING CONTROLS */}
       {!isMinimized && (
         <div className={cn(
           "fixed z-[100000] flex items-center transition-all duration-500", 

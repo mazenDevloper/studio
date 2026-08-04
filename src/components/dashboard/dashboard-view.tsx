@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useMemo } from "react";
@@ -13,8 +14,8 @@ import { X } from "lucide-react";
 import Image from "next/image";
 
 /**
- * DashboardView v47.0 - Sovereign Auto-Sync Logic
- * Features: Refresh once after 10s of initial load for ultimate stability.
+ * DashboardView v95.0 - Sovereign 20s Refresh Guard
+ * Features: Mandatory sync after 20s of load to ensure cloud data integrity.
  */
 export function DashboardView() {
   const { 
@@ -23,13 +24,14 @@ export function DashboardView() {
   } = useMediaStore();
   
   useEffect(() => {
-    // Initial Fast Load
+    // Initial Silent Sync
     fetchPriorityData('all');
     
-    // Sovereign Confirmation Sync: One time after 10 seconds
+    // Sovereign Mandatory Refresh Cycle: Executes exactly 20s after component mount
     const timer = setTimeout(() => {
       fetchPriorityData('all');
-    }, 10000);
+      console.log("Sovereign 20s Mandatory Refresh Complete");
+    }, 20000);
 
     return () => clearTimeout(timer);
   }, [fetchPriorityData]);
