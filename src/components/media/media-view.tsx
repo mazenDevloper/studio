@@ -43,7 +43,8 @@ const JUZ_SURAH_MAP: Record<number, number[]> = {
 };
 
 /**
- * MediaView v46.0 - Autonomous Level Selection & Periodic Sync
+ * MediaView v120.0 - Adaptive View Hub
+ * Features: Removed auto-focus behavior for consistent remote navigation.
  */
 export function MediaView() {
   const searchParams = useSearchParams();
@@ -83,27 +84,15 @@ export function MediaView() {
     searchYouTubeVideos("ملخص مباريات كرة القدم الأمس", 15).then(setMatchHighlights);
   }, [favoriteChannels]);
 
-  // Initial Level Selection & 10s Hyper-Sync
+  // Data Lifecycle & Hyper-Sync
   useEffect(() => {
     fetchExtraLists();
     fetch("https://api.quran.com/api/v4/chapters?language=ar").then(r => r.json()).then(d => {
       setSurahs(d.chapters || []); setAllSurahs(d.chapters || []);
     });
     
-    // Level-Based Initial Focus (0ms Response)
-    setTimeout(() => {
-      const searchInput = document.querySelector('[data-nav-id="content-search-input"]') as HTMLElement;
-      if (searchInput) searchInput.focus();
-      else {
-         const firstSub = document.querySelector('[data-nav-id="sidebar-channel-0"]') as HTMLElement;
-         if (firstSub) firstSub.focus();
-         else {
-            const firstReciter = document.querySelector('[data-nav-id="reciter-item-0"]') as HTMLElement;
-            if (firstReciter) firstReciter.focus();
-         }
-      }
-    }, 1200);
-
+    // Auto-Refocus removed as requested for consistent navigation
+    
     const q = searchParams.get('q'); if (q) { setSearch(q); performSearch(q); }
 
     // 10s Sovereign Update Cycle

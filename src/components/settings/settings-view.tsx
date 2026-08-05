@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useMediaStore, Reminder, Manuscript, MappingContext, AppAction, ManuscriptWord, IptvChannel } from "@/lib/store";
+import { useMediaStore, Reminder, Manuscript, MappingContext, AppAction, ManuscriptWord } from "@/lib/store";
 import { 
   Settings, Bell, Trash2, Edit2, Plus, Minus, Keyboard, Timer, ArrowRightLeft, 
   Loader2, RefreshCw, Mic, X, Type, Zap, Sparkles, Upload, Clock, Youtube, Tv, Star, Magnet,
@@ -50,7 +50,7 @@ export function SettingsView() {
   const [selectedWordId, setSelectedWordId] = useState<string | null>(null);
 
   const [editingIptvId, setEditingIptvId] = useState<string | null>(null);
-  const [iptvEditForm, setIptvEditInput] = useState<Partial<IptvChannel>>({});
+  const [iptvEditForm, setIptvEditInput] = useState<any>({});
 
   const [editingReminderId, setEditingReminderId] = useState<string | null>(null);
   const [newReminder, setNewReminder] = useState<Partial<Reminder>>({
@@ -69,12 +69,17 @@ export function SettingsView() {
     try { await fetchPriorityData('all'); } finally { setIsRefreshing(false); }
   }, [fetchPriorityData]);
 
+  // Sovereign RTL Word Generator with Precise Spacing
   useEffect(() => {
     if (manuscriptMode === 'write' && manuscriptInput.trim() && !editingManuscriptId) {
-      const words = manuscriptInput.trim().split(/\s+/).map((t, i, arr) => ({
+      const tokens = manuscriptInput.trim().split(/\s+/).reverse();
+      const gap = tokens.length > 1 ? 80 / (tokens.length + 1) : 0;
+      const startX = tokens.length > 1 ? 10 : 50;
+
+      const words = tokens.map((t, i) => ({
         id: `word-${i}-${Date.now()}`,
         text: t,
-        x: 50 + (i - (arr.length - 1) / 2) * 12,
+        x: tokens.length > 1 ? startX + (i + 1) * gap : 50,
         y: 50,
         scale: 1.0
       }));
@@ -166,10 +171,10 @@ export function SettingsView() {
     if (editingReminderId) updateReminder(editingReminderId, newReminder);
     else addReminder({ ...newReminder as Reminder, id: Date.now().toString() });
     setEditingReminderId(null);
-    setNewReminder({ label: "", color: "text-blue-400", iconType: "bell", startType: 'azan', startReference: 'fajr', startOffset: 0, endType: 'duration', endReference: 'fajr', endOffset: 0, showCountdown: true, showCountup: false, completed: false, countdownWindow: 15, manualStartTime: "00:00", manualEndTime: "00:00", durationMinutes: 30 });
+    setNewReminder({ label: "", color: "text-blue-400", iconType: "bell", startType: 'azan', startReference: 'fajr', startOffset: 0, endType: 'duration', endReference: 'fajr', endOffset: 0, showCountdown: true, showCountup: false, countdownWindow: 15, completed: false, manualStartTime: "00:00", manualEndTime: "00:00", durationMinutes: 30 });
   };
 
-  const startEditIptv = (ch: IptvChannel) => {
+  const startEditIptv = (ch: any) => {
     setEditingIptvId(ch.stream_id);
     setIptvEditInput({ name: ch.name, url: ch.url, stream_icon: ch.stream_icon });
   };
@@ -191,7 +196,7 @@ export function SettingsView() {
       <header className="flex items-center justify-between">
         <div className="flex flex-col gap-2">
           <h1 className="text-6xl font-black text-white tracking-tighter flex items-center gap-6">الإعدادات السيادية <Settings className="w-12 h-12 text-primary" /></h1>
-          <p className="text-white/40 font-bold uppercase tracking-[0.6em] text-sm">Unified System Hub v95k</p>
+          <p className="text-white/40 font-bold uppercase tracking-[0.6em] text-sm">Unified System Hub v105k</p>
         </div>
         <div className="flex gap-4">
           <Button onClick={handleManualRefresh} disabled={isRefreshing} className="bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-full h-14 px-8 font-black focusable"><RefreshCw className={cn("w-5 h-5 ml-2", isRefreshing && "animate-spin")} /> تحديث محلي</Button>
@@ -213,7 +218,7 @@ export function SettingsView() {
         <TabsContent value="manuscripts" className="space-y-8 animate-in fade-in duration-0">
           <Card className="bg-white/5 border-white/10 p-10 rounded-[3.5rem] relative overflow-hidden shadow-2xl">
             <div className="flex items-center justify-between mb-8 relative z-10">
-              <CardTitle className="text-4xl font-black text-white flex items-center gap-6"><Type className="w-12 h-12 text-primary" />استوديو التجميد v80.0</CardTitle>
+              <CardTitle className="text-4xl font-black text-white flex items-center gap-6"><Type className="w-12 h-12 text-primary" />استوديو التجميد v105.0</CardTitle>
               <div className="flex gap-4">
                  <div className="bg-black/40 p-1.5 rounded-full border border-white/10 flex gap-2">
                     <button onClick={() => setManuscriptMode('write')} className={cn("px-6 h-11 rounded-full text-sm font-black transition-none focusable", manuscriptMode === 'write' ? "bg-primary text-white" : "text-white/40")}>وضع الكتابة</button>
@@ -323,30 +328,9 @@ export function SettingsView() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="reciters" className="space-y-8 animate-in fade-in duration-0">
-           <Card className="bg-white/5 border-white/10 p-10 rounded-[3.5rem] shadow-2xl">
-             <div className="flex justify-between items-center mb-12">
-               <CardTitle className="text-4xl font-black text-white flex items-center gap-6"><Mic className="w-12 h-12 text-emerald-500" /> إدارة القراء (حسب الضغطات)</CardTitle>
-               <Button onClick={saveRecitersReorder} className="bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-full h-14 px-8 font-black focusable shadow-glow">حفظ الترتيب السحابي</Button>
-             </div>
-             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                {favoriteReciters.map(r => (
-                  <div key={r.channelid} className="bg-black/60 p-8 rounded-[3rem] border border-white/10 flex flex-col items-center gap-6 relative group shadow-xl transition-none">
-                    <div className="relative"><img src={r.image} className="w-24 h-24 rounded-full border-4 border-emerald-500/30 shadow-2xl object-cover" alt="" /><div className="absolute -bottom-2 -right-2 bg-emerald-500 text-black text-[10px] font-black px-2 py-0.5 rounded-full shadow-lg">{r.clickschannel || 0}</div></div>
-                    {editingReciterId === r.channelid ? (
-                      <div className="flex flex-col gap-3 w-full"><Input value={reciterNameInput} onChange={(e) => setReciterNameInput(e.target.value)} className="h-10 bg-white/10 text-white text-center rounded-xl focusable" /><div className="flex gap-2"><Button onClick={handleSaveReciterName} className="flex-1 bg-emerald-500 text-black rounded-xl h-10 focusable">حفظ</Button><Button onClick={() => setEditingReciterId(null)} className="w-10 h-10 bg-white/10 rounded-xl focusable"><X className="w-4 h-4" /></Button></div></div>
-                    ) : (
-                      <><span className="text-xl font-black text-white truncate w-full text-center">{r.name}</span><div className="flex gap-2 w-full"><button onClick={() => startEditReciter(r)} className="flex-1 h-12 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-2xl flex items-center justify-center transition-none focusable"><Edit2 className="w-5 h-5 ml-2" /> تحرير</button><button onClick={() => removeReciter(r.channelid)} className="w-12 h-12 bg-red-600/20 text-red-500 rounded-2xl flex items-center justify-center transition-none focusable"><Trash2 className="w-5 h-5" /></button></div></>
-                    )}
-                  </div>
-                ))}
-             </div>
-           </Card>
-        </TabsContent>
-
         <TabsContent value="reminders" className="space-y-8 animate-in fade-in duration-0">
           <Card className="bg-white/5 border-white/10 p-10 rounded-[3.5rem] shadow-2xl">
-            <CardTitle className="text-4xl font-black text-white flex items-center gap-6 mb-12"><Bell className="w-12 h-12 text-primary" /> نظام التذكيرات v95.0</CardTitle>
+            <CardTitle className="text-4xl font-black text-white flex items-center gap-6 mb-12"><Bell className="w-12 h-12 text-primary" /> نظام التذكيرات المتطور</CardTitle>
             <div className="bg-black/40 p-10 rounded-[3rem] border border-white/10 mb-12 shadow-2xl space-y-10">
                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="space-y-4"><label className="text-xs font-black text-white/40 uppercase tracking-widest mr-4">عنوان التذكير</label><Input placeholder="أدخل العنوان..." value={newReminder.label} onChange={(e) => setNewReminder({ ...newReminder, label: e.target.value })} className="h-16 bg-white/5 text-white text-2xl font-black rounded-2xl focusable" /></div>
@@ -401,20 +385,20 @@ export function SettingsView() {
         <TabsContent value="iptv" className="space-y-8 animate-in fade-in duration-0">
           <Card className="bg-white/5 border-white/10 p-10 rounded-[3.5rem] shadow-2xl">
             <div className="flex justify-between items-center mb-12">
-              <CardTitle className="text-4xl font-black text-white flex items-center gap-6"><Tv className="w-12 h-12 text-emerald-500" /> قنوات IPTV</CardTitle>
+              <CardTitle className="text-4xl font-black text-white flex items-center gap-6"><Tv className="w-12 h-12 text-emerald-500" /> قنوات IPTV السيادية</CardTitle>
               <Button onClick={saveIptvReorder} className="bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-full h-14 px-8 font-black focusable shadow-glow">حفظ السحابة</Button>
             </div>
 
             {editingIptvId && (
               <div className="bg-black/60 p-10 rounded-[3rem] border-2 border-primary/40 mb-12 shadow-2xl animate-in zoom-in-95 duration-200">
-                <h3 className="text-2xl font-black text-white mb-8">تعديل القناة</h3>
+                <h3 className="text-2xl font-black text-white mb-8">تعديل القناة السيادية</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
                   <div className="space-y-4"><label className="text-xs font-black text-white/40 uppercase tracking-widest mr-4">اسم القناة</label><Input value={iptvEditForm.name} onChange={(e) => setIptvEditInput({ ...iptvEditForm, name: e.target.value })} className="h-16 bg-white/5 text-white text-xl font-black rounded-2xl focusable" /></div>
                   <div className="space-y-4"><label className="text-xs font-black text-white/40 uppercase tracking-widest mr-4">رابط البث</label><Input value={iptvEditForm.url} onChange={(e) => setIptvEditInput({ ...iptvEditForm, url: e.target.value })} className="h-16 bg-white/5 text-white text-lg font-bold rounded-2xl focusable dir-ltr" /></div>
-                  <div className="space-y-4"><label className="text-xs font-black text-white/40 uppercase tracking-widest mr-4">رابط الأيقونة</label><Input value={iptvEditForm.stream_icon} onChange={(e) => setIptvEditInput({ ...iptvEditForm, stream_icon: e.target.value })} className="h-16 bg-white/5 text-white text-lg font-bold rounded-2xl focusable dir-ltr" /></div>
+                  <div className="space-y-4"><label className="text-xs font-black text-white/40 uppercase tracking-widest mr-4">أيقونة القناة</label><Input value={iptvEditForm.stream_icon} onChange={(e) => setIptvEditInput({ ...iptvEditForm, stream_icon: e.target.value })} className="h-16 bg-white/5 text-white text-lg font-bold rounded-2xl focusable dir-ltr" /></div>
                 </div>
                 <div className="flex gap-4">
-                  <Button onClick={handleSaveIptv} className="flex-1 h-16 bg-primary text-white text-xl font-black rounded-2xl shadow-glow focusable">حفظ</Button>
+                  <Button onClick={handleSaveIptv} className="flex-1 h-16 bg-primary text-white text-xl font-black rounded-2xl shadow-glow focusable">تحديث</Button>
                   <Button onClick={() => setEditingIptvId(null)} className="w-16 h-16 bg-white/5 text-white/40 rounded-2xl focusable"><X className="w-8 h-8" /></Button>
                 </div>
               </div>
@@ -466,6 +450,27 @@ export function SettingsView() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="reciters" className="space-y-8 animate-in fade-in duration-0">
+           <Card className="bg-white/5 border-white/10 p-10 rounded-[3.5rem] shadow-2xl">
+             <div className="flex justify-between items-center mb-12">
+               <CardTitle className="text-4xl font-black text-white flex items-center gap-6"><Mic className="w-12 h-12 text-emerald-500" /> إدارة القراء (حسب الضغطات)</CardTitle>
+               <Button onClick={saveRecitersReorder} className="bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-full h-14 px-8 font-black focusable shadow-glow">حفظ الترتيب السحابي</Button>
+             </div>
+             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                {favoriteReciters.map(r => (
+                  <div key={r.channelid} className="bg-black/60 p-8 rounded-[3rem] border border-white/10 flex flex-col items-center gap-6 relative group shadow-xl transition-none">
+                    <div className="relative"><img src={r.image} className="w-24 h-24 rounded-full border-4 border-emerald-500/30 shadow-2xl object-cover" alt="" /><div className="absolute -bottom-2 -right-2 bg-emerald-500 text-black text-[10px] font-black px-2 py-0.5 rounded-full shadow-lg">{r.clickschannel || 0}</div></div>
+                    {editingReciterId === r.channelid ? (
+                      <div className="flex flex-col gap-3 w-full"><Input value={reciterNameInput} onChange={(e) => setReciterNameInput(e.target.value)} className="h-10 bg-white/10 text-white text-center rounded-xl focusable" /><div className="flex gap-2"><Button onClick={handleSaveReciterName} className="flex-1 bg-emerald-500 text-black rounded-xl h-10 focusable">حفظ</Button><Button onClick={() => setEditingReciterId(null)} className="w-10 h-10 bg-white/10 rounded-xl focusable"><X className="w-4 h-4" /></Button></div></div>
+                    ) : (
+                      <><span className="text-xl font-black text-white truncate w-full text-center">{r.name}</span><div className="flex gap-2 w-full"><button onClick={() => startEditReciter(r)} className="flex-1 h-12 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-2xl flex items-center justify-center transition-none focusable"><Edit2 className="w-5 h-5 ml-2" /> تحرير</button><button onClick={() => removeReciter(r.channelid)} className="w-12 h-12 bg-red-600/20 text-red-500 rounded-2xl flex items-center justify-center transition-none focusable"><Trash2 className="w-5 h-5" /></button></div></>
+                    )}
+                  </div>
+                ))}
+             </div>
+           </Card>
+        </TabsContent>
+
         <TabsContent value="buttonmap" className="space-y-8 animate-in fade-in duration-0">
            <Card className="bg-white/5 border-white/10 p-10 rounded-[3.5rem] shadow-2xl">
              <CardTitle className="text-4xl font-black text-white flex items-center gap-6 mb-12"><Keyboard className="w-12 h-12 text-primary" /> تسجيل الأزرار</CardTitle>
@@ -490,3 +495,4 @@ export function SettingsView() {
     </div>
   );
 }
+

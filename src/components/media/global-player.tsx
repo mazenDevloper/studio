@@ -8,16 +8,16 @@ import { useState, useEffect, useMemo } from "react";
 import { SovereignIframe } from "@/components/ui/sovereign-iframe";
 
 /**
- * GlobalVideoPlayer v46.0 - Absolute Floating Engine
- * FIX: All modes (Popup/Minimized) are now Fixed and Floating.
- * Responsive controls and atomic mode cycling.
+ * GlobalVideoPlayer v120.0 - Adaptive Crystal Control Bar
+ * Features: Ultra-transparent bar (30%) and collapsible button array.
+ * Changes: Removed player minimization, updated folding icons to Chevrons.
  */
 export function GlobalVideoPlayer() {
   const { 
     activeVideo, activeIptv, isMinimized, isFullScreen, nextTrack, prevTrack,
     setActiveVideo, setActiveIptv, setIsMinimized, setIsFullScreen, 
     toggleSaveVideo, savedVideos, setGridMode,
-    setIsPlayerControlsExpanded, cyclePlayerMode,
+    isPlayerControlsExpanded, setIsPlayerControlsExpanded, cyclePlayerMode,
     videoProgress, dockSide
   } = useMediaStore();
   
@@ -69,7 +69,7 @@ export function GlobalVideoPlayer() {
         "fixed z-[99999] shadow-[0_0_100px_rgba(0,0,0,0.9)] transition-all duration-500 overflow-hidden pointer-events-auto", 
         isMinimized ? (isDockLeft ? "bottom-8 left-8" : "bottom-8 right-8") + " w-[420px] h-24 rounded-[2rem] premium-glass bg-black/80 border border-white/20" : 
         isFullScreen ? "inset-0 w-full h-full bg-black" : 
-        (isDockLeft ? "bottom-12 left-12" : "bottom-12 right-12") + " w-[35vw] h-[40vh] premium-glass rounded-[3.5rem] bg-black/95 border-2 border-white/10"
+        (isDockLeft ? "bottom-12 left-12" : "bottom-12 right-12") + " w-[55vw] h-[60vh] premium-glass rounded-[3.5rem] bg-black/95 border-2 border-white/10"
       )}>
         <div className={cn("absolute inset-0 transition-opacity duration-500", isMinimized ? "opacity-0 pointer-events-none" : "opacity-100")}>
           {activeVideo ? (
@@ -101,15 +101,28 @@ export function GlobalVideoPlayer() {
           "fixed z-[100000] flex items-center transition-all duration-500", 
           isFullScreen ? (isDockLeft ? "right-10 bottom-10" : "left-10 bottom-10") + " scale-110" : (isDockLeft ? "left-16 bottom-16" : "right-16 bottom-16") + " scale-90"
         )}>
-          <div className="flex items-center gap-4 bg-black/80 backdrop-blur-3xl p-3 rounded-full border border-white/20 shadow-[0_0_50px_rgba(0,0,0,1)]">
+          <div className="flex items-center gap-4 bg-black/30 backdrop-blur-3xl p-3 rounded-full border border-white/20 shadow-[0_0_50px_rgba(0,0,0,1)]">
             <button onClick={handleClose} className="w-10 h-10 rounded-full bg-red-600/20 text-red-500 border border-red-600/20 flex items-center justify-center focusable shadow-glow"><X className="w-5 h-5" /></button>
             <div className="w-px h-7 bg-white/10 mx-1" />
-            <button onClick={prevTrack} className="w-9 h-9 rounded-full bg-white/5 text-white/40 flex items-center justify-center focusable hover:bg-white/10"><ChevronRight className="w-5 h-5" /></button>
-            <button onClick={nextTrack} className="w-9 h-9 rounded-full bg-white/5 text-white/40 flex items-center justify-center focusable hover:bg-white/10"><ChevronLeft className="w-5 h-5" /></button>
-            <div className="w-px h-7 bg-white/10 mx-1" />
-            <button onClick={() => activeVideo && toggleSaveVideo(activeVideo)} className={cn("w-9 h-9 rounded-full flex items-center justify-center focusable transition-all", isSaved ? "bg-accent/40 text-accent shadow-glow" : "bg-white/5 text-white/40")}><BookmarkCheck className="w-5 h-5" /></button>
-            <button onClick={cyclePlayerMode} className="w-9 h-9 rounded-full bg-white/5 text-white/40 flex items-center justify-center focusable hover:bg-white/10"><Minimize2 className="w-5 h-5" /></button>
-            <button onClick={() => setIsFullScreen(!isFullScreen)} className={cn("w-9 h-9 rounded-full flex items-center justify-center focusable transition-all", isFullScreen ? "bg-primary text-white shadow-glow" : "bg-white/5 text-white/40")}><Monitor className="w-5 h-5" /></button>
+            
+            {isPlayerControlsExpanded && (
+              <div className="flex items-center gap-4 animate-in slide-in-from-left-4 duration-300">
+                <button onClick={prevTrack} className="w-9 h-9 rounded-full bg-white/5 text-white/40 flex items-center justify-center focusable hover:bg-white/10"><ChevronRight className="w-5 h-5" /></button>
+                <button onClick={nextTrack} className="w-9 h-9 rounded-full bg-white/5 text-white/40 flex items-center justify-center focusable hover:bg-white/10"><ChevronLeft className="w-5 h-5" /></button>
+                <div className="w-px h-7 bg-white/10 mx-1" />
+                <button onClick={() => activeVideo && toggleSaveVideo(activeVideo)} className={cn("w-9 h-9 rounded-full flex items-center justify-center focusable transition-all", isSaved ? "bg-accent/40 text-accent shadow-glow" : "bg-white/5 text-white/40")}><BookmarkCheck className="w-5 h-5" /></button>
+                <button onClick={cyclePlayerMode} className="w-9 h-9 rounded-full bg-white/5 text-white/40 flex items-center justify-center focusable hover:bg-white/10" title="تبديل الوضع"><Maximize2 className="w-5 h-5" /></button>
+                <button onClick={() => setIsFullScreen(!isFullScreen)} className={cn("w-9 h-9 rounded-full flex items-center justify-center focusable transition-all", isFullScreen ? "bg-primary text-white shadow-glow" : "bg-white/5 text-white/40")}><Monitor className="w-5 h-5" /></button>
+              </div>
+            )}
+
+            <button 
+              onClick={() => setIsPlayerControlsExpanded(!isPlayerControlsExpanded)} 
+              className="w-10 h-10 rounded-full bg-white/10 text-white flex items-center justify-center focusable shadow-glow"
+              title={isPlayerControlsExpanded ? "طي الشريط" : "توسيع الشريط"}
+            >
+              {isPlayerControlsExpanded ? <ChevronRight className="w-6 h-6" /> : <ChevronLeft className="w-6 h-6" />}
+            </button>
           </div>
         </div>
       )}

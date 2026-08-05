@@ -4,7 +4,7 @@
 import { useMediaStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { 
-  Sparkles, Youtube, Search, Trophy, RefreshCw, Activity, BookOpen, Loader2, MonitorPlay 
+  Sparkles, Youtube, Search, Trophy, RefreshCw, Activity, BookOpen, Loader2, MonitorPlay, Minimize2 
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useEffect, useCallback } from "react";
@@ -133,13 +133,20 @@ export function SovereignShortcutsWidget() {
       isLoading: isOmanProcessing
     },
     {
-      id: "ai-discovery",
-      label: "اكتشاف الذكاء",
-      sublabel: "توصيات AI مؤتمتة",
-      icon: Sparkles,
-      gradient: "from-indigo-600/20 to-indigo-950/60",
-      action: executeAIDiscovery,
-      isLoading: isAiDiscoveryActive
+      id: "bein-1",
+      label: "beIN Sports 1",
+      sublabel: "البث المباشر للمباريات",
+      icon: MonitorPlay,
+      avatar: "https://gallery-images.me/pics/bein/bein-sports-2.png",
+      gradient: "from-purple-600/20 to-purple-950/60",
+      action: () => setActiveIptv({
+        stream_id: "bein-1-live",
+        name: "beIN Sports 1 HD",
+        stream_icon: "https://gallery-images.me/pics/bein/bein-sports-2.png",
+        category_id: "direct",
+        url: `https://online.aflam4you.net/zremb472.php/?vid=68&aflam_s=1&aflam_w=360&aflam_h=250&aflam_k=18311111`,
+        type: 'web'
+      })
     },
     {
       id: "atomic-resume",
@@ -169,7 +176,7 @@ export function SovereignShortcutsWidget() {
       action: executeSystemOptimizer,
       isLoading: isSystemRefreshing
     }
-  ], [lastPlayedVideo, footballHeadline, isAiDiscoveryActive, isSystemRefreshing, isQuranProcessing, isOmanProcessing, executeSpiritualPulse, executeOmanLive, executeAIDiscovery, executeSystemOptimizer, router, setActiveVideo]);
+  ], [lastPlayedVideo, footballHeadline, isAiDiscoveryActive, isSystemRefreshing, isQuranProcessing, isOmanProcessing, executeSpiritualPulse, executeOmanLive, executeAIDiscovery, executeSystemOptimizer, router, setActiveVideo, setActiveIptv]);
 
   return (
     <div className="grid grid-cols-6 gap-6 p-8 h-full items-center">
@@ -212,3 +219,4 @@ export function SovereignShortcutsWidget() {
     </div>
   );
 }
+
