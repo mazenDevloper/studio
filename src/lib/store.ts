@@ -297,12 +297,19 @@ export const useMediaStore = create<MediaState>()(
           } catch { return null; } 
         };
 
-        // PARALLEL EXECUTION: Sovereign Cloud Sync
-        const results = await Promise.allSettled([
-          fetchB(JSONBIN_CHANNELS_BIN_ID), fetchB(JSONBIN_POPULAR_RECITERS_BIN_ID), fetchB(JSONBIN_IPTV_FAVS_BIN_ID),
-          fetchB(JSONBIN_MANUSCRIPTS_BIN_ID), fetchB(JSONBIN_FONTS_BIN_ID), fetchB(JSONBIN_BACKGROUNDS_BIN_ID),
-          fetchB(JSONBIN_PRAYER_TIMES_BIN_ID), fetchB(JSONBIN_MASTER_BIN_ID)
-        ]);
+        // PARALLEL SOVEREIGN EXECUTION: Fetch all sources at once to maximize performance.
+        const binIds = [
+          JSONBIN_CHANNELS_BIN_ID,
+          JSONBIN_POPULAR_RECITERS_BIN_ID,
+          JSONBIN_IPTV_FAVS_BIN_ID,
+          JSONBIN_MANUSCRIPTS_BIN_ID,
+          JSONBIN_FONTS_BIN_ID,
+          JSONBIN_BACKGROUNDS_BIN_ID,
+          JSONBIN_PRAYER_TIMES_BIN_ID,
+          JSONBIN_MASTER_BIN_ID
+        ];
+
+        const results = await Promise.allSettled(binIds.map(id => fetchB(id)));
 
         if (results[0].status === 'fulfilled' && results[0].value) set({ favoriteChannels: results[0].value.channels || results[0].value });
         if (results[1].status === 'fulfilled' && results[1].value) set({ favoriteReciters: (results[1].value.reciters || results[1].value).sort((a: any, b: any) => (b.clickschannel || 0) - (a.clickschannel || 0)) });

@@ -13,6 +13,10 @@ import { searchYouTubeVideos, fetchChannelVideos } from "@/lib/youtube";
 import { fetchFootballData } from "@/lib/football-api";
 import { useToast } from "@/hooks/use-toast";
 
+/**
+ * SovereignShortcutsWidget v175.0 - The Spiritual Pulse & System Optimizer
+ * Features: Direct Saudi Quran TV fetch and Hyper-Sync system.
+ */
 export function SovereignShortcutsWidget() {
   const router = useRouter();
   const { toast } = useToast();
@@ -29,23 +33,25 @@ export function SovereignShortcutsWidget() {
 
   const QURAN_CHANNEL_AVATAR = "https://yt3.ggpht.com/ytc/AIdro_mesiGG76gww2WnpFVUFbMz-s2d4IjJJVhDqJuCVscqKLY=s88-c-k-c0xffffffff-no-rj-mo";
   const OMAN_TV_AVATAR = "https://gallery-images.me/pics/arabicfta/oman.png";
-  const OMAN_LIVE_PLAYER = "https://player.mangomolo.com/v1/live?id=MTY8&channelid=MTYx&countries=Q0M=&w=100%25&h=100%25&filter=DENY&signature=3fd1e8dd84138a41bf33d93afd4a7f09&language=en&app_id=&fullscreen=yes&player_profile=&base_url=aHR0cHM6Ly9heW4ub20vbGl2ZS8xNjEvJUQ5JTgyJUQ5JTg2JUQ4JUE3JUQ4JUE5LSVEOCVCOSVEOSU4NSVEOCVBNyVEOSU4Ni0lRDklODUlRDglQTglRDglQTclRDgl communication JTVCJRDglQjE=&autoplay=true&vast=true";
+  const OMAN_LIVE_PLAYER = "https://player.mangomolo.com/v1/live?id=MTY8&channelid=MTYx&countries=Q0M=&w=100%25&h=100%25&filter=DENY&signature=3fd1e8dd84138a41bf33d93afd4a7f09&language=en&app_id=&fullscreen=yes&player_profile=&base_url=aHR0cHM6Ly9heW4ub20vbGl2ZS8xNjEvJUQ5JTgyJUQ5JTg2JUQ4JUE3JUQ4JUE5LSVEOCVCOSVEOSU4NSVEOCVBNyVEOSU4Ni0lRDklODUlRDglQTglRDglQTclRDglJTVCJRDglQjE=&autoplay=true&vast=true";
 
   const executeSpiritualPulse = useCallback(async () => {
+    if (isQuranProcessing) return;
     setIsQuranProcessing(true);
     toast({ title: "النبض الروحي", description: "جاري استدعاء البث المباشر من القناة الرسمية..." });
+    
     try {
-      // Saudi Quran TV Official Channel ID
+      // Saudi Quran TV Official Channel ID: UCos52azQNBgW63_9uDJoPDA
       const QURAN_OFFICIAL_CHANNEL_ID = "UCos52azQNBgW63_9uDJoPDA";
       const results = await fetchChannelVideos(QURAN_OFFICIAL_CHANNEL_ID, 5);
       
-      if (results && results.length > 0) {
-        // Prioritize actual live stream from the channel results
-        const liveVideo = results.find(v => v.isLive) || results[0];
+      const liveVideo = results.find(v => v.isLive) || (results.length > 0 ? results[0] : null);
+      
+      if (liveVideo) {
         setActiveVideo(liveVideo);
       } else {
         // Fallback to generalized search if channel fetch fails
-        const searchResults = await searchYouTubeVideos("بث مباشر القرآن الكريم مكة مباشر", 1);
+        const searchResults = await searchYouTubeVideos("بث مباشر قناة القرآن الكريم مكة مباشر", 1);
         if (searchResults.length > 0) {
           setActiveVideo(searchResults[0]);
         } else {
@@ -58,7 +64,7 @@ export function SovereignShortcutsWidget() {
     } finally {
       setIsQuranProcessing(false);
     }
-  }, [setActiveVideo, setActiveQuranUrl, router, toast]);
+  }, [setActiveVideo, setActiveQuranUrl, router, toast, isQuranProcessing]);
 
   const executeOmanLive = useCallback(async () => {
     setIsOmanProcessing(true);
@@ -126,7 +132,7 @@ export function SovereignShortcutsWidget() {
     {
       id: "spiritual-pulse",
       label: "النبض الروحي",
-      sublabel: isQuranProcessing ? "جاري الاستدعاء..." : "بث مباشر من مكة",
+      sublabel: isQuranProcessing ? "جاري الاستدعاء..." : "بث مباشر مكة",
       icon: BookOpen,
       avatar: QURAN_CHANNEL_AVATAR,
       gradient: "from-emerald-600/20 to-emerald-950/60",
