@@ -14,8 +14,8 @@ import { fetchFootballData } from "@/lib/football-api";
 import { useToast } from "@/hooks/use-toast";
 
 /**
- * SovereignShortcutsWidget v175.0 - The Spiritual Pulse & System Optimizer
- * Features: Direct Saudi Quran TV fetch and Hyper-Sync system.
+ * SovereignShortcutsWidget v180.0 - The Spiritual Pulse & System Optimizer
+ * Features: Official Oman Live Player link integration.
  */
 export function SovereignShortcutsWidget() {
   const router = useRouter();
@@ -33,7 +33,9 @@ export function SovereignShortcutsWidget() {
 
   const QURAN_CHANNEL_AVATAR = "https://yt3.ggpht.com/ytc/AIdro_mesiGG76gww2WnpFVUFbMz-s2d4IjJJVhDqJuCVscqKLY=s88-c-k-c0xffffffff-no-rj-mo";
   const OMAN_TV_AVATAR = "https://gallery-images.me/pics/arabicfta/oman.png";
-  const OMAN_LIVE_PLAYER = "https://player.mangomolo.com/v1/live?id=MTY8&channelid=MTYx&countries=Q0M=&w=100%25&h=100%25&filter=DENY&signature=3fd1e8dd84138a41bf33d93afd4a7f09&language=en&app_id=&fullscreen=yes&player_profile=&base_url=aHR0cHM6Ly9heW4ub20vbGl2ZS8xNjEvJUQ5JTgyJUQ5JTg2JUQ4JUE3JUQ4JUE5LSVEOCVCOSVEOSU4NSVEOCVBNyVEOSU4Ni0lRDklODUlRDglQTglRDglQTclRDglJTVCJRDglQjE=&autoplay=true&vast=true";
+  
+  // Updated Oman Live Player URL as requested
+  const OMAN_LIVE_PLAYER = "https://player.mangomolo.com/v1/live?id=MTY4&channelid=MTYx&countries=Q0M=&w=100%25&h=100%25&filter=DENY&signature=3fd1e8dd84138a41bf33d93afd4a7f09&language=en&app_id=&fullscreen=yes&player_profile=&base_url=aHR0cHM6Ly9heW4ub20vbGl2ZS8xNjEvJUQ5JTgyJUQ5JTg2JUQ4JUE3JUQ4JUE5LSVEOCVCOSVEOSU4NSVEOCVBNyVEOSU4Ni0lRDklODUlRDglQTglRDglQTclRDglQjQlRDglQjE=&autoplay=true&vast=true";
 
   const executeSpiritualPulse = useCallback(async () => {
     if (isQuranProcessing) return;
@@ -41,16 +43,13 @@ export function SovereignShortcutsWidget() {
     toast({ title: "النبض الروحي", description: "جاري استدعاء البث المباشر من القناة الرسمية..." });
     
     try {
-      // Saudi Quran TV Official Channel ID: UCos52azQNBgW63_9uDJoPDA
       const QURAN_OFFICIAL_CHANNEL_ID = "UCos52azQNBgW63_9uDJoPDA";
       const results = await fetchChannelVideos(QURAN_OFFICIAL_CHANNEL_ID, 5);
-      
       const liveVideo = results.find(v => v.isLive) || (results.length > 0 ? results[0] : null);
       
       if (liveVideo) {
         setActiveVideo(liveVideo);
       } else {
-        // Fallback to generalized search if channel fetch fails
         const searchResults = await searchYouTubeVideos("بث مباشر قناة القرآن الكريم مكة مباشر", 1);
         if (searchResults.length > 0) {
           setActiveVideo(searchResults[0]);
@@ -83,7 +82,7 @@ export function SovereignShortcutsWidget() {
     } finally {
       setIsOmanProcessing(false);
     }
-  }, [setActiveIptv, toast]);
+  }, [setActiveIptv, toast, OMAN_LIVE_PLAYER]);
 
   const executeAIDiscovery = useCallback(async () => {
     if (isAiDiscoveryActive) return;
