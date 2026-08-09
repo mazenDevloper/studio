@@ -10,9 +10,9 @@ interface SovereignIframeProps extends React.IframeHTMLAttributes<HTMLIFrameElem
 }
 
 /**
- * SovereignIframe v7.0 - The Official Handshake Engine
- * Bypasses X-Frame-Options by intelligent referrer management.
- * Solves YouTube Error 153 by allowing strict-origin validation.
+ * SovereignIframe v150.0 - Full Navigation Shield & Autoplay Enable
+ * Sets a fixed name to encourage internal navigation and uses sandbox to PREVENT new tabs.
+ * Added muted: false hints where applicable.
  */
 export function SovereignIframe({ src, className, title, ...props }: SovereignIframeProps) {
   const isYouTube = src?.includes('youtube') || src?.includes('youtu.be');
@@ -22,13 +22,13 @@ export function SovereignIframe({ src, className, title, ...props }: SovereignIf
       <iframe
         src={src}
         title={title}
+        name="sovereign-frame"
         className="w-full h-full border-none absolute inset-0"
         loading="eager"
-        // For YouTube, we must provide origin, so we use strict-origin-when-cross-origin
         referrerPolicy={isYouTube ? "strict-origin-when-cross-origin" : "no-referrer"}
-        // Permissive Sandbox to allow JS API handshake and Autoplay
-        sandbox="allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts allow-storage-access-by-user-activation allow-presentation allow-top-navigation-by-user-activation"
-        // Comprehensive Allow policy mimicking a real browser environment
+        // Restricted Sandbox: Omit 'allow-popups' to force local navigation
+        sandbox="allow-forms allow-scripts allow-same-origin allow-presentation allow-pointer-lock allow-top-navigation-by-user-activation"
+        // Allow necessary features for streaming and unmuting
         allow="autoplay; fullscreen; clipboard-write; encrypted-media; picture-in-picture; web-share; accelerometer; gyroscope; microphone; camera; display-capture"
         {...props}
       />
@@ -37,3 +37,4 @@ export function SovereignIframe({ src, className, title, ...props }: SovereignIf
     </div>
   );
 }
+

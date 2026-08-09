@@ -91,26 +91,38 @@ export function CarDock() {
   if (!mounted) return null;
 
   return (
-    <div data-nav-zone="dock" className={cn(
-      "fixed top-0 bottom-0 z-[150] transition-all duration-300 bg-black/80 backdrop-blur-3xl flex flex-col py-6 border-white/5", 
-      "w-16 min-[980px]:w-20", 
-      dockSide === 'left' ? "left-0 border-r" : "right-0 border-l"
-    )} style={{ zoom: dockScale || 1.0, willChange: 'transform' }}>
-      <div className="flex flex-col items-center flex-1 justify-start gap-2">
-        {apps.map((app) => {
-          const isActive = pathname === app.href;
-          return (
-            <button key={app.name} onClick={() => handleNavigate(app.href)} data-nav-id={`dock-${app.name}`} className={cn("w-12 h-12 min-[980px]:w-14 min-[980px]:h-14 rounded-[1.5rem] flex items-center justify-center transition-all duration-0 relative focusable outline-none mb-3", isActive ? "bg-blue-600/10 shadow-[0_0_30px_rgba(37,99,235,0.2)] border border-blue-500/20 z-50 scale-110" : "bg-transparent")}>
-              <ShortcutBadge action={app.action} context="dock" />
-              <div className={cn("transition-all duration-0 flex items-center justify-center", isActive ? "text-blue-400 drop-shadow-[0_0_10px_rgba(96,165,250,0.8)]" : "text-white")}><app.icon className="w-6 h-6 min-[980px]:w-7 min-[980px]:h-7" /></div>
-            </button>
-          );
-        })}
+    <>
+      <div data-nav-zone="dock" className={cn(
+        "fixed top-0 bottom-0 z-[150] transition-all duration-300 bg-black/80 backdrop-blur-3xl flex flex-col py-6 border-white/5", 
+        "w-16 min-[980px]:w-20", 
+        dockSide === 'left' ? "left-0 border-r" : "right-0 border-l"
+      )} style={{ zoom: dockScale || 1.0, willChange: 'transform' }}>
+        <div className="flex flex-col items-center flex-1 justify-start gap-2">
+          {apps.map((app) => {
+            const isActive = pathname === app.href;
+            return (
+              <button key={app.name} onClick={() => handleNavigate(app.href)} data-nav-id={`dock-${app.name}`} className={cn("w-12 h-12 min-[980px]:w-14 min-[980px]:h-14 rounded-[1.5rem] flex items-center justify-center transition-all duration-0 relative focusable outline-none mb-3", isActive ? "bg-blue-600/10 shadow-[0_0_30px_rgba(37,99,235,0.2)] border border-blue-500/20 z-50 scale-110" : "bg-transparent")}>
+                <ShortcutBadge action={app.action} context="dock" />
+                <div className={cn("transition-all duration-0 flex items-center justify-center", isActive ? "text-blue-400 drop-shadow-[0_0_10px_rgba(96,165,250,0.8)]" : "text-white")}><app.icon className="w-6 h-6 min-[980px]:w-7 min-[980px]:h-7" /></div>
+              </button>
+            );
+          })}
+        </div>
+        <div className="flex mt-auto flex-col items-center gap-3">
+          <button onClick={() => router.back()} className="w-10 h-10 min-[980px]:w-12 min-[980px]:h-12 rounded-full bg-white/5 border border-white/10 text-white focusable flex items-center justify-center relative"><ArrowLeft className="w-5 h-5 min-[980px]:w-6 min-[980px]:h-6" /></button>
+        </div>
       </div>
-      <div className="flex mt-auto flex-col items-center gap-3">
-        <button onClick={toggleDockSide} className="w-10 h-10 min-[980px]:w-12 min-[980px]:h-12 rounded-full bg-white/5 border border-white/10 text-white focusable flex items-center justify-center relative transition-all active:scale-90"><ArrowRightLeft className="w-5 h-5 min-[980px]:w-6 min-[980px]:h-6" /></button>
-        <button onClick={() => router.back()} className="w-10 h-10 min-[980px]:w-12 min-[980px]:h-12 rounded-full bg-white/5 border border-white/10 text-white focusable flex items-center justify-center relative"><ArrowLeft className="w-5 h-5 min-[980px]:w-6 min-[980px]:h-6" /></button>
-      </div>
-    </div>
+
+      {/* Sovereign Floating Dock Switcher */}
+      <button 
+        onClick={toggleDockSide} 
+        className={cn(
+          "fixed bottom-8 z-[10002] w-14 h-14 rounded-full bg-primary/20 backdrop-blur-3xl border-2 border-primary/40 text-primary shadow-glow flex items-center justify-center focusable active:scale-90 transition-all",
+          dockSide === 'left' ? "right-8" : "left-8"
+        )}
+      >
+        <ArrowRightLeft className="w-6 h-6" />
+      </button>
+    </>
   );
 }

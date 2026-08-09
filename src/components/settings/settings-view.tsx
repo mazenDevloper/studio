@@ -2,11 +2,11 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useMediaStore, Reminder, Manuscript, MappingContext, AppAction, ManuscriptWord } from "@/lib/store";
+import { useMediaStore, Reminder, Manuscript, MappingContext, AppAction, ManuscriptWord, YouTubeChannel } from "@/lib/store";
 import { 
   Settings, Bell, Trash2, Edit2, Plus, Minus, Keyboard, Timer, ArrowRightLeft, 
   Loader2, RefreshCw, Mic, X, Type, Zap, Sparkles, Upload, Clock, Youtube, Tv, Star, Magnet,
-  ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Maximize, Minimize, Image as ImageIcon
+  ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Maximize, Minimize, Image as ImageIcon, Download, Search
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { searchYouTubeChannels } from "@/lib/youtube";
 
 export function SettingsView() {
   const { 
@@ -23,9 +24,9 @@ export function SettingsView() {
     customManuscripts, addManuscript, updateManuscript, removeManuscript,
     keyMappings, removeSpecificKeyMapping, setKeyMapping,
     favoriteReciters, removeReciter, updateReciterName, favoriteIptvChannels, toggleFavoriteIptvChannel,
-    favoriteChannels, removeChannel, toggleStarChannel,
+    favoriteChannels, removeChannel, toggleStarChannel, addChannel, addReciter,
     fetchPriorityData, syncMasterBin, saveRecitersReorder, saveChannelsReorder, saveIptvReorder,
-    customFonts, addCustomFont, saveManuscriptsReorder, setIsRecordingKey,
+    customFonts, addCustomFont, saveManuscriptsReorder, setIsRecordingKey, isRecordingKey, recordingAction, setRecordingAction,
     manuscriptScales, updateManuscriptScale, isReorderMode, toggleReorderMode,
     customWallBackgrounds, addCustomWallBackground, removeCustomWallBackground,
     updateIptvChannel
@@ -38,7 +39,6 @@ export function SettingsView() {
   
   const [isSyncing, setIsSyncing] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [activeRecordingAction, setActiveRecordingAction] = useState<{ ctx: MappingContext, act: AppAction } | null>(null);
   
   const [manuscriptMode, setManuscriptMode] = useState<'write' | 'arrange'>('write');
   const [manuscriptInput, setManuscriptInput] = useState("");
@@ -64,22 +64,47 @@ export function SettingsView() {
   const [editingReciterId, setEditingReciterId] = useState<string | null>(null);
   const [reciterNameInput, setReciterNameInput] = useState("");
 
+  const [channelSearch, setChannelSearch] = useState("");
+  const [channelResults, setChannelResults] = useState<YouTubeChannel[]>([]);
+  const [isSearchingChannels, setIsSearchingChannels] = useState(false);
+
+  const [reciterSearch, setReciterSearch] = useState("");
+  const [reciterResults, setReciterResults] = useState<YouTubeChannel[]>([]);
+  const [isSearchingReciters, setIsSearchingReciters] = useState(false);
+
   const handleManualRefresh = useCallback(async () => {
     setIsRefreshing(true);
     try { await fetchPriorityData('all'); } finally { setIsRefreshing(false); }
   }, [fetchPriorityData]);
 
-  // Sovereign RTL Word Generator with Precise Spacing
+  const performChannelSearch = async () => {
+    if (!channelSearch.trim()) return;
+    setIsSearchingChannels(true);
+    try {
+      const res = await searchYouTubeChannels(channelSearch);
+      setChannelResults(res || []);
+    } finally { setIsSearchingChannels(false); }
+  };
+
+  const performReciterSearch = async () => {
+    if (!reciterSearch.trim()) return;
+    setIsSearchingReciters(true);
+    try {
+      const res = await searchYouTubeChannels(reciterSearch);
+      setReciterResults(res || []);
+    } finally { setIsSearchingReciters(false); }
+  };
+
   useEffect(() => {
     if (manuscriptMode === 'write' && manuscriptInput.trim() && !editingManuscriptId) {
-      const tokens = manuscriptInput.trim().split(/\s+/).reverse();
-      const gap = tokens.length > 1 ? 80 / (tokens.length + 1) : 0;
-      const startX = tokens.length > 1 ? 10 : 50;
+      const tokens = manuscriptInput.trim().split(/\s+/);
+      const count = tokens.length;
+      const gap = 100 / (count + 1);
 
       const words = tokens.map((t, i) => ({
         id: `word-${i}-${Date.now()}`,
         text: t,
-        x: tokens.length > 1 ? startX + (i + 1) * gap : 50,
+        x: 100 - ((i + 1) * gap),
         y: 50,
         scale: 1.0
       }));
@@ -110,6 +135,36 @@ export function SettingsView() {
       toast({ title: "تم الرفع بنجاح" });
     };
     reader.readAsDataURL(file);
+  };
+
+  const downloadManuscriptAsPng = (manuscript: Manuscript) => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 1200;
+    canvas.height = 900;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = mapSettings.manuscriptColor;
+
+    const words = manuscript.words || [];
+    const scaleFactor = 1.0;
+
+    ctx.font = `bold 100px ${manuscript.fontFamily || 'Aref Ruqaa'}`;
+
+    words.forEach(word => {
+      const wordScale = (word.scale || 1.0) * scaleFactor;
+      ctx.font = `bold ${100 * wordScale}px ${manuscript.fontFamily || 'Aref Ruqaa'}`;
+      ctx.fillText(word.text, (word.x / 100) * canvas.width, (word.y / 100) * canvas.height);
+    });
+
+    const link = document.createElement('a');
+    link.download = `manuscript-${manuscript.id}.png`;
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+    toast({ title: "تم جلب الصورة الشفافة" });
   };
 
   const startEditManuscript = (m: Manuscript) => {
@@ -162,7 +217,7 @@ export function SettingsView() {
 
   const startRecording = (ctx: MappingContext, act: AppAction) => {
     setIsRecordingKey(true);
-    setActiveRecordingAction({ ctx, act });
+    setRecordingAction({ ctx, act });
     toast({ title: "وضع التسجيل نشط" });
   };
 
@@ -200,7 +255,7 @@ export function SettingsView() {
         </div>
         <div className="flex gap-4">
           <Button onClick={handleManualRefresh} disabled={isRefreshing} className="bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-full h-14 px-8 font-black focusable"><RefreshCw className={cn("w-5 h-5 ml-2", isRefreshing && "animate-spin")} /> تحديث محلي</Button>
-          <Button onClick={async () => { setIsSyncing(true); await syncMasterBin(); setIsSyncing(false); toast({ title: "تم المزامنة بنجاح" }); }} disabled={isSyncing} className="bg-primary text-white rounded-full h-14 px-8 font-black focusable shadow-glow">{isSyncing ? <Loader2 className="w-5 h-5 animate-spin ml-2" /> : <Zap className="w-5 h-5 ml-2" />} دفع عالمي</Button>
+          <Button onClick={async () => { setIsSyncing(true); await syncMasterBin(); setIsSyncing(false); toast({ title: "تم المزامنة بنجاح" }); }} disabled={isSyncing} className="bg-primary text-white rounded-full h-14 px-8 font-black shadow-glow">{isSyncing ? <Loader2 className="w-5 h-5 animate-spin ml-2" /> : <Zap className="w-5 h-5 ml-2" />} دفع عالمي</Button>
         </div>
       </header>
 
@@ -318,9 +373,10 @@ export function SettingsView() {
               {customManuscripts.map((m) => (
                 <div key={m.id} className="bg-black/60 p-8 rounded-[3rem] border border-white/10 flex flex-col items-center justify-between group shadow-2xl transition-none">
                   <p className="text-2xl text-center leading-relaxed truncate font-black mb-6" style={{ fontFamily: m.fontFamily || 'inherit', color: mapSettings.manuscriptColor }}>{m.content}</p>
-                  <div className="flex gap-3 w-full">
-                    <Button onClick={() => startEditManuscript(m)} className="flex-1 h-14 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-2xl font-black focusable"><Edit2 className="w-5 h-5 ml-2" /> تحرير</Button>
-                    <Button onClick={() => removeManuscript(m.id)} className="w-14 h-14 bg-red-600/20 text-red-500 border border-red-500/30 rounded-2xl focusable"><Trash2 className="w-5 h-5" /></Button>
+                  <div className="flex gap-2 w-full flex-wrap">
+                    <Button onClick={() => startEditManuscript(m)} className="flex-1 h-12 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-2xl font-black focusable"><Edit2 className="w-4 h-4 ml-2" /> تحرير</Button>
+                    <Button onClick={() => downloadManuscriptAsPng(m)} className="w-12 h-12 bg-blue-600/20 text-blue-400 border border-blue-500/30 rounded-2xl focusable" title="تنزيل PNG"><Download className="w-5 h-5" /></Button>
+                    <Button onClick={() => removeManuscript(m.id)} className="w-12 h-12 bg-red-600/20 text-red-500 border border-red-500/30 rounded-2xl focusable"><Trash2 className="w-5 h-5" /></Button>
                   </div>
                 </div>
               ))}
@@ -361,10 +417,38 @@ export function SettingsView() {
 
         <TabsContent value="subscriptions" className="space-y-8 animate-in fade-in duration-0">
            <Card className="bg-white/5 border-white/10 p-10 rounded-[3.5rem] shadow-2xl">
-             <div className="flex justify-between items-center mb-12">
+             <div className="flex justify-between items-center mb-8">
                <CardTitle className="text-4xl font-black text-white flex items-center gap-6"><Youtube className="w-12 h-12 text-red-600" /> إدارة الاشتراكات</CardTitle>
                <Button onClick={saveChannelsReorder} className="bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-full h-14 px-8 font-black focusable shadow-glow">حفظ السحابة</Button>
              </div>
+
+             <div className="bg-black/40 p-8 rounded-[3rem] border border-white/10 mb-12">
+               <div className="flex gap-4">
+                  <Input 
+                    placeholder="ابحث عن قناة يوتيوب لإضافتها..." 
+                    value={channelSearch} 
+                    onChange={(e) => setChannelSearch(e.target.value)} 
+                    onKeyDown={(e) => e.key === 'Enter' && performChannelSearch()}
+                    className="h-16 bg-white/5 border-none px-8 rounded-2xl text-xl font-bold text-white focusable flex-1" 
+                  />
+                  <Button onClick={performChannelSearch} disabled={isSearchingChannels} className="h-16 px-10 rounded-2xl bg-primary text-white font-black focusable">
+                    {isSearchingChannels ? <Loader2 className="w-6 h-6 animate-spin" /> : <Search className="w-6 h-6 ml-2" />} استكشاف
+                  </Button>
+               </div>
+               
+               {channelResults.length > 0 && (
+                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-10 animate-in fade-in slide-in-from-top-4">
+                    {channelResults.map(res => (
+                      <div key={res.channelid} className="bg-white/5 p-6 rounded-[2.5rem] border border-white/10 flex flex-col items-center gap-4 text-center group">
+                        <img src={res.image} className="w-20 h-24 rounded-full object-cover border-2 border-white/20" alt="" />
+                        <span className="text-sm font-black text-white truncate w-full">{res.name}</span>
+                        <Button onClick={() => { addChannel(res); setChannelResults([]); setChannelSearch(""); toast({ title: "تمت الإضافة بنجاح" }); }} className="w-full h-10 bg-emerald-500 text-black font-black rounded-xl focusable"><Plus className="w-4 h-4 ml-1" /> إضافة</Button>
+                      </div>
+                    ))}
+                 </div>
+               )}
+             </div>
+
              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 {favoriteChannels.map(ch => (
                   <div key={ch.channelid} className="bg-black/60 p-8 rounded-[3rem] border border-white/10 flex flex-col items-center gap-6 relative group shadow-xl transition-none">
@@ -452,10 +536,38 @@ export function SettingsView() {
 
         <TabsContent value="reciters" className="space-y-8 animate-in fade-in duration-0">
            <Card className="bg-white/5 border-white/10 p-10 rounded-[3.5rem] shadow-2xl">
-             <div className="flex justify-between items-center mb-12">
+             <div className="flex justify-between items-center mb-8">
                <CardTitle className="text-4xl font-black text-white flex items-center gap-6"><Mic className="w-12 h-12 text-emerald-500" /> إدارة القراء (حسب الضغطات)</CardTitle>
                <Button onClick={saveRecitersReorder} className="bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-full h-14 px-8 font-black focusable shadow-glow">حفظ الترتيب السحابي</Button>
              </div>
+
+             <div className="bg-black/40 p-8 rounded-[3rem] border border-white/10 mb-12">
+               <div className="flex gap-4">
+                  <Input 
+                    placeholder="ابحث عن قارئ لإضافته (اسم القناة)..." 
+                    value={reciterSearch} 
+                    onChange={(e) => setReciterSearch(e.target.value)} 
+                    onKeyDown={(e) => e.key === 'Enter' && performReciterSearch()}
+                    className="h-16 bg-white/5 border-none px-8 rounded-2xl text-xl font-bold text-white focusable flex-1" 
+                  />
+                  <Button onClick={performReciterSearch} disabled={isSearchingReciters} className="h-16 px-10 rounded-2xl bg-primary text-white font-black focusable">
+                    {isSearchingReciters ? <Loader2 className="w-6 h-6 animate-spin" /> : <Search className="w-6 h-6 ml-2" />} ابحث
+                  </Button>
+               </div>
+               
+               {reciterResults.length > 0 && (
+                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-10 animate-in fade-in slide-in-from-top-4">
+                    {reciterResults.map(res => (
+                      <div key={res.channelid} className="bg-white/5 p-6 rounded-[2.5rem] border border-white/10 flex flex-col items-center gap-4 text-center group">
+                        <img src={res.image} className="w-20 h-24 rounded-full object-cover border-2 border-white/20" alt="" />
+                        <span className="text-sm font-black text-white truncate w-full">{res.name}</span>
+                        <Button onClick={() => { addReciter(res); setReciterResults([]); setReciterSearch(""); toast({ title: "تمت الإضافة بنجاح" }); }} className="w-full h-10 bg-emerald-500 text-black font-black rounded-xl focusable"><Plus className="w-4 h-4 ml-1" /> إضافة</Button>
+                      </div>
+                    ))}
+                 </div>
+               )}
+             </div>
+
              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 {favoriteReciters.map(r => (
                   <div key={r.channelid} className="bg-black/60 p-8 rounded-[3rem] border border-white/10 flex flex-col items-center gap-6 relative group shadow-xl transition-none">
@@ -463,7 +575,7 @@ export function SettingsView() {
                     {editingReciterId === r.channelid ? (
                       <div className="flex flex-col gap-3 w-full"><Input value={reciterNameInput} onChange={(e) => setReciterNameInput(e.target.value)} className="h-10 bg-white/10 text-white text-center rounded-xl focusable" /><div className="flex gap-2"><Button onClick={handleSaveReciterName} className="flex-1 bg-emerald-500 text-black rounded-xl h-10 focusable">حفظ</Button><Button onClick={() => setEditingReciterId(null)} className="w-10 h-10 bg-white/10 rounded-xl focusable"><X className="w-4 h-4" /></Button></div></div>
                     ) : (
-                      <><span className="text-xl font-black text-white truncate w-full text-center">{r.name}</span><div className="flex gap-2 w-full"><button onClick={() => startEditReciter(r)} className="flex-1 h-12 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-2xl flex items-center justify-center transition-none focusable"><Edit2 className="w-5 h-5 ml-2" /> تحرير</button><button onClick={() => removeReciter(r.channelid)} className="w-12 h-12 bg-red-600/20 text-red-500 rounded-2xl flex items-center justify-center transition-none focusable"><Trash2 className="w-5 h-5" /></button></div></>
+                      <><span className="text-xl font-black text-white truncate w-full text-center">{r.name}</span><div className="flex gap-2 w-full"><button onClick={() => startEditReciter(r)} className="flex-1 h-12 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-2xl flex items-center justify-center transition-none focusable"><Edit2 className="w-4 h-4 ml-2" /> تحرير</button><button onClick={() => removeReciter(r.channelid)} className="w-12 h-12 bg-red-600/20 text-red-500 rounded-2xl flex items-center justify-center transition-none focusable"><Trash2 className="w-5 h-5" /></button></div></>
                     )}
                   </div>
                 ))}
@@ -481,8 +593,18 @@ export function SettingsView() {
                      <div className="space-y-4">
                         {Object.entries(actions).map(([act, keys]) => (
                           <div key={act} className="flex items-center justify-between p-5 bg-white/5 rounded-2xl border border-white/5 transition-none group hover:bg-white/10">
-                             <div className="flex flex-col"><span className="text-sm font-bold text-white/60 uppercase tracking-tighter">{act.replace(/_/g, ' ')}</span><button onClick={() => startRecording(ctx as any, act as any)} className={cn("text-[10px] font-black uppercase mt-1 text-right transition-none", (activeRecordingAction?.act === act && activeRecordingAction?.ctx === ctx) ? "text-red-500 animate-pulse" : "text-accent")}>{(activeRecordingAction?.act === act && activeRecordingAction?.ctx === ctx) ? "جاري التسجيل..." : "تسجيل زر جديد"}</button></div>
-                             <div className="flex gap-2">{keys.map(k => (<div key={k} className="px-3 py-1.5 bg-zinc-800 rounded-xl border border-zinc-600 flex items-center gap-3 shadow-lg"><span className="text-xs font-black text-white tabular-nums">{k}</span><button onClick={() => removeSpecificKeyMapping(ctx as any, act as any, k)} className="text-red-500 hover:scale-125 transition-none focusable"><X className="w-3.5 h-3.5" /></button></div>))}</div>
+                             <div className="flex flex-col">
+                               <span className="text-sm font-bold text-white/60 uppercase tracking-tighter">{act.replace(/_/g, ' ')}</span>
+                               <button onClick={() => startRecording(ctx as any, act as any)} className={cn("text-[10px] font-black uppercase mt-1 text-right transition-none", (isRecordingKey && recordingAction?.act === act) ? "text-red-500 animate-pulse" : "text-accent")}>
+                                 {(isRecordingKey && recordingAction?.act === act) ? "جاري التسجيل..." : "تسجيل زر جديد"}
+                               </button>
+                             </div>
+                             <div className="flex gap-2">{keys.map(k => (
+                               <div key={k} className="px-3 py-1.5 bg-zinc-800 rounded-xl border border-zinc-600 flex items-center gap-3 shadow-lg">
+                                 <span className="text-xs font-black text-white tabular-nums">{k}</span>
+                                 <button onClick={() => removeSpecificKeyMapping(ctx as any, act as any, k)} className="text-red-500 hover:scale-125 transition-none focusable"><X className="w-3.5 h-3.5" /></button>
+                               </div>
+                             ))}</div>
                           </div>
                         ))}
                      </div>
@@ -495,4 +617,3 @@ export function SettingsView() {
     </div>
   );
 }
-

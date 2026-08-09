@@ -9,7 +9,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useEffect, useCallback } from "react";
 import { suggestPersonalizedYouTubeContent } from "@/ai/flows/suggest-personalized-youtube-content-flow";
-import { searchYouTubeVideos } from "@/lib/youtube";
+import { searchYouTubeVideos, fetchChannelVideos } from "@/lib/youtube";
 import { fetchFootballData } from "@/lib/football-api";
 import { useToast } from "@/hooks/use-toast";
 
@@ -29,18 +29,29 @@ export function SovereignShortcutsWidget() {
 
   const QURAN_CHANNEL_AVATAR = "https://yt3.ggpht.com/ytc/AIdro_mesiGG76gww2WnpFVUFbMz-s2d4IjJJVhDqJuCVscqKLY=s88-c-k-c0xffffffff-no-rj-mo";
   const OMAN_TV_AVATAR = "https://gallery-images.me/pics/arabicfta/oman.png";
-  const OMAN_LIVE_PLAYER = "https://player.mangomolo.com/v1/live?id=MTY4&channelid=MTYx&countries=Q0M=&w=100%25&h=100%25&filter=DENY&signature=3fd1e8dd84138a41bf33d93afd4a7f09&language=en&app_id=&fullscreen=yes&player_profile=&base_url=aHR0cHM6Ly9heW4ub20vbGl2ZS8xNjEvJUQ5JTgyJUQ5JTg2JUQ4JUE3JUQ4JUE5LSVEOCVCOSVEOSU4NSVEOCVBNyVEOSU4Ni0lRDklODUlRDglQTglRDglQTclRDglQjQlRDglQjE=&autoplay=true&vast=true";
+  const OMAN_LIVE_PLAYER = "https://player.mangomolo.com/v1/live?id=MTY8&channelid=MTYx&countries=Q0M=&w=100%25&h=100%25&filter=DENY&signature=3fd1e8dd84138a41bf33d93afd4a7f09&language=en&app_id=&fullscreen=yes&player_profile=&base_url=aHR0cHM6Ly9heW4ub20vbGl2ZS8xNjEvJUQ5JTgyJUQ5JTg2JUQ4JUE3JUQ4JUE5LSVEOCVCOSVEOSU4NSVEOCVBNyVEOSU4Ni0lRDklODUlRDglQTglRDglQTclRDgl communication JTVCJRDglQjE=&autoplay=true&vast=true";
 
   const executeSpiritualPulse = useCallback(async () => {
     setIsQuranProcessing(true);
-    toast({ title: "النبض الروحي", description: "جاري استدعاء البث المباشر الموثق..." });
+    toast({ title: "النبض الروحي", description: "جاري استدعاء البث المباشر من القناة الرسمية..." });
     try {
-      const searchResults = await searchYouTubeVideos("بث مباشر الحرم المكي القرآن الكريم Makkah Live", 1);
-      if (searchResults.length > 0) {
-        setActiveVideo(searchResults[0]);
+      // Saudi Quran TV Official Channel ID
+      const QURAN_OFFICIAL_CHANNEL_ID = "UCos52azQNBgW63_9uDJoPDA";
+      const results = await fetchChannelVideos(QURAN_OFFICIAL_CHANNEL_ID, 5);
+      
+      if (results && results.length > 0) {
+        // Prioritize actual live stream from the channel results
+        const liveVideo = results.find(v => v.isLive) || results[0];
+        setActiveVideo(liveVideo);
       } else {
-        setActiveQuranUrl("https://quran.com/ar/radio?autoplay=1");
-        router.push("/quran");
+        // Fallback to generalized search if channel fetch fails
+        const searchResults = await searchYouTubeVideos("بث مباشر القرآن الكريم مكة مباشر", 1);
+        if (searchResults.length > 0) {
+          setActiveVideo(searchResults[0]);
+        } else {
+          setActiveQuranUrl("https://quran.com/ar/radio?autoplay=1");
+          router.push("/quran");
+        }
       }
     } catch (e) {
       toast({ variant: "destructive", title: "خطأ", description: "فشل استدعاء البث" });
@@ -149,6 +160,22 @@ export function SovereignShortcutsWidget() {
       })
     },
     {
+      id: "mbc-1",
+      label: "MBC 1",
+      sublabel: "البث المباشر للبرامج",
+      icon: MonitorPlay,
+      avatar: "https://gallery-images.me/pics/mbc/mbc_ae_1.png",
+      gradient: "from-zinc-600/20 to-zinc-950/60",
+      action: () => setActiveIptv({
+        stream_id: "mbc-1-live",
+        name: "MBC 1",
+        stream_icon: "https://gallery-images.me/pics/mbc/mbc_ae_1.png",
+        category_id: "direct",
+        url: `https://online.aflam4you.net/zremb472.php?vid=5&aflam_s=1&aflam_w=360&aflam_h=250&aflam_k=18311111`,
+        type: 'web'
+      })
+    },
+    {
       id: "atomic-resume",
       label: "الاستكمال الذري",
       sublabel: lastPlayedVideo ? `استئناف: ${lastPlayedVideo.title}` : "سجل المشاهدة",
@@ -179,7 +206,7 @@ export function SovereignShortcutsWidget() {
   ], [lastPlayedVideo, footballHeadline, isAiDiscoveryActive, isSystemRefreshing, isQuranProcessing, isOmanProcessing, executeSpiritualPulse, executeOmanLive, executeAIDiscovery, executeSystemOptimizer, router, setActiveVideo, setActiveIptv]);
 
   return (
-    <div className="grid grid-cols-6 gap-6 p-8 h-full items-center">
+    <div className="grid grid-cols-7 gap-4 p-8 h-full items-center">
       {commands.map((cmd, idx) => {
         const Icon = cmd.icon;
         return (
@@ -209,8 +236,8 @@ export function SovereignShortcutsWidget() {
                 )}
               </div>
               <div className="flex flex-col gap-1 mt-auto">
-                <span className="text-2xl font-black text-white tracking-tighter truncate leading-tight">{cmd.label}</span>
-                <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] truncate">{cmd.sublabel}</span>
+                <span className="text-xl font-black text-white tracking-tighter truncate leading-tight">{cmd.label}</span>
+                <span className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em] truncate">{cmd.sublabel}</span>
               </div>
             </div>
           </button>
@@ -219,4 +246,3 @@ export function SovereignShortcutsWidget() {
     </div>
   );
 }
-

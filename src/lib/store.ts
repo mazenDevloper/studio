@@ -297,6 +297,7 @@ export const useMediaStore = create<MediaState>()(
           } catch { return null; } 
         };
 
+        // PARALLEL EXECUTION: Sovereign Cloud Sync
         const results = await Promise.allSettled([
           fetchB(JSONBIN_CHANNELS_BIN_ID), fetchB(JSONBIN_POPULAR_RECITERS_BIN_ID), fetchB(JSONBIN_IPTV_FAVS_BIN_ID),
           fetchB(JSONBIN_MANUSCRIPTS_BIN_ID), fetchB(JSONBIN_FONTS_BIN_ID), fetchB(JSONBIN_BACKGROUNDS_BIN_ID),
@@ -312,7 +313,15 @@ export const useMediaStore = create<MediaState>()(
         if (results[6].status === 'fulfilled' && results[6].value) set({ prayerTimes: results[6].value.prayers || results[6].value });
         if (results[7].status === 'fulfilled' && results[7].value) {
            const v = results[7].value;
-           set({ reminders: v.reminders || get().reminders, prayerSettings: v.prayerSettings || DEFAULT_PRAYER_SETTINGS, mapSettings: { ...get().mapSettings, ...v.mapSettings }, keyMappings: v.keyMappings || DEFAULT_CONTEXT_MAPPINGS, savedVideos: v.savedVideos || [], manuscriptScales: v.manuscriptScales || {}, lastPlayedVideo: v.lastPlayedVideo || null });
+           set({ 
+             reminders: v.reminders || get().reminders, 
+             prayerSettings: v.prayerSettings || DEFAULT_PRAYER_SETTINGS, 
+             mapSettings: { ...get().mapSettings, ...v.mapSettings }, 
+             keyMappings: v.keyMappings || DEFAULT_CONTEXT_MAPPINGS, 
+             savedVideos: v.savedVideos || [], 
+             manuscriptScales: v.manuscriptScales || {}, 
+             lastPlayedVideo: v.lastPlayedVideo || null 
+           });
         }
 
         set({ isInitialLoading: false });
@@ -384,7 +393,7 @@ export const useMediaStore = create<MediaState>()(
       updateManuscriptScale: (id, scale) => set((s) => { const n = { ...s.manuscriptScales, [id]: (s.manuscriptScales[id] || 1.0) + scale }; setTimeout(() => get().syncMasterBin(), 100); return { manuscriptScales: n }; }),
     }),
     {
-      name: "drivecast-sovereign-cache-v100", 
+      name: "drivecast-sovereign-cache-v101", 
       partialize: (s) => ({ 
         dockSide: s.dockSide,
         showIslands: s.showIslands,
@@ -394,9 +403,12 @@ export const useMediaStore = create<MediaState>()(
         keyMappings: s.keyMappings,
         lastPlayedVideo: s.lastPlayedVideo,
         videoProgress: s.videoProgress,
-        favoriteChannels: s.favoriteChannels.slice(0, 5),
-        favoriteReciters: s.favoriteReciters.slice(0, 5),
-        favoriteIptvChannels: s.favoriteIptvChannels.slice(0, 5)
+        favoriteChannels: s.favoriteChannels,
+        favoriteReciters: s.favoriteReciters,
+        favoriteIptvChannels: s.favoriteIptvChannels,
+        customFonts: s.customFonts,
+        customManuscripts: s.customManuscripts,
+        manuscriptScales: s.manuscriptScales
       }),
     }
   )

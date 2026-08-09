@@ -8,9 +8,8 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 
 /**
- * ActiveAzkarWidget v18000.0 - Atomic Freeze System v3
- * Features: Uses 'cqw' units to ensure absolute spatial stability.
- * Fixed 4/3 Aspect Ratio prevents overlap regardless of screen width.
+ * ActiveAzkarWidget v18000.0 - Sovereign Precision Display
+ * Features: Full-width 100% display with 2px edge padding for royal visibility.
  */
 export function ActiveAzkarWidget() {
   const customManuscripts = useMediaStore(state => state.customManuscripts);
@@ -32,14 +31,14 @@ export function ActiveAzkarWidget() {
   const getDynamicFontSize = (baseScale: number) => `${baseScale * 8.5}cqw`;
 
   return (
-    <div className="h-full w-full rounded-[2.5rem] border border-white/10 flex flex-col relative overflow-hidden group focusable outline-none bg-black p-0 m-0" tabIndex={0}>
+    <div className="h-full w-full rounded-[2.5rem] border border-white/10 flex flex-col relative overflow-hidden group focusable outline-none bg-black p-0.5 m-0" tabIndex={0}>
       {mapSettings.showManuscriptBg && mapSettings.manuscriptBgUrl && (
         <div className="absolute inset-0 z-0">
           <Image src={mapSettings.manuscriptBgUrl} alt="Bg" fill className="object-cover opacity-40" unoptimized />
         </div>
       )}
       
-      <div className="relative z-20 w-full flex-1 p-0 m-0 overflow-hidden flex items-center justify-center">
+      <div className="relative z-20 w-full h-full overflow-hidden flex items-center justify-center">
         {activeItem ? (
           <div className="relative w-full aspect-[4/3] flex items-center justify-center max-h-full [container-type:inline-size]">
             {activeItem.type === 'text' && activeItem.words ? (
@@ -47,7 +46,7 @@ export function ActiveAzkarWidget() {
                 const itemScale = (word.scale || 1.0) * (manuscriptScales[activeItem.id] || 1.0);
                 return (
                   <div key={word.id} style={{ position: 'absolute', left: `${word.x}%`, top: `${word.y}%`, transform: 'translate(-50%, -50%)', width: 'max-content' }}>
-                    <p className="font-calligraphy text-white leading-none drop-shadow-[0_0_40px_rgba(255,255,255,0.7)] text-center tracking-normal whitespace-nowrap" style={{ fontFamily: activeItem.fontFamily || 'Aref Ruqaa', fontSize: getDynamicFontSize(itemScale), transition: 'none' }}>{word.text}</p>
+                    <p className="font-calligraphy text-white leading-none drop-shadow-[0_0_40px_rgba(255,255,255,0.7)] text-center tracking-normal whitespace-nowrap" style={{ fontFamily: activeItem.fontFamily || 'Aref Ruqaa', fontSize: getDynamicFontSize(itemScale), transition: 'none', color: mapSettings.manuscriptColor }}>{word.text}</p>
                   </div>
                 );
               })

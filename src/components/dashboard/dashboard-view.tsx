@@ -8,14 +8,15 @@ import { PlayingNowWidget } from "./widgets/playing-now-widget";
 import { SovereignShortcutsWidget } from "./widgets/sovereign-shortcuts-widget";
 import { ReminderSummaryWidget } from "./widgets/reminder-summary-widget";
 import { ActiveAzkarWidget } from "./widgets/active-azkar-widget";
+import { PrayerTimelineWidget } from "./widgets/prayer-timeline-widget";
 import { useMediaStore } from "@/lib/store";
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
 import { X } from "lucide-react";
 import Image from "next/image";
 
 /**
- * DashboardView v95.0 - Sovereign 20s Refresh Guard
- * Features: Mandatory sync after 20s of load to ensure cloud data integrity.
+ * DashboardView v150.0 - Sovereign Precision Layout
+ * Features: Prayer Bar positioned under shortcuts & Automated First Shortcut Focus.
  */
 export function DashboardView() {
   const { 
@@ -24,16 +25,19 @@ export function DashboardView() {
   } = useMediaStore();
   
   useEffect(() => {
-    // Initial Silent Sync
+    // Priority Local Data Sync
     fetchPriorityData('all');
     
-    // Sovereign Mandatory Refresh Cycle: Executes exactly 20s after component mount
-    const timer = setTimeout(() => {
-      fetchPriorityData('all');
-      console.log("Sovereign 20s Mandatory Refresh Complete");
-    }, 20000);
+    // Sovereign Mandatory Initial Focus on Shortcut 0
+    const focusTimer = setTimeout(() => {
+      const firstShortcut = document.querySelector('[data-nav-id="shortcut-item-0"]') as HTMLElement;
+      if (firstShortcut) {
+        firstShortcut.focus();
+        firstShortcut.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 1000);
 
-    return () => clearTimeout(timer);
+    return () => clearTimeout(focusTimer);
   }, [fetchPriorityData]);
 
   const activeManuscript = useMemo(() => {
@@ -45,7 +49,7 @@ export function DashboardView() {
   const manuscriptScale = activeManuscript ? (manuscriptScales[activeManuscript.id] || 1.0) : 1.0;
 
   return (
-    <div data-nav-zone="content" className="h-full w-full pt-0 px-6 flex flex-col gap-8 relative overflow-y-auto pb-48 no-scrollbar bg-black transition-none">
+    <div data-nav-zone="content" className="h-full w-full pt-0 px-6 flex flex-col gap-8 relative overflow-y-auto pb-64 no-scrollbar bg-black transition-none">
       {wallPlateType && (
         <div className="fixed inset-0 z-[20000] bg-black flex items-center justify-center overflow-hidden animate-in fade-in duration-300">
           <div className="absolute top-10 right-10 z-[20001]">
@@ -78,6 +82,7 @@ export function DashboardView() {
         </div>
       )}
 
+      {/* Primary Widget Array */}
       <div className="grid grid-cols-12 gap-6 min-h-[480px]" data-row-id="main-widgets-row">
         <div className="col-span-4 rounded-[3rem] overflow-hidden relative shadow-2xl h-[480px] bg-black focusable" tabIndex={0}><ActiveAzkarWidget /></div>
         <div className="col-span-4 rounded-[3rem] relative flex items-center justify-center h-[480px] shadow-2xl focusable bg-black outline-none" tabIndex={0}><ReminderSummaryWidget /></div>
@@ -89,9 +94,16 @@ export function DashboardView() {
         </div>
       </div>
 
+      {/* Sovereign Command Hub */}
       <div className="w-full shadow-2xl bg-black rounded-[3.5rem] overflow-hidden outline-none mt-4 border-2 border-white/5 min-h-[220px]" data-row-id="row-shortcuts">
         <SovereignShortcutsWidget />
+      </div>
+
+      {/* Unified Prayer Timeline Bar - Directly Under Shortcuts */}
+      <div className="w-full mt-4 min-h-[160px]" data-row-id="row-prayer-bar">
+        <PrayerTimelineWidget />
       </div>
     </div>
   );
 }
+

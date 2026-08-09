@@ -42,10 +42,6 @@ const JUZ_SURAH_MAP: Record<number, number[]> = {
   30: [78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114]
 };
 
-/**
- * MediaView v120.0 - Adaptive View Hub
- * Features: Removed auto-focus behavior for consistent remote navigation.
- */
 export function MediaView() {
   const searchParams = useSearchParams();
   const { 
@@ -84,20 +80,29 @@ export function MediaView() {
     searchYouTubeVideos("ملخص مباريات كرة القدم الأمس", 15).then(setMatchHighlights);
   }, [favoriteChannels]);
 
-  // Data Lifecycle & Hyper-Sync
+  // Data Lifecycle & Focus Management
   useEffect(() => {
     fetchExtraLists();
     fetch("https://api.quran.com/api/v4/chapters?language=ar").then(r => r.json()).then(d => {
       setSurahs(d.chapters || []); setAllSurahs(d.chapters || []);
     });
     
-    // Auto-Refocus removed as requested for consistent navigation
-    
     const q = searchParams.get('q'); if (q) { setSearch(q); performSearch(q); }
 
-    // 10s Sovereign Update Cycle
-    const syncInterval = setInterval(() => fetchPriorityData('media'), 10000);
-    return () => clearInterval(syncInterval);
+    // Sovereign Focus on First Reciter - Atomic Focus Guard
+    const focusTimer = setTimeout(() => {
+      const firstReciter = document.querySelector('[data-nav-id="reciter-item-0"]') as HTMLElement;
+      if (firstReciter) {
+        firstReciter.focus();
+        firstReciter.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 1500);
+
+    const syncInterval = setInterval(() => fetchPriorityData('media'), 15000);
+    return () => {
+      clearTimeout(focusTimer);
+      clearInterval(syncInterval);
+    };
   }, [searchParams, fetchExtraLists, fetchPriorityData]);
 
   useEffect(() => {
