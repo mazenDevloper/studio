@@ -9,8 +9,8 @@ import { SovereignIframe } from "@/components/ui/sovereign-iframe";
 import { Input } from "@/components/ui/input";
 
 /**
- * GlobalVideoPlayer v180.0 - Sovereign Precision & Scaled Controls
- * Features: Larger controls, swapped side positioning relative to dock, and smart URL auto-fill.
+ * GlobalVideoPlayer v210.0 - Sovereign Centered Precision
+ * Features: Bottom-0, Scale 95, and Hyper-Targeted Navigation.
  */
 export function GlobalVideoPlayer() {
   const { 
@@ -31,7 +31,6 @@ export function GlobalVideoPlayer() {
 
   const isActive = !!(activeVideo || activeIptv);
   const isSaved = activeVideo ? savedVideos.some(v => v.id === activeVideo.id) : false;
-  const isDockLeft = dockSide === 'left';
   const isWebType = activeIptv?.type === 'web' || !!activeIptv;
 
   const startSeconds = useMemo(() => {
@@ -52,11 +51,10 @@ export function GlobalVideoPlayer() {
       modestbranding: '1', 
       enablejsapi: '1', 
       origin: typeof window !== 'undefined' ? window.location.origin : '',
-      widget_referrer: typeof window !== 'undefined' ? window.location.origin : '',
       hl: 'ar'
     });
     return `https://www.youtube.com/embed/${activeVideo.id}?${params.toString()}`;
-  }, [activeVideo?.id, startSeconds, mounted]);
+  }, [activeVideo?.id, startSeconds]);
 
   const handleClose = () => { 
     setActiveVideo(null); 
@@ -87,10 +85,10 @@ export function GlobalVideoPlayer() {
   return (
     <>
       <div className={cn(
-        "fixed z-[99999] shadow-[0_0_60px_rgba(0,0,0,0.5)] transition-all duration-500 overflow-hidden pointer-events-auto", 
-        isMinimized ? (isDockLeft ? "bottom-8 left-8" : "bottom-8 right-8") + " w-[420px] h-24 rounded-[2.5rem] premium-glass bg-black/80 border border-white/20" : 
+        "fixed z-[99999] shadow-[0_0_80px_rgba(0,0,0,0.5)] transition-all duration-500 overflow-hidden pointer-events-auto", 
+        isMinimized ? (dockSide === 'left' ? "bottom-8 left-8" : "bottom-8 right-8") + " w-[420px] h-24 rounded-[2.5rem] premium-glass bg-black/80 border border-white/20" : 
         isFullScreen ? "inset-0 w-full h-full bg-black" : 
-        (isDockLeft ? "bottom-12 left-12" : "bottom-12 right-12") + " w-[55vw] h-[60vh] premium-glass rounded-[3.5rem] bg-black/95 border-2 border-white/10"
+        "bottom-12 left-1/2 -translate-x-1/2 w-[55vw] h-[60vh] premium-glass rounded-[3.5rem] bg-black/95 border-2 border-white/10"
       )}>
         <div className={cn("absolute inset-0 transition-opacity duration-500", isMinimized ? "opacity-0 pointer-events-none" : "opacity-100")}>
           {activeVideo ? (
@@ -119,15 +117,11 @@ export function GlobalVideoPlayer() {
 
       {!isMinimized && (
         <div className={cn(
-          "fixed z-[100000] flex items-center transition-all duration-500", 
-          // Swapped Side: Put controls on the opposite side of the dock
-          isFullScreen 
-            ? (isDockLeft ? "right-10 bottom-10" : "left-10 bottom-10") + " scale-110" 
-            : (isDockLeft ? "right-14 bottom-14" : "left-14 bottom-14") + " scale-105"
+          "fixed z-[100000] flex items-center transition-all duration-500 left-1/2 -translate-x-1/2 bottom-4 scale-95 origin-bottom"
         )}>
-          <div className="flex items-center gap-3 bg-black/40 backdrop-blur-3xl p-2.5 rounded-full border border-white/20 shadow-[0_0_40px_rgba(0,0,0,0.4)]">
-            <button onClick={handleClose} className="w-10 h-10 rounded-full bg-red-600/20 text-red-500 border border-red-600/20 flex items-center justify-center focusable shadow-glow"><X className="w-5 h-5" /></button>
-            <div className="w-px h-6 bg-white/20 mx-1" />
+          <div className="flex items-center gap-3 bg-black/40 backdrop-blur-3xl p-2 rounded-full border border-white/10 shadow-[0_0_30px_rgba(0,0,0,0.3)]">
+            <button onClick={handleClose} className="w-9 h-9 rounded-full bg-red-600/20 text-red-500 border border-red-600/20 flex items-center justify-center focusable shadow-glow"><X className="w-5 h-5" /></button>
+            <div className="w-px h-6 bg-white/20 mx-0.5" />
             
             {isPlayerControlsExpanded && (
               <div className="flex items-center gap-3 animate-in slide-in-from-left-4 duration-300">
@@ -144,17 +138,16 @@ export function GlobalVideoPlayer() {
                     <button 
                       onClick={handlePutToIframe}
                       className="w-7 h-7 rounded-full bg-emerald-600/20 text-emerald-400 flex items-center justify-center hover:bg-emerald-500/40 transition-all shadow-glow"
-                      title="PUT TO IFRAME"
                     >
                       <Send className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 )}
 
-                <div className="w-px h-6 bg-white/20 mx-1" />
+                <div className="w-px h-6 bg-white/20 mx-0.5" />
 
                 {isWebType && (
-                  <button onClick={reloadIframe} className="w-10 h-10 rounded-full bg-white/10 text-emerald-400 flex items-center justify-center focusable hover:bg-emerald-500/20 shadow-glow" title="تنشيط الصوت وإعادة التحميل"><Volume2 className="w-5 h-5" /></button>
+                  <button onClick={reloadIframe} className="w-10 h-10 rounded-full bg-white/10 text-emerald-400 flex items-center justify-center focusable hover:bg-emerald-500/20 shadow-glow" title="تنشيط الصوت / Unmute"><Volume2 className="w-5 h-5" /></button>
                 )}
                 {!isWebType && (
                   <>
@@ -162,17 +155,16 @@ export function GlobalVideoPlayer() {
                     <button onClick={nextTrack} className="w-9 h-9 rounded-full bg-white/5 text-white/40 flex items-center justify-center focusable hover:bg-white/10"><ChevronLeft className="w-5 h-5" /></button>
                   </>
                 )}
-                <div className="w-px h-6 bg-white/20 mx-1" />
+                <div className="w-px h-6 bg-white/20 mx-0.5" />
                 <button onClick={() => activeVideo && toggleSaveVideo(activeVideo)} className={cn("w-9 h-9 rounded-full flex items-center justify-center focusable transition-all", isSaved ? "bg-accent/40 text-accent shadow-glow" : "bg-white/5 text-white/40")}><BookmarkCheck className="w-5 h-5" /></button>
-                <button onClick={cyclePlayerMode} className="w-9 h-9 rounded-full bg-white/5 text-white/40 flex items-center justify-center focusable hover:bg-white/10" title="تبديل الوضع"><Maximize2 className="w-5 h-5" /></button>
+                <button onClick={cyclePlayerMode} className="w-9 h-9 rounded-full bg-white/5 text-white/40 flex items-center justify-center focusable hover:bg-white/10"><Maximize2 className="w-5 h-5" /></button>
                 <button onClick={() => setIsFullScreen(!isFullScreen)} className={cn("w-9 h-9 rounded-full flex items-center justify-center focusable transition-all", isFullScreen ? "bg-primary text-white shadow-glow" : "bg-white/5 text-white/40")}><Monitor className="w-5 h-5" /></button>
               </div>
             )}
 
             <button 
               onClick={() => setIsPlayerControlsExpanded(!isPlayerControlsExpanded)} 
-              className="w-10 h-10 rounded-full bg-white/10 text-white flex items-center justify-center focusable shadow-glow"
-              title={isPlayerControlsExpanded ? "طي الشريط" : "توسيع الشريط"}
+              className="w-9 h-9 rounded-full bg-white/10 text-white flex items-center justify-center focusable shadow-glow"
             >
               {isPlayerControlsExpanded ? <ChevronRight className="w-6 h-6" /> : <ChevronLeft className="w-6 h-6" />}
             </button>

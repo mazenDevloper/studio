@@ -8,8 +8,8 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 
 /**
- * ActiveAzkarWidget v18000.0 - Sovereign Precision Display
- * Features: Full-width 100% display with 2px edge padding for royal visibility.
+ * ActiveAzkarWidget v185.0 - Static Image Display
+ * Features: Optimized rendering using static PNG data URLs for high performance.
  */
 export function ActiveAzkarWidget() {
   const customManuscripts = useMediaStore(state => state.customManuscripts);
@@ -41,7 +41,14 @@ export function ActiveAzkarWidget() {
       <div className="relative z-20 w-full h-full overflow-hidden flex items-center justify-center">
         {activeItem ? (
           <div className="relative w-full aspect-[4/3] flex items-center justify-center max-h-full [container-type:inline-size]">
-            {activeItem.type === 'text' && activeItem.words ? (
+            {activeItem.pngDataUrl ? (
+              <img 
+                src={activeItem.pngDataUrl} 
+                className="w-full h-full object-contain drop-shadow-[0_0_40px_rgba(255,255,255,0.4)]" 
+                style={{ transform: `scale(${manuscriptScales[activeItem.id] || 1.0})` }}
+                alt="Manuscript" 
+              />
+            ) : activeItem.type === 'text' && activeItem.words ? (
               activeItem.words.map((word) => {
                 const itemScale = (word.scale || 1.0) * (manuscriptScales[activeItem.id] || 1.0);
                 return (

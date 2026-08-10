@@ -8,13 +8,12 @@ import {
   JSONBIN_MASTER_KEY, 
   JSONBIN_MASTER_BIN_ID,
   JSONBIN_CHANNELS_BIN_ID,
-  JSONBIN_SAVED_VIDEOS_BIN_ID,
-  JSONBIN_IPTV_FAVS_BIN_ID,
-  JSONBIN_PRAYER_TIMES_BIN_ID,
-  JSONBIN_MANUSCRIPTS_BIN_ID,
   JSONBIN_POPULAR_RECITERS_BIN_ID,
-  JSONBIN_BACKGROUNDS_BIN_ID,
+  JSONBIN_IPTV_FAVS_BIN_ID,
+  JSONBIN_MANUSCRIPTS_BIN_ID,
   JSONBIN_FONTS_BIN_ID,
+  JSONBIN_BACKGROUNDS_BIN_ID,
+  JSONBIN_PRAYER_TIMES_BIN_ID,
   prayerTimesData
 } from "./constants";
 
@@ -97,6 +96,7 @@ export interface Manuscript {
   content: string;
   words?: ManuscriptWord[];
   fontFamily?: string;
+  pngDataUrl?: string; 
   x?: number;
   y?: number;
   scale?: number;
@@ -245,12 +245,14 @@ const updateBin = async (binId: string, data: any) => {
       headers: {
         'Content-Type': 'application/json',
         'X-Master-Key': JSONBIN_MASTER_KEY,
-        'X-Bin-Versioning': 'false'
+        'X-Bin-Versioning': 'false',
+        'Accept': 'application/json'
       },
       mode: 'cors',
+      referrerPolicy: "no-referrer",
       body: JSON.stringify(data)
     });
-    if (!response.ok) throw new Error("JSONBin PUT Failed");
+    if (!response.ok) throw new Error(`JSONBin PUT Failed: ${response.status}`);
   } catch (e) {
     console.error("Bin Update Failed", e);
   }
@@ -297,10 +299,17 @@ export const useMediaStore = create<MediaState>()(
           } catch { return null; } 
         };
 
-        // PARALLEL SOVEREIGN EXECUTION: Fetch all sources at once to maximize performance.
-        const binIds = [
-          JSONBIN_CHANNELS_BIN_ID,
-          JSONBIN_POPULAR_RECITERS_BIN_ID,
+        // --- STAGE 1: HYPER PRIORITY (CHANNELS & RECITERS) ---
+        const tier1 = await Promise.allSettled([
+          fetchB(JSONBIN_CHANNELS_BIN_ID),
+          fetchB(JSONBIN_POPULAR_RECITERS_BIN_ID)
+        ]);
+        
+        if (tier1[0].status === 'fulfilled' && tier1[0].value) set({ favoriteChannels: tier1[0].value.channels || tier1[0].value });
+        if (tier1[1].status === 'fulfilled' && tier1[1].value) set({ favoriteReciters: (tier1[1].value.reciters || tier1[1].value).sort((a: any, b: any) => (b.clickschannel || 0) - (a.clickschannel || 0)) });
+
+        // --- STAGE 2: PARALLEL BACKGROUND SYNC ---
+        const tier2Ids = [
           JSONBIN_IPTV_FAVS_BIN_ID,
           JSONBIN_MANUSCRIPTS_BIN_ID,
           JSONBIN_FONTS_BIN_ID,
@@ -309,17 +318,15 @@ export const useMediaStore = create<MediaState>()(
           JSONBIN_MASTER_BIN_ID
         ];
 
-        const results = await Promise.allSettled(binIds.map(id => fetchB(id)));
+        const results = await Promise.allSettled(tier2Ids.map(id => fetchB(id)));
 
-        if (results[0].status === 'fulfilled' && results[0].value) set({ favoriteChannels: results[0].value.channels || results[0].value });
-        if (results[1].status === 'fulfilled' && results[1].value) set({ favoriteReciters: (results[1].value.reciters || results[1].value).sort((a: any, b: any) => (b.clickschannel || 0) - (a.clickschannel || 0)) });
-        if (results[2].status === 'fulfilled' && results[2].value) set({ favoriteIptvChannels: results[2].value.iptv || results[2].value.channels || [] });
-        if (results[3].status === 'fulfilled' && results[3].value) set({ customManuscripts: results[3].value.manuscripts || results[3].value });
-        if (results[4].status === 'fulfilled' && results[4].value) set({ customFonts: results[4].value.fonts || results[4].value });
-        if (results[5].status === 'fulfilled' && results[5].value) set({ customWallBackgrounds: results[5].value.backgrounds || results[5].value });
-        if (results[6].status === 'fulfilled' && results[6].value) set({ prayerTimes: results[6].value.prayers || results[6].value });
-        if (results[7].status === 'fulfilled' && results[7].value) {
-           const v = results[7].value;
+        if (results[0].status === 'fulfilled' && results[0].value) set({ favoriteIptvChannels: results[0].value.iptv || results[0].value.channels || [] });
+        if (results[1].status === 'fulfilled' && results[1].value) set({ customManuscripts: results[1].value.manuscripts || results[1].value });
+        if (results[2].status === 'fulfilled' && results[2].value) set({ customFonts: results[2].value.fonts || results[2].value });
+        if (results[3].status === 'fulfilled' && results[3].value) set({ customWallBackgrounds: results[3].value.backgrounds || results[3].value });
+        if (results[4].status === 'fulfilled' && results[4].value) set({ prayerTimes: results[4].value.prayers || results[4].value });
+        if (results[5].status === 'fulfilled' && results[5].value) {
+           const v = results[5].value;
            set({ 
              reminders: v.reminders || get().reminders, 
              prayerSettings: v.prayerSettings || DEFAULT_PRAYER_SETTINGS, 
@@ -400,7 +407,7 @@ export const useMediaStore = create<MediaState>()(
       updateManuscriptScale: (id, scale) => set((s) => { const n = { ...s.manuscriptScales, [id]: (s.manuscriptScales[id] || 1.0) + scale }; setTimeout(() => get().syncMasterBin(), 100); return { manuscriptScales: n }; }),
     }),
     {
-      name: "drivecast-sovereign-cache-v101", 
+      name: "drivecast-sovereign-cache-v105", 
       partialize: (s) => ({ 
         dockSide: s.dockSide,
         showIslands: s.showIslands,
@@ -410,12 +417,6 @@ export const useMediaStore = create<MediaState>()(
         keyMappings: s.keyMappings,
         lastPlayedVideo: s.lastPlayedVideo,
         videoProgress: s.videoProgress,
-        favoriteChannels: s.favoriteChannels,
-        favoriteReciters: s.favoriteReciters,
-        favoriteIptvChannels: s.favoriteIptvChannels,
-        customFonts: s.customFonts,
-        customManuscripts: s.customManuscripts,
-        manuscriptScales: s.manuscriptScales
       }),
     }
   )

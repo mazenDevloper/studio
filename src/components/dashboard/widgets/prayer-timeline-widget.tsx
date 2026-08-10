@@ -8,8 +8,8 @@ import { Timer, BellRing, Sun, Sunrise, Sunset, Moon, Sparkles, CloudSun } from 
 import { useMediaStore } from "@/lib/store";
 
 /**
- * PrayerTimelineWidget v180.0 - Comprehensive Daily Prayer Bar
- * Features: Optimized spacing to fit all 5 prayers on one line for royal clarity.
+ * PrayerTimelineWidget v210.0 - Sovereign High-Visibility Daily Bar
+ * Features: Increased opacity and clarity for inactive prayers so all times are clear.
  */
 export function PrayerTimelineWidget() {
   const [now, setNow] = useState<Date | null>(null);
@@ -92,7 +92,7 @@ export function PrayerTimelineWidget() {
 
   return (
     <div className="w-full bg-black/40 backdrop-blur-3xl rounded-[2.5rem] border border-white/10 p-2 overflow-hidden shadow-2xl relative transition-none min-h-[160px]">
-      <div className="flex flex-nowrap items-center justify-between gap-2 p-2 h-full overflow-x-auto no-scrollbar">
+      <div className="flex flex-nowrap items-center justify-between gap-4 p-2 h-full overflow-x-auto no-scrollbar">
         {prayers.map((prayer, idx) => {
           const isActive = idx === activeIndex;
           const isCurrentIqamah = isActive && currentStatus?.type === 'iqamah';
@@ -100,17 +100,19 @@ export function PrayerTimelineWidget() {
           
           return (
             <div key={prayer.id} className={cn(
-              "flex-1 min-w-[200px] flex items-center gap-4 transition-none relative rounded-[2.2rem] p-4 border-2 border-transparent",
-              isActive ? "bg-white/10 border-white/20 scale-105 z-10 shadow-[0_0_50px_rgba(0,136,255,0.2)]" : "opacity-30 grayscale"
+              "flex-1 min-w-[190px] flex items-center gap-4 transition-all duration-300 relative rounded-[2.2rem] p-4 border-2",
+              isActive 
+                ? "bg-white/15 border-white/30 scale-105 z-10 shadow-[0_0_60px_rgba(0,136,255,0.3)]" 
+                : "bg-white/5 border-white/5 opacity-80 hover:opacity-100"
             )}>
               {isActive && <div className={cn("absolute inset-0 blur-3xl opacity-20 rounded-full", isCurrentIqamah ? "bg-emerald-500" : "bg-primary")} />}
-              <div className={cn("w-16 h-16 rounded-2xl flex items-center justify-center relative overflow-hidden shrink-0", isActive ? "bg-black/60 border border-white/20 shadow-glow" : "bg-white/5")}>
-                <Icon className={cn("w-8 h-8", isActive ? prayer.color : "text-white/40")} />
+              <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center relative overflow-hidden shrink-0", isActive ? "bg-black/60 border border-white/20 shadow-glow" : "bg-white/5")}>
+                <Icon className={cn("w-7 h-7", isActive ? prayer.color : "text-white/40")} />
               </div>
               <div className="flex flex-col flex-1 min-w-0 text-right">
-                <span className={cn("text-[11px] font-black uppercase tracking-[0.25em] truncate mb-0.5", isActive ? "text-white" : "text-white/40")}>{prayer.name}</span>
+                <span className={cn("text-[11px] font-black uppercase tracking-[0.25em] truncate mb-0.5", isActive ? "text-white" : "text-white/60")}>{prayer.name}</span>
                 <div className="flex items-baseline gap-2">
-                  <span className={cn("text-3xl font-black tabular-nums tracking-tighter drop-shadow-[0_10px_20px_rgba(0,0,0,1)]", isActive ? "text-white" : "text-white/20")}>{convertTo12Hour(prayer.time)}</span>
+                  <span className={cn("text-3xl font-black tabular-nums tracking-tighter drop-shadow-[0_10px_20px_rgba(0,0,0,0.8)]", isActive ? "text-white" : "text-white/80")}>{convertTo12Hour(prayer.time)}</span>
                 </div>
                 {isActive && (
                   <div className={cn("mt-1.5 flex items-center gap-2 px-3 py-1 rounded-full border text-[8px] font-black uppercase tracking-widest w-fit", isCurrentIqamah ? "bg-emerald-500/30 border-emerald-400/50 text-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.3)]" : "bg-white/10 border-white/10 text-white/50")}>

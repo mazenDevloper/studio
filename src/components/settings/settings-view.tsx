@@ -6,7 +6,8 @@ import { useMediaStore, Reminder, Manuscript, MappingContext, AppAction, Manuscr
 import { 
   Settings, Bell, Trash2, Edit2, Plus, Minus, Keyboard, Timer, ArrowRightLeft, 
   Loader2, RefreshCw, Mic, X, Type, Zap, Sparkles, Upload, Clock, Youtube, Tv, Star, Magnet,
-  ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Maximize, Minimize, Image as ImageIcon, Download, Search
+  ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Maximize, Minimize, Image as ImageIcon, Download, Search, Move,
+  Maximize2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,6 +49,7 @@ export function SettingsView() {
   const [currentWords, setCurrentWords] = useState<ManuscriptWord[]>([]);
   const [draggingWord, setDraggingWord] = useState<{ wordId: string } | null>(null);
   const [selectedWordId, setSelectedWordId] = useState<string | null>(null);
+  const [isFullscreenEditor, setIsFullscreenEditor] = useState(false);
 
   const [editingIptvId, setEditingIptvId] = useState<string | null>(null);
   const [iptvEditForm, setIptvEditInput] = useState<any>({});
@@ -137,32 +139,31 @@ export function SettingsView() {
     reader.readAsDataURL(file);
   };
 
-  const downloadManuscriptAsPng = (manuscript: Manuscript) => {
+  const generateManuscriptPng = (words: ManuscriptWord[], fontFamily: string): string => {
     const canvas = document.createElement("canvas");
     canvas.width = 1200;
     canvas.height = 900;
     const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    if (!ctx) return "";
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillStyle = mapSettings.manuscriptColor;
 
-    const words = manuscript.words || [];
-    const scaleFactor = 1.0;
-
-    ctx.font = `bold 100px ${manuscript.fontFamily || 'Aref Ruqaa'}`;
-
     words.forEach(word => {
-      const wordScale = (word.scale || 1.0) * scaleFactor;
-      ctx.font = `bold ${100 * wordScale}px ${manuscript.fontFamily || 'Aref Ruqaa'}`;
+      const fontSize = 100 * word.scale;
+      ctx.font = `bold ${fontSize}px ${fontFamily}`;
       ctx.fillText(word.text, (word.x / 100) * canvas.width, (word.y / 100) * canvas.height);
     });
 
+    return canvas.toDataURL("image/png");
+  };
+
+  const downloadManuscriptAsPng = (manuscript: Manuscript) => {
     const link = document.createElement('a');
     link.download = `manuscript-${manuscript.id}.png`;
-    link.href = canvas.toDataURL("image/png");
+    link.href = manuscript.pngDataUrl || generateManuscriptPng(manuscript.words || [], manuscript.fontFamily || 'Aref Ruqaa');
     link.click();
     toast({ title: "تم جلب الصورة الشفافة" });
   };
@@ -179,17 +180,23 @@ export function SettingsView() {
 
   const handleSaveManuscript = async () => {
     if (!manuscriptInput && manuscriptType === 'text') return;
+    
+    const pngDataUrl = generateManuscriptPng(currentWords, selectedFont);
+    
     const item: Manuscript = {
       id: editingManuscriptId || Date.now().toString(),
       type: manuscriptType,
       content: manuscriptInput,
       fontFamily: selectedFont,
       words: currentWords,
+      pngDataUrl,
       x: 50, y: 50, scale: 1.0
     };
+    
     if (editingManuscriptId) updateManuscript(editingManuscriptId, item);
     else addManuscript(item);
-    setEditingManuscriptId(null); setManuscriptInput(""); setCurrentWords([]); setManuscriptMode('write'); setSelectedWordId(null);
+    
+    setEditingManuscriptId(null); setManuscriptInput(""); setCurrentWords([]); setManuscriptMode('write'); setSelectedWordId(null); setIsFullscreenEditor(false);
     toast({ title: "تم حفظ المخطوطة السيادية" });
   };
 
@@ -271,10 +278,19 @@ export function SettingsView() {
         </TabsList>
 
         <TabsContent value="manuscripts" className="space-y-8 animate-in fade-in duration-0">
-          <Card className="bg-white/5 border-white/10 p-10 rounded-[3.5rem] relative overflow-hidden shadow-2xl">
+          <Card className={cn(
+            "bg-white/5 border-white/10 p-10 rounded-[3.5rem] relative shadow-2xl transition-all duration-500",
+            isFullscreenEditor && "fixed inset-0 z-[100000] bg-black p-12 rounded-none overflow-hidden"
+          )}>
             <div className="flex items-center justify-between mb-8 relative z-10">
-              <CardTitle className="text-4xl font-black text-white flex items-center gap-6"><Type className="w-12 h-12 text-primary" />استوديو التجميد v105.0</CardTitle>
+              <CardTitle className="text-4xl font-black text-white flex items-center gap-6">
+                <Type className="w-12 h-12 text-primary" />
+                استوديو التجميد v190.0
+              </CardTitle>
               <div className="flex gap-4">
+                 <button onClick={() => setIsFullscreenEditor(!isFullscreenEditor)} className="w-14 h-14 rounded-full bg-white/10 flex items-center justify-center text-white shadow-glow border border-white/20">
+                    {isFullscreenEditor ? <Minimize className="w-6 h-6" /> : <Maximize2 className="w-6 h-6" />}
+                 </button>
                  <div className="bg-black/40 p-1.5 rounded-full border border-white/10 flex gap-2">
                     <button onClick={() => setManuscriptMode('write')} className={cn("px-6 h-11 rounded-full text-sm font-black transition-none focusable", manuscriptMode === 'write' ? "bg-primary text-white" : "text-white/40")}>وضع الكتابة</button>
                     <button onClick={() => setManuscriptMode('arrange')} className={cn("px-6 h-11 rounded-full text-sm font-black transition-none focusable", manuscriptMode === 'arrange' ? "bg-accent text-black" : "text-white/40")}>وضع الترتيب</button>
@@ -288,7 +304,10 @@ export function SettingsView() {
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
               onMouseLeave={handleMouseUp}
-              className="mb-10 p-0 bg-zinc-900/60 rounded-[4rem] border-4 border-primary/20 relative overflow-hidden flex items-center justify-center aspect-[4/3] w-full max-w-4xl mx-auto shadow-2xl transition-none [container-type:inline-size]"
+              className={cn(
+                "p-0 bg-zinc-900/60 rounded-[4rem] border-4 border-primary/20 relative overflow-hidden flex items-center justify-center shadow-2xl transition-none [container-type:inline-size]",
+                isFullscreenEditor ? "h-[70vh] w-full" : "aspect-[4/3] w-full max-w-4xl mx-auto mb-10"
+              )}
             >
               {currentWords.map((word) => (
                 <div 
@@ -308,17 +327,27 @@ export function SettingsView() {
                     transition: 'none'
                   }}
                   className={cn(
-                    "select-none whitespace-nowrap leading-none p-4",
+                    "select-none whitespace-nowrap leading-none p-4 group touch-none",
                     selectedWordId === word.id && "ring-4 ring-primary rounded-[2rem] bg-primary/10"
                   )}
                 >
                   {word.text}
+                  {manuscriptMode === 'arrange' && (
+                    <div className="absolute -top-6 -right-6 opacity-0 group-hover:opacity-100 transition-opacity">
+                       <button className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center shadow-glow border-2 border-white/20">
+                          <Move className="w-5 h-5" />
+                       </button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
 
-            {selectedWordId && manuscriptMode === 'arrange' && (
-              <div className="flex items-center justify-center gap-10 bg-black/60 backdrop-blur-3xl p-8 rounded-[3rem] border-2 border-primary/40 mb-10 shadow-2xl animate-in zoom-in-50 duration-0">
+            {(selectedWordId && manuscriptMode === 'arrange') && (
+              <div className={cn(
+                "flex items-center justify-center gap-10 bg-black/60 backdrop-blur-3xl p-8 rounded-[3rem] border-2 border-primary/40 shadow-2xl animate-in zoom-in-50 duration-0",
+                isFullscreenEditor ? "absolute bottom-12 left-1/2 -translate-x-1/2 z-[100001] w-[80%]" : "mb-10"
+              )}>
                  <div className="flex flex-col items-center gap-4">
                     <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">تحريك الكلمة</span>
                     <div className="grid grid-cols-3 gap-3">
@@ -343,44 +372,54 @@ export function SettingsView() {
               </div>
             )}
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-12">
-              <div className="lg:col-span-2 space-y-6 bg-black/40 p-8 rounded-[3rem] border border-white/10 shadow-xl">
-                <div className="flex gap-4">
-                   <Input placeholder="اكتب المخطوطة السيادية هنا..." value={manuscriptInput} onChange={(e) => setManuscriptInput(e.target.value)} className="h-20 bg-white/5 border-none px-8 rounded-2xl text-3xl font-black text-white focusable" />
-                   <Select value={selectedFont} onValueChange={setSelectedFont}>
-                      <SelectTrigger className="h-20 w-64 bg-white/5 border-none text-xl font-black rounded-2xl focusable"><SelectValue /></SelectTrigger>
-                      <SelectContent className="bg-zinc-950 text-white dir-rtl"><SelectItem value="Amiri">Amiri</SelectItem><SelectItem value="Reem Kufi">Reem Kufi</SelectItem><SelectItem value="Aref Ruqaa">Aref Ruqaa</SelectItem>{customFonts?.map(f => <SelectItem key={f.name} value={f.name}>{f.name}</SelectItem>)}</SelectContent>
-                   </Select>
-                </div>
-              </div>
-              <div className="bg-black/40 p-8 rounded-[3rem] border border-white/10 flex flex-col justify-center gap-4 shadow-xl">
-                 {editingManuscriptId && (
-                   <div className="flex flex-col items-center gap-4 mb-4">
-                      <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">تكبير شامل للمخطوطة</span>
-                      <div className="flex gap-3">
-                         <button onClick={() => updateManuscriptScale(editingManuscriptId, 0.05)} className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center focusable"><Plus className="w-6 h-6" /></button>
-                         <div className="w-12 h-12 flex items-center justify-center font-black text-white">{activeManuScale.toFixed(2)}</div>
-                         <button onClick={() => updateManuscriptScale(editingManuscriptId, -0.05)} className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center focusable"><Minus className="w-6 h-6" /></button>
-                      </div>
-                   </div>
-                 )}
-                 <input type="file" hidden ref={fontFileRef} accept=".ttf,.otf" onChange={(e) => handleFileUpload(e, 'font')} />
-                 <Button onClick={() => fontFileRef.current?.click()} className="w-full h-16 bg-purple-600/20 text-purple-400 border border-purple-500/30 rounded-2xl font-black focusable"><Upload className="w-6 h-6 ml-3" /> رفع خط مخصص</Button>
-              </div>
-            </div>
-
-            <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8">
-              {customManuscripts.map((m) => (
-                <div key={m.id} className="bg-black/60 p-8 rounded-[3rem] border border-white/10 flex flex-col items-center justify-between group shadow-2xl transition-none">
-                  <p className="text-2xl text-center leading-relaxed truncate font-black mb-6" style={{ fontFamily: m.fontFamily || 'inherit', color: mapSettings.manuscriptColor }}>{m.content}</p>
-                  <div className="flex gap-2 w-full flex-wrap">
-                    <Button onClick={() => startEditManuscript(m)} className="flex-1 h-12 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-2xl font-black focusable"><Edit2 className="w-4 h-4 ml-2" /> تحرير</Button>
-                    <Button onClick={() => downloadManuscriptAsPng(m)} className="w-12 h-12 bg-blue-600/20 text-blue-400 border border-blue-500/30 rounded-2xl focusable" title="تنزيل PNG"><Download className="w-5 h-5" /></Button>
-                    <Button onClick={() => removeManuscript(m.id)} className="w-12 h-12 bg-red-600/20 text-red-500 border border-red-500/30 rounded-2xl focusable"><Trash2 className="w-5 h-5" /></Button>
+            {!isFullscreenEditor && (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-12">
+                <div className="lg:col-span-2 space-y-6 bg-black/40 p-8 rounded-[3rem] border border-white/10 shadow-xl">
+                  <div className="flex gap-4">
+                     <Input placeholder="اكتب المخطوطة السيادية هنا..." value={manuscriptInput} onChange={(e) => setManuscriptInput(e.target.value)} className="h-20 bg-white/5 border-none px-8 rounded-2xl text-3xl font-black text-white focusable" />
+                     <Select value={selectedFont} onValueChange={setSelectedFont}>
+                        <SelectTrigger className="h-20 w-64 bg-white/5 border-none text-xl font-black rounded-2xl focusable"><SelectValue /></SelectTrigger>
+                        <SelectContent className="bg-zinc-950 text-white dir-rtl"><SelectItem value="Amiri">Amiri</SelectItem><SelectItem value="Reem Kufi">Reem Kufi</SelectItem><SelectItem value="Aref Ruqaa">Aref Ruqaa</SelectItem>{customFonts?.map(f => <SelectItem key={f.name} value={f.name}>{f.name}</SelectItem>)}</SelectContent>
+                     </Select>
                   </div>
                 </div>
-              ))}
-            </div>
+                <div className="bg-black/40 p-8 rounded-[3rem] border border-white/10 flex flex-col justify-center gap-4 shadow-xl">
+                   {editingManuscriptId && (
+                     <div className="flex flex-col items-center gap-4 mb-4">
+                        <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">تكبير شامل للمخطوطة</span>
+                        <div className="flex gap-3">
+                           <button onClick={() => updateManuscriptScale(editingManuscriptId, 0.05)} className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center focusable"><Plus className="w-6 h-6" /></button>
+                           <div className="w-12 h-12 flex items-center justify-center font-black text-white">{activeManuScale.toFixed(2)}</div>
+                           <button onClick={() => updateManuscriptScale(editingManuscriptId, -0.05)} className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center focusable"><Minus className="w-6 h-6" /></button>
+                        </div>
+                     </div>
+                   )}
+                   <input type="file" hidden ref={fontFileRef} accept=".ttf,.otf" onChange={(e) => handleFileUpload(e, 'font')} />
+                   <Button onClick={() => fontFileRef.current?.click()} className="w-full h-16 bg-purple-600/20 text-purple-400 border border-purple-500/30 rounded-2xl font-black focusable"><Upload className="w-6 h-6 ml-3" /> رفع خط مخصص</Button>
+                </div>
+              </div>
+            )}
+
+            {!isFullscreenEditor && (
+              <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8">
+                {customManuscripts.map((m) => (
+                  <div key={m.id} className="bg-black/60 p-8 rounded-[3rem] border border-white/10 flex flex-col items-center justify-between group shadow-2xl transition-none">
+                    <div className="w-full aspect-[4/3] bg-zinc-950 rounded-2xl mb-6 flex items-center justify-center overflow-hidden border border-white/5">
+                       {m.pngDataUrl ? (
+                         <img src={m.pngDataUrl} className="max-w-[80%] max-h-[80%] object-contain" alt="" />
+                       ) : (
+                         <p className="text-xl text-center leading-relaxed truncate font-black" style={{ fontFamily: m.fontFamily || 'inherit', color: mapSettings.manuscriptColor }}>{m.content}</p>
+                       )}
+                    </div>
+                    <div className="flex gap-2 w-full flex-wrap">
+                      <Button onClick={() => startEditManuscript(m)} className="flex-1 h-12 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-2xl font-black focusable"><Edit2 className="w-4 h-4 ml-2" /> تحرير</Button>
+                      <Button onClick={() => downloadManuscriptAsPng(m)} className="w-12 h-12 bg-blue-600/20 text-blue-400 border border-blue-500/30 rounded-2xl focusable" title="تنزيل PNG"><Download className="w-5 h-5" /></Button>
+                      <Button onClick={() => removeManuscript(m.id)} className="w-12 h-12 bg-red-600/20 text-red-500 border border-red-500/30 rounded-2xl focusable"><Trash2 className="w-5 h-5" /></Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </Card>
         </TabsContent>
 
