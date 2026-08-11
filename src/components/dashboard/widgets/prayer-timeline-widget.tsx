@@ -8,8 +8,8 @@ import { Timer, BellRing, Sun, Sunrise, Sunset, Moon, Sparkles, CloudSun } from 
 import { useMediaStore } from "@/lib/store";
 
 /**
- * PrayerTimelineWidget v210.0 - Sovereign High-Visibility Daily Bar
- * Features: Increased opacity and clarity for inactive prayers so all times are clear.
+ * PrayerTimelineWidget v220.0 - Absolute Clarity Edition
+ * Features: Pure white text for all prayer names to ensure maximum readability.
  */
 export function PrayerTimelineWidget() {
   const [now, setNow] = useState<Date | null>(null);
@@ -103,16 +103,16 @@ export function PrayerTimelineWidget() {
               "flex-1 min-w-[190px] flex items-center gap-4 transition-all duration-300 relative rounded-[2.2rem] p-4 border-2",
               isActive 
                 ? "bg-white/15 border-white/30 scale-105 z-10 shadow-[0_0_60px_rgba(0,136,255,0.3)]" 
-                : "bg-white/5 border-white/5 opacity-80 hover:opacity-100"
+                : "bg-white/5 border-white/5"
             )}>
               {isActive && <div className={cn("absolute inset-0 blur-3xl opacity-20 rounded-full", isCurrentIqamah ? "bg-emerald-500" : "bg-primary")} />}
               <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center relative overflow-hidden shrink-0", isActive ? "bg-black/60 border border-white/20 shadow-glow" : "bg-white/5")}>
                 <Icon className={cn("w-7 h-7", isActive ? prayer.color : "text-white/40")} />
               </div>
               <div className="flex flex-col flex-1 min-w-0 text-right">
-                <span className={cn("text-[11px] font-black uppercase tracking-[0.25em] truncate mb-0.5", isActive ? "text-white" : "text-white/60")}>{prayer.name}</span>
+                <span className="text-[13px] font-black uppercase tracking-[0.15em] truncate mb-0.5 text-white">{prayer.name}</span>
                 <div className="flex items-baseline gap-2">
-                  <span className={cn("text-3xl font-black tabular-nums tracking-tighter drop-shadow-[0_10px_20px_rgba(0,0,0,0.8)]", isActive ? "text-white" : "text-white/80")}>{convertTo12Hour(prayer.time)}</span>
+                  <span className="text-3xl font-black tabular-nums tracking-tighter drop-shadow-[0_10px_20px_rgba(0,0,0,0.8)] text-white">{convertTo12Hour(prayer.time)}</span>
                 </div>
                 {isActive && (
                   <div className={cn("mt-1.5 flex items-center gap-2 px-3 py-1 rounded-full border text-[8px] font-black uppercase tracking-widest w-fit", isCurrentIqamah ? "bg-emerald-500/30 border-emerald-400/50 text-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.3)]" : "bg-white/10 border-white/10 text-white/50")}>
@@ -123,9 +123,6 @@ export function PrayerTimelineWidget() {
             </div>
           );
         })}
-      </div>
-      <div className="absolute bottom-1 right-8 opacity-5 pointer-events-none">
-        <span className="text-[8px] font-black text-white uppercase tracking-[1.2em]">69A00F6E FULL TIMELINE SYNC</span>
       </div>
     </div>
   );

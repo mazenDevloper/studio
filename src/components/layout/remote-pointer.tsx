@@ -17,7 +17,7 @@ export function RemotePointer() {
     wallPlateType, isFullScreen, isMinimized, 
     activeVideo, activeIptv, 
     setIsRecordingKey, isRecordingKey, recordingAction, setRecordingAction,
-    setIsSidebarShrinked, setKeyMapping
+    setIsSidebarShrinked, setKeyMapping, nextTrack, prevTrack, setActiveVideo, setActiveIptv
   } = useMediaStore();
 
   const [pressedKey, setPressedKey] = useState<string | null>(null);
@@ -145,6 +145,14 @@ export function RemotePointer() {
       return;
     }
 
+    // Player Actions Prioritization
+    const isPlayerActive = (activeVideo || activeIptv) && isFullScreen && !isMinimized;
+    if (isPlayerActive) {
+      if (isAction(finalKey, 'player_next')) { e?.preventDefault(); nextTrack(); return; }
+      if (isAction(finalKey, 'player_prev')) { e?.preventDefault(); prevTrack(); return; }
+      if (isAction(finalKey, 'player_close')) { e?.preventDefault(); setActiveVideo(null); setActiveIptv(null); return; }
+    }
+
     if (isAction(finalKey, 'nav_up')) { e?.preventDefault(); navigate("ArrowUp"); return; }
     if (isAction(finalKey, 'nav_down')) { e?.preventDefault(); navigate("ArrowDown"); return; }
     if (isAction(finalKey, 'nav_left')) { e?.preventDefault(); navigate("ArrowLeft"); return; }
@@ -162,7 +170,7 @@ export function RemotePointer() {
       if (isAction(finalKey, 'goto_football')) { e?.preventDefault(); router.push('/football'); return; }
       if (isAction(finalKey, 'goto_settings')) { e?.preventDefault(); router.push('/settings'); return; }
     }
-  }, [navigate, isAction, wallPlateType, router, isRecordingKey, recordingAction, setIsRecordingKey, setRecordingAction, setKeyMapping, toast]);
+  }, [navigate, isAction, wallPlateType, router, isRecordingKey, recordingAction, setIsRecordingKey, setRecordingAction, setKeyMapping, toast, activeVideo, activeIptv, isFullScreen, isMinimized, nextTrack, prevTrack, setActiveVideo, setActiveIptv]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

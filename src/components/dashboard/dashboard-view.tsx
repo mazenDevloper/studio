@@ -9,14 +9,15 @@ import { SovereignShortcutsWidget } from "./widgets/sovereign-shortcuts-widget";
 import { ReminderSummaryWidget } from "./widgets/reminder-summary-widget";
 import { ActiveAzkarWidget } from "./widgets/active-azkar-widget";
 import { PrayerTimelineWidget } from "./widgets/prayer-timeline-widget";
+import { YouTubeSavedWidget } from "./widgets/youtube-saved-widget";
 import { useMediaStore } from "@/lib/store";
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
 import { X } from "lucide-react";
 import Image from "next/image";
 
 /**
- * DashboardView v150.0 - Sovereign Precision Layout
- * Features: Prayer Bar positioned under shortcuts & Automated First Shortcut Focus.
+ * DashboardView v230.0 - Sovereign Precision Layout
+ * Features: Auto-sync all cloud resources on load + WallPlate scaled PNG.
  */
 export function DashboardView() {
   const { 
@@ -25,19 +26,14 @@ export function DashboardView() {
   } = useMediaStore();
   
   useEffect(() => {
-    // Priority Local Data Sync
+    // Sovereign Auto-Click Trigger: Fetch all priority data immediately on first mount
     fetchPriorityData('all');
     
-    // Sovereign Mandatory Initial Focus on Shortcut 0
-    const focusTimer = setTimeout(() => {
+    const timer = setTimeout(() => {
       const firstShortcut = document.querySelector('[data-nav-id="shortcut-item-0"]') as HTMLElement;
-      if (firstShortcut) {
-        firstShortcut.focus();
-        firstShortcut.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
+      firstShortcut?.focus();
     }, 1000);
-
-    return () => clearTimeout(focusTimer);
+    return () => clearTimeout(timer);
   }, [fetchPriorityData]);
 
   const activeManuscript = useMemo(() => {
@@ -61,13 +57,21 @@ export function DashboardView() {
                  <Image src={mapSettings.manuscriptBgUrl} alt="Bg" fill className="object-cover opacity-40" unoptimized />
               </div>
             )}
-            <div className="relative w-full aspect-[4/3] flex items-center justify-center [container-type:inline-size] p-20">
-               {activeManuscript && activeManuscript.words ? (
-                 activeManuscript.words.map((word: any) => (
-                   <div key={word.id} style={{ position: 'absolute', left: `${word.x}%`, top: `${word.y}%`, transform: `translate(-50%, -50%) scale(${(word.scale || 1.0) * manuscriptScale})`, width: 'max-content' }}>
-                      <p className="font-calligraphy text-white leading-none drop-shadow-[0_0_80px_rgba(255,255,255,0.7)] text-center tracking-normal whitespace-nowrap" style={{ fontFamily: activeManuscript.fontFamily || 'Aref Ruqaa', fontSize: `8.5cqw`, transition: 'none', color: mapSettings.manuscriptColor }}>{word.text}</p>
-                   </div>
-                 ))
+            <div className="relative w-full h-full flex items-center justify-center p-0">
+               {activeManuscript ? (
+                 <div className="w-full h-full flex items-center justify-center">
+                   {activeManuscript.pngDataUrl ? (
+                     <img src={activeManuscript.pngDataUrl} className="w-full h-full object-contain drop-shadow-[0_0_100px_rgba(255,255,255,0.4)]" style={{ transform: `scale(${(activeManuscript.scale || 1.0) * manuscriptScale})` }} alt="" />
+                   ) : (
+                     <div className="relative w-full h-full [container-type:inline-size]">
+                        {activeManuscript.words?.map((word: any) => (
+                          <div key={word.id} style={{ position: 'absolute', left: `${word.x}%`, top: `${word.y}%`, transform: `translate(-50%, -50%) scale(${(word.scale || 1.0) * manuscriptScale})`, width: 'max-content' }}>
+                             <p className="font-calligraphy text-white leading-none drop-shadow-[0_0_80px_rgba(255,255,255,0.7)] text-center tracking-normal whitespace-nowrap" style={{ fontFamily: activeManuscript.fontFamily || 'Aref Ruqaa', fontSize: `8.5cqw`, color: mapSettings.manuscriptColor }}>{word.text}</p>
+                          </div>
+                        ))}
+                     </div>
+                   )}
+                 </div>
                ) : wallPlateType === 'moon' && (
                   <div className="relative w-full h-full flex items-center justify-center scale-125">
                     <Image src={wallPlateData.image} alt="Moon" fill className="object-contain opacity-80" unoptimized />
@@ -94,16 +98,17 @@ export function DashboardView() {
         </div>
       </div>
 
-      {/* Sovereign Command Hub */}
       <div className="w-full shadow-2xl bg-black rounded-[3.5rem] overflow-hidden outline-none mt-4 border-2 border-white/5 min-h-[220px]" data-row-id="row-shortcuts">
         <SovereignShortcutsWidget />
       </div>
 
-      {/* Unified Prayer Timeline Bar - Directly Under Shortcuts */}
       <div className="w-full mt-4 min-h-[160px]" data-row-id="row-prayer-bar">
         <PrayerTimelineWidget />
+      </div>
+
+      <div className="w-full mt-8" data-row-id="row-saved-videos">
+        <YouTubeSavedWidget />
       </div>
     </div>
   );
 }
-

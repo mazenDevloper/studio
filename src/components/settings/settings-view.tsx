@@ -7,7 +7,7 @@ import {
   Settings, Bell, Trash2, Edit2, Plus, Minus, Keyboard, Timer, ArrowRightLeft, 
   Loader2, RefreshCw, Mic, X, Type, Zap, Sparkles, Upload, Clock, Youtube, Tv, Star, Magnet,
   ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Maximize, Minimize, Image as ImageIcon, Download, Search, Move,
-  Maximize2
+  Maximize2, CloudDownload
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,10 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { searchYouTubeChannels } from "@/lib/youtube";
+import { 
+  JSONBIN_CHANNELS_BIN_ID, JSONBIN_POPULAR_RECITERS_BIN_ID, JSONBIN_IPTV_FAVS_BIN_ID, 
+  JSONBIN_MANUSCRIPTS_BIN_ID, JSONBIN_MASTER_BIN_ID, JSONBIN_BACKGROUNDS_BIN_ID, JSONBIN_FONTS_BIN_ID
+} from "@/lib/constants";
 
 export function SettingsView() {
   const { 
@@ -26,7 +30,7 @@ export function SettingsView() {
     keyMappings, removeSpecificKeyMapping, setKeyMapping,
     favoriteReciters, removeReciter, updateReciterName, favoriteIptvChannels, toggleFavoriteIptvChannel,
     favoriteChannels, removeChannel, toggleStarChannel, addChannel, addReciter,
-    fetchPriorityData, syncMasterBin, saveRecitersReorder, saveChannelsReorder, saveIptvReorder,
+    fetchPriorityData, fetchSpecificBin, syncMasterBin, saveRecitersReorder, saveChannelsReorder, saveIptvReorder,
     customFonts, addCustomFont, saveManuscriptsReorder, setIsRecordingKey, isRecordingKey, recordingAction, setRecordingAction,
     manuscriptScales, updateManuscriptScale, isReorderMode, toggleReorderMode,
     customWallBackgrounds, addCustomWallBackground, removeCustomWallBackground,
@@ -78,6 +82,12 @@ export function SettingsView() {
     setIsRefreshing(true);
     try { await fetchPriorityData('all'); } finally { setIsRefreshing(false); }
   }, [fetchPriorityData]);
+
+  const handleDirectFetch = async (binId: string, label: string) => {
+    toast({ title: "جلب سحابي", description: `جاري تحديث ${label} مباشرة من السحابة...` });
+    await fetchSpecificBin(binId);
+    toast({ title: "تم التحديث", description: `مزامنة ${label} اكتملت بنجاح.` });
+  };
 
   const performChannelSearch = async () => {
     if (!channelSearch.trim()) return;
@@ -200,15 +210,33 @@ export function SettingsView() {
     toast({ title: "تم حفظ المخطوطة السيادية" });
   };
 
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+  const handlePointerDown = (wordId: string) => {
+    if(manuscriptMode === 'arrange') { 
+      setDraggingWord({ wordId }); 
+      setSelectedWordId(wordId); 
+    }
+  };
+
+  const handlePointerMove = useCallback((e: React.PointerEvent | React.MouseEvent | React.TouchEvent) => {
     if (!draggingWord || !canvasRef.current) return;
+    
+    let clientX, clientY;
+    if ('touches' in e) {
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    } else {
+      clientX = (e as any).clientX;
+      clientY = (e as any).clientY;
+    }
+
     const rect = canvasRef.current.getBoundingClientRect();
-    const x = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
-    const y = Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100));
+    const x = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
+    const y = Math.max(0, Math.min(100, ((clientY - rect.top) / rect.height) * 100));
+    
     setCurrentWords(prev => prev.map(w => w.id === draggingWord.wordId ? { ...w, x, y } : w));
   }, [draggingWord]);
 
-  const handleMouseUp = () => setDraggingWord(null);
+  const handlePointerUp = () => setDraggingWord(null);
 
   const applyMagnetSnap = (wordId: string) => {
     const word = currentWords.find(w => wordId === w.id);
@@ -288,6 +316,9 @@ export function SettingsView() {
                 استوديو التجميد v190.0
               </CardTitle>
               <div className="flex gap-4">
+                 <Button onClick={() => handleDirectFetch(JSONBIN_MANUSCRIPTS_BIN_ID, "المخطوطات")} variant="outline" className="w-14 h-14 rounded-full bg-white/5 border-white/10 flex items-center justify-center text-white/40 focusable">
+                    <CloudDownload className="w-6 h-6" />
+                 </Button>
                  <button onClick={() => setIsFullscreenEditor(!isFullscreenEditor)} className="w-14 h-14 rounded-full bg-white/10 flex items-center justify-center text-white shadow-glow border border-white/20">
                     {isFullscreenEditor ? <Minimize className="w-6 h-6" /> : <Maximize2 className="w-6 h-6" />}
                  </button>
@@ -301,18 +332,19 @@ export function SettingsView() {
             
             <div 
               ref={canvasRef}
-              onMouseMove={handleMouseMove}
-              onMouseUp={handleMouseUp}
-              onMouseLeave={handleMouseUp}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUp}
+              onPointerLeave={handlePointerUp}
               className={cn(
-                "p-0 bg-zinc-900/60 rounded-[4rem] border-4 border-primary/20 relative overflow-hidden flex items-center justify-center shadow-2xl transition-none [container-type:inline-size]",
+                "p-0 bg-zinc-900/60 rounded-[4rem] border-4 border-primary/20 relative overflow-hidden flex items-center justify-center shadow-2xl transition-none [container-type:inline-size] touch-none",
                 isFullscreenEditor ? "h-[70vh] w-full" : "aspect-[4/3] w-full max-w-4xl mx-auto mb-10"
               )}
+              style={{ touchAction: 'none' }}
             >
               {currentWords.map((word) => (
                 <div 
                   key={word.id}
-                  onMouseDown={() => { if(manuscriptMode === 'arrange') { setDraggingWord({ wordId: word.id }); setSelectedWordId(word.id); }}}
+                  onPointerDown={() => handlePointerDown(word.id)}
                   style={{ 
                     position: 'absolute', 
                     left: `${word.x}%`, 
@@ -324,7 +356,8 @@ export function SettingsView() {
                     color: mapSettings.manuscriptColor,
                     fontSize: '8.5cqw',
                     textShadow: '0 0 30px rgba(255,255,255,0.4)',
-                    transition: 'none'
+                    transition: 'none',
+                    touchAction: 'none'
                   }}
                   className={cn(
                     "select-none whitespace-nowrap leading-none p-4 group touch-none",
@@ -333,8 +366,8 @@ export function SettingsView() {
                 >
                   {word.text}
                   {manuscriptMode === 'arrange' && (
-                    <div className="absolute -top-6 -right-6 opacity-0 group-hover:opacity-100 transition-opacity">
-                       <button className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center shadow-glow border-2 border-white/20">
+                    <div className="absolute -top-6 -right-6 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                       <button className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center shadow-glow border-2 border-white/20 pointer-events-auto">
                           <Move className="w-5 h-5" />
                        </button>
                     </div>
@@ -394,8 +427,13 @@ export function SettingsView() {
                         </div>
                      </div>
                    )}
-                   <input type="file" hidden ref={fontFileRef} accept=".ttf,.otf" onChange={(e) => handleFileUpload(e, 'font')} />
-                   <Button onClick={() => fontFileRef.current?.click()} className="w-full h-16 bg-purple-600/20 text-purple-400 border border-purple-500/30 rounded-2xl font-black focusable"><Upload className="w-6 h-6 ml-3" /> رفع خط مخصص</Button>
+                   <div className="flex gap-2">
+                     <Button onClick={() => handleDirectFetch(JSONBIN_FONTS_BIN_ID, "الخطوط")} variant="outline" className="w-16 h-16 rounded-2xl bg-white/5 border-white/10 flex items-center justify-center text-white/40 focusable">
+                        <CloudDownload className="w-8 h-8" />
+                     </Button>
+                     <input type="file" hidden ref={fontFileRef} accept=".ttf,.otf" onChange={(e) => handleFileUpload(e, 'font')} />
+                     <Button onClick={() => fontFileRef.current?.click()} className="flex-1 h-16 bg-purple-600/20 text-purple-400 border border-purple-500/30 rounded-2xl font-black focusable"><Upload className="w-6 h-6 ml-3" /> رفع خط مخصص</Button>
+                   </div>
                 </div>
               </div>
             )}
@@ -425,7 +463,12 @@ export function SettingsView() {
 
         <TabsContent value="reminders" className="space-y-8 animate-in fade-in duration-0">
           <Card className="bg-white/5 border-white/10 p-10 rounded-[3.5rem] shadow-2xl">
-            <CardTitle className="text-4xl font-black text-white flex items-center gap-6 mb-12"><Bell className="w-12 h-12 text-primary" /> نظام التذكيرات المتطور</CardTitle>
+            <div className="flex justify-between items-center mb-12">
+               <CardTitle className="text-4xl font-black text-white flex items-center gap-6"><Bell className="w-12 h-12 text-primary" /> نظام التذكيرات المتطور</CardTitle>
+               <Button onClick={() => handleDirectFetch(JSONBIN_MASTER_BIN_ID, "التذكيرات")} variant="outline" className="w-14 h-14 rounded-full bg-white/5 border-white/10 flex items-center justify-center text-white/40 focusable">
+                  <CloudDownload className="w-6 h-6" />
+               </Button>
+            </div>
             <div className="bg-black/40 p-10 rounded-[3rem] border border-white/10 mb-12 shadow-2xl space-y-10">
                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="space-y-4"><label className="text-xs font-black text-white/40 uppercase tracking-widest mr-4">عنوان التذكير</label><Input placeholder="أدخل العنوان..." value={newReminder.label} onChange={(e) => setNewReminder({ ...newReminder, label: e.target.value })} className="h-16 bg-white/5 text-white text-2xl font-black rounded-2xl focusable" /></div>
@@ -458,7 +501,12 @@ export function SettingsView() {
            <Card className="bg-white/5 border-white/10 p-10 rounded-[3.5rem] shadow-2xl">
              <div className="flex justify-between items-center mb-8">
                <CardTitle className="text-4xl font-black text-white flex items-center gap-6"><Youtube className="w-12 h-12 text-red-600" /> إدارة الاشتراكات</CardTitle>
-               <Button onClick={saveChannelsReorder} className="bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-full h-14 px-8 font-black focusable shadow-glow">حفظ السحابة</Button>
+               <div className="flex gap-4">
+                  <Button onClick={() => handleDirectFetch(JSONBIN_CHANNELS_BIN_ID, "الاشتراكات")} variant="outline" className="w-14 h-14 rounded-full bg-white/5 border-white/10 flex items-center justify-center text-white/40 focusable">
+                    <CloudDownload className="w-6 h-6" />
+                  </Button>
+                  <Button onClick={saveChannelsReorder} className="bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-full h-14 px-8 font-black focusable shadow-glow">حفظ السحابة</Button>
+               </div>
              </div>
 
              <div className="bg-black/40 p-8 rounded-[3rem] border border-white/10 mb-12">
@@ -509,7 +557,12 @@ export function SettingsView() {
           <Card className="bg-white/5 border-white/10 p-10 rounded-[3.5rem] shadow-2xl">
             <div className="flex justify-between items-center mb-12">
               <CardTitle className="text-4xl font-black text-white flex items-center gap-6"><Tv className="w-12 h-12 text-emerald-500" /> قنوات IPTV السيادية</CardTitle>
-              <Button onClick={saveIptvReorder} className="bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-full h-14 px-8 font-black focusable shadow-glow">حفظ السحابة</Button>
+              <div className="flex gap-4">
+                <Button onClick={() => handleDirectFetch(JSONBIN_IPTV_FAVS_BIN_ID, "IPTV")} variant="outline" className="w-14 h-14 rounded-full bg-white/5 border-white/10 flex items-center justify-center text-white/40 focusable">
+                  <CloudDownload className="w-6 h-6" />
+                </Button>
+                <Button onClick={saveIptvReorder} className="bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-full h-14 px-8 font-black focusable shadow-glow">حفظ السحابة</Button>
+              </div>
             </div>
 
             {editingIptvId && (
@@ -549,6 +602,9 @@ export function SettingsView() {
             <div className="flex justify-between items-center mb-12">
               <CardTitle className="text-4xl font-black text-white flex items-center gap-6"><ImageIcon className="w-12 h-12 text-primary" /> خلفيات النظام</CardTitle>
               <div className="flex gap-4">
+                <Button onClick={() => handleDirectFetch(JSONBIN_BACKGROUNDS_BIN_ID, "الخلفيات")} variant="outline" className="w-14 h-14 rounded-full bg-white/5 border-white/10 flex items-center justify-center text-white/40 focusable">
+                  <CloudDownload className="w-6 h-6" />
+                </Button>
                 <input type="file" hidden ref={bgFileRef} accept="image/*" onChange={(e) => handleFileUpload(e, 'bg')} />
                 <Button onClick={() => bgFileRef.current?.click()} className="bg-primary text-white rounded-full h-14 px-8 font-black shadow-glow focusable"><Upload className="w-5 h-5 ml-2" /> رفع خلفية</Button>
               </div>
@@ -577,7 +633,12 @@ export function SettingsView() {
            <Card className="bg-white/5 border-white/10 p-10 rounded-[3.5rem] shadow-2xl">
              <div className="flex justify-between items-center mb-8">
                <CardTitle className="text-4xl font-black text-white flex items-center gap-6"><Mic className="w-12 h-12 text-emerald-500" /> إدارة القراء (حسب الضغطات)</CardTitle>
-               <Button onClick={saveRecitersReorder} className="bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-full h-14 px-8 font-black focusable shadow-glow">حفظ الترتيب السحابي</Button>
+               <div className="flex gap-4">
+                  <Button onClick={() => handleDirectFetch(JSONBIN_POPULAR_RECITERS_BIN_ID, "القراء")} variant="outline" className="w-14 h-14 rounded-full bg-white/5 border-white/10 flex items-center justify-center text-white/40 focusable">
+                    <CloudDownload className="w-6 h-6" />
+                  </Button>
+                  <Button onClick={saveRecitersReorder} className="bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-full h-14 px-8 font-black focusable shadow-glow">حفظ الترتيب السحابي</Button>
+               </div>
              </div>
 
              <div className="bg-black/40 p-8 rounded-[3rem] border border-white/10 mb-12">
@@ -612,7 +673,7 @@ export function SettingsView() {
                   <div key={r.channelid} className="bg-black/60 p-8 rounded-[3rem] border border-white/10 flex flex-col items-center gap-6 relative group shadow-xl transition-none">
                     <div className="relative"><img src={r.image} className="w-24 h-24 rounded-full border-4 border-emerald-500/30 shadow-2xl object-cover" alt="" /><div className="absolute -bottom-2 -right-2 bg-emerald-500 text-black text-[10px] font-black px-2 py-0.5 rounded-full shadow-lg">{r.clickschannel || 0}</div></div>
                     {editingReciterId === r.channelid ? (
-                      <div className="flex flex-col gap-3 w-full"><Input value={reciterNameInput} onChange={(e) => setReciterNameInput(e.target.value)} className="h-10 bg-white/10 text-white text-center rounded-xl focusable" /><div className="flex gap-2"><Button onClick={handleSaveReciterName} className="flex-1 bg-emerald-500 text-black rounded-xl h-10 focusable">حفظ</Button><Button onClick={() => setEditingReciterId(null)} className="w-10 h-10 bg-white/10 rounded-xl focusable"><X className="w-4 h-4" /></Button></div></div>
+                      <div className="flex flex-col gap-3 w-full"><Input value={reciterNameInput} onChange={(e) => setReciterNameInput(e.target.value)} className="h-10 bg-white/10 text-white text-center rounded-xl focusable" /><div className="flex gap-2"><Button onClick={handleSaveReciterName} className="flex-1 bg-emerald-500 text-black rounded-xl h-10 focusable">حفظ</Button><Button onClick={() => setEditingIptvId(null)} className="w-10 h-10 bg-white/10 rounded-xl focusable"><X className="w-4 h-4" /></Button></div></div>
                     ) : (
                       <><span className="text-xl font-black text-white truncate w-full text-center">{r.name}</span><div className="flex gap-2 w-full"><button onClick={() => startEditReciter(r)} className="flex-1 h-12 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-2xl flex items-center justify-center transition-none focusable"><Edit2 className="w-4 h-4 ml-2" /> تحرير</button><button onClick={() => removeReciter(r.channelid)} className="w-12 h-12 bg-red-600/20 text-red-500 rounded-2xl flex items-center justify-center transition-none focusable"><Trash2 className="w-5 h-5" /></button></div></>
                     )}
@@ -624,7 +685,12 @@ export function SettingsView() {
 
         <TabsContent value="buttonmap" className="space-y-8 animate-in fade-in duration-0">
            <Card className="bg-white/5 border-white/10 p-10 rounded-[3.5rem] shadow-2xl">
-             <CardTitle className="text-4xl font-black text-white flex items-center gap-6 mb-12"><Keyboard className="w-12 h-12 text-primary" /> تسجيل الأزرار</CardTitle>
+             <div className="flex justify-between items-center mb-12">
+                <CardTitle className="text-4xl font-black text-white flex items-center gap-6"><Keyboard className="w-12 h-12 text-primary" /> تسجيل الأزرار</CardTitle>
+                <Button onClick={() => handleDirectFetch(JSONBIN_MASTER_BIN_ID, "الأزرار")} variant="outline" className="w-14 h-14 rounded-full bg-white/5 border-white/10 flex items-center justify-center text-white/40 focusable">
+                  <CloudDownload className="w-6 h-6" />
+                </Button>
+             </div>
              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {Object.entries(keyMappings).map(([ctx, actions]) => (
                   <div key={ctx} className="p-8 bg-black/40 rounded-[3rem] border border-white/10 shadow-xl transition-none">

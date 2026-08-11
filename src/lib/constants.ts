@@ -28,7 +28,7 @@ export const YT_KEYS_POOL = [
   "AIzaSyCcB-bW1b1bSu3hzROVhSbRT-D894zHYeg",
   "AIzaSyCDk0lSml9gAvvsgBoWKvVToiFaxWlTZEw",
   "AIzaSyATzZbuYsLdQq-S8zFih3hkgtZVpS0bcN8",
-  "AIzaSyBWsvSFb6VNx89VOzjP0-zq7sWgShfiWjE",
+  "AIzaSyBWsvSFb6VNx89VOzjP0-zq7sWgPhfiWjE",
   "AIzaSyDb4_3-IBy5ZPsIwlkv81z3EDS9Tue98n4",
   "AIzaSyABJ0ChF7XVsXeppoLS9VBIxNJglc-0rB0",
   "AIzaSyB3Rk_x-Xponn6i-PXuTgPr2wisD28GvuM"
@@ -36,13 +36,10 @@ export const YT_KEYS_POOL = [
 
 export const JSONBIN_MASTER_KEY = '$2a$10$SYrYv.ct8hiMU9YeUxEQ.ecRkOrTqs.TDchJRV3wW.aKJnDXy2oVy';
 
-// المصادر السحابية السيادية الثلاثة المعتمدة
 export const JSONBIN_IPTV_FAVS_BIN_ID = '69a87b8bd0ea881f40eeec0c'; 
 export const JSONBIN_MASTER_BIN_ID = '69c782cbb7ec241ddcb0b99a'; 
 export const JSONBIN_BACKGROUNDS_BIN_ID = '69b63cb1c3097a1dd5278bf4'; 
 export const JSONBIN_FONTS_BIN_ID = '6a573cdbf5f4af5e29915034';
-
-// المصادر الفرعية
 export const JSONBIN_CHANNELS_BIN_ID = '68ef1b3dd0ea881f40a38bd1'; 
 export const JSONBIN_SAVED_VIDEOS_BIN_ID = '68e4ac20d0ea881f4098138c'; 
 export const JSONBIN_PRAYER_TIMES_BIN_ID = '69a00f6eae596e708f4b7291'; 
