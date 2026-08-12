@@ -10,8 +10,8 @@ interface SovereignIframeProps extends React.IframeHTMLAttributes<HTMLIFrameElem
 }
 
 /**
- * SovereignIframe v210.0 - Unmute Shield & Precision Navigation
- * Features: Auto-unmute via simulated interactions on common selectors (vjs-mute-control).
+ * SovereignIframe v220.0 - Unmute Shield & Scroll Support
+ * Features: Auto-unmute via postMessage + Enhanced sandbox for internal scrolling.
  */
 export function SovereignIframe({ src, className, title, ...props }: SovereignIframeProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -25,9 +25,6 @@ export function SovereignIframe({ src, className, title, ...props }: SovereignIf
       try {
         const frame = iframeRef.current;
         if (!frame || !frame.contentWindow) return;
-        
-        // Broadcast a generic "click" to attempt triggering unmute
-        // This relies on the allow="autoplay" and potential script accessibility
         frame.contentWindow.postMessage({ type: 'SOVEREIGN_UNMUTE_TRIGGER' }, '*');
       } catch (e) {}
     };
@@ -50,7 +47,7 @@ export function SovereignIframe({ src, className, title, ...props }: SovereignIf
         allow="autoplay; fullscreen; clipboard-write; encrypted-media; picture-in-picture; web-share; accelerometer; gyroscope; microphone; camera; display-capture"
         {...props}
       />
-      {/* Visual Depth Shield */}
+      {/* Visual Depth Shield - pointer-events-none ensures iframe is scrollable */}
       <div className="absolute inset-0 pointer-events-none shadow-[inset_0_0_100px_rgba(0,0,0,0.5)]" />
     </div>
   );

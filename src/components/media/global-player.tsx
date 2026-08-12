@@ -10,8 +10,8 @@ import { Input } from "@/components/ui/input";
 import { ShortcutBadge } from "@/components/layout/car-dock";
 
 /**
- * GlobalVideoPlayer v230.0 - Absolute Centered Minimized Engine
- * Features: Center-Dock Minimized player, Pop-up opposite side of Dock, Shortcut Badges in Player Hub.
+ * GlobalVideoPlayer v240.0 - Absolute Centered Minimized Engine
+ * Features: Center-Dock Minimized player, Pop-up opposite side of Dock, Shortcut Badges, Expansion Controls.
  */
 export function GlobalVideoPlayer() {
   const { 
@@ -24,7 +24,7 @@ export function GlobalVideoPlayer() {
   
   const [mounted, setMounted] = useState(false);
   const [iframeKey, setIframeKey] = useState(0);
-  const [urlInput, setUrlInput] = useState("https://online.aflam4you.net/top-videos.html");
+  const [urlInput, setUrlInput] = useState("https://idebsports.ly/matches");
 
   useEffect(() => {
     setMounted(true);
@@ -95,8 +95,14 @@ export function GlobalVideoPlayer() {
               <span className="text-[8px] text-accent font-black uppercase tracking-[0.4em] mt-1.5">نظام البث المركزي</span>
             </div>
             <div className="flex gap-3">
-              <button onClick={() => setIsMinimized(false)} className="w-9 h-9 rounded-full bg-primary text-white shadow-glow flex items-center justify-center focusable transition-all"><Maximize2 className="w-5 h-5" /></button>
-              <button onClick={handleClose} className="w-9 h-9 rounded-full bg-red-600 text-white shadow-glow flex items-center justify-center focusable"><X className="w-5 h-5" /></button>
+              <div className="relative group">
+                 <button onClick={() => setIsMinimized(false)} className="w-9 h-9 rounded-full bg-primary text-white shadow-glow flex items-center justify-center focusable transition-all"><Maximize2 className="w-5 h-5" /></button>
+                 <ShortcutBadge action="player_minimize" className="-bottom-5 left-1/2 -translate-x-1/2 scale-50" />
+              </div>
+              <div className="relative group">
+                 <button onClick={handleClose} className="w-9 h-9 rounded-full bg-red-600 text-white shadow-glow flex items-center justify-center focusable"><X className="w-5 h-5" /></button>
+                 <ShortcutBadge action="player_close" className="-bottom-5 left-1/2 -translate-x-1/2 scale-50" />
+              </div>
             </div>
           </div>
         )}
@@ -107,7 +113,7 @@ export function GlobalVideoPlayer() {
           <div className="flex items-center gap-3 bg-black/40 backdrop-blur-3xl p-2 rounded-full border border-white/10 shadow-[0_0_30px_rgba(0,0,0,0.3)]">
             <div className="relative group">
               <button onClick={handleClose} className="w-9 h-9 rounded-full bg-red-600/20 text-red-500 border border-red-600/20 flex items-center justify-center focusable shadow-glow"><X className="w-5 h-5" /></button>
-              <ShortcutBadge action="player_close" className="-bottom-5 left-1/2 -translate-x-1/2 scale-50" />
+              <ShortcutBadge action="player_close" className="-bottom-4 left-1/2 -translate-x-1/2 scale-50" />
             </div>
             <div className="w-px h-6 bg-white/20 mx-0.5" />
             
@@ -125,30 +131,38 @@ export function GlobalVideoPlayer() {
                   <>
                     <div className="relative group">
                       <button onClick={prevTrack} className="w-9 h-9 rounded-full bg-white/5 text-white/40 flex items-center justify-center focusable"><ChevronRight className="w-5 h-5" /></button>
-                      <ShortcutBadge action="player_prev" className="-bottom-5 left-1/2 -translate-x-1/2 scale-50" />
+                      <ShortcutBadge action="player_prev" className="-bottom-4 left-1/2 -translate-x-1/2 scale-50" />
                     </div>
                     <div className="relative group">
                       <button onClick={nextTrack} className="w-9 h-9 rounded-full bg-white/5 text-white/40 flex items-center justify-center focusable"><ChevronLeft className="w-5 h-5" /></button>
-                      <ShortcutBadge action="player_next" className="-bottom-5 left-1/2 -translate-x-1/2 scale-50" />
+                      <ShortcutBadge action="player_next" className="-bottom-4 left-1/2 -translate-x-1/2 scale-50" />
                     </div>
                   </>
                 )}
                 <div className="w-px h-6 bg-white/20 mx-0.5" />
                 <div className="relative group">
                   <button onClick={() => activeVideo && toggleSaveVideo(activeVideo)} className={cn("w-9 h-9 rounded-full flex items-center justify-center focusable", isSaved ? "bg-accent/40 text-accent shadow-glow" : "bg-white/5 text-white/40")}><BookmarkCheck className="w-5 h-5" /></button>
-                  <ShortcutBadge action="player_save" className="-bottom-5 left-1/2 -translate-x-1/2 scale-50" />
+                  <ShortcutBadge action="player_save" className="-bottom-4 left-1/2 -translate-x-1/2 scale-50" />
                 </div>
-                <button onClick={cyclePlayerMode} className="w-9 h-9 rounded-full bg-white/5 text-white/40 flex items-center justify-center focusable"><Maximize2 className="w-5 h-5" /></button>
+                
+                <div className="relative group">
+                   <button onClick={cyclePlayerMode} className="w-9 h-9 rounded-full bg-white/5 text-white/40 flex items-center justify-center focusable"><Maximize2 className="w-5 h-5" /></button>
+                   <ShortcutBadge action="player_mode" className="-bottom-4 left-1/2 -translate-x-1/2 scale-50" />
+                </div>
+
                 <div className="relative group">
                   <button onClick={() => setIsFullScreen(!isFullScreen)} className={cn("w-9 h-9 rounded-full flex items-center justify-center focusable", isFullScreen ? "bg-primary text-white shadow-glow" : "bg-white/5 text-white/40")}><Monitor className="w-5 h-5" /></button>
-                  <ShortcutBadge action="player_fullscreen" className="-bottom-5 left-1/2 -translate-x-1/2 scale-50" />
+                  <ShortcutBadge action="player_fullscreen" className="-bottom-4 left-1/2 -translate-x-1/2 scale-50" />
                 </div>
               </div>
             )}
 
-            <button onClick={() => setIsPlayerControlsExpanded(!isPlayerControlsExpanded)} className="w-9 h-9 rounded-full bg-white/10 text-white flex items-center justify-center focusable shadow-glow">
-              {isPlayerControlsExpanded ? <ChevronRight className="w-6 h-6" /> : <ChevronLeft className="w-6 h-6" />}
-            </button>
+            <div className="relative group">
+              <button onClick={() => setIsPlayerControlsExpanded(!isPlayerControlsExpanded)} className="w-9 h-9 rounded-full bg-white/10 text-white flex items-center justify-center focusable shadow-glow">
+                {isPlayerControlsExpanded ? <ChevronRight className="w-6 h-6" /> : <ChevronLeft className="w-6 h-6" />}
+              </button>
+              <ShortcutBadge action="player_settings" className="-bottom-4 left-1/2 -translate-x-1/2 scale-50" />
+            </div>
           </div>
         </div>
       )}

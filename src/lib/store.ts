@@ -34,6 +34,8 @@ export interface MapSettings {
   zoom: number; tilt: number; carScale: number; backgroundIndex: number; showManuscriptBg: boolean;
   manuscriptBgUrl: string; fontScale: number; manuscriptColor: string; showManuscriptOnMoon: boolean;
   moonManuIdx: number; hue: number; saturation: number; brightness: number;
+  winwinUrl?: string; beinUrl?: string;
+  omanUrl?: string; bein1Url?: string; mbc1Url?: string;
 }
 
 export interface IptvChannel {
@@ -53,10 +55,10 @@ export interface Manuscript {
 export type MappingContext = 'global' | 'player' | 'dashboard' | 'media' | 'quran' | 'football' | 'iptv' | 'settings';
 
 export type AppAction = 
-  | 'nav_up' | 'nav_down' | 'nav_left' | 'nav_right' | 'nav_ok'
+  | 'nav_up' | 'nav_down' | 'nav_left' | 'nav_right' | 'nav_ok' | 'nav_scroll_up' | 'nav_scroll_down'
   | 'toggle_star' | 'delete_item' | 'toggle_reorder'
   | 'goto_home' | 'goto_media' | 'goto_quran' | 'goto_hihi2' | 'goto_iptv' | 'goto_football' | 'goto_settings'
-  | 'player_next' | 'player_prev' | 'player_save' | 'player_fullscreen' | 'player_playlist' | 'player_minimize' | 'player_close' | 'player_settings'
+  | 'player_next' | 'player_prev' | 'player_save' | 'player_fullscreen' | 'player_playlist' | 'player_minimize' | 'player_close' | 'player_settings' | 'player_mode'
   | 'focus_search' | 'focus_reciters' | 'focus_surahs'
   | 'inc_zoom' | 'dec_zoom' | 'inc_font' | 'dec_font' | 'next_manuscript' | 'prev_manuscript';
 
@@ -120,13 +122,9 @@ interface MediaState {
   saveManuscriptsReorder: () => Promise<void>;
 }
 
-/**
- * Sovereign PUT Implementation v3.0 - Maximum Resilience Edition
- * Simplified headers to avoid CORS/Policy blocks with large base64 payloads.
- */
 const updateBin = async (binId: string, data: any) => {
   try {
-    const response = await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
+    await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -136,11 +134,6 @@ const updateBin = async (binId: string, data: any) => {
       referrerPolicy: "no-referrer",
       body: JSON.stringify(data)
     });
-    
-    if (!response.ok) {
-      console.error(`Sovereign Sync Error [${response.status}]`);
-      throw new Error(`Sync Failed: ${response.status}`);
-    }
   } catch (e) {
     console.error("Sovereign PUT Failure:", e);
   }
@@ -148,13 +141,14 @@ const updateBin = async (binId: string, data: any) => {
 
 const DEFAULT_GLOBAL_MAPPINGS: Record<string, string[]> = {
   nav_up: ['ArrowUp', '2'], nav_down: ['ArrowDown', '8'], nav_left: ['ArrowLeft', '4'], nav_right: ['ArrowRight', '6'], nav_ok: ['Enter', '5'],
+  nav_scroll_up: ['PageUp'], nav_scroll_down: ['PageDown'],
   goto_home: ['H', '1'], goto_media: ['M', '3'], goto_quran: ['Q', '7'], goto_hihi2: ['F', '9'], goto_iptv: ['0'], goto_football: ['T'], goto_settings: ['SETTINGS'],
   delete_item: ['Red'], toggle_star: ['Yellow'], toggle_reorder: ['Blue']
 };
 
 const DEFAULT_CONTEXT_MAPPINGS: Record<string, Record<string, string[]>> = {
   global: DEFAULT_GLOBAL_MAPPINGS,
-  player: { player_next: ['ChannelUp', '3'], player_prev: ['PageDown', '1'], player_save: ['3'], player_close: ['Red'], player_playlist: ['Blue'], player_minimize: ['M', 'Green'], player_settings: ['Yellow'], player_fullscreen: ['8'] },
+  player: { player_next: ['ChannelUp', '3'], player_prev: ['PageDown', '1'], player_save: ['3'], player_close: ['Red'], player_playlist: ['Blue'], player_minimize: ['M', 'Green'], player_settings: ['Yellow'], player_fullscreen: ['8'], player_mode: ['Info'] },
   dashboard: {}, media: { focus_search: ['0'], focus_reciters: ['1'], focus_surahs: ['2'] }, quran: { focus_search: ['0'], focus_reciters: ['1'], focus_surahs: ['2'] }, football: {}, iptv: {}, settings: {}
 };
 
@@ -171,7 +165,7 @@ export const useMediaStore = create<MediaState>()(
   persist(
     (set, get) => ({
       favoriteChannels: [], savedVideos: [], videoProgress: {}, favoriteTeams: [], favoriteLeagueIds: [307, 39, 2, 140, 135], belledMatchIds: [], skippedMatchIds: [], skippedReminderIds: [], favoriteIptvChannels: [], favoriteReciters: [], iptvPlaylist: [], iptvPlaylistIndex: 0, prayerTimes: prayerTimesData, prayerSettings: DEFAULT_PRAYER_SETTINGS, reminders: [], customManuscripts: [], manuscriptScales: {}, customFonts: [], customWallBackgrounds: [], 
-      mapSettings: { zoom: 20.0, tilt: 65, carScale: 1.02, backgroundIndex: 0, showManuscriptBg: true, manuscriptBgUrl: "https://www.image2url.com/r2/default/images/1782382707952-d99447c6-bc60-475d-9406-5fd2ef320bd5.png", fontScale: 1.0, manuscriptColor: '#ffffff', showManuscriptOnMoon: false, moonManuIdx: 0, hue: 0, saturation: 100, brightness: 100 },
+      mapSettings: { zoom: 20.0, tilt: 65, carScale: 1.02, backgroundIndex: 0, showManuscriptBg: true, manuscriptBgUrl: "https://www.image2url.com/r2/default/images/1782382707952-d99447c6-bc60-475d-9406-5fd2ef320bd5.png", fontScale: 1.0, manuscriptColor: '#ffffff', showManuscriptOnMoon: false, moonManuIdx: 0, hue: 0, saturation: 100, brightness: 100, winwinUrl: "https://psee.io/9f4ngl", beinUrl: "https://idebsports.ly/matches", omanUrl: "https://player.mangomolo.com/v1/live?id=MTY4&channelid=MTYx&countries=Q0M=&w=100%25&h=100%25&filter=DENY&signature=3fd1e8dd84138a41bf33d93afd4a7f09&language=en&app_id=&fullscreen=yes&player_profile=&base_url=aHR0cHM6Ly9heW4ub20vbGl2ZS8xNjEvJUQ5JTgyJUQ5JTg2JUQ4JUE3JUQ4JUE5LSVEOCVCOSVEOSU4NSVEOCVBNyVEOSU4Ni0lRDklODUlRDglQTglRDglQTclRDglQjQlRDglQjE=&autoplay=true&vast=true", bein1Url: "https://online.aflam4you.net/zremb472.php/?vid=68&aflam_s=1&aflam_w=360&aflam_h=250&aflam_k=18311111", mbc1Url: "https://online.aflam4you.net/zremb472.php?vid=5&aflam_s=1&aflam_w=360&aflam_h=250&aflam_k=18311111" },
       displayScale: 1.0, dockScale: 1.0, keyMappings: DEFAULT_CONTEXT_MAPPINGS, activeVideo: null, lastPlayedVideo: null, activeIptv: null, activeQuranUrl: "https://quran.com/ar/radio?autoplay=1", playlist: [], playlistIndex: 0, isPlaying: false, isMinimized: false, isFullScreen: false, isPlayerControlsExpanded: false, gridMode: 'hidden', dockSide: 'left', showIslands: true, autoHideIsland: true, isSidebarShrinked: false, wallPlateType: null, wallPlateData: null, isReorderMode: false, isRecordingKey: false, recordingAction: null, isInitialLoading: true, aiSuggestions: [], pickedUpId: null,
       
       setPickedUpId: (id) => set({ pickedUpId: id }), setIsRecordingKey: (v) => set({ isRecordingKey: v }), setRecordingAction: (v) => set({ recordingAction: v }), setDockScale: (v) => set({ dockScale: v }), setDisplayScale: (v) => set({ displayScale: v }), setIsSidebarShrinked: (v) => set({ isSidebarShrinked: v }), setGridMode: (v) => set({ gridMode: v }), setIsPlayerControlsExpanded: (v) => set({ isPlayerControlsExpanded: v }),
@@ -194,18 +188,8 @@ export const useMediaStore = create<MediaState>()(
       },
 
       fetchPriorityData: async (context) => {
-        await Promise.allSettled([
-          get().fetchSpecificBin(JSONBIN_CHANNELS_BIN_ID), 
-          get().fetchSpecificBin(JSONBIN_POPULAR_RECITERS_BIN_ID)
-        ]);
-        const rest = [
-          JSONBIN_IPTV_FAVS_BIN_ID, 
-          JSONBIN_MANUSCRIPTS_BIN_ID, 
-          JSONBIN_FONTS_BIN_ID, 
-          JSONBIN_BACKGROUNDS_BIN_ID, 
-          JSONBIN_PRAYER_TIMES_BIN_ID, 
-          JSONBIN_MASTER_BIN_ID
-        ];
+        await Promise.allSettled([get().fetchSpecificBin(JSONBIN_CHANNELS_BIN_ID), get().fetchSpecificBin(JSONBIN_POPULAR_RECITERS_BIN_ID)]);
+        const rest = [JSONBIN_IPTV_FAVS_BIN_ID, JSONBIN_MANUSCRIPTS_BIN_ID, JSONBIN_FONTS_BIN_ID, JSONBIN_BACKGROUNDS_BIN_ID, JSONBIN_PRAYER_TIMES_BIN_ID, JSONBIN_MASTER_BIN_ID];
         await Promise.allSettled(rest.map(id => get().fetchSpecificBin(id)));
         set({ isInitialLoading: false });
       },
@@ -243,11 +227,7 @@ export const useMediaStore = create<MediaState>()(
       skipReminder: (id) => set((s) => ({ skippedReminderIds: [...s.skippedReminderIds, id] })),
       toggleFavoriteTeam: (t) => set((s) => ({ favoriteTeams: s.favoriteTeams.some(i => i.id === t.id) ? s.favoriteTeams.filter(i => i.id !== t.id) : [...s.favoriteTeams, t] })),
       toggleBelledMatch: (matchId) => set((s) => ({ belledMatchIds: s.belledMatchIds.includes(matchId) ? s.belledMatchIds.filter(i => i !== matchId) : [...s.belledMatchIds, matchId] })),
-      updateMapSettings: (s) => set((st) => { 
-        const n = { ...st.mapSettings, ...s };
-        if (s.manuscriptBgUrl) setTimeout(() => get().syncMasterBin(), 100);
-        return { mapSettings: n };
-      }),
+      updateMapSettings: (s) => set((st) => { const n = { ...st.mapSettings, ...s }; if (s.manuscriptBgUrl || s.winwinUrl || s.beinUrl || s.omanUrl || s.bein1Url || s.mbc1Url) setTimeout(() => get().syncMasterBin(), 100); return { mapSettings: n }; }),
       setKeyMapping: (ctx, act, key) => set((s) => { const m = { ...s.keyMappings }; if (!m[ctx]) m[ctx] = {}; let k = Array.isArray(m[ctx][act]) ? [...m[ctx][act]] : []; if (k.includes(key)) return s; k.push(key); m[ctx][act] = k.slice(-2); return { keyMappings: m }; }),
       removeSpecificKeyMapping: (ctx, act, key) => set((s) => { const m = { ...s.keyMappings }; if (m[ctx] && m[ctx][act]) { m[ctx][act] = m[ctx][act].filter(v => v !== key); return { keyMappings: m }; } return s; }),
       setActiveVideo: (v, ctx) => set({ playlist: ctx || (v ? [v] : []), playlistIndex: ctx ? ctx.findIndex(i => i.id === v?.id) : 0, activeVideo: v, lastPlayedVideo: v || get().lastPlayedVideo, activeIptv: null, isPlaying: !!v, isMinimized: false, isFullScreen: !!v }),
@@ -270,11 +250,8 @@ export const useMediaStore = create<MediaState>()(
       updateManuscriptScale: (id, scale) => set((s) => { const n = { ...s.manuscriptScales, [id]: (s.manuscriptScales[id] || 1.0) + scale }; setTimeout(() => get().syncMasterBin(), 100); return { manuscriptScales: n }; }),
     }),
     {
-      name: "drivecast-sovereign-cache-v110", 
-      partialize: (s) => ({ 
-        dockSide: s.dockSide, displayScale: s.displayScale, 
-        dockScale: s.dockScale 
-      }),
+      name: "drivecast-sovereign-cache-v115", 
+      partialize: (s) => ({ dockSide: s.dockSide, displayScale: s.displayScale, dockScale: s.dockScale }),
     }
   )
 );

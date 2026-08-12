@@ -1,11 +1,10 @@
-
 "use client";
 
-import { LayoutDashboard, Radio, Settings, ArrowLeft, Trophy, ArrowRightLeft, Tv, BookOpen, Sparkles } from "lucide-react";
+import { LayoutDashboard, Radio, Settings, ArrowLeft, Trophy, ArrowRightLeft, Tv, BookOpen, Sparkles, ChevronUp, ChevronDown } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useMediaStore, AppAction, MappingContext } from "@/lib/store";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 
 const FootballBallIcon = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
@@ -88,6 +87,25 @@ export function CarDock() {
     router.push(href);
   };
 
+  const handleScroll = useCallback((dir: 'up' | 'down') => {
+    const zone = document.querySelector('[data-nav-zone="content"]') as HTMLElement;
+    if (!zone) return;
+
+    // Check if the zone itself is scrollable (like in media-view level 3)
+    if (zone.scrollHeight > zone.clientHeight) {
+      zone.scrollBy({ top: dir === 'up' ? -400 : 400, behavior: 'smooth' });
+      return;
+    }
+
+    // Otherwise find any overflow-auto parent or the main shell
+    const parent = zone.closest('.overflow-auto, .overflow-y-auto') as HTMLElement;
+    if (parent) {
+      parent.scrollBy({ top: dir === 'up' ? -400 : 400, behavior: 'smooth' });
+    } else {
+      window.scrollBy({ top: dir === 'up' ? -400 : 400, behavior: 'smooth' });
+    }
+  }, []);
+
   if (!mounted) return null;
 
   return (
@@ -103,7 +121,7 @@ export function CarDock() {
             return (
               <button key={app.name} onClick={() => handleNavigate(app.href)} data-nav-id={`dock-${app.name}`} className={cn("w-12 h-12 min-[980px]:w-14 min-[980px]:h-14 rounded-[1.5rem] flex items-center justify-center transition-all duration-0 relative focusable outline-none mb-3", isActive ? "bg-blue-600/10 shadow-[0_0_30px_rgba(37,99,235,0.2)] border border-blue-500/20 z-50 scale-110" : "bg-transparent")}>
                 <ShortcutBadge action={app.action} context="dock" />
-                <div className={cn("transition-all duration-0 flex items-center justify-center", isActive ? "text-blue-400 drop-shadow-[0_0_10px_rgba(96,165,250,0.8)]" : "text-white")}><app.icon className="w-6 h-6 min-[980px]:w-7 min-[980px]:h-7" /></div>
+                <div className={cn("transition-all duration-0 flex items-center justify-center", isActive ? "text-blue-400 drop-shadow-[0_0_100px_rgba(96,165,250,0.8)]" : "text-white")}><app.icon className="w-6 h-6 min-[980px]:w-7 min-[980px]:h-7" /></div>
               </button>
             );
           })}
@@ -113,16 +131,28 @@ export function CarDock() {
         </div>
       </div>
 
-      {/* Sovereign Floating Dock Switcher */}
-      <button 
-        onClick={toggleDockSide} 
-        className={cn(
-          "fixed bottom-8 z-[10002] w-14 h-14 rounded-full bg-primary/20 backdrop-blur-3xl border-2 border-primary/40 text-primary shadow-glow flex items-center justify-center focusable active:scale-90 transition-all",
-          dockSide === 'left' ? "right-8" : "left-8"
-        )}
-      >
-        <ArrowRightLeft className="w-6 h-6" />
-      </button>
+      {/* Sovereign Floating Controls */}
+      <div className={cn(
+        "fixed bottom-8 z-[10002] flex flex-col gap-4 items-center",
+        dockSide === 'left' ? "right-8" : "left-8"
+      )}>
+        <div className="flex flex-col gap-2 bg-black/40 backdrop-blur-3xl p-2 rounded-full border border-white/10 shadow-2xl">
+           <button onClick={() => handleScroll('up')} className="w-12 h-12 rounded-full bg-white/5 hover:bg-white/20 text-white flex items-center justify-center focusable transition-all relative">
+              <ShortcutBadge action="nav_scroll_up" className="-top-3 -right-3 scale-75" />
+              <ChevronUp className="w-6 h-6" />
+           </button>
+           <button onClick={() => handleScroll('down')} className="w-12 h-12 rounded-full bg-white/5 hover:bg-white/20 text-white flex items-center justify-center focusable transition-all relative">
+              <ShortcutBadge action="nav_scroll_down" className="-bottom-3 -right-3 scale-75" />
+              <ChevronDown className="w-6 h-6" />
+           </button>
+        </div>
+        <button 
+          onClick={toggleDockSide} 
+          className="w-14 h-14 rounded-full bg-primary/20 backdrop-blur-3xl border-2 border-primary/40 text-primary shadow-glow flex items-center justify-center focusable active:scale-90 transition-all"
+        >
+          <ArrowRightLeft className="w-6 h-6" />
+        </button>
+      </div>
     </>
   );
 }

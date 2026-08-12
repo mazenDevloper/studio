@@ -7,7 +7,7 @@ import {
   Settings, Bell, Trash2, Edit2, Plus, Minus, Keyboard, Timer, ArrowRightLeft, 
   Loader2, RefreshCw, Mic, X, Type, Zap, Sparkles, Upload, Clock, Youtube, Tv, Star, Magnet,
   ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Maximize, Minimize, Image as ImageIcon, Download, Search, Move,
-  Maximize2, CloudDownload
+  Maximize2, CloudDownload, FileImage
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,7 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { searchYouTubeChannels } from "@/lib/youtube";
 import { 
   JSONBIN_CHANNELS_BIN_ID, JSONBIN_POPULAR_RECITERS_BIN_ID, JSONBIN_IPTV_FAVS_BIN_ID, 
-  JSONBIN_MANUSCRIPTS_BIN_ID, JSONBIN_MASTER_BIN_ID, JSONBIN_BACKGROUNDS_BIN_ID, JSONBIN_FONTS_BIN_ID
+  JSONBIN_MANUSCRIPTS_BIN_ID, JSONBIN_MASTER_BIN_ID, JSONBIN_FONTS_BIN_ID, JSONBIN_BACKGROUNDS_BIN_ID 
 } from "@/lib/constants";
 
 export function SettingsView() {
@@ -40,6 +40,7 @@ export function SettingsView() {
   const { toast } = useToast();
   const fontFileRef = useRef<HTMLInputElement>(null);
   const bgFileRef = useRef<HTMLInputElement>(null);
+  const manuscriptFileRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   
   const [isSyncing, setIsSyncing] = useState(false);
@@ -133,7 +134,7 @@ export function SettingsView() {
     } : w));
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, target: 'bg' | 'font') => {
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, target: 'bg' | 'font' | 'manuscript') => {
     const file = e.target.files?.[0]; if (!file) return;
     const reader = new FileReader();
     reader.onload = async (res) => {
@@ -143,6 +144,15 @@ export function SettingsView() {
         addCustomFont(name, dataUrl); 
       } else if (target === 'bg') {
         addCustomWallBackground(dataUrl);
+      } else if (target === 'manuscript') {
+        const item: Manuscript = {
+          id: Date.now().toString(),
+          type: 'image',
+          content: file.name,
+          pngDataUrl: dataUrl,
+          x: 50, y: 50, scale: 1.0
+        };
+        addManuscript(item);
       }
       toast({ title: "تم الرفع بنجاح" });
     };
@@ -266,7 +276,7 @@ export function SettingsView() {
 
   const startEditIptv = (ch: any) => {
     setEditingIptvId(ch.stream_id);
-    setIptvEditInput({ name: ch.name, url: ch.url, stream_icon: ch.stream_icon });
+    setIptvEditForm({ name: ch.name, url: ch.url, stream_icon: ch.stream_icon });
   };
 
   const handleSaveIptv = async () => {
@@ -282,7 +292,7 @@ export function SettingsView() {
   const activeManuScale = editingManuscriptId ? (manuscriptScales[editingManuscriptId] || 1.0) : 1.0;
 
   return (
-    <div className="p-12 space-y-12 max-w-7xl mx-auto pb-40 text-right dir-rtl bg-black min-h-full transition-none">
+    <div data-nav-zone="content" className="p-12 space-y-12 max-w-7xl mx-auto pb-40 text-right dir-rtl bg-black min-h-full transition-none">
       <header className="flex items-center justify-between">
         <div className="flex flex-col gap-2">
           <h1 className="text-6xl font-black text-white tracking-tighter flex items-center gap-6">الإعدادات السيادية <Settings className="w-12 h-12 text-primary" /></h1>
@@ -425,14 +435,20 @@ export function SettingsView() {
                            <div className="w-12 h-12 flex items-center justify-center font-black text-white">{activeManuScale.toFixed(2)}</div>
                            <button onClick={() => updateManuscriptScale(editingManuscriptId, -0.05)} className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center focusable"><Minus className="w-6 h-6" /></button>
                         </div>
-                     </div>
+                   </div>
                    )}
-                   <div className="flex gap-2">
-                     <Button onClick={() => handleDirectFetch(JSONBIN_FONTS_BIN_ID, "الخطوط")} variant="outline" className="w-16 h-16 rounded-2xl bg-white/5 border-white/10 flex items-center justify-center text-white/40 focusable">
-                        <CloudDownload className="w-8 h-8" />
-                     </Button>
-                     <input type="file" hidden ref={fontFileRef} accept=".ttf,.otf" onChange={(e) => handleFileUpload(e, 'font')} />
-                     <Button onClick={() => fontFileRef.current?.click()} className="flex-1 h-16 bg-purple-600/20 text-purple-400 border border-purple-500/30 rounded-2xl font-black focusable"><Upload className="w-6 h-6 ml-3" /> رفع خط مخصص</Button>
+                   <div className="flex flex-col gap-2">
+                     <div className="flex gap-2">
+                       <Button onClick={() => handleDirectFetch(JSONBIN_FONTS_BIN_ID, "الخطوط")} variant="outline" className="w-16 h-16 rounded-2xl bg-white/5 border-white/10 flex items-center justify-center text-white/40 focusable">
+                          <CloudDownload className="w-8 h-8" />
+                       </Button>
+                       <input type="file" hidden ref={fontFileRef} accept=".ttf,.otf" onChange={(e) => handleFileUpload(e, 'font')} />
+                       <Button onClick={() => fontFileRef.current?.click()} className="flex-1 h-16 bg-purple-600/20 text-purple-400 border border-purple-500/30 rounded-2xl font-black focusable"><Upload className="w-6 h-6 ml-3" /> رفع خط</Button>
+                     </div>
+                     <div className="flex gap-2">
+                       <input type="file" hidden ref={manuscriptFileRef} accept=".png,.svg" onChange={(e) => handleFileUpload(e, 'manuscript')} />
+                       <Button onClick={() => manuscriptFileRef.current?.click()} className="w-full h-16 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-2xl font-black focusable"><FileImage className="w-6 h-6 ml-3" /> رفع PNG/SVG</Button>
+                     </div>
                    </div>
                 </div>
               </div>
@@ -444,7 +460,12 @@ export function SettingsView() {
                   <div key={m.id} className="bg-black/60 p-8 rounded-[3rem] border border-white/10 flex flex-col items-center justify-between group shadow-2xl transition-none">
                     <div className="w-full aspect-[4/3] bg-zinc-950 rounded-2xl mb-6 flex items-center justify-center overflow-hidden border border-white/5">
                        {m.pngDataUrl ? (
-                         <img src={m.pngDataUrl} className="max-w-[80%] max-h-[80%] object-contain" alt="" />
+                         <img 
+                           src={m.pngDataUrl} 
+                           className="max-w-[80%] max-h-[80%] object-contain" 
+                           style={{ filter: m.type === 'image' ? 'brightness(0) invert(1)' : 'none' }}
+                           alt="" 
+                         />
                        ) : (
                          <p className="text-xl text-center leading-relaxed truncate font-black" style={{ fontFamily: m.fontFamily || 'inherit', color: mapSettings.manuscriptColor }}>{m.content}</p>
                        )}
@@ -588,7 +609,7 @@ export function SettingsView() {
                   </div>
                   <span className="text-xl font-black text-white truncate w-full text-center">{ch.name}</span>
                   <div className="flex gap-3 w-full">
-                    <Button onClick={() => startEditIptv(ch)} className="flex-1 h-12 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-2xl flex items-center justify-center focusable"><Edit2 className="w-5 h-5 ml-2" /> تعديل</Button>
+                    <Button onClick={() => startEditIptv(ch)} className="flex-1 h-12 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-2xl flex items-center justify-center focusable"><Edit2 className="w-4 h-4 ml-2" /> تعديل</Button>
                     <button onClick={() => toggleFavoriteIptvChannel(ch)} className="w-12 h-12 bg-red-600/20 text-red-500 border border-red-500/30 rounded-2xl flex items-center justify-center focusable"><Trash2 className="w-5 h-5" /></button>
                   </div>
                 </div>
@@ -615,7 +636,7 @@ export function SettingsView() {
                 <div key={idx} className={cn(
                   "relative aspect-video rounded-[3rem] overflow-hidden border-4 cursor-pointer transition-all group shadow-2xl",
                   mapSettings.manuscriptBgUrl === bgUrl ? "border-primary shadow-glow scale-105" : "border-white/5 hover:border-white/20"
-                )} onClick={() => updateMapSettings({ manuscriptBgUrl: bgUrl })}>
+                )} onClick={() => { updateMapSettings({ manuscriptBgUrl: bgUrl }); syncMasterBin(); }}>
                   <img src={bgUrl} className="w-full h-full object-cover" alt="" />
                   <button 
                     onClick={(e) => { e.stopPropagation(); removeCustomWallBackground(bgUrl); }}
@@ -623,6 +644,9 @@ export function SettingsView() {
                   >
                     <Trash2 className="w-5 h-5" />
                   </button>
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button size="sm" className="bg-primary text-white font-black rounded-full h-10 px-6">تعيين كخلفية</Button>
+                  </div>
                 </div>
               ))}
             </div>

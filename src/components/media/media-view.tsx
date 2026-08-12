@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -51,6 +51,7 @@ export function MediaView() {
   } = useMediaStore();
 
   const [search, setSearch] = useState("");
+  const [isSearchLocked, setIsSearchLocked] = useState(true);
   const [searchResults, setSearchResults] = useState<YouTubeVideo[]>([]);
   const [loading, setLoading] = useState(false);
   const [surahs, setSurahs] = useState<any[]>([]);
@@ -65,6 +66,8 @@ export function MediaView() {
   const [selectedJuz, setSelectedJuz] = useState<number | null>(null);
 
   const isDockLeft = dockSide === 'left';
+  const hasFocusedOnload = useRef(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const fetchExtraLists = useCallback(async () => {
     const starred = favoriteChannels.filter(c => c.starred).slice(0, 3);
@@ -80,7 +83,6 @@ export function MediaView() {
     searchYouTubeVideos("ملخص مباريات كرة القدم الأمس", 15).then(setMatchHighlights);
   }, [favoriteChannels]);
 
-  // Data Lifecycle & Focus Management
   useEffect(() => {
     fetchExtraLists();
     fetch("https://api.quran.com/api/v4/chapters?language=ar").then(r => r.json()).then(d => {
@@ -88,32 +90,30 @@ export function MediaView() {
     });
     
     const q = searchParams.get('q'); if (q) { setSearch(q); performSearch(q); }
+  }, [searchParams, fetchExtraLists]);
 
-    // Sovereign Focus on First Reciter - Atomic Focus Guard
-    const focusTimer = setTimeout(() => {
-      const firstReciter = document.querySelector('[data-nav-id="reciter-item-0"]') as HTMLElement;
-      if (firstReciter) {
-        firstReciter.focus();
-        firstReciter.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    }, 1500);
-
-    const syncInterval = setInterval(() => fetchPriorityData('media'), 15000);
-    return () => {
-      clearTimeout(focusTimer);
-      clearInterval(syncInterval);
-    };
-  }, [searchParams, fetchExtraLists, fetchPriorityData]);
-
+  // AUTO-FOCUS ONLOAD: Level 2
   useEffect(() => {
-    if (selectedChannel) {
-      setLoading(true);
-      fetchChannelVideos(selectedChannel.channelid, 40).then(vids => {
-        setChannelVideos(vids);
-        setLoading(false);
-      });
+    if (!loading && !isIsolatedViewActive && !hasFocusedOnload.current) {
+      setTimeout(() => {
+        const firstReciter = document.querySelector('[data-nav-id="reciter-item-0"]') as HTMLElement;
+        if (firstReciter) {
+          firstReciter.focus();
+          hasFocusedOnload.current = true;
+        }
+      }, 1000);
     }
-  }, [selectedChannel, setChannelVideos]);
+  }, [loading, isIsolatedViewActive]);
+
+  // AUTO-FOCUS GRID: Level 3
+  useEffect(() => {
+    if (!loading && isIsolatedViewActive) {
+      setTimeout(() => {
+        const firstGridItem = document.querySelector('[data-nav-id="grid-item-0"]') as HTMLElement;
+        firstGridItem?.focus();
+      }, 500);
+    }
+  }, [loading, isIsolatedViewActive, selectedChannel, searchResults]);
 
   const performSearch = async (query?: string) => {
     const q = query || search; if (!q.trim()) return;
@@ -121,7 +121,6 @@ export function MediaView() {
     try { 
       const res = await searchYouTubeVideos(q, 40); 
       setSearchResults(res || []); 
-      setTimeout(() => { (document.querySelector('[data-nav-id="grid-item-0"]') as HTMLElement)?.focus(); }, 500);
     } finally { setLoading(false); }
   };
 
@@ -152,6 +151,22 @@ export function MediaView() {
     setSelectedSurah(null); setSelectedJuz(null); setSurahs(allSurahs); 
   };
 
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (isSearchLocked) {
+      if (e.key === 'Enter' || e.key === '5') {
+        e.preventDefault();
+        setIsSearchLocked(false);
+        searchInputRef.current?.focus();
+      }
+      return;
+    }
+
+    if (e.key === 'Enter') {
+      performSearch();
+      setIsSearchLocked(true);
+    }
+  };
+
   const horizontalListClass = "w-full flex gap-4 px-8 py-0 overflow-x-auto no-scrollbar scroll-smooth justify-start items-center";
 
   return (
@@ -174,7 +189,33 @@ export function MediaView() {
       <main data-nav-zone="content" className="flex-1 overflow-y-auto relative pt-0 pb-40 px-10 no-scrollbar" style={{ direction: 'rtl' }}>
         {!isIsolatedViewActive && !selectedChannel ? (
           <>
-            <section data-row-id="row-search" className="py-4"><div className="flex gap-3"><Input placeholder="ابحث عن أي شيء..." value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && performSearch()} className="h-16 bg-white/5 border-none rounded-[2rem] pr-10 text-xl font-bold focusable flex-1" data-nav-id="content-search-input" /><button onClick={() => performSearch()} className="h-16 px-10 rounded-[2rem] bg-red-600 text-white font-black text-lg focusable flex items-center" data-nav-id="content-search-btn"><Youtube className="w-6 h-6 ml-3" /> استكشاف</button></div></section>
+            <section data-row-id="row-search" className="py-4">
+              <div className="flex gap-3">
+                <div className="relative flex-1">
+                  <Input 
+                    ref={searchInputRef}
+                    placeholder={isSearchLocked ? "اضغط OK أو Enter للكتابة..." : "ابحث عن أي شيء..."}
+                    value={search} 
+                    onChange={(e) => setSearch(e.target.value)} 
+                    onKeyDown={handleSearchKeyDown}
+                    readOnly={isSearchLocked}
+                    className={cn(
+                      "h-16 border-none rounded-[2rem] pr-10 text-xl font-bold focusable",
+                      isSearchLocked ? "bg-white/5 text-white/30" : "bg-white/10 text-white"
+                    )} 
+                    data-nav-id="content-search-input" 
+                  />
+                  {isSearchLocked && (
+                    <div className="absolute left-6 top-1/2 -translate-y-1/2 flex items-center gap-2 pointer-events-none">
+                      <div className="px-3 py-1 bg-white/10 rounded-lg border border-white/10 text-[10px] font-black text-white/40 uppercase">اضغط 5 للتفعيل</div>
+                    </div>
+                  )}
+                </div>
+                <button onClick={() => performSearch()} className="h-16 px-10 rounded-[2rem] bg-red-600 text-white font-black text-lg focusable flex items-center" data-nav-id="content-search-btn">
+                  <Youtube className="w-6 h-6 ml-3" /> استكشاف
+                </button>
+              </div>
+            </section>
             
             <section data-row-id="row-styles" className="py-2"><div className={horizontalListClass}>
               <button onClick={() => { setSelectedStyle(null); setSearch(""); }} className={cn("px-10 py-6 rounded-full font-black text-lg focusable border-2 shrink-0", !selectedStyle ? "bg-primary border-primary/40 shadow-glow" : "bg-white/5 border-transparent")} tabIndex={0} data-nav-id="style-item-all">الكل</button>

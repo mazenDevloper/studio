@@ -2,45 +2,30 @@
 "use client";
 
 import { useMemo, useEffect, useState } from "react";
-import { convertTo12Hour, JSONBIN_MASTER_KEY } from "@/lib/constants";
+import { convertTo12Hour } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { Timer, BellRing, Sun, Sunrise, Sunset, Moon, Sparkles, CloudSun } from "lucide-react";
 import { useMediaStore } from "@/lib/store";
 
 /**
- * PrayerTimelineWidget v220.0 - Absolute Clarity Edition
- * Features: Pure white text for all prayer names to ensure maximum readability.
+ * PrayerTimelineWidget v230.0 - Unified Cloud Source
+ * Features: Pure white text and direct consumption from Store for single-source accuracy.
  */
 export function PrayerTimelineWidget() {
   const [now, setNow] = useState<Date | null>(null);
-  const [cloudPrayers, setCloudPrayers] = useState<any[]>([]);
-  const prayerSettings = useMediaStore(state => state.prayerSettings);
+  const prayerTimes = useMediaStore(state => state.prayerTimes);
 
   useEffect(() => {
     setNow(new Date());
     const timer = setInterval(() => setNow(new Date()), 1000);
-    
-    async function fetchPrayers() {
-      try {
-        const res = await fetch(`https://api.jsonbin.io/v3/b/69a00f6eae596e708f4b7291/latest`, {
-          headers: { 'X-Master-Key': JSONBIN_MASTER_KEY },
-          cache: 'no-store'
-        });
-        if (res.ok) {
-          const record = (await res.json()).record;
-          setCloudPrayers(Array.isArray(record) ? record : record.prayers || []);
-        }
-      } catch (e) {}
-    }
-    fetchPrayers();
     return () => clearInterval(timer);
   }, []);
 
   const { prayers, activeIndex, currentStatus } = useMemo(() => {
-    if (!now || cloudPrayers.length === 0) return { prayers: [], activeIndex: -1, currentStatus: null };
+    if (!now || !prayerTimes || prayerTimes.length === 0) return { prayers: [], activeIndex: -1, currentStatus: null };
     
     const dateStr = now.toISOString().split('T')[0];
-    const data = cloudPrayers.find(p => p.date === dateStr) || cloudPrayers[0];
+    const data = prayerTimes.find(p => p.date === dateStr) || prayerTimes[0];
     
     if (!data) return { prayers: [], activeIndex: -1, currentStatus: null };
 
@@ -82,7 +67,7 @@ export function PrayerTimelineWidget() {
     });
 
     return { prayers: processed, activeIndex: finalIndex, currentStatus: status };
-  }, [now, cloudPrayers]);
+  }, [now, prayerTimes]);
 
   if (!now || prayers.length === 0) return (
     <div className="w-full h-32 flex items-center justify-center bg-black/40 rounded-[2.5rem] border border-white/5 animate-pulse">

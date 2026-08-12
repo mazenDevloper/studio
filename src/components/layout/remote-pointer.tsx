@@ -15,7 +15,7 @@ export function RemotePointer() {
   
   const { 
     wallPlateType, isFullScreen, isMinimized, 
-    activeVideo, activeIptv, 
+    activeVideo, activeIptv, setGridMode,
     setIsRecordingKey, isRecordingKey, recordingAction, setRecordingAction,
     setIsSidebarShrinked, setKeyMapping, nextTrack, prevTrack, setActiveVideo, setActiveIptv
   } = useMediaStore();
@@ -31,7 +31,7 @@ export function RemotePointer() {
     const mappings = useMediaStore.getState().keyMappings;
     const isPlayerActive = (activeVideo || activeIptv) && isFullScreen && !isMinimized;
     const normalizedKey = key.toLowerCase();
-    const screenMap: Record<string, string> = { '/': 'dashboard', '/media': 'media', '/quran': 'quran', '/football': 'football', '/iptv': 'iptv', '/settings': 'settings' };
+    const screenMap: Record<string, string> = { '/': 'dashboard', '/dashboard': 'dashboard', '/media': 'media', '/quran': 'quran', '/football': 'football', '/iptv': 'iptv', '/settings': 'settings' };
     const pageCtx = screenMap[pathname] || 'global';
     const match = (keysArr: string[] | undefined) => keysArr?.some(k => k.toLowerCase() === normalizedKey);
     
@@ -39,6 +39,23 @@ export function RemotePointer() {
     if (pageCtx !== 'global' && match(mappings[pageCtx]?.[action])) return true;
     return match(mappings.global?.[action]);
   }, [pathname, activeVideo, activeIptv, isFullScreen, isMinimized]);
+
+  const handleScroll = (dir: 'up' | 'down') => {
+    const zone = document.querySelector('[data-nav-zone="content"]') as HTMLElement;
+    if (!zone) return;
+
+    if (zone.scrollHeight > zone.clientHeight) {
+      zone.scrollBy({ top: dir === 'up' ? -400 : 400, behavior: 'smooth' });
+      return;
+    }
+
+    const parent = zone.closest('.overflow-auto, .overflow-y-auto') as HTMLElement;
+    if (parent) {
+      parent.scrollBy({ top: dir === 'up' ? -400 : 400, behavior: 'smooth' });
+    } else {
+      window.scrollBy({ top: dir === 'up' ? -400 : 400, behavior: 'smooth' });
+    }
+  };
 
   const navigate = useCallback((direction: string) => {
     if (wallPlateType) return;
@@ -49,7 +66,7 @@ export function RemotePointer() {
 
     let current = document.activeElement as HTMLElement;
     if (!current || current === document.body || !current.classList.contains("focusable")) {
-      const rescue = document.querySelector('[data-nav-id="sidebar-channel-0"]') as HTMLElement || focusables[0];
+      const rescue = document.querySelector('[data-nav-zone="content"] .focusable') as HTMLElement || focusables[0];
       rescue?.focus(); return;
     }
 
@@ -153,8 +170,20 @@ export function RemotePointer() {
       if (isAction(finalKey, 'player_close')) { e?.preventDefault(); setActiveVideo(null); setActiveIptv(null); return; }
     }
 
+    if (isAction(finalKey, 'nav_scroll_up')) { e?.preventDefault(); handleScroll('up'); return; }
+    if (isAction(finalKey, 'nav_scroll_down')) { e?.preventDefault(); handleScroll('down'); return; }
+
     if (isAction(finalKey, 'nav_up')) { e?.preventDefault(); navigate("ArrowUp"); return; }
-    if (isAction(finalKey, 'nav_down')) { e?.preventDefault(); navigate("ArrowDown"); return; }
+    if (isAction(finalKey, 'nav_down')) { 
+      e?.preventDefault(); 
+      const isInPlayerBar = activeEl?.closest('.fixed.z-\\[100000\\]') || activeEl?.closest('.z-\\[99999\\]');
+      if (isInPlayerBar && isPlayerActive) {
+        setGridMode('full');
+        return;
+      }
+      navigate("ArrowDown"); 
+      return; 
+    }
     if (isAction(finalKey, 'nav_left')) { e?.preventDefault(); navigate("ArrowLeft"); return; }
     if (isAction(finalKey, 'nav_right')) { e?.preventDefault(); navigate("ArrowRight"); return; }
     if (isAction(finalKey, 'nav_ok') || (e && (e.keyCode === 13 || e.key === 'Enter'))) { 
@@ -170,7 +199,7 @@ export function RemotePointer() {
       if (isAction(finalKey, 'goto_football')) { e?.preventDefault(); router.push('/football'); return; }
       if (isAction(finalKey, 'goto_settings')) { e?.preventDefault(); router.push('/settings'); return; }
     }
-  }, [navigate, isAction, wallPlateType, router, isRecordingKey, recordingAction, setIsRecordingKey, setRecordingAction, setKeyMapping, toast, activeVideo, activeIptv, isFullScreen, isMinimized, nextTrack, prevTrack, setActiveVideo, setActiveIptv]);
+  }, [navigate, isAction, wallPlateType, router, isRecordingKey, recordingAction, setIsRecordingKey, setRecordingAction, setKeyMapping, toast, activeVideo, activeIptv, isFullScreen, isMinimized, nextTrack, prevTrack, setActiveVideo, setActiveIptv, setGridMode]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
