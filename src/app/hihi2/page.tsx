@@ -39,12 +39,12 @@ export function SportsHubPage() {
     else setViewMode('split');
   };
 
-  const handleSaveLeft = () => {
+  const handleSaveLeft = async () => {
     updateMapSettings({ beinUrl });
     setIsEditingLeft(false);
   };
 
-  const handleSaveRight = () => {
+  const handleSaveRight = async () => {
     updateMapSettings({ winwinUrl: urlInput });
     setIsEditingRight(false);
   };

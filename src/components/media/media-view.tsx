@@ -92,6 +92,17 @@ export function MediaView() {
     const q = searchParams.get('q'); if (q) { setSearch(q); performSearch(q); }
   }, [searchParams, fetchExtraLists]);
 
+  // Sovereign Subscription Sync - Fetch videos when a channel is chosen
+  useEffect(() => {
+    if (selectedChannel) {
+      setLoading(true);
+      fetchChannelVideos(selectedChannel.channelid, 50).then(vids => {
+        setChannelVideos(vids);
+        setLoading(false);
+      });
+    }
+  }, [selectedChannel, setChannelVideos]);
+
   // AUTO-FOCUS ONLOAD: Level 2
   useEffect(() => {
     if (!loading && !isIsolatedViewActive && !hasFocusedOnload.current) {
@@ -105,7 +116,7 @@ export function MediaView() {
     }
   }, [loading, isIsolatedViewActive]);
 
-  // AUTO-FOCUS GRID: Level 3
+  // AUTO-FOCUS GRID: Level 3 Transition
   useEffect(() => {
     if (!loading && isIsolatedViewActive) {
       setTimeout(() => {
@@ -178,7 +189,7 @@ export function MediaView() {
         <div className="flex-1 overflow-y-auto py-2 no-scrollbar">
           <div onClick={resetView} className={cn("flex items-center justify-center gap-3 p-3 cursor-pointer focusable w-[90%] mx-auto rounded-xl", !selectedChannel && !isIsolatedViewActive ? "bg-primary text-white" : "hover:bg-white/5")} tabIndex={0} data-nav-id="sidebar-all-btn"><List className="w-5 h-5" />{!isSidebarShrinked && <span className="font-black text-sm">الكل</span>}</div>
           {favoriteChannels.map((ch, idx) => (
-            <div key={idx} onClick={() => { setSearchResults([]); setSelectedChannel(ch); setIsIsolatedViewActive(true); }} className={cn("flex items-center justify-center p-3 rounded-xl w-[90%] mx-auto gap-3 cursor-pointer focusable", selectedChannel?.channelid === ch.channelid ? "bg-primary text-white" : "hover:bg-white/5 text-white/60")} tabIndex={0} data-nav-id={`sidebar-channel-${idx}`}>
+            <div key={idx} onClick={() => { setSearchResults([]); setSelectedChannel(ch); setIsIsolatedViewActive(true); setIsSidebarShrinked(true); }} className={cn("flex items-center justify-center p-3 rounded-xl w-[90%] mx-auto gap-3 cursor-pointer focusable", selectedChannel?.channelid === ch.channelid ? "bg-primary text-white" : "hover:bg-white/5 text-white/60")} tabIndex={0} data-nav-id={`sidebar-channel-${idx}`}>
               <div className="w-8 h-8 rounded-xl overflow-hidden relative shrink-0"><img src={ch.image} className="w-full h-full object-cover" alt="" /></div>
               {!isSidebarShrinked && <span className="font-black text-sm flex-1 truncate text-right">{ch.name}</span>}
             </div>
@@ -293,7 +304,7 @@ export function MediaView() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 pb-40">
                   {searchResults.concat(channelVideos).map((v, i) => (
-                    <Card key={v.id + i} className="group bg-zinc-900/40 border-none rounded-[2.8rem] cursor-pointer focusable overflow-hidden relative aspect-[16/10]" tabIndex={0} onClick={() => setActiveVideo(v)} data-nav-id={`grid-item-${i}`}>
+                    <Card key={v.id + i} className="group bg-zinc-900/40 border-none rounded-[2.8rem] cursor-pointer focusable overflow-hidden relative aspect-[16/10]" tabIndex={0} onClick={() => setActiveVideo(v, searchResults.concat(channelVideos))} data-nav-id={`grid-item-${i}`}>
                       <img src={v.thumbnail} className="w-full h-full object-cover opacity-70 group-hover:opacity-100" alt="" />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/90 p-6 flex flex-col justify-end text-right">
                         <h3 className="text-base font-black text-white line-clamp-2">{v.title}</h3>

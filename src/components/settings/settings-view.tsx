@@ -7,7 +7,7 @@ import {
   Settings, Bell, Trash2, Edit2, Plus, Minus, Keyboard, Timer, ArrowRightLeft, 
   Loader2, RefreshCw, Mic, X, Type, Zap, Sparkles, Upload, Clock, Youtube, Tv, Star, Magnet,
   ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Maximize, Minimize, Image as ImageIcon, Download, Search, Move,
-  Maximize2, CloudDownload, FileImage
+  Maximize2, CloudDownload, FileImage, Save
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -636,7 +636,7 @@ export function SettingsView() {
                 <div key={idx} className={cn(
                   "relative aspect-video rounded-[3rem] overflow-hidden border-4 cursor-pointer transition-all group shadow-2xl",
                   mapSettings.manuscriptBgUrl === bgUrl ? "border-primary shadow-glow scale-105" : "border-white/5 hover:border-white/20"
-                )} onClick={() => { updateMapSettings({ manuscriptBgUrl: bgUrl }); syncMasterBin(); }}>
+                )} onClick={async () => { updateMapSettings({ manuscriptBgUrl: bgUrl }); await syncMasterBin(); }}>
                   <img src={bgUrl} className="w-full h-full object-cover" alt="" />
                   <button 
                     onClick={(e) => { e.stopPropagation(); removeCustomWallBackground(bgUrl); }}
