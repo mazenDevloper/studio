@@ -1,3 +1,4 @@
+
 "use client";
 
 import { LayoutDashboard, Radio, Settings, ArrowLeft, Trophy, ArrowRightLeft, Tv, BookOpen, Sparkles, ChevronUp, ChevronDown } from "lucide-react";
@@ -72,6 +73,23 @@ export function CarDock() {
 
   useEffect(() => { setMounted(true); }, []);
 
+  // SOVEREIGN DOCK FOCUS STRATEGY
+  useEffect(() => {
+    if (!mounted) return;
+    
+    // 1. Permanent Focus for /quran
+    if (pathname === '/quran') {
+      const quranIcon = document.querySelector('[data-nav-id="dock-Quran"]') as HTMLElement;
+      quranIcon?.focus();
+      const interval = setInterval(() => {
+        if (document.activeElement?.tagName === 'BODY' || document.activeElement === null) {
+          quranIcon?.focus();
+        }
+      }, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [pathname, mounted]);
+
   const apps = [
     { name: "Media", href: "/media", icon: Radio, action: "goto_media" as AppAction },
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard, action: "goto_home" as AppAction },
@@ -85,19 +103,23 @@ export function CarDock() {
   const handleNavigate = (href: string) => {
     if (pathname === href && href === '/media') resetMediaView();
     router.push(href);
+    
+    // SOVEREIGN FOCUS: Signal target page for initial focus
+    setTimeout(() => {
+      const firstTarget = document.querySelector('[data-nav-zone="content"] .focusable') as HTMLElement;
+      firstTarget?.focus();
+    }, 800);
   };
 
   const handleScroll = useCallback((dir: 'up' | 'down') => {
     const zone = document.querySelector('[data-nav-zone="content"]') as HTMLElement;
     if (!zone) return;
 
-    // Check if the zone itself is scrollable (like in media-view level 3)
     if (zone.scrollHeight > zone.clientHeight) {
       zone.scrollBy({ top: dir === 'up' ? -400 : 400, behavior: 'smooth' });
       return;
     }
 
-    // Otherwise find any overflow-auto parent or the main shell
     const parent = zone.closest('.overflow-auto, .overflow-y-auto') as HTMLElement;
     if (parent) {
       parent.scrollBy({ top: dir === 'up' ? -400 : 400, behavior: 'smooth' });
@@ -119,7 +141,15 @@ export function CarDock() {
           {apps.map((app) => {
             const isActive = pathname === app.href;
             return (
-              <button key={app.name} onClick={() => handleNavigate(app.href)} data-nav-id={`dock-${app.name}`} className={cn("w-12 h-12 min-[980px]:w-14 min-[980px]:h-14 rounded-[1.5rem] flex items-center justify-center transition-all duration-0 relative focusable outline-none mb-3", isActive ? "bg-blue-600/10 shadow-[0_0_30px_rgba(37,99,235,0.2)] border border-blue-500/20 z-50 scale-110" : "bg-transparent")}>
+              <button 
+                key={app.name} 
+                onClick={() => handleNavigate(app.href)} 
+                data-nav-id={`dock-${app.name}`} 
+                className={cn(
+                  "w-12 h-12 min-[980px]:w-14 min-[980px]:h-14 rounded-[1.5rem] flex items-center justify-center transition-all duration-0 relative focusable outline-none mb-3", 
+                  isActive ? "bg-blue-600/10 shadow-[0_0_30px_rgba(37,99,235,0.2)] border border-blue-500/20 z-50 scale-110" : "bg-transparent"
+                )}
+              >
                 <ShortcutBadge action={app.action} context="dock" />
                 <div className={cn("transition-all duration-0 flex items-center justify-center", isActive ? "text-blue-400 drop-shadow-[0_0_100px_rgba(96,165,250,0.8)]" : "text-white")}><app.icon className="w-6 h-6 min-[980px]:w-7 min-[980px]:h-7" /></div>
               </button>

@@ -39,7 +39,7 @@ const AZKAR_DATA = [
 ];
 
 export function AzkarView() {
-  const { reminders, addReminder, removeReminder, syncMasterBin } = useMediaStore();
+  const { generalAzkar, addAzkar, removeAzkar, syncMasterBin } = useMediaStore();
   const [counts, setCounters] = useState<Record<string, number>>({});
   const [activeTab, setActiveTab] = useState("morning");
   const [newReminderText, setNewReminderText] = useState("");
@@ -58,11 +58,7 @@ export function AzkarView() {
     return AZKAR_DATA.filter(item => item.category === activeTab);
   }, [activeTab]);
 
-  const generalReminders = useMemo(() => {
-    return reminders.filter(r => r.startType === 'manual' && !r.startReference);
-  }, [reminders]);
-
-  const handleAddGeneralReminder = async () => {
+  const handleAddGeneralAzkar = async () => {
     if (!newReminderText.trim()) return;
     const item: Reminder = {
       id: Date.now().toString(),
@@ -78,7 +74,7 @@ export function AzkarView() {
       completed: false,
       countdownWindow: 0
     };
-    addReminder(item);
+    addAzkar(item);
     setNewReminderText("");
     await syncMasterBin();
   };
@@ -88,7 +84,7 @@ export function AzkarView() {
       <header className="flex items-center justify-between relative z-50">
         <div className="flex flex-col gap-1">
           <h1 className="text-5xl font-black text-white tracking-tighter flex items-center gap-4">
-            {activeTab === 'evening' ? 'أذكار المساء' : activeTab === 'general' ? 'تذكيرات عامة' : 'أذكار الصباح'} 
+            {activeTab === 'evening' ? 'أذكار المساء' : activeTab === 'general' ? 'أذكار سيادية' : 'أذكار الصباح'} 
             {activeTab === 'evening' ? <Moon className="w-10 h-10 text-blue-400" /> : activeTab === 'general' ? <Bookmark className="w-10 h-10 text-emerald-400" /> : <Sun className="w-10 h-10 text-yellow-500" />}
           </h1>
           <p className="text-white/20 font-bold uppercase tracking-[0.6em] text-[10px]">Sovereign Remembrance Hub</p>
@@ -99,7 +95,7 @@ export function AzkarView() {
               <TabsList className="bg-transparent border-none h-14">
                  <TabsTrigger value="morning" className="rounded-full px-10 font-black text-sm h-full focusable">الصباح</TabsTrigger>
                  <TabsTrigger value="evening" className="rounded-full px-10 font-black text-sm h-full focusable">المساء</TabsTrigger>
-                 <TabsTrigger value="general" className="rounded-full px-10 font-black text-sm h-full focusable">عامة</TabsTrigger>
+                 <TabsTrigger value="general" className="rounded-full px-10 font-black text-sm h-full focusable">سيادية</TabsTrigger>
               </TabsList>
            </Tabs>
            
@@ -116,39 +112,39 @@ export function AzkarView() {
         <div className="space-y-10 animate-in fade-in duration-500">
            <div className="bg-black/40 p-8 rounded-[3rem] border border-white/10 flex gap-4 max-w-4xl mx-auto shadow-2xl">
               <Input 
-                placeholder="أضف تذكيراً سيادياً جديداً..." 
+                placeholder="أضف ذكراً سيادياً جديداً..." 
                 value={newReminderText} 
                 onChange={(e) => setNewReminderText(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleAddGeneralReminder()}
+                onKeyDown={(e) => e.key === 'Enter' && handleAddGeneralAzkar()}
                 className="h-16 bg-white/5 border-none rounded-2xl text-2xl font-black text-white px-8 focusable"
               />
-              <Button onClick={handleAddGeneralReminder} className="h-16 px-10 rounded-2xl bg-emerald-500 text-black font-black text-lg focusable">
+              <Button onClick={handleAddGeneralAzkar} className="h-16 px-10 rounded-2xl bg-emerald-500 text-black font-black text-lg focusable">
                 <Plus className="w-6 h-6 ml-2" /> إضافة
               </Button>
            </div>
 
            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {generalReminders.map((rem, idx) => (
+              {(generalAzkar || []).map((rem, idx) => (
                 <Card key={rem.id} className="bg-zinc-900/40 backdrop-blur-3xl border border-white/5 rounded-[3rem] p-8 focusable group shadow-2xl transition-all relative overflow-hidden h-64 flex flex-col justify-between" tabIndex={0}>
                    <div className="flex items-start justify-between gap-4">
                       <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
                          <Bell className="w-6 h-6 text-emerald-400" />
                       </div>
-                      <button onClick={() => removeReminder(rem.id)} className="w-10 h-10 rounded-full bg-red-600/20 text-red-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity focusable">
+                      <button onClick={async () => { removeAzkar(rem.id); await syncMasterBin(); }} className="w-10 h-10 rounded-full bg-red-600/20 text-red-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity focusable">
                          <Trash2 className="w-5 h-5" />
                       </button>
                    </div>
                    <p className="text-2xl font-black text-white leading-relaxed line-clamp-3">{rem.label}</p>
                    <div className="flex items-center gap-2 pt-4 border-t border-white/5">
                       <Sparkles className="w-4 h-4 text-emerald-400 animate-pulse" />
-                      <span className="text-[10px] font-black text-white/20 uppercase tracking-widest">تذكير سحابي محفوظ</span>
+                      <span className="text-[10px] font-black text-white/20 uppercase tracking-widest">محفوظ سحابياً</span>
                    </div>
                 </Card>
               ))}
-              {generalReminders.length === 0 && (
+              {(!generalAzkar || generalAzkar.length === 0) && (
                 <div className="col-span-full py-40 text-center opacity-10 flex flex-col items-center gap-6">
                    <Bookmark className="w-32 h-32" />
-                   <p className="text-4xl font-black">لا توجد تذكيرات عامة محفوظة</p>
+                   <p className="text-4xl font-black">لا توجد أذكار سيادية محفوظة</p>
                 </div>
               )}
            </div>

@@ -16,8 +16,8 @@ import { X } from "lucide-react";
 import Image from "next/image";
 
 /**
- * DashboardView v230.0 - Sovereign Precision Layout
- * Features: Auto-sync all cloud resources on load + WallPlate scaled PNG.
+ * DashboardView v240.0 - Sovereign Precision Layout
+ * Features: Auto-sync all cloud resources on load + Second Shortcut Focus.
  */
 export function DashboardView() {
   const { 
@@ -30,8 +30,14 @@ export function DashboardView() {
     fetchPriorityData('all');
     
     const timer = setTimeout(() => {
-      const firstShortcut = document.querySelector('[data-nav-id="shortcut-item-0"]') as HTMLElement;
-      firstShortcut?.focus();
+      // SOVEREIGN FOCUS: Target the SECOND shortcut item (Index 1) as requested
+      const targetShortcut = document.querySelector('[data-nav-id="shortcut-item-1"]') as HTMLElement;
+      if (targetShortcut) {
+        targetShortcut.focus();
+      } else {
+        const firstShortcut = document.querySelector('[data-nav-id="shortcut-item-0"]') as HTMLElement;
+        firstShortcut?.focus();
+      }
     }, 1000);
     return () => clearTimeout(timer);
   }, [fetchPriorityData]);

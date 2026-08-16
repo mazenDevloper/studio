@@ -1,5 +1,5 @@
 
-"use client";
+'use client';
 
 import { useEffect, useCallback, useRef, useState } from "react";
 import { normalizeKey, cn } from "@/lib/utils";
@@ -44,17 +44,8 @@ export function RemotePointer() {
     const zone = document.querySelector('[data-nav-zone="content"]') as HTMLElement;
     if (!zone) return;
 
-    if (zone.scrollHeight > zone.clientHeight) {
-      zone.scrollBy({ top: dir === 'up' ? -400 : 400, behavior: 'smooth' });
-      return;
-    }
-
-    const parent = zone.closest('.overflow-auto, .overflow-y-auto') as HTMLElement;
-    if (parent) {
-      parent.scrollBy({ top: dir === 'up' ? -400 : 400, behavior: 'smooth' });
-    } else {
-      window.scrollBy({ top: dir === 'up' ? -400 : 400, behavior: 'smooth' });
-    }
+    const scrollTarget = zone.scrollHeight > zone.clientHeight ? zone : (zone.closest('.overflow-auto, .overflow-y-auto') as HTMLElement || window);
+    scrollTarget.scrollBy({ top: dir === 'up' ? -400 : 400, behavior: 'smooth' });
   };
 
   const navigate = useCallback((direction: string) => {
@@ -142,6 +133,7 @@ export function RemotePointer() {
   const executeAction = useCallback((finalKey: string, e: KeyboardEvent | null) => {
     const activeEl = document.activeElement as HTMLElement;
     const isInputFocused = activeEl?.tagName === 'INPUT' || activeEl?.tagName === 'TEXTAREA' || activeEl?.getAttribute('contenteditable') === 'true';
+    const isInputLocked = activeEl?.getAttribute('readonly') === 'true' || activeEl?.hasAttribute('readOnly');
 
     if (isRecordingKey && recordingAction) {
       const FORBIDDEN_KEYS = ['Backspace', 'Escape', 'Back', 'Delete'];
@@ -158,11 +150,11 @@ export function RemotePointer() {
       return;
     } 
 
-    if (isInputFocused && !['Enter', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(finalKey)) {
+    // SOVEREIGN BYPASS: Allow navigation if input is locked (ReadOnly)
+    if (isInputFocused && !isInputLocked && !['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter'].includes(finalKey)) {
       return;
     }
 
-    // Player Actions Prioritization
     const isPlayerActive = (activeVideo || activeIptv) && isFullScreen && !isMinimized;
     if (isPlayerActive) {
       if (isAction(finalKey, 'player_next')) { e?.preventDefault(); nextTrack(); return; }
@@ -177,12 +169,8 @@ export function RemotePointer() {
     if (isAction(finalKey, 'nav_down')) { 
       e?.preventDefault(); 
       const isInPlayerBar = activeEl?.closest('.fixed.z-\\[100000\\]') || activeEl?.closest('.z-\\[99999\\]');
-      if (isInPlayerBar && isPlayerActive) {
-        setGridMode('full');
-        return;
-      }
-      navigate("ArrowDown"); 
-      return; 
+      if (isInPlayerBar && isPlayerActive) { setGridMode('full'); return; }
+      navigate("ArrowDown"); return; 
     }
     if (isAction(finalKey, 'nav_left')) { e?.preventDefault(); navigate("ArrowLeft"); return; }
     if (isAction(finalKey, 'nav_right')) { e?.preventDefault(); navigate("ArrowRight"); return; }
@@ -190,7 +178,7 @@ export function RemotePointer() {
       if (activeEl?.classList.contains("focusable")) { e?.preventDefault(); activeEl.click(); }
     }
     
-    if (!isInputFocused) {
+    if (!isInputFocused || isInputLocked) {
       if (isAction(finalKey, 'goto_home')) { e?.preventDefault(); router.push('/dashboard'); return; }
       if (isAction(finalKey, 'goto_media')) { e?.preventDefault(); router.push('/media'); return; }
       if (isAction(finalKey, 'goto_quran')) { e?.preventDefault(); router.push('/quran'); return; }
@@ -212,14 +200,6 @@ export function RemotePointer() {
   }, [executeAction]);
 
   return (
-    <>
-      {pressedKey && (
-        <div className="fixed top-6 right-6 z-[10003] animate-in fade-in zoom-in duration-200">
-          <div className="bg-black/60 backdrop-blur-3xl px-3 py-1 rounded-lg border border-white/10 shadow-2xl flex items-center gap-2">
-            <span className="text-[14px] font-black text-white tracking-tighter uppercase tabular-nums">{pressedKey}</span>
-          </div>
-        </div>
-      )}
-    </>
+    <>{pressedKey && <div className="fixed top-6 right-6 z-[10003] animate-in fade-in zoom-in duration-200"><div className="bg-black/60 backdrop-blur-3xl px-3 py-1 rounded-lg border border-white/10 shadow-2xl flex items-center gap-2"><span className="text-[14px] font-black text-white tracking-tighter uppercase tabular-nums">{pressedKey}</span></div></div>}</>
   );
 }

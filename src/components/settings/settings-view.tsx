@@ -2,12 +2,12 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useMediaStore, Reminder, Manuscript, MappingContext, AppAction, ManuscriptWord, YouTubeChannel } from "@/lib/store";
+import { useMediaStore, Reminder, Manuscript, MappingContext, AppAction, ManuscriptWord, YouTubeChannel, IptvChannel } from "@/lib/store";
 import { 
   Settings, Bell, Trash2, Edit2, Plus, Minus, Keyboard, Timer, ArrowRightLeft, 
   Loader2, RefreshCw, Mic, X, Type, Zap, Sparkles, Upload, Clock, Youtube, Tv, Star, Magnet,
   ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Maximize, Minimize, Image as ImageIcon, Download, Search, Move,
-  Maximize2, CloudDownload, FileImage, Save
+  Maximize2, CloudDownload, FileImage, Save, BookOpen
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,11 +25,12 @@ import {
 export function SettingsView() {
   const { 
     addReminder, removeReminder, reminders, updateReminder,
+    generalAzkar, addAzkar, updateAzkar, removeAzkar,
     mapSettings, updateMapSettings, prayerSettings,
     customManuscripts, addManuscript, updateManuscript, removeManuscript,
     keyMappings, removeSpecificKeyMapping, setKeyMapping,
     favoriteReciters, removeReciter, updateReciterName, favoriteIptvChannels, toggleFavoriteIptvChannel,
-    favoriteChannels, removeChannel, toggleStarChannel, addChannel, addReciter,
+    favoriteChannels, removeChannel, toggleStarChannel, addChannel, addReciter, addIptvChannel,
     fetchPriorityData, fetchSpecificBin, syncMasterBin, saveRecitersReorder, saveChannelsReorder, saveIptvReorder,
     customFonts, addCustomFont, saveManuscriptsReorder, setIsRecordingKey, isRecordingKey, recordingAction, setRecordingAction,
     manuscriptScales, updateManuscriptScale, isReorderMode, toggleReorderMode,
@@ -57,7 +58,8 @@ export function SettingsView() {
   const [isFullscreenEditor, setIsFullscreenEditor] = useState(false);
 
   const [editingIptvId, setEditingIptvId] = useState<string | null>(null);
-  const [iptvEditForm, setIptvEditInput] = useState<any>({});
+  const [iptvEditForm, setIptvEditForm] = useState<any>({ name: "", url: "", stream_icon: "" });
+  const [isAddingIptv, setIsAddingIptv] = useState(false);
 
   const [editingReminderId, setEditingReminderId] = useState<string | null>(null);
   const [newReminder, setNewReminder] = useState<Partial<Reminder>>({
@@ -66,6 +68,11 @@ export function SettingsView() {
     endType: 'duration', endReference: 'fajr', endOffset: 0,
     showCountdown: true, showCountup: false, completed: false,
     countdownWindow: 15, manualStartTime: "00:00", manualEndTime: "00:00", durationMinutes: 30
+  });
+
+  const [editingAzkarId, setEditingAzkarId] = useState<string | null>(null);
+  const [newAzkar, setNewAzkar] = useState<Partial<Reminder>>({
+    label: "", color: "text-emerald-400", iconType: "circle"
   });
 
   const [editingReciterId, setEditingReciterId] = useState<string | null>(null);
@@ -200,9 +207,7 @@ export function SettingsView() {
 
   const handleSaveManuscript = async () => {
     if (!manuscriptInput && manuscriptType === 'text') return;
-    
     const pngDataUrl = generateManuscriptPng(currentWords, selectedFont);
-    
     const item: Manuscript = {
       id: editingManuscriptId || Date.now().toString(),
       type: manuscriptType,
@@ -212,10 +217,8 @@ export function SettingsView() {
       pngDataUrl,
       x: 50, y: 50, scale: 1.0
     };
-    
     if (editingManuscriptId) updateManuscript(editingManuscriptId, item);
     else addManuscript(item);
-    
     setEditingManuscriptId(null); setManuscriptInput(""); setCurrentWords([]); setManuscriptMode('write'); setSelectedWordId(null); setIsFullscreenEditor(false);
     toast({ title: "تم حفظ المخطوطة السيادية" });
   };
@@ -229,20 +232,17 @@ export function SettingsView() {
 
   const handlePointerMove = useCallback((e: React.PointerEvent | React.MouseEvent | React.TouchEvent) => {
     if (!draggingWord || !canvasRef.current) return;
-    
     let clientX, clientY;
     if ('touches' in e) {
-      clientX = e.touches[0].clientX;
-      clientY = e.touches[0].clientY;
+      clientX = (e as any).touches[0].clientX;
+      clientY = (e as any).touches[0].clientY;
     } else {
       clientX = (e as any).clientX;
       clientY = (e as any).clientY;
     }
-
     const rect = canvasRef.current.getBoundingClientRect();
     const x = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
     const y = Math.max(0, Math.min(100, ((clientY - rect.top) / rect.height) * 100));
-    
     setCurrentWords(prev => prev.map(w => w.id === draggingWord.wordId ? { ...w, x, y } : w));
   }, [draggingWord]);
 
@@ -272,18 +272,50 @@ export function SettingsView() {
     else addReminder({ ...newReminder as Reminder, id: Date.now().toString() });
     setEditingReminderId(null);
     setNewReminder({ label: "", color: "text-blue-400", iconType: "bell", startType: 'azan', startReference: 'fajr', startOffset: 0, endType: 'duration', endReference: 'fajr', endOffset: 0, showCountdown: true, showCountup: false, countdownWindow: 15, completed: false, manualStartTime: "00:00", manualEndTime: "00:00", durationMinutes: 30 });
+    toast({ title: "تم حفظ التذكير" });
+  };
+
+  const handleSaveAzkar = async () => {
+    if (!newAzkar.label) return;
+    if (editingAzkarId) updateAzkar(editingAzkarId, newAzkar);
+    else addAzkar({ 
+      ...newAzkar as Reminder, 
+      id: Date.now().toString(),
+      startType: 'manual',
+      completed: false,
+      countdownWindow: 0,
+      startOffset: 0,
+      endOffset: 0
+    });
+    setEditingAzkarId(null);
+    setNewAzkar({ label: "", color: "text-emerald-400", iconType: "circle" });
+    toast({ title: "تم حفظ الذكر السيادي" });
   };
 
   const startEditIptv = (ch: any) => {
     setEditingIptvId(ch.stream_id);
     setIptvEditForm({ name: ch.name, url: ch.url, stream_icon: ch.stream_icon });
+    setIsAddingIptv(false);
   };
 
   const handleSaveIptv = async () => {
-    if (!editingIptvId) return;
-    updateIptvChannel(editingIptvId, iptvEditForm);
-    setEditingIptvId(null);
-    toast({ title: "تم تحديث القناة وحفظها سحابياً" });
+    if (isAddingIptv) {
+      const newCh: IptvChannel = {
+        stream_id: "custom-" + Date.now(),
+        name: iptvEditForm.name,
+        url: iptvEditForm.url,
+        stream_icon: iptvEditForm.stream_icon,
+        category_id: "direct",
+        type: 'web'
+      };
+      addIptvChannel(newCh);
+      setIsAddingIptv(false);
+    } else if (editingIptvId) {
+      updateIptvChannel(editingIptvId, iptvEditForm);
+      setEditingIptvId(null);
+    }
+    setIptvEditForm({ name: "", url: "", stream_icon: "" });
+    toast({ title: "تم حفظ القناة السيادية سحابياً" });
   };
 
   const startEditReciter = (r: any) => { setEditingReciterId(r.channelid); setReciterNameInput(r.name); };
@@ -308,6 +340,7 @@ export function SettingsView() {
         <TabsList className="bg-white/5 p-1 rounded-full border border-white/10 h-20 mb-12 flex justify-around overflow-x-auto no-scrollbar shadow-2xl">
           <TabsTrigger value="manuscripts" className="rounded-full px-8 h-full font-black text-lg data-[state=active]:bg-primary transition-none">المخطوطات</TabsTrigger>
           <TabsTrigger value="reminders" className="rounded-full px-8 h-full font-black text-lg data-[state=active]:bg-primary transition-none">التذكيرات</TabsTrigger>
+          <TabsTrigger value="azkar" className="rounded-full px-8 h-full font-black text-lg data-[state=active]:bg-primary transition-none">الأذكار</TabsTrigger>
           <TabsTrigger value="subscriptions" className="rounded-full px-8 h-full font-black text-lg data-[state=active]:bg-primary transition-none">الاشتراكات</TabsTrigger>
           <TabsTrigger value="iptv" className="rounded-full px-8 h-full font-black text-lg data-[state=active]:bg-primary transition-none">قنوات IPTV</TabsTrigger>
           <TabsTrigger value="backgrounds" className="rounded-full px-8 h-full font-black text-lg data-[state=active]:bg-primary transition-none">الخلفيات</TabsTrigger>
@@ -329,7 +362,7 @@ export function SettingsView() {
                  <Button onClick={() => handleDirectFetch(JSONBIN_MANUSCRIPTS_BIN_ID, "المخطوطات")} variant="outline" className="w-14 h-14 rounded-full bg-white/5 border-white/10 flex items-center justify-center text-white/40 focusable">
                     <CloudDownload className="w-6 h-6" />
                  </Button>
-                 <button onClick={() => setIsFullscreenEditor(!isFullscreenEditor)} className="w-14 h-14 rounded-full bg-white/10 flex items-center justify-center text-white shadow-glow border border-white/20">
+                 <button onClick={() => setIsFullscreenEditor(!isFullscreenEditor)} className="w-14 h-14 rounded-full bg-white/10 flex items-center justify-center text-white shadow-glow border border-white/20 focusable">
                     {isFullscreenEditor ? <Minimize className="w-6 h-6" /> : <Maximize2 className="w-6 h-6" />}
                  </button>
                  <div className="bg-black/40 p-1.5 rounded-full border border-white/10 flex gap-2">
@@ -518,6 +551,32 @@ export function SettingsView() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="azkar" className="space-y-8 animate-in fade-in duration-0">
+          <Card className="bg-white/5 border-white/10 p-10 rounded-[3.5rem] shadow-2xl">
+            <div className="flex justify-between items-center mb-12">
+               <CardTitle className="text-4xl font-black text-white flex items-center gap-6"><BookOpen className="w-12 h-12 text-emerald-500" /> إدارة الأذكار السيادية</CardTitle>
+               <Button onClick={() => handleDirectFetch(JSONBIN_MASTER_BIN_ID, "الأذكار")} variant="outline" className="w-14 h-14 rounded-full bg-white/5 border-white/10 flex items-center justify-center text-white/40 focusable">
+                  <CloudDownload className="w-6 h-6" />
+               </Button>
+            </div>
+            <div className="bg-black/40 p-10 rounded-[3rem] border border-white/10 mb-12 shadow-2xl space-y-10">
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="space-y-4"><label className="text-xs font-black text-white/40 uppercase tracking-widest mr-4">نص الذكر</label><Input placeholder="أدخل نص الذكر..." value={newAzkar.label} onChange={(e) => setNewAzkar({ ...newAzkar, label: e.target.value })} className="h-16 bg-white/5 text-white text-2xl font-black rounded-2xl focusable" /></div>
+                  <div className="space-y-4"><label className="text-xs font-black text-white/40 uppercase tracking-widest mr-4">اللون</label><Select value={newAzkar.color} onValueChange={(v) => setNewAzkar({ ...newAzkar, color: v })}><SelectTrigger className="h-16 bg-white/5 border-none text-xl font-black rounded-2xl focusable"><SelectValue /></SelectTrigger><SelectContent className="bg-zinc-950 text-white dir-rtl"><SelectItem value="text-emerald-400">أخضر زمردي</SelectItem><SelectItem value="text-blue-400">أزرق سيادي</SelectItem><SelectItem value="text-orange-400">ذهبي</SelectItem></SelectContent></Select></div>
+               </div>
+               <Button onClick={handleSaveAzkar} className="h-20 w-full bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-[2rem] text-2xl font-black shadow-glow focusable">{editingAzkarId ? "تحديث الذكر" : "إضافة ذكر جديد"}</Button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+               {(generalAzkar || []).map(a => (
+                 <div key={a.id} className="bg-black/40 p-8 rounded-[3rem] border border-white/10 flex items-center justify-between group shadow-xl transition-none">
+                    <div className="flex items-center gap-5"><div className={cn("w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center", a.color)}><Sparkles className="w-6 h-6" /></div><span className={cn("text-2xl font-black truncate max-w-[400px]", a.color)}>{a.label}</span></div>
+                    <div className="flex gap-3"><Button onClick={() => { setEditingAzkarId(a.id); setNewAzkar(a); }} variant="ghost" className="w-12 h-12 rounded-full text-emerald-400 hover:bg-emerald-400/10 focusable transition-none"><Edit2 className="w-5 h-5 ml-2" /> تحرير</Button><Button onClick={() => removeAzkar(a.id)} variant="ghost" className="w-12 h-12 rounded-full text-red-500 hover:bg-red-500/10 focusable transition-none"><Trash2 className="w-5 h-5" /></Button></div>
+                 </div>
+               ))}
+            </div>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="subscriptions" className="space-y-8 animate-in fade-in duration-0">
            <Card className="bg-white/5 border-white/10 p-10 rounded-[3.5rem] shadow-2xl">
              <div className="flex justify-between items-center mb-8">
@@ -579,24 +638,24 @@ export function SettingsView() {
             <div className="flex justify-between items-center mb-12">
               <CardTitle className="text-4xl font-black text-white flex items-center gap-6"><Tv className="w-12 h-12 text-emerald-500" /> قنوات IPTV السيادية</CardTitle>
               <div className="flex gap-4">
+                <Button onClick={() => { setIsAddingIptv(true); setEditingIptvId(null); setIptvEditForm({ name: "", url: "", stream_icon: "" }); }} className="bg-primary text-white rounded-full h-14 px-8 font-black shadow-glow focusable"><Plus className="w-5 h-5 ml-2" /> إضافة قناة</Button>
                 <Button onClick={() => handleDirectFetch(JSONBIN_IPTV_FAVS_BIN_ID, "IPTV")} variant="outline" className="w-14 h-14 rounded-full bg-white/5 border-white/10 flex items-center justify-center text-white/40 focusable">
                   <CloudDownload className="w-6 h-6" />
                 </Button>
-                <Button onClick={saveIptvReorder} className="bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-full h-14 px-8 font-black focusable shadow-glow">حفظ السحابة</Button>
               </div>
             </div>
 
-            {editingIptvId && (
+            {(editingIptvId || isAddingIptv) && (
               <div className="bg-black/60 p-10 rounded-[3rem] border-2 border-primary/40 mb-12 shadow-2xl animate-in zoom-in-95 duration-200">
-                <h3 className="text-2xl font-black text-white mb-8">تعديل القناة السيادية</h3>
+                <h3 className="text-2xl font-black text-white mb-8">{isAddingIptv ? "إضافة قناة جديدة" : "تعديل القناة السيادية"}</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
-                  <div className="space-y-4"><label className="text-xs font-black text-white/40 uppercase tracking-widest mr-4">اسم القناة</label><Input value={iptvEditForm.name} onChange={(e) => setIptvEditInput({ ...iptvEditForm, name: e.target.value })} className="h-16 bg-white/5 text-white text-xl font-black rounded-2xl focusable" /></div>
-                  <div className="space-y-4"><label className="text-xs font-black text-white/40 uppercase tracking-widest mr-4">رابط البث</label><Input value={iptvEditForm.url} onChange={(e) => setIptvEditInput({ ...iptvEditForm, url: e.target.value })} className="h-16 bg-white/5 text-white text-lg font-bold rounded-2xl focusable dir-ltr" /></div>
-                  <div className="space-y-4"><label className="text-xs font-black text-white/40 uppercase tracking-widest mr-4">أيقونة القناة</label><Input value={iptvEditForm.stream_icon} onChange={(e) => setIptvEditInput({ ...iptvEditForm, stream_icon: e.target.value })} className="h-16 bg-white/5 text-white text-lg font-bold rounded-2xl focusable dir-ltr" /></div>
+                  <div className="space-y-4"><label className="text-xs font-black text-white/40 uppercase tracking-widest mr-4">اسم القناة</label><Input value={iptvEditForm.name} onChange={(e) => setIptvEditForm({ ...iptvEditForm, name: e.target.value })} className="h-16 bg-white/5 text-white text-xl font-black rounded-2xl focusable" /></div>
+                  <div className="space-y-4"><label className="text-xs font-black text-white/40 uppercase tracking-widest mr-4">رابط البث</label><Input value={iptvEditForm.url} onChange={(e) => setIptvEditForm({ ...iptvEditForm, url: e.target.value })} className="h-16 bg-white/5 text-white text-lg font-bold rounded-2xl focusable dir-ltr" /></div>
+                  <div className="space-y-4"><label className="text-xs font-black text-white/40 uppercase tracking-widest mr-4">أيقونة القناة</label><Input value={iptvEditForm.stream_icon} onChange={(e) => setIptvEditForm({ ...iptvEditForm, stream_icon: e.target.value })} className="h-16 bg-white/5 text-white text-lg font-bold rounded-2xl focusable dir-ltr" /></div>
                 </div>
                 <div className="flex gap-4">
-                  <Button onClick={handleSaveIptv} className="flex-1 h-16 bg-primary text-white text-xl font-black rounded-2xl shadow-glow focusable">تحديث</Button>
-                  <Button onClick={() => setEditingIptvId(null)} className="w-16 h-16 bg-white/5 text-white/40 rounded-2xl focusable"><X className="w-8 h-8" /></Button>
+                  <Button onClick={handleSaveIptv} className="flex-1 h-16 bg-primary text-white text-xl font-black rounded-2xl shadow-glow focusable">{isAddingIptv ? "إضافة الآن" : "تحديث"}</Button>
+                  <Button onClick={() => { setEditingIptvId(null); setIsAddingIptv(false); }} className="w-16 h-16 bg-white/5 text-white/40 rounded-2xl focusable"><X className="w-8 h-8" /></Button>
                 </div>
               </div>
             )}
@@ -610,7 +669,7 @@ export function SettingsView() {
                   <span className="text-xl font-black text-white truncate w-full text-center">{ch.name}</span>
                   <div className="flex gap-3 w-full">
                     <Button onClick={() => startEditIptv(ch)} className="flex-1 h-12 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-2xl flex items-center justify-center focusable"><Edit2 className="w-4 h-4 ml-2" /> تعديل</Button>
-                    <button onClick={() => toggleFavoriteIptvChannel(ch)} className="w-12 h-12 bg-red-600/20 text-red-500 border border-red-500/30 rounded-2xl flex items-center justify-center focusable"><Trash2 className="w-5 h-5" /></button>
+                    <button onClick={() => toggleFavoriteIptvChannel(ch)} className="w-12 h-12 bg-red-600/20 text-red-500 border border-red-500/30 rounded-2xl flex items-center justify-center focusable transition-none"><Trash2 className="w-5 h-5" /></button>
                   </div>
                 </div>
               ))}
@@ -697,7 +756,7 @@ export function SettingsView() {
                   <div key={r.channelid} className="bg-black/60 p-8 rounded-[3rem] border border-white/10 flex flex-col items-center gap-6 relative group shadow-xl transition-none">
                     <div className="relative"><img src={r.image} className="w-24 h-24 rounded-full border-4 border-emerald-500/30 shadow-2xl object-cover" alt="" /><div className="absolute -bottom-2 -right-2 bg-emerald-500 text-black text-[10px] font-black px-2 py-0.5 rounded-full shadow-lg">{r.clickschannel || 0}</div></div>
                     {editingReciterId === r.channelid ? (
-                      <div className="flex flex-col gap-3 w-full"><Input value={reciterNameInput} onChange={(e) => setReciterNameInput(e.target.value)} className="h-10 bg-white/10 text-white text-center rounded-xl focusable" /><div className="flex gap-2"><Button onClick={handleSaveReciterName} className="flex-1 bg-emerald-500 text-black rounded-xl h-10 focusable">حفظ</Button><Button onClick={() => setEditingIptvId(null)} className="w-10 h-10 bg-white/10 rounded-xl focusable"><X className="w-4 h-4" /></Button></div></div>
+                      <div className="flex flex-col gap-3 w-full"><Input value={reciterNameInput} onChange={(e) => setReciterNameInput(e.target.value)} className="h-10 bg-white/10 text-white text-center rounded-xl focusable" /><div className="flex gap-2"><Button onClick={handleSaveReciterName} className="flex-1 bg-emerald-500 text-black rounded-xl h-10 focusable">حفظ</Button><Button onClick={() => setEditingReciterId(null)} className="w-10 h-10 bg-white/10 rounded-xl focusable"><X className="w-4 h-4" /></Button></div></div>
                     ) : (
                       <><span className="text-xl font-black text-white truncate w-full text-center">{r.name}</span><div className="flex gap-2 w-full"><button onClick={() => startEditReciter(r)} className="flex-1 h-12 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-2xl flex items-center justify-center transition-none focusable"><Edit2 className="w-4 h-4 ml-2" /> تحرير</button><button onClick={() => removeReciter(r.channelid)} className="w-12 h-12 bg-red-600/20 text-red-500 rounded-2xl flex items-center justify-center transition-none focusable"><Trash2 className="w-5 h-5" /></button></div></>
                     )}
