@@ -13,21 +13,21 @@ import { fetchChannelVideos, searchYouTubeVideos } from "@/lib/youtube";
 import { cn } from "@/lib/utils";
 
 const JUZ_COLORS = [
-  "shadow-[0_0_5px_rgba(255,0,0,0.1)] border-red-500/10", "shadow-[0_0_5px_rgba(255,127,0,0.1)] border-orange-500/10",
-  "shadow-[0_0_5px_rgba(255,255,0,0.1)] border-yellow-500/10", "shadow-[0_0_5px_rgba(0,255,0,0.1)] border-green-500/10",
-  "shadow-[0_0_5px_rgba(0,0,255,0.1)] border-blue-500/10", "shadow-[0_0_5px_rgba(75,0,130,0.1)] border-indigo-500/10",
-  "shadow-[0_0_5px_rgba(148,0,211,0.1)] border-violet-500/10", "shadow-[0_0_5px_rgba(255,20,147,0.1)] border-pink-500/10",
-  "shadow-[0_0_5px_rgba(0,255,255,0.1)] border-cyan-500/10", "shadow-[0_0_5px_rgba(173,255,47,0.1)] border-lime-500/10",
-  "shadow-[0_0_5px_rgba(255,69,0,0.1)] border-orangered-500/10", "shadow-[0_0_5px_rgba(30,144,255,0.1)] border-dodgerblue-500/10",
-  "shadow-[0_0_5px_rgba(218,112,214,0.1)] border-orchid-500/10", "shadow-[0_0_5px_rgba(50,205,50,0.1)] border-limegreen-500/10",
-  "shadow-[0_0_5px_rgba(255,215,0,0.1)] border-gold-500/10", "shadow-[0_0_5px_rgba(255,105,180,0.1)] border-hotpink-500/10",
-  "shadow-[0_0_5px_rgba(138,43,226,0.1)] border-blueviolet-500/10", "shadow-[0_0_5px_rgba(0,250,154,0.1)] border-mediumspringgreen-500/10",
-  "shadow-[0_0_5px_rgba(255,140,0,0.1)] border-darkorange-500/10", "shadow-[0_0_5px_rgba(32,178,170,0.1)] border-lightseagreen-500/10",
-  "shadow-[0_0_5px_rgba(240,128,128,0.1)] border-lightcoral-500/10", "shadow-[0_0_5px_rgba(124,252,0,0.1)] border-lawngreen-500/10",
-  "shadow-[0_0_5px_rgba(0,191,255,0.1)] border-deepskyblue-500/10", "shadow-[0_0_5px_rgba(255,0,255,0.1)] border-magenta-500/10",
-  "shadow-[0_0_5px_rgba(250,128,114,0.1)] border-salmon-500/10", "shadow-[0_0_5px_rgba(0,255,127,0.1)] border-springgreen-500/10",
-  "shadow-[0_0_5px_rgba(238,232,170,0.1)] border-palegoldenrod-500/10", "shadow-[0_0_5px_rgba(176,196,222,0.1)] border-lightsteelblue-500/10",
-  "shadow-[0_0_5px_rgba(221,160,221,0.1)] border-plum-500/10", "shadow-[0_0_5px_rgba(127,255,212,0.1)] border-aquamarine-500/10"
+  "shadow-[0_0_2px_rgba(255,0,0,0.05)] border-red-500/10", "shadow-[0_0_2px_rgba(255,127,0,0.05)] border-orange-500/10",
+  "shadow-[0_0_2px_rgba(255,255,0,0.05)] border-yellow-500/10", "shadow-[0_0_2px_rgba(0,255,0,0.05)] border-green-500/10",
+  "shadow-[0_0_2px_rgba(0,0,255,0.05)] border-blue-500/10", "shadow-[0_0_2px_rgba(75,0,130,0.05)] border-indigo-500/10",
+  "shadow-[0_0_2px_rgba(148,0,211,0.05)] border-violet-500/10", "shadow-[0_0_2px_rgba(255,20,147,0.05)] border-pink-500/10",
+  "shadow-[0_0_2px_rgba(0,255,255,0.05)] border-cyan-500/10", "shadow-[0_0_2px_rgba(173,255,47,0.05)] border-lime-500/10",
+  "shadow-[0_0_2px_rgba(255,69,0,0.05)] border-orangered-500/10", "shadow-[0_0_2px_rgba(30,144,255,0.05)] border-dodgerblue-500/10",
+  "shadow-[0_0_2px_rgba(218,112,214,0.05)] border-orchid-500/10", "shadow-[0_0_2px_rgba(50,205,50,0.05)] border-limegreen-500/10",
+  "shadow-[0_0_2px_rgba(255,215,0,0.05)] border-gold-500/10", "shadow-[0_0_2px_rgba(255,105,180,0.05)] border-hotpink-500/10",
+  "shadow-[0_0_2px_rgba(138,43,226,0.05)] border-blueviolet-500/10", "shadow-[0_0_2px_rgba(0,250,154,0.05)] border-mediumspringgreen-500/10",
+  "shadow-[0_0_2px_rgba(255,140,0,0.05)] border-darkorange-500/10", "shadow-[0_0_2px_rgba(32,178,170,0.05)] border-lightseagreen-500/10",
+  "shadow-[0_0_2px_rgba(240,128,128,0.05)] border-lightcoral-500/10", "shadow-[0_0_2px_rgba(124,252,0,0.05)] border-lawngreen-500/10",
+  "shadow-[0_0_2px_rgba(0,191,255,0.05)] border-deepskyblue-500/10", "shadow-[0_0_2px_rgba(255,0,255,0.05)] border-magenta-500/10",
+  "shadow-[0_0_2px_rgba(250,128,114,0.05)] border-salmon-500/10", "shadow-[0_0_2px_rgba(0,255,127,0.05)] border-springgreen-500/10",
+  "shadow-[0_0_2px_rgba(238,232,170,0.05)] border-palegoldenrod-500/10", "shadow-[0_0_2px_rgba(176,196,222,0.05)] border-lightsteelblue-500/10",
+  "shadow-[0_0_2px_rgba(221,160,221,0.05)] border-plum-500/10", "shadow-[0_0_2px_rgba(127,255,212,0.05)] border-aquamarine-500/10"
 ];
 
 const JUZ_SURAH_MAP: Record<number, number[]> = {
@@ -68,7 +68,7 @@ export function MediaView() {
     const dayOfWeek = today.getDay(); // 5 is Friday
     const suggestions: { label: string, query: string }[] = [];
 
-    // --- 1. Fixed Bluish Purple Suggestions ---
+    // --- 1. Top Indigo Suggestions ---
     suggestions.push({ label: "ملخص مباريات اليوم ⚽", query: "ملخص مباريات اليوم" });
     suggestions.push({ label: "ياسر الدوسري - سورة البقرة", query: "ياسر الدوسري سورة البقرة" });
     suggestions.push({ label: "أحمد النفيس - سورة النجم", query: "احمد النفيس سورة النجم" });
@@ -83,38 +83,27 @@ export function MediaView() {
 
       // White Days (13, 14, 15 Hijri)
       if ([13, 14, 15].includes(hDay)) {
-        suggestions.push({ label: "فضل صيام الأيام البيض", query: "فضل صيام الأيام البيض وأحكامها" });
+        suggestions.push({ label: "الأيام البيض - فضل الصيام", query: "فضل صيام الأيام البيض" });
       }
 
-      // Ashura (1-10 Muharram)
-      if (hMonth === 1 && hDay <= 10) suggestions.push({ label: "عاشوراء - فضل وصيام", query: "فضل صيام يوم عاشوراء" });
-      
-      // Mawlid (1-12 Rabi al-Awwal)
-      if (hMonth === 3 && hDay <= 12) suggestions.push({ label: "المولد النبوي - سيرة عطرة", query: "سيرة النبي محمد صلى الله عليه وسلم" });
+      // Mawlid (Rabi al-Awwal)
+      if (hMonth === 3) {
+        suggestions.push({ label: "المولد النبوي - سيرة عطرة", query: "سيرة النبي محمد صلى الله عليه وسلم" });
+      }
       
       // Ramadan (Month 9)
-      if (hMonth === 9) suggestions.push({ label: "بث مباشر صلاة التراويح", query: "بث مباشر صلاة التراويح الحرم المكي" });
+      if (hMonth === 9) suggestions.push({ label: "بث مباشر صلاة التراويح", query: "بث مباشر صلاة التراويح مكة" });
       
-      // Eid al-Fitr (1 Shawwal)
-      if (hMonth === 10 && hDay === 1) suggestions.push({ label: "تكبيرات العيد مباشر", query: "تكبيرات العيد مكررة الحرم المكي" });
-      
-      // Dhu al-Hijjah Season
-      if (hMonth === 12) {
-        if (hDay <= 10) suggestions.push({ label: "تكبيرات العشر من ذي الحجة", query: "تكبيرات العشر من ذي الحجة الحرم المكي" });
-        if (hDay >= 10 && hDay <= 13) suggestions.push({ label: "تكبيرات عيد الأضحى", query: "تكبيرات عيد الأضحى المبارك" });
-      }
+      // Eid Seasons
+      if (hMonth === 10 && hDay === 1) suggestions.push({ label: "تكبيرات العيد الفطر", query: "تكبيرات العيد مكررة مكة" });
+      if (hMonth === 12 && hDay >= 1 && hDay <= 10) suggestions.push({ label: "عشر ذي الحجة - تكبيرات", query: "تكبيرات عشر ذي الحجة مكة" });
     } catch(e) {}
 
-    // Friday Logic
+    // Friday
     if (dayOfWeek === 5) {
       suggestions.push({ label: "سورة الكهف - ياسر الدوسري", query: "سورة الكهف ياسر الدوسري" });
-      suggestions.push({ label: "بث مباشر خطبة الجمعة", query: "بث مباشر خطبة الجمعة الحرم المكي" });
-    }
-
-    // Default Fallbacks
-    if (suggestions.length < 6) {
-      suggestions.push({ label: "تلاوات نادرة - المنشاوي", query: "تلاوات نادرة محمد صديق المنشاوي" });
-      suggestions.push({ label: "رقية شرعية شاملة", query: "رقية شرعية قوية وشاملة" });
+      suggestions.push({ label: "خطبة الجمعة مباشر", query: "خطبة الجمعة مباشر الحرم المكي" });
+      suggestions.push({ label: "سنن يوم الجمعة", query: "سنن وآداب يوم الجمعة" });
     }
 
     return suggestions;
@@ -151,15 +140,6 @@ export function MediaView() {
       });
     }
   }, [selectedChannel, setChannelVideos, setIsSidebarShrinked]);
-
-  useEffect(() => {
-    if (!loading && !isIsolatedViewActive) {
-      setTimeout(() => {
-        const firstReciter = document.querySelector('[data-nav-id="reciter-item-0"]') as HTMLElement;
-        firstReciter?.focus();
-      }, 1000);
-    }
-  }, [loading, isIsolatedViewActive]);
 
   const performSearch = async (query?: string) => {
     const q = query || search; if (!q.trim()) return;
@@ -231,26 +211,24 @@ export function MediaView() {
               </div>
             </section>
 
-            {occasionSuggestions.length > 0 && (
-              <section data-row-id="row-occasions" className="py-4">
-                <div className={horizontalListClass}>
-                  <div className="flex items-center gap-3 px-6 py-3 bg-indigo-600/20 rounded-full border border-indigo-400/40 shrink-0">
-                    <Sparkles className="w-5 h-5 text-indigo-400 animate-pulse" />
-                    <span className="text-[12px] font-black text-white/60">اقتراحات اليوم</span>
-                  </div>
-                  {occasionSuggestions.map((occ, i) => (
-                    <button 
-                      key={i} 
-                      onClick={() => { setSearch(occ.query); performSearch(occ.query); }} 
-                      className="px-10 py-6 rounded-full font-black text-lg focusable border-2 bg-indigo-600 text-white border-indigo-400/50 hover:border-white shadow-glow shrink-0 transition-all"
-                      data-nav-id={`occ-item-${i}`}
-                    >
-                      {occ.label}
-                    </button>
-                  ))}
+            <section data-row-id="row-occasions" className="py-4">
+              <div className={horizontalListClass}>
+                <div className="flex items-center gap-3 px-6 py-3 bg-indigo-600/20 rounded-full border border-indigo-400/40 shrink-0">
+                  <Sparkles className="w-5 h-5 text-indigo-400 animate-pulse" />
+                  <span className="text-[12px] font-black text-white/60">اقتراحات اليوم</span>
                 </div>
-              </section>
-            )}
+                {occasionSuggestions.map((occ, i) => (
+                  <button 
+                    key={i} 
+                    onClick={() => { setSearch(occ.query); performSearch(occ.query); }} 
+                    className="px-10 py-6 rounded-full font-black text-lg focusable border-2 bg-indigo-600 text-white border-indigo-400/50 hover:border-white shadow-glow shrink-0 transition-all"
+                    data-nav-id={`occ-item-${i}`}
+                  >
+                    {occ.label}
+                  </button>
+                ))}
+              </div>
+            </section>
             
             <section data-row-id="row-reciters" className="py-2"><div className={cn(horizontalListClass, "gap-8")}>{favoriteReciters.map((r, i) => (<button key={i} onClick={() => handleReciterClick(r)} className={cn("flex flex-col items-center gap-4 px-4 py-4 rounded-[2.5rem] focusable border-2 shrink-0 group", selectedReciter === r.name ? "border-emerald-500 bg-emerald-500/10" : "border-transparent hover:bg-emerald-600/10")} tabIndex={0} data-nav-id={`reciter-item-${i}`}><div className="w-32 h-32 rounded-full overflow-hidden border-4 border-emerald-500/30 shadow-2xl"><img src={r.image} className="w-full h-full object-cover" alt="" /></div><span className="text-xs font-black text-white">{r.name}</span></button>))}</div></section>
             <section data-row-id="row-juz" className="py-2"><div className={horizontalListClass}><div className="flex items-center gap-3 px-6 py-3 bg-white/5 rounded-full border border-white/10 shrink-0"><Layers className="w-6 h-6 text-accent" /><span className="text-[12px] font-black text-white/40 uppercase">الأجزاء</span></div>{[...Array(30).keys()].map(i => (<button key={i} onClick={() => handleJuzClick(i+1)} className={cn("px-12 py-6 rounded-full text-white font-black text-xl focusable border-2 shrink-0", selectedJuz === i+1 ? "bg-white text-black border-white shadow-glow" : JUZ_COLORS[i])} tabIndex={0} data-nav-id={`juz-item-${i}`}>الجزء {i+1}</button>))}</div></section>

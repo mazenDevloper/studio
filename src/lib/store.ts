@@ -249,7 +249,7 @@ export const useMediaStore = create<MediaState>()(
       updateVideoProgress: (id, progress) => set((s) => ({ videoProgress: { ...s.videoProgress, [id]: progress } })),
       setIsPlaying: (v) => set({ isPlaying: v }), setIsMinimized: (v) => set({ isMinimized: v, isFullScreen: false }), setIsFullScreen: (v) => set({ isFullScreen: v, isMinimized: false }),
       cyclePlayerMode: () => { const s = get(); if (s.isFullScreen) set({ isFullScreen: false, isMinimized: true }); else if (s.isMinimized) set({ isMinimized: false, isFullScreen: false }); else set({ isFullScreen: true, isMinimized: false }); },
-      toggleDockSide: () => set((s) => ({ dockSide: s.get().dockSide === 'left' ? 'right' : 'left' })),
+      toggleDockSide: () => set((s) => ({ dockSide: s.dockSide === 'left' ? 'right' : 'left' })),
       toggleShowIslands: () => set((s) => ({ showIslands: !s.showIslands })), toggleReorderMode: () => set((s) => ({ isReorderMode: !s.isReorderMode, pickedUpId: null })),
       setWallPlate: (t, d) => set({ wallPlateType: t, wallPlateData: d }), resetMediaView: () => set({ selectedChannel: null, channelVideos: [] }),
       setAiSuggestions: (s) => set({ aiSuggestions: s }),
