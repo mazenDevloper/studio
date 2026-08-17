@@ -13,9 +13,8 @@ import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 /**
- * GlobalVideoPlayer v710.0 - Sovereign Background Persistence Engine
- * Features: Silent Audio Heartbeat + Advanced MediaSession + Visibility Lock.
- * This is the maximum programmatic level to keep YouTube playing in background.
+ * GlobalVideoPlayer v720.0 - Sovereign Background Persistence Engine
+ * Features: 10-Second Transition Pulse + Silent Audio Heartbeat + Visibility Lock.
  */
 export function GlobalVideoPlayer() {
   const { 
@@ -40,9 +39,7 @@ export function GlobalVideoPlayer() {
   // SOVEREIGN HEARTBEAT: Silent Audio to keep process alive in background
   useEffect(() => {
     if (isPlaying && isActive) {
-      audioHeartbeatRef.current?.play().catch(() => {
-        // Autoplay policy might block initially, but will resume on first user interaction
-      });
+      audioHeartbeatRef.current?.play().catch(() => {});
     } else {
       audioHeartbeatRef.current?.pause();
     }
@@ -62,7 +59,6 @@ export function GlobalVideoPlayer() {
 
       navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
 
-      // Advanced Handlers for OS-level control
       const actionHandlers: [MediaSessionAction, () => void][] = [
         ['play', () => { setIsPlaying(true); }],
         ['pause', () => { setIsPlaying(false); }],
@@ -79,19 +75,18 @@ export function GlobalVideoPlayer() {
     }
   }, [activeVideo, isPlaying, setIsPlaying, nextTrack, prevTrack]);
 
-  // VISIBILITY WATCHDOG: Force resume if browser tries to suspend tab
+  // VISIBILITY WATCHDOG
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && isPlaying && isActive) {
-        // Just being back confirms we want it playing
-        setIframeKey(prev => prev + 0); // Inert update to ensure sync
+        setIframeKey(prev => prev + 0);
       }
     };
     document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, [isPlaying, isActive]);
 
-  // SOVEREIGN TIME WATCHDOG: Transition logic
+  // SOVEREIGN TIME WATCHDOG: 10-Second Transition logic
   useEffect(() => {
     if (!activeVideo || !activeVideo.duration || activeVideo.duration === "FEED") {
       setCountdown(null);
@@ -108,11 +103,11 @@ export function GlobalVideoPlayer() {
 
     if (totalSeconds <= 0) return;
 
-    // Trigger countdown 5 seconds before end
-    const triggerTime = (totalSeconds - 5) * 1000;
+    // Trigger countdown 10 seconds before end
+    const triggerTime = (totalSeconds - 10) * 1000;
     const watchdog = setTimeout(() => {
       if (lastProcessedIdRef.current !== activeVideo.id) {
-         setCountdown(5);
+         setCountdown(10);
          lastProcessedIdRef.current = activeVideo.id;
       }
     }, triggerTime > 0 ? triggerTime : 100); 
@@ -153,8 +148,7 @@ export function GlobalVideoPlayer() {
     const params = new URLSearchParams({
       autoplay: '1', mute: '0', controls: '1', start: start.toString(), rel: '0', 
       modestbranding: '1', enablejsapi: '1', iv_load_policy: '3',
-      origin: typeof window !== 'undefined' ? window.location.origin : '', hl: 'ar',
-      widget_referrer: typeof window !== 'undefined' ? window.location.href : ''
+      origin: typeof window !== 'undefined' ? window.location.origin : '', hl: 'ar'
     });
     return `https://www.youtube.com/embed/${activeVideo.id}?${params.toString()}`;
   }, [activeVideo?.id, videoProgress]);
@@ -184,12 +178,10 @@ export function GlobalVideoPlayer() {
 
   if (!mounted || !isActive) return null;
   const popupSideClass = dockSide === 'left' ? "right-12" : "left-12";
-
   const ctrlBtnClass = "rounded-full flex items-center justify-center focusable transition-all shadow-glow active:scale-90 w-12 h-12 min-[968px]:w-14 min-[968px]:h-14 max-[968px]:w-16 max-[968px]:h-16";
 
   return (
     <>
-      {/* SILENT HEARTBEAT AUDIO - Key for background persistence */}
       <audio ref={audioHeartbeatRef} loop className="hidden">
         <source src="data:audio/wav;base64,UklGRigAAABXQVZFRm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA==" type="audio/wav" />
       </audio>
@@ -200,7 +192,6 @@ export function GlobalVideoPlayer() {
         isFullScreen ? "inset-0 w-full h-full bg-black flex" : 
         `bottom-12 ${popupSideClass} w-[35vw] h-[40vh] premium-glass rounded-[3.5rem] bg-black/95 border-2 border-white/10 flex`
       )}>
-        {/* Persistence Layer: We use opacity and position instead of display:none to keep the iframe alive */}
         <div className={cn("relative flex-1 transition-opacity duration-500 flex", isMinimized ? "opacity-0 pointer-events-none absolute -top-[9999px]" : "opacity-100")}>
            <div className="flex-1 relative">
               {activeVideo ? (
@@ -219,21 +210,16 @@ export function GlobalVideoPlayer() {
                             cx="80" cy="80" r="76"
                             fill="none" stroke="currentColor" strokeWidth="8"
                             className="text-primary transition-all duration-1000 ease-linear"
-                            style={{ strokeDasharray: 477, strokeDashoffset: 477 * (1 - countdown / 5) }}
+                            style={{ strokeDasharray: 477, strokeDashoffset: 477 * (1 - countdown / 10) }}
                           />
                         </svg>
                      </div>
                   </div>
                   <div className="mt-8 text-center space-y-2">
                      <h2 className="text-2xl font-black text-white tracking-widest uppercase">الانتقال للتلاوة التالية</h2>
-                     <p className="text-white/40 font-bold uppercase tracking-[0.5em] text-[10px]">Sovereign Auto-Next Sequence</p>
+                     <p className="text-white/40 font-bold uppercase tracking-[0.5em] text-[10px]">Sovereign 10s Sequence active</p>
                   </div>
-                  <button 
-                    onClick={() => setCountdown(null)} 
-                    className="mt-12 h-14 px-10 rounded-full bg-white/10 border border-white/20 text-white font-black hover:bg-white/20 transition-all focusable flex items-center gap-3"
-                  >
-                    <RotateCcw className="w-5 h-5" /> إلغاء العد
-                  </button>
+                  <button onClick={() => setCountdown(null)} className="mt-12 h-14 px-10 rounded-full bg-white/10 border border-white/20 text-white font-black hover:bg-white/20 transition-all focusable flex items-center gap-3"><RotateCcw className="w-5 h-5" /> إلغاء العد</button>
                 </div>
               )}
            </div>
@@ -244,28 +230,15 @@ export function GlobalVideoPlayer() {
                isFullScreen ? "w-[30%]" : "w-[45%]"
              )} dir="rtl">
                <div className="p-6 border-b border-white/5 flex items-center justify-between">
-                 <div className="flex items-center gap-3 text-indigo-400">
-                    <LayoutList className="w-5 h-5" />
-                    <h3 className="text-xs font-black uppercase tracking-widest">المجلد السيادي</h3>
-                 </div>
+                 <div className="flex items-center gap-3 text-indigo-400"><LayoutList className="w-5 h-5" /><h3 className="text-xs font-black uppercase tracking-widest">المجلد السيادي</h3></div>
                  <button onClick={() => setIsPlayerPlaylistOpen(false)} className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-white/40 hover:text-white transition-colors focusable"><X className="w-4 h-4" /></button>
                </div>
                <ScrollArea className="flex-1">
                  <div className="p-4 space-y-3">
                    {playlist.map((v, i) => (
-                     <button 
-                       key={v.id + i} 
-                       onClick={() => { setActiveVideo(v, playlist); lastProcessedIdRef.current = null; setCountdown(null); }}
-                       className={cn(
-                         "w-full p-4 rounded-[1.8rem] flex items-center gap-4 transition-all focusable text-right border-2",
-                         i === playlistIndex ? "bg-indigo-600 border-indigo-400 text-white shadow-glow scale-[1.02]" : "bg-white/5 border-transparent text-white/60 hover:bg-white/10"
-                       )}
-                     >
+                     <button key={v.id + i} onClick={() => { setActiveVideo(v, playlist); lastProcessedIdRef.current = null; setCountdown(null); }} className={cn("w-full p-4 rounded-[1.8rem] flex items-center gap-4 transition-all focusable text-right border-2", i === playlistIndex ? "bg-indigo-600 border-indigo-400 text-white shadow-glow scale-[1.02]" : "bg-white/5 border-transparent text-white/60 hover:bg-white/10")}>
                        <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 border border-white/10"><img src={v.thumbnail} className="w-full h-full object-cover" alt="" /></div>
-                       <div className="flex flex-col min-w-0">
-                         <span className="text-[11px] font-black truncate">{v.title}</span>
-                         <span className="text-[9px] opacity-40 font-bold mt-1">{v.duration || "---"}</span>
-                       </div>
+                       <div className="flex flex-col min-w-0"><span className="text-[11px] font-black truncate">{v.title}</span><span className="text-[9px] opacity-40 font-bold mt-1">{v.duration || "---"}</span></div>
                      </button>
                    ))}
                  </div>

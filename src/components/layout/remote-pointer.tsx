@@ -9,8 +9,8 @@ import { init } from "@noriginmedia/norigin-spatial-navigation";
 import { useToast } from "@/hooks/use-toast";
 
 /**
- * RemotePointer v390.0 - Absolute Centering Engine
- * Features: Forced centering with 'block: center' and 'inline: center' for perfect remote visibility.
+ * RemotePointer v720.0 - Absolute Centering & Unified Navigation Engine
+ * Features: Removal of Input Row Isolation + Adaptive Key Trapping for Typing.
  */
 export function RemotePointer() {
   const pathname = usePathname();
@@ -90,6 +90,14 @@ export function RemotePointer() {
         return;
       }
 
+      // Removal of Isolation: Search the rest of the zone before jumping out
+      const nextInZone = findBestCandidate(current, sameZoneFocusables, direction);
+      if (nextInZone) {
+        nextInZone.focus();
+        nextInZone.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+        return;
+      }
+
       const targetZoneFocusables = focusables.filter(el => el.closest('[data-nav-zone]')?.getAttribute('data-nav-zone') !== currentZone);
       const bestZoneTarget = findBestCandidate(current, targetZoneFocusables, direction);
 
@@ -142,8 +150,9 @@ export function RemotePointer() {
   };
 
   const executeAction = useCallback((finalKey: string, e: KeyboardEvent | null) => {
-    const activeEl = document.activeElement as HTMLElement;
-    const isInputFocused = activeEl?.tagName === 'INPUT' || activeEl?.tagName === 'TEXTAREA' || activeEl?.getAttribute('contenteditable') === 'true';
+    const activeEl = document.activeElement as any;
+    // An input is only "Active" (trapping keys) if it is NOT read-only
+    const isInputActive = (activeEl?.tagName === 'INPUT' || activeEl?.tagName === 'TEXTAREA' || activeEl?.getAttribute('contenteditable') === 'true') && !activeEl?.readOnly;
 
     if (isRecordingKey && recordingAction) {
       const FORBIDDEN_KEYS = ['Backspace', 'Escape', 'Back', 'Delete'];
@@ -157,7 +166,10 @@ export function RemotePointer() {
       return;
     } 
 
-    if (isInputFocused && !['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter'].includes(finalKey)) return;
+    // If we are actively typing, let arrows/enter move the cursor/submit.
+    if (isInputActive && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter'].includes(finalKey)) return;
+    // For other keys, still trap them to prevent triggering global shortcuts while typing
+    if (isInputActive) return;
 
     const isPlayerActive = (activeVideo || activeIptv) && isFullScreen && !isMinimized;
     if (isPlayerActive) {
@@ -176,15 +188,13 @@ export function RemotePointer() {
       if (activeEl?.classList.contains("focusable")) { e?.preventDefault(); activeEl.click(); }
     }
     
-    if (!isInputFocused) {
-      if (isAction(finalKey, 'goto_home')) { e?.preventDefault(); router.push('/dashboard'); return; }
-      if (isAction(finalKey, 'goto_media')) { e?.preventDefault(); router.push('/media'); return; }
-      if (isAction(finalKey, 'goto_quran')) { e?.preventDefault(); router.push('/quran'); return; }
-      if (isAction(finalKey, 'goto_hihi2')) { e?.preventDefault(); router.push('/hihi2'); return; }
-      if (isAction(finalKey, 'goto_iptv')) { e?.preventDefault(); router.push('/iptv'); return; }
-      if (isAction(finalKey, 'goto_football')) { e?.preventDefault(); router.push('/football'); return; }
-      if (isAction(finalKey, 'goto_settings')) { e?.preventDefault(); router.push('/settings'); return; }
-    }
+    if (isAction(finalKey, 'goto_home')) { e?.preventDefault(); router.push('/dashboard'); return; }
+    if (isAction(finalKey, 'goto_media')) { e?.preventDefault(); router.push('/media'); return; }
+    if (isAction(finalKey, 'goto_quran')) { e?.preventDefault(); router.push('/quran'); return; }
+    if (isAction(finalKey, 'goto_hihi2')) { e?.preventDefault(); router.push('/hihi2'); return; }
+    if (isAction(finalKey, 'goto_iptv')) { e?.preventDefault(); router.push('/iptv'); return; }
+    if (isAction(finalKey, 'goto_football')) { e?.preventDefault(); router.push('/football'); return; }
+    if (isAction(finalKey, 'goto_settings')) { e?.preventDefault(); router.push('/settings'); return; }
   }, [navigate, isAction, wallPlateType, router, isRecordingKey, recordingAction, setIsRecordingKey, setRecordingAction, setKeyMapping, toast, activeVideo, activeIptv, isFullScreen, isMinimized, nextTrack, prevTrack, setActiveVideo, setActiveIptv, setGridMode]);
 
   useEffect(() => {
