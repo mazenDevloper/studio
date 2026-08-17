@@ -8,6 +8,10 @@ import { useMediaStore, AppAction, MappingContext } from "@/lib/store";
 import { init } from "@noriginmedia/norigin-spatial-navigation";
 import { useToast } from "@/hooks/use-toast";
 
+/**
+ * RemotePointer v360.0 - Unified Centering Engine
+ * Features: Absolute center scroll (block & inline) for both vertical/horizontal lists.
+ */
 export function RemotePointer() {
   const pathname = usePathname();
   const router = useRouter();
@@ -58,7 +62,11 @@ export function RemotePointer() {
     let current = document.activeElement as HTMLElement;
     if (!current || current === document.body || !current.classList.contains("focusable")) {
       const rescue = document.querySelector('[data-nav-zone="content"] .focusable') as HTMLElement || focusables[0];
-      rescue?.focus(); return;
+      if (rescue) {
+        rescue.focus(); 
+        rescue.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+      }
+      return;
     }
 
     const currentZone = current.closest('[data-nav-zone]')?.getAttribute('data-nav-zone') || 'global';
@@ -79,7 +87,7 @@ export function RemotePointer() {
       
       if (nextInRow) {
         nextInRow.focus();
-        nextInRow.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        nextInRow.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
         return;
       }
 
@@ -90,14 +98,19 @@ export function RemotePointer() {
         const targetZone = bestZoneTarget.closest('[data-nav-zone]')?.getAttribute('data-nav-zone');
         if (targetZone === 'sidebar') {
           const target = document.querySelector('[data-nav-id="sidebar-channel-0"]') as HTMLElement || bestZoneTarget;
-          target.focus(); setIsSidebarShrinked(false); return;
+          target.focus(); 
+          target.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+          setIsSidebarShrinked(false); return;
         }
         if (targetZone === 'content') {
           const target = document.querySelector('[data-nav-zone="content"] .focusable') as HTMLElement || bestZoneTarget;
-          target.focus(); setIsSidebarShrinked(true); return;
+          target.focus(); 
+          target.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+          setIsSidebarShrinked(true); return;
         }
         if (targetZone === 'dock') setIsSidebarShrinked(true);
         bestZoneTarget.focus();
+        bestZoneTarget.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
       }
     }
   }, [wallPlateType, setIsSidebarShrinked]);
@@ -126,7 +139,7 @@ export function RemotePointer() {
     const next = findBestCandidate(current, candidates, direction);
     if (next) {
       next.focus();
-      next.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      next.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
     }
   };
 
@@ -150,7 +163,6 @@ export function RemotePointer() {
       return;
     } 
 
-    // SOVEREIGN BYPASS: Allow navigation if input is locked (ReadOnly)
     if (isInputFocused && !isInputLocked && !['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter'].includes(finalKey)) {
       return;
     }

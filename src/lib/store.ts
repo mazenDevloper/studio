@@ -25,6 +25,12 @@ export interface Reminder {
   showCountdown: boolean; showCountup: boolean; completed: boolean; countdownWindow: number;
 }
 
+export interface Playlist {
+  id: string;
+  name: string;
+  videos: YouTubeVideo[];
+}
+
 export interface PrayerSetting {
   id: string; name: string; offsetMinutes: number; showCountdown: boolean; countdownWindow: number;
   showCountup: boolean; countupWindow: number; iqamahDuration: number;
@@ -69,6 +75,7 @@ interface MediaState {
   iptvPlaylist: IptvChannel[]; iptvPlaylistIndex: number; prayerTimes: any[]; prayerSettings: PrayerSetting[];
   reminders: Reminder[]; generalAzkar: Reminder[]; customManuscripts: Manuscript[]; manuscriptScales: Record<string, number>;
   customFonts: { name: string, url: string }[]; customWallBackgrounds: string[]; mapSettings: MapSettings;
+  playlists: Playlist[]; isLooping: boolean;
   displayScale: number; dockScale: number; keyMappings: Record<string, Record<string, string[]>>; 
   activeVideo: YouTubeVideo | null; lastPlayedVideo: YouTubeVideo | null; activeIptv: IptvChannel | null;
   activeQuranUrl: string | null; playlist: YouTubeVideo[]; playlistIndex: number; isPlaying: boolean;
@@ -95,6 +102,8 @@ interface MediaState {
   removeReminder: (id: string) => void; toggleReminder: (id: string) => void; skipReminder: (id: string) => void;
   addAzkar: (azkar: Reminder) => void; updateAzkar: (id: string, azkar: Partial<Reminder>) => void;
   removeAzkar: (id: string) => void;
+  addPlaylist: (name: string) => void; removePlaylist: (id: string) => void; addVideoToPlaylist: (playlistId: string, video: YouTubeVideo) => void;
+  removeVideoFromPlaylist: (playlistId: string, videoId: string) => void; toggleLooping: () => void;
   addCustomFont: (name: string, url: string) => void; removeCustomFont: (name: string, url: string) => void;
   addCustomWallBackground: (url: string) => void; removeCustomWallBackground: (url: string) => void;
   toggleFavoriteTeam: (team: FavoriteTeam) => void; toggleBelledMatch: (matchId: string) => void;
@@ -115,6 +124,7 @@ interface MediaState {
   
   addManuscript: (manuscript: Manuscript) => void; updateManuscript: (id: string, updates: Partial<Manuscript>) => void;
   removeManuscript: (id: string) => void; updateManuscriptScale: (id: string, scale: number) => void;
+  updatePrayerSetting: (id: string, updates: Partial<PrayerSetting>) => void;
 
   fetchPriorityData: (context: 'dashboard' | 'media' | 'all') => Promise<void>;
   fetchSpecificBin: (id: string) => Promise<void>;
@@ -169,7 +179,7 @@ const DEFAULT_PRAYER_SETTINGS: PrayerSetting[] = [
 export const useMediaStore = create<MediaState>()(
   persist(
     (set, get) => ({
-      favoriteChannels: [], savedVideos: [], videoProgress: {}, favoriteTeams: [], favoriteLeagueIds: [307, 39, 2, 140, 135], belledMatchIds: [], skippedMatchIds: [], skippedReminderIds: [], favoriteIptvChannels: [], favoriteReciters: [], iptvPlaylist: [], iptvPlaylistIndex: 0, prayerTimes: prayerTimesData, prayerSettings: DEFAULT_PRAYER_SETTINGS, reminders: [], generalAzkar: [], customManuscripts: [], manuscriptScales: {}, customFonts: [], customWallBackgrounds: [], 
+      favoriteChannels: [], savedVideos: [], videoProgress: {}, favoriteTeams: [], favoriteLeagueIds: [307, 39, 2, 140, 135], belledMatchIds: [], skippedMatchIds: [], skippedReminderIds: [], favoriteIptvChannels: [], favoriteReciters: [], iptvPlaylist: [], iptvPlaylistIndex: 0, prayerTimes: prayerTimesData, prayerSettings: DEFAULT_PRAYER_SETTINGS, reminders: [], generalAzkar: [], customManuscripts: [], manuscriptScales: {}, customFonts: [], customWallBackgrounds: [], playlists: [], isLooping: true,
       mapSettings: { zoom: 20.0, tilt: 65, carScale: 1.02, backgroundIndex: 0, showManuscriptBg: true, manuscriptBgUrl: "https://www.image2url.com/r2/default/images/1782382707952-d99447c6-bc60-475d-9406-5fd2ef320bd5.png", fontScale: 1.0, manuscriptColor: '#ffffff', showManuscriptOnMoon: false, moonManuIdx: 0, hue: 0, saturation: 100, brightness: 100, winwinUrl: "https://psee.io/9f4ngl", beinUrl: "https://idebsports.ly/matches", omanUrl: "https://player.mangomolo.com/v1/live?id=MTY4&channelid=MTYx&countries=Q0M%3D&filter=DENY&signature=3fd1e8dd84138a41bf33d93afd4a7f09&language=en&app_id=&fullscreen=yes&player_profile=&base_url=aHR0cHM6Ly9heW4ub20vbGl2ZS8xNjEvJUQ5JTgyJUQ5JTg2JUQ4JUE3JUQ4JUE5LSVEOCVCOSVEOSU4NSVEOCVBNyVEOSU4Ni0lRDklODUlRDglQTglRDglQTclRDglQjQlRDglQjE%3D&autoplay=false&vast=true", bein1Url: "https://online.aflam4you.net/zremb472.php/?vid=68&aflam_s=1&aflam_w=360&aflam_h=250&aflam_k=18311111", mbc1Url: "https://online.aflam4you.net/zremb472.php?vid=5&aflam_s=1&aflam_w=360&aflam_h=250&aflam_k=18311111" },
       displayScale: 1.0, dockScale: 1.0, keyMappings: DEFAULT_CONTEXT_MAPPINGS, activeVideo: null, lastPlayedVideo: null, activeIptv: null, activeQuranUrl: "https://quran.com/ar/radio?autoplay=1", playlist: [], playlistIndex: 0, isPlaying: false, isMinimized: false, isFullScreen: false, isPlayerControlsExpanded: false, gridMode: 'hidden', dockSide: 'left', showIslands: true, autoHideIsland: true, isSidebarShrinked: false, wallPlateType: null, wallPlateData: null, isReorderMode: false, isRecordingKey: false, recordingAction: null, isInitialLoading: true, aiSuggestions: [], pickedUpId: null,
       
@@ -188,7 +198,7 @@ export const useMediaStore = create<MediaState>()(
           else if (binId === JSONBIN_FONTS_BIN_ID) set({ customFonts: data.fonts || data });
           else if (binId === JSONBIN_BACKGROUNDS_BIN_ID) set({ customWallBackgrounds: data.backgrounds || data });
           else if (binId === JSONBIN_PRAYER_TIMES_BIN_ID) set({ prayerTimes: data.prayers || data });
-          else if (binId === JSONBIN_MASTER_BIN_ID) set({ reminders: data.reminders || get().reminders, generalAzkar: data.generalAzkar || [], prayerSettings: data.prayerSettings || DEFAULT_PRAYER_SETTINGS, mapSettings: { ...get().mapSettings, ...data.mapSettings }, keyMappings: data.keyMappings || DEFAULT_CONTEXT_MAPPINGS, savedVideos: data.savedVideos || [], manuscriptScales: data.manuscriptScales || {}, lastPlayedVideo: data.lastPlayedVideo || null });
+          else if (binId === JSONBIN_MASTER_BIN_ID) set({ reminders: data.reminders || get().reminders, generalAzkar: data.generalAzkar || [], prayerSettings: data.prayerSettings || DEFAULT_PRAYER_SETTINGS, mapSettings: { ...get().mapSettings, ...data.mapSettings }, keyMappings: data.keyMappings || DEFAULT_CONTEXT_MAPPINGS, savedVideos: data.savedVideos || [], manuscriptScales: data.manuscriptScales || {}, lastPlayedVideo: data.lastPlayedVideo || null, playlists: data.playlists || [] });
         } catch (e) {}
       },
 
@@ -201,7 +211,7 @@ export const useMediaStore = create<MediaState>()(
 
       syncMasterBin: async () => {
         const s = get();
-        await updateBin(JSONBIN_MASTER_BIN_ID, { favoriteTeams: s.favoriteTeams, favoriteLeagueIds: s.favoriteLeagueIds, belledMatchIds: s.belledMatchIds, skippedMatchIds: s.skippedMatchIds, prayerSettings: s.prayerSettings, reminders: s.reminders, generalAzkar: s.generalAzkar, mapSettings: s.mapSettings, keyMappings: s.keyMappings, savedVideos: s.savedVideos, manuscriptScales: s.manuscriptScales, lastPlayedVideo: s.lastPlayedVideo });
+        await updateBin(JSONBIN_MASTER_BIN_ID, { favoriteTeams: s.favoriteTeams, favoriteLeagueIds: s.favoriteLeagueIds, belledMatchIds: s.belledMatchIds, skippedMatchIds: s.skippedMatchIds, prayerSettings: s.prayerSettings, reminders: s.reminders, generalAzkar: s.generalAzkar, mapSettings: s.mapSettings, keyMappings: s.keyMappings, savedVideos: s.savedVideos, manuscriptScales: s.manuscriptScales, lastPlayedVideo: s.lastPlayedVideo, playlists: s.playlists });
       },
 
       saveIptvReorder: async () => await updateBin(JSONBIN_IPTV_FAVS_BIN_ID, { iptv: get().favoriteIptvChannels }),
@@ -222,6 +232,13 @@ export const useMediaStore = create<MediaState>()(
       updateIptvChannel: (id, updates) => set((s) => { const n = s.favoriteIptvChannels.map(ch => ch.stream_id === id ? { ...ch, ...updates } : ch); setTimeout(() => get().saveIptvReorder(), 100); return { favoriteIptvChannels: n }; }),
       addIptvChannel: (ch) => set((s) => { const n = [...s.favoriteIptvChannels, ch]; setTimeout(() => get().saveIptvReorder(), 100); return { favoriteIptvChannels: n }; }),
       reorderIptvChannelTo: (f, t) => set((s) => { const l = [...s.favoriteIptvChannels], fI = l.findIndex(i => i.stream_id === f), tI = l.findIndex(i => i.stream_id === t); if (fI === -1 || tI === -1) return s; const [m] = l.splice(fI, 1); l.splice(tI, 0, m); return { favoriteIptvChannels: l }; }),
+      
+      addPlaylist: (name) => set((s) => { const n = [...s.playlists, { id: Date.now().toString(), name, videos: [] }]; setTimeout(() => get().syncMasterBin(), 100); return { playlists: n }; }),
+      removePlaylist: (id) => set((s) => { const n = s.playlists.filter(p => p.id !== id); setTimeout(() => get().syncMasterBin(), 100); return { playlists: n }; }),
+      addVideoToPlaylist: (pId, v) => set((s) => { const n = s.playlists.map(p => p.id === pId ? { ...p, videos: [...p.videos.filter(vi => vi.id !== v.id), v] } : p); setTimeout(() => get().syncMasterBin(), 100); return { playlists: n }; }),
+      removeVideoFromPlaylist: (pId, vId) => set((s) => { const n = s.playlists.map(p => p.id === pId ? { ...p, videos: p.videos.filter(vi => vi.id !== vId) } : p); setTimeout(() => get().syncMasterBin(), 100); return { playlists: n }; }),
+      toggleLooping: () => set((s) => ({ isLooping: !s.isLooping })),
+
       addCustomFont: (name, url) => set((s) => { const n = [...s.customFonts.filter(f => f.name !== name), { name, url }]; updateBin(JSONBIN_FONTS_BIN_ID, { fonts: n }); return { customFonts: n }; }),
       removeCustomFont: (name, url) => set((s) => { const n = s.customFonts.filter(f => f.name !== name); updateBin(JSONBIN_FONTS_BIN_ID, { fonts: n }); return { customFonts: n }; }),
       addCustomWallBackground: (url) => set((s) => { const n = [...s.customWallBackgrounds.filter(u => u !== url), url]; updateBin(JSONBIN_BACKGROUNDS_BIN_ID, { backgrounds: n }); return { customWallBackgrounds: n }; }),
@@ -243,7 +260,7 @@ export const useMediaStore = create<MediaState>()(
       setActiveIptv: (ch, ctx) => set({ iptvPlaylist: ctx || (ch ? [ch] : []), iptvPlaylistIndex: ctx ? ctx.findIndex(c => c.stream_id === ch?.stream_id) : 0, activeIptv: ch, activeVideo: null, isPlaying: !!ch, isMinimized: false, isFullScreen: !!ch }),
       setActiveQuranUrl: (v) => set({ activeQuranUrl: v }),
       setPlaylist: (videos) => set({ playlist: videos }),
-      nextTrack: () => { const s = get(); if (!s.playlist.length) return; const nIdx = (s.playlistIndex + 1) % s.playlist.length; set({ playlistIndex: nIdx, activeVideo: s.playlist[nIdx] }); },
+      nextTrack: () => { const s = get(); if (!s.playlist.length) return; let nIdx = (s.playlistIndex + 1); if (nIdx >= s.playlist.length) nIdx = s.isLooping ? 0 : s.playlist.length - 1; set({ playlistIndex: nIdx, activeVideo: s.playlist[nIdx] }); },
       prevTrack: () => { const s = get(); if (!s.playlist.length) return; const pIdx = (s.playlistIndex - 1 + s.playlist.length) % s.playlist.length; set({ playlistIndex: pIdx, activeVideo: s.playlist[pIdx] }); },
       nextIptvChannel: () => { const s = get(); if (!s.iptvPlaylist.length) return; const nIdx = (s.iptvPlaylistIndex + 1) % s.iptvPlaylist.length, ch = s.iptvPlaylist[nIdx]; set({ iptvPlaylistIndex: nIdx, activeIptv: ch }); },
       updateVideoProgress: (id, progress) => set((s) => ({ videoProgress: { ...s.videoProgress, [id]: progress } })),
@@ -257,10 +274,11 @@ export const useMediaStore = create<MediaState>()(
       updateManuscript: (id, u) => set((s) => { const n = s.customManuscripts.map(m => m.id === id ? { ...m, ...u } : m); setTimeout(() => get().saveManuscriptsReorder(), 100); return { customManuscripts: n }; }),
       removeManuscript: (id) => set((s) => { const n = s.customManuscripts.filter(m => m.id !== id); setTimeout(() => get().saveManuscriptsReorder(), 100); return { customManuscripts: n }; }),
       updateManuscriptScale: (id, scale) => set((s) => { const n = { ...s.manuscriptScales, [id]: (s.manuscriptScales[id] || 1.0) + scale }; setTimeout(() => get().syncMasterBin(), 100); return { manuscriptScales: n }; }),
+      updatePrayerSetting: (id, updates) => set((s) => { const n = s.prayerSettings.map(p => p.id === id ? { ...p, ...updates } : p); setTimeout(() => get().syncMasterBin(), 100); return { prayerSettings: n }; }),
     }),
     {
       name: "drivecast-sovereign-cache-v115", 
-      partialize: (s) => ({ dockSide: s.dockSide, displayScale: s.displayScale, dockScale: s.dockScale }),
+      partialize: (s) => ({ dockSide: s.dockSide, displayScale: s.displayScale, dockScale: s.dockScale, isLooping: s.isLooping, playlists: s.playlists }),
     }
   )
 );

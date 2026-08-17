@@ -1,17 +1,18 @@
 
 "use client";
 
-import { useMediaStore, AppAction } from "@/lib/store";
-import { X, Monitor, ChevronRight, ChevronLeft, Maximize2, Minimize2, BookmarkCheck, RefreshCw, Send, Globe, Volume2 } from "lucide-react";
+import { useMediaStore } from "@/lib/store";
+import { X, Monitor, ChevronRight, ChevronLeft, Maximize2, BookmarkCheck, Volume2, ListPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useEffect, useMemo } from "react";
 import { SovereignIframe } from "@/components/ui/sovereign-iframe";
 import { Input } from "@/components/ui/input";
 import { ShortcutBadge } from "@/components/layout/car-dock";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useToast } from "@/hooks/use-toast";
 
 /**
- * GlobalVideoPlayer v300.0 - Sovereign Precision & Focus Persistence
- * Features: 10s Focus Watchdog with specific rescue to Close Button inside Toolbar.
+ * GlobalVideoPlayer v250.0 - Auto-Next Engine & Sovereign Watchdog
  */
 export function GlobalVideoPlayer() {
   const { 
@@ -19,9 +20,10 @@ export function GlobalVideoPlayer() {
     setActiveVideo, setActiveIptv, setIsMinimized, setIsFullScreen, 
     toggleSaveVideo, savedVideos, setGridMode,
     isPlayerControlsExpanded, setIsPlayerControlsExpanded, cyclePlayerMode,
-    videoProgress, dockSide
+    videoProgress, dockSide, playlists, addVideoToPlaylist, isLooping
   } = useMediaStore();
   
+  const { toast } = useToast();
   const [mounted, setMounted] = useState(false);
   const [iframeKey, setIframeKey] = useState(0);
   const [urlInput, setUrlInput] = useState("https://idebsports.ly/matches");
@@ -33,33 +35,54 @@ export function GlobalVideoPlayer() {
         const targetId = isMinimized ? "player-close-btn-min" : "player-close-btn";
         const closeBtn = document.querySelector(`[data-nav-id="${targetId}"]`) as HTMLElement;
         closeBtn?.focus();
+        closeBtn?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }, 800);
       return () => clearTimeout(timer);
     }
   }, [activeVideo?.id, activeIptv?.stream_id, isMinimized]);
 
-  // SOVEREIGN FOCUS WATCHDOG: 10s Check & Rescue
-  // Targeted specifically for when the user is focused inside the iframe
+  // SOVEREIGN AUTO-NEXT: Listen for YouTube End event
+  useEffect(() => {
+    if (!activeVideo) return;
+
+    const handleMessage = (event: MessageEvent) => {
+      // Expecting data from YouTube Player API (enablejsapi=1)
+      try {
+        const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+        // event === 'onStateChange', info === 0 means "ended"
+        if (data.event === 'onStateChange' && data.info === 0) {
+          if (isLooping) {
+            nextTrack();
+          }
+        }
+      } catch (e) {}
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [activeVideo, isLooping, nextTrack]);
+
+  // Focus Watchdog: Rescue focus every 10s if lost to Iframe
   useEffect(() => {
     if (!activeVideo && !activeIptv) return;
 
     const rescueFocus = () => {
       const active = document.activeElement;
+      const targetId = isMinimized ? "player-close-btn-min" : "player-close-btn";
+      
+      // If close button is already focused, do nothing
+      if (active?.getAttribute('data-nav-id') === targetId) return;
+
       const playerContainer = document.querySelector('.fixed.z-\\[99999\\]');
       const controlsContainer = document.querySelector('.fixed.z-\\[100000\\]');
       
       const isFocusInPlayer = playerContainer?.contains(active) || controlsContainer?.contains(active);
       const isFocusInIframe = active?.tagName === 'IFRAME';
       
-      // If focus is lost to body/iframe/unknown, pull it back to the close button
       if (!isFocusInPlayer || isFocusInIframe) {
-         const targetId = isMinimized ? "player-close-btn-min" : "player-close-btn";
          const rescueBtn = document.querySelector(`[data-nav-id="${targetId}"]`) as HTMLElement;
-         
-         if (rescueBtn) {
-            console.log("Sovereign Focus Watchdog: Rescuing focus to Close button.");
-            rescueBtn.focus();
-         }
+         rescueBtn?.focus();
+         rescueBtn?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     };
 
@@ -137,11 +160,53 @@ export function GlobalVideoPlayer() {
             {isPlayerControlsExpanded && (
               <div className="flex items-center gap-3 animate-in slide-in-from-left-4 duration-300">
                 {isWebType && (
-                  <div className="flex items-center gap-2 bg-white/5 rounded-full px-3 h-10 border border-white/10 group focus-within:border-emerald-500/40 transition-all"><Globe className="w-4 h-4 text-white/20" /><Input value={urlInput} onChange={(e) => setUrlInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handlePutToIframe()} placeholder="URL..." className="bg-transparent border-none text-[10px] font-bold text-white p-0 h-full w-40 focus-visible:ring-0" /><button onClick={handlePutToIframe} className="w-7 h-7 rounded-full bg-emerald-600/20 text-emerald-400 flex items-center justify-center"><Send className="w-3.5 h-3.5" /></button></div>
+                  <div className="flex items-center gap-2 bg-white/5 rounded-full px-3 h-10 border border-white/10 group focus-within:border-emerald-500/40 transition-all"><Input value={urlInput} onChange={(e) => setUrlInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handlePutToIframe()} placeholder="URL..." className="bg-transparent border-none text-[10px] font-bold text-white p-0 h-full w-40 focus-visible:ring-0" /><button onClick={handlePutToIframe} className="w-7 h-7 rounded-full bg-emerald-600/20 text-emerald-400 flex items-center justify-center"><ChevronRight className="w-3.5 h-3.5" /></button></div>
                 )}
                 {isWebType && <button onClick={() => setIframeKey(k => k + 1)} className="w-10 h-10 rounded-full bg-white/10 text-emerald-400 flex items-center justify-center focusable"><Volume2 className="w-5 h-5" /></button>}
                 {!isWebType && (<><div className="relative group"><button onClick={prevTrack} className="w-9 h-9 rounded-full bg-white/5 text-white/40 flex items-center justify-center focusable"><ChevronRight className="w-5 h-5" /></button><ShortcutBadge action="player_prev" className="-bottom-4 left-1/2 -translate-x-1/2 scale-50" /></div><div className="relative group"><button onClick={nextTrack} className="w-9 h-9 rounded-full bg-white/5 text-white/40 flex items-center justify-center focusable"><ChevronLeft className="w-5 h-5" /></button><ShortcutBadge action="player_next" className="-bottom-4 left-1/2 -translate-x-1/2 scale-50" /></div></>)}
-                <div className="w-px h-6 bg-white/20 mx-0.5" /><div className="relative group"><button onClick={() => activeVideo && toggleSaveVideo(activeVideo)} className={cn("w-9 h-9 rounded-full flex items-center justify-center focusable", isSaved ? "bg-accent/40 text-accent shadow-glow" : "bg-white/5 text-white/40")}><BookmarkCheck className="w-5 h-5" /></button><ShortcutBadge action="player_save" className="-bottom-4 left-1/2 -translate-x-1/2 scale-50" /></div>
+                <div className="w-px h-6 bg-white/20 mx-0.5" />
+                
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <div className="relative group">
+                      <button className={cn("w-9 h-9 rounded-full flex items-center justify-center focusable transition-all active:scale-95", isSaved ? "bg-accent/40 text-accent shadow-glow" : "bg-white/5 text-white/40")}>
+                        <BookmarkCheck className="w-5 h-5" />
+                        <ShortcutBadge action="player_save" className="-bottom-4 left-1/2 -translate-x-1/2 scale-50" />
+                      </button>
+                    </div>
+                  </PopoverTrigger>
+                  <PopoverContent side="top" align="center" className="bg-zinc-950/95 backdrop-blur-3xl border-white/10 w-64 p-2 rounded-[2rem] shadow-2xl mb-4 z-[100001]">
+                     <div className="space-y-1">
+                        <h4 className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em] px-4 py-2 border-b border-white/5">حفظ في قائمة التشغيل</h4>
+                        <button onClick={() => activeVideo && toggleSaveVideo(activeVideo)} className="w-full text-right p-3 rounded-xl hover:bg-white/5 flex items-center justify-between text-white text-xs font-black transition-all">
+                           <span>المفضلات العامة ⭐</span>
+                           {isSaved && <BookmarkCheck className="w-4 h-4 text-accent" />}
+                        </button>
+                        <div className="h-px bg-white/5 my-1" />
+                        {playlists.length === 0 && (
+                          <p className="text-[10px] text-white/20 text-center py-4 italic">لا توجد قوائم تشغيل منشئة</p>
+                        )}
+                        {playlists.map(p => (
+                          <button 
+                            key={p.id} 
+                            onClick={() => { 
+                              if(activeVideo) { 
+                                addVideoToPlaylist(p.id, activeVideo); 
+                                toast({ title: "تم الحفظ", description: `تمت الإضافة إلى قائمة ${p.name}` }); 
+                              } 
+                            }} 
+                            className="w-full text-right p-3 rounded-xl hover:bg-indigo-600 flex items-center gap-3 text-white text-xs font-black transition-all group/item"
+                          >
+                             <div className="w-6 h-6 rounded-lg bg-white/5 flex items-center justify-center group-hover/item:bg-white/20">
+                               <ListPlus className="w-3.5 h-3.5" />
+                             </div>
+                             <span className="truncate">{p.name}</span>
+                          </button>
+                        ))}
+                     </div>
+                  </PopoverContent>
+                </Popover>
+
                 <div className="relative group"><button onClick={cyclePlayerMode} className="w-9 h-9 rounded-full bg-white/5 text-white/40 flex items-center justify-center focusable"><Maximize2 className="w-5 h-5" /></button><ShortcutBadge action="player_mode" className="-bottom-4 left-1/2 -translate-x-1/2 scale-50" /></div>
                 <div className="relative group"><button onClick={() => setIsFullScreen(!isFullScreen)} className={cn("w-9 h-9 rounded-full flex items-center justify-center focusable", isFullScreen ? "bg-primary text-white shadow-glow" : "bg-white/5 text-white/40")}><Monitor className="w-5 h-5" /></button><ShortcutBadge action="player_fullscreen" className="-bottom-4 left-1/2 -translate-x-1/2 scale-50" /></div>
               </div>
