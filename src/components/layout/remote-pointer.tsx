@@ -9,8 +9,8 @@ import { init } from "@noriginmedia/norigin-spatial-navigation";
 import { useToast } from "@/hooks/use-toast";
 
 /**
- * RemotePointer v360.0 - Unified Centering Engine
- * Features: Absolute center scroll (block & inline) for both vertical/horizontal lists.
+ * RemotePointer v390.0 - Absolute Centering Engine
+ * Features: Forced centering with 'block: center' and 'inline: center' for perfect remote visibility.
  */
 export function RemotePointer() {
   const pathname = usePathname();
@@ -47,7 +47,6 @@ export function RemotePointer() {
   const handleScroll = (dir: 'up' | 'down') => {
     const zone = document.querySelector('[data-nav-zone="content"]') as HTMLElement;
     if (!zone) return;
-
     const scrollTarget = zone.scrollHeight > zone.clientHeight ? zone : (zone.closest('.overflow-auto, .overflow-y-auto') as HTMLElement || window);
     scrollTarget.scrollBy({ top: dir === 'up' ? -400 : 400, behavior: 'smooth' });
   };
@@ -108,7 +107,6 @@ export function RemotePointer() {
           target.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
           setIsSidebarShrinked(true); return;
         }
-        if (targetZone === 'dock') setIsSidebarShrinked(true);
         bestZoneTarget.focus();
         bestZoneTarget.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
       }
@@ -146,26 +144,20 @@ export function RemotePointer() {
   const executeAction = useCallback((finalKey: string, e: KeyboardEvent | null) => {
     const activeEl = document.activeElement as HTMLElement;
     const isInputFocused = activeEl?.tagName === 'INPUT' || activeEl?.tagName === 'TEXTAREA' || activeEl?.getAttribute('contenteditable') === 'true';
-    const isInputLocked = activeEl?.getAttribute('readonly') === 'true' || activeEl?.hasAttribute('readOnly');
 
     if (isRecordingKey && recordingAction) {
       const FORBIDDEN_KEYS = ['Backspace', 'Escape', 'Back', 'Delete'];
       if (FORBIDDEN_KEYS.includes(finalKey)) {
         toast({ variant: 'destructive', title: "مفتاح محظور", description: "هذا المفتاح مخصص لوظائف النظام الأساسية" });
-        setIsRecordingKey(false);
-        setRecordingAction(null);
-        return;
+        setIsRecordingKey(false); setRecordingAction(null); return;
       }
       setKeyMapping(recordingAction.ctx, recordingAction.act, finalKey);
-      setIsRecordingKey(false);
-      setRecordingAction(null);
+      setIsRecordingKey(false); setRecordingAction(null);
       toast({ title: "تم البرمجة", description: `تم ربط المفتاح ${finalKey} بنجاح` });
       return;
     } 
 
-    if (isInputFocused && !isInputLocked && !['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter'].includes(finalKey)) {
-      return;
-    }
+    if (isInputFocused && !['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter'].includes(finalKey)) return;
 
     const isPlayerActive = (activeVideo || activeIptv) && isFullScreen && !isMinimized;
     if (isPlayerActive) {
@@ -176,21 +168,15 @@ export function RemotePointer() {
 
     if (isAction(finalKey, 'nav_scroll_up')) { e?.preventDefault(); handleScroll('up'); return; }
     if (isAction(finalKey, 'nav_scroll_down')) { e?.preventDefault(); handleScroll('down'); return; }
-
     if (isAction(finalKey, 'nav_up')) { e?.preventDefault(); navigate("ArrowUp"); return; }
-    if (isAction(finalKey, 'nav_down')) { 
-      e?.preventDefault(); 
-      const isInPlayerBar = activeEl?.closest('.fixed.z-\\[100000\\]') || activeEl?.closest('.z-\\[99999\\]');
-      if (isInPlayerBar && isPlayerActive) { setGridMode('full'); return; }
-      navigate("ArrowDown"); return; 
-    }
+    if (isAction(finalKey, 'nav_down')) { e?.preventDefault(); navigate("ArrowDown"); return; }
     if (isAction(finalKey, 'nav_left')) { e?.preventDefault(); navigate("ArrowLeft"); return; }
     if (isAction(finalKey, 'nav_right')) { e?.preventDefault(); navigate("ArrowRight"); return; }
     if (isAction(finalKey, 'nav_ok') || (e && (e.keyCode === 13 || e.key === 'Enter'))) { 
       if (activeEl?.classList.contains("focusable")) { e?.preventDefault(); activeEl.click(); }
     }
     
-    if (!isInputFocused || isInputLocked) {
+    if (!isInputFocused) {
       if (isAction(finalKey, 'goto_home')) { e?.preventDefault(); router.push('/dashboard'); return; }
       if (isAction(finalKey, 'goto_media')) { e?.preventDefault(); router.push('/media'); return; }
       if (isAction(finalKey, 'goto_quran')) { e?.preventDefault(); router.push('/quran'); return; }
