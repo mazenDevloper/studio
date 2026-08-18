@@ -74,8 +74,6 @@ async function fetchWithRotation(endpoint: string, params: Record<string, string
   
   const totalKeys = YT_KEYS_POOL.length;
   const blacklist = getBlacklist();
-  const store = useMediaStore.getState();
-  const setApiError = store.setApiError;
 
   for (let attempts = 0; attempts < totalKeys * 1.5; attempts++) {
     const activeIndex = attempts % totalKeys;
@@ -98,26 +96,17 @@ async function fetchWithRotation(endpoint: string, params: Record<string, string
       
       if (response.ok) {
         youtubeCache[cacheKey] = { data, timestamp: Date.now() };
-        if (setApiError) setApiError(null); 
         return data;
       }
       
       if (response.status === 403 || response.status === 429) {
-        console.warn(`YouTube Key ${activeIndex} exhausted (Status ${response.status}). Trying next...`);
+        console.warn(`YouTube Key ${activeIndex} exhausted. Trying next...`);
         addToBlacklist(activeIndex);
         continue; 
       }
     } catch (e) {
       continue;
     }
-  }
-  
-  const blacklistedCount = Object.keys(blacklist).length;
-  if (setApiError) {
-    setApiError({ 
-      count: totalKeys, 
-      message: `تم فحص عدد ${totalKeys} من المفاتيح، وُجد ${blacklistedCount} منها منتهية الصلاحية حالياً.` 
-    });
   }
   return null;
 }
@@ -225,6 +214,45 @@ export async function fetchChannelVideos(channelId: string, limit = 30): Promise
     duration: statsMap[vidId]?.duration || "",
     channelAvatar
   })).sort((a, b) => (a.isLive === b.isLive) ? 0 : a.isLive ? -1 : 1);
+}
+
+export async function fetchYouTubePlaylistVideos(playlistId: string, limit = 50): Promise<{ title: string, videos: YouTubeVideo[] }> {
+  const meta = await fetchWithRotation('playlists', { part: 'snippet', id: playlistId });
+  const title = meta?.items?.[0]?.snippet?.title || "مجلد مستورد";
+
+  const data = await fetchWithRotation('playlistItems', {
+    part: 'snippet',
+    playlistId: playlistId,
+    maxResults: limit.toString()
+  });
+
+  if (!data?.items) return { title, videos: [] };
+
+  const videoIds = data.items.map((i: any) => i.snippet.resourceId.videoId).filter(Boolean).join(',');
+  const detailsData = await fetchWithRotation('videos', { part: 'snippet,contentDetails', id: videoIds });
+  const detailsMap: Record<string, any> = {};
+
+  if (detailsData?.items) {
+    detailsData.items.forEach((v: any) => {
+      detailsMap[v.id] = {
+        duration: parseISO8601Duration(v.contentDetails.duration),
+        isLive: v.snippet.liveBroadcastContent === 'live'
+      };
+    });
+  }
+
+  const videos = data.items.map((item: any) => ({
+    id: item.snippet.resourceId.videoId,
+    title: item.snippet.title,
+    description: item.snippet.description,
+    thumbnail: item.snippet.thumbnails.high?.url || item.snippet.thumbnails.default?.url,
+    publishedAt: item.snippet.publishedAt,
+    channelTitle: item.snippet.videoOwnerChannelTitle || item.snippet.channelTitle,
+    duration: detailsMap[item.snippet.resourceId.videoId]?.duration || "",
+    isLive: detailsMap[item.snippet.resourceId.videoId]?.isLive || false
+  })).filter((v: any) => v.id);
+
+  return { title, videos };
 }
 
 export async function searchYouTubeChannels(query: string): Promise<YouTubeChannel[]> {

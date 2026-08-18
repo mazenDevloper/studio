@@ -6,10 +6,10 @@ import { useSearchParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { 
-  Plus, Loader2, X, List, Youtube, Star, Mic, Layers, Sparkles, Clock, Bookmark, Trash2, RefreshCw, CloudDownload, Trophy, Baby, Library, FolderHeart, CalendarDays
+  Plus, Loader2, X, List, Youtube, Star, Mic, Layers, Sparkles, Clock, Bookmark, Trash2, RefreshCw, CloudDownload, Trophy, Baby, Library, FolderHeart, CalendarDays, Send
 } from "lucide-react";
 import { useMediaStore, YouTubeChannel, YouTubeVideo } from "@/lib/store";
-import { fetchChannelVideos, searchYouTubeVideos } from "@/lib/youtube";
+import { fetchChannelVideos, searchYouTubeVideos, fetchYouTubePlaylistVideos } from "@/lib/youtube";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -45,17 +45,16 @@ const JUZ_SURAH_MAP: Record<number, number[]> = {
 };
 
 /**
- * MediaView v860.0 - Sovereign Playlist & Selection Flow
- * Features: Auto-Focus Juz after Reciter + Auto-Focus Surah after Juz + Build Fix.
+ * MediaView v895.0 - Unified Cloud Sync & Rapid Import
+ * Features: "Go" button for playlist import + Fixed Cloud Persistence.
  */
 export function MediaView() {
-  const searchParams = useSearchParams();
   const { toast } = useToast();
   const { 
     favoriteChannels, setActiveVideo, dockSide, isSidebarShrinked, setIsSidebarShrinked,
     selectedChannel, setSelectedChannel, channelVideos, setChannelVideos,
     favoriteReciters, incrementReciterClick, playlists, addPlaylist, removePlaylist,
-    isLooping, toggleLooping, mapSettings, setActiveIptv, fetchSpecificBin
+    setActiveIptv, fetchSpecificBin, addVideoToPlaylist
   } = useMediaStore();
 
   const [search, setSearch] = useState("");
@@ -82,55 +81,18 @@ export function MediaView() {
 
   const occasionSuggestions = useMemo(() => {
     const list: { label: string, query: string, isDate?: boolean, isOman?: boolean, isSpecial?: boolean, isUpcoming?: boolean, isSport?: boolean }[] = [];
-    
-    // 1. Sovereign Priority: Oman Live Direct Player URL
-    list.push({ 
-      label: "عُمان مباشر 📺", 
-      query: "https://player.mangomolo.com/v1/live?id=MTY4&channelid=MTYx&countries=Q0M%3D&filter=DENY&signature=3fd1e8dd84138a41bf33d93afd4a7f09&language=en&app_id=&fullscreen=yes&player_profile=&base_url=aHR0cHM6Ly9heW4ub20vbGl2ZS8xNjEvJUQ5JTgyJUQ5JTg2JUQ4JUE3JUQ4JUE5LSVEOCVCOSVEOSU4NSVEOCVBNyVEOSU4Ni0lRDklODUlRDglQTglRDglQTclRDgl application/json&autoplay=false&vast=true", 
-      isOman: true 
-    });
-
-    // 2. Sovereign Reference: Hijri Date
-    list.push({ 
-      label: `${hijriInfo.dayName} ${hijriInfo.day} ${hijriInfo.monthName} ${hijriInfo.year}`, 
-      query: `${hijriInfo.monthName} ${hijriInfo.year}`,
-      isDate: true 
-    });
-
-    // 3. Sovereign Sports: Goal Summaries
-    list.push({ 
-      label: "ملخص أهداف اليوم ⚽", 
-      query: "ملخص اهداف مباريات اليوم كاملة HD",
-      isSport: true
-    });
-
-    // 4. Holy Logic: Yasser Al-Dosari Daily Surah
-    list.push({ 
-      label: "ياسر الدوسري - سورة اليوم 📖", 
-      query: "ياسر الدوسري سورة اليوم تلاوة خاشعة",
-      isSpecial: true
-    });
-
-    // 5. Holy Logic: Rare Recitations
-    list.push({ 
-      label: "تلاوات نادرة - ياسر الدوسري ✨", 
-      query: "ياسر الدوسري تلاوات نادرة قديمة",
-    });
-
-    // 6. Holy Logic: Full Quran
-    list.push({ 
-      label: "ياسر الدوسري - المصحف الكامل 🕋", 
-      query: "ياسر الدوسري المصحف المرتل كامل",
-    });
-
+    list.push({ label: "عُمان مباشر 📺", query: "https://player.mangomolo.com/v1/live?id=MTY8&channelid=MTYx&countries=Q0M%3D&filter=DENY&signature=3fd1e8dd84138a41bf33d93afd4a7f09&language=en&app_id=&fullscreen=yes&player_profile=&base_url=aHR0cHM6Ly9heW4ub20vbGl2ZS8xNjEvJUQ5JTgyJUQ5JTg2JUQ4JUE3JUQ4JUE5LSVEOCVCOSVEOSU4NSVEOCVBNyVEOSU4Ni0lRDklODUlRDglQTglRDglQTclRDglQjQlRDglQjE%3D&autoplay=false&vast=true", isOman: true });
+    list.push({ label: `${hijriInfo.dayName} ${hijriInfo.day} ${hijriInfo.monthName} ${hijriInfo.year}`, query: `${hijriInfo.monthName} ${hijriInfo.year}`, isDate: true });
+    list.push({ label: "ملخص أهداف اليوم ⚽", query: "ملخص اهداف مباريات اليوم كاملة HD", isSport: true });
+    list.push({ label: "ياسر الدوسري - سورة اليوم 📖", query: "ياسر الدوسري سورة اليوم تلاوة خاشعة", isSpecial: true });
+    list.push({ label: "تلاوات نادرة - ياسر الدوسري ✨", query: "ياسر الدوسري تلاوات نادرة قديمة" });
+    list.push({ label: "ياسر الدوسري - المصحف الكامل 🕋", query: "ياسر الدوسري المصحف المرتل كامل" });
     const contextOccasions = getIslamicOccasions(hijriInfo);
     contextOccasions.forEach(occ => list.push({ ...occ }));
-
-    if (list.length < 13) list.push({ label: "دروس إيمانية 📚", query: "أجمل الدروس الدينية القصيرة" });
-    if (list.length < 13) list.push({ label: "تلاوات هادئة 🌿", query: "أجمل التلاوات الخاشعة للنوم والراحة" });
-    if (list.length < 13) list.push({ label: "تعليم النطق للأطفال 👶", query: "Kids bel Arabi - تعليم النطق للأطفال" });
-    if (list.length < 13) list.push({ label: "بث مباشر مكة المكرمة 🕌", query: "بث مباشر مكة المكرمة الان" });
-
+    list.push({ label: "دروس إيمانية 📚", query: "أجمل الدروس الدينية القصيرة" });
+    list.push({ label: "تلاوات هادئة 🌿", query: "تلاوات قرآنية هادئة للنوم" });
+    list.push({ label: " تعليم النطق للأطفال 👶", query: "تعليم الحروف العربية للأطفال" });
+    list.push({ label: "بث مباشر مكة المكرمة 🕌", query: "بث مباشر مكة المكرمة الآن" });
     return list.slice(0, 13);
   }, [hijriInfo]);
 
@@ -147,19 +109,28 @@ export function MediaView() {
     fetchHomeContent();
   }, [favoriteChannels]);
 
+  useEffect(() => {
+    if (selectedChannel) {
+      setLoading(true);
+      fetchChannelVideos(selectedChannel.channelid, 40).then(vids => {
+        setChannelVideos(vids);
+        setTimeout(() => {
+          const firstVid = document.querySelector('[data-nav-id="channel-results-item-0"]') as HTMLElement;
+          firstVid?.focus();
+        }, 500);
+      }).finally(() => setLoading(false));
+    }
+  }, [selectedChannel, setChannelVideos]);
+
   const performSearch = async (query?: string) => {
     const q = query || search; if (!q.trim()) return;
     setLoading(true); setSelectedChannel(null); setSelectedPlaylist(null);
     try { 
       const res = await searchYouTubeVideos(q, 40); 
       setSearchResults(res || []); 
-      // AUTO-FOCUS FIRST RESULT
       setTimeout(() => {
         const firstResult = document.querySelector('[data-nav-id="search-results-item-0"]') as HTMLElement;
-        if (firstResult) {
-          firstResult.focus();
-          firstResult.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
+        firstResult?.focus();
       }, 500);
     } finally { setLoading(false); }
   };
@@ -184,34 +155,46 @@ export function MediaView() {
     if (e.key === 'Enter') { performSearch(); setIsSearchLocked(true); }
   };
 
-  const handlePlaylistInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const createPlaylistFromInput = async () => {
+    const input = newPlaylistName.trim();
+    if (!input) return;
+    
+    if (input.includes('list=')) {
+      const url = new URL(input);
+      const listId = url.searchParams.get('list');
+      if (listId) {
+        toast({ title: "جاري الاستيراد", description: "جاري سحب المجلد من سحابة يوتيوب..." });
+        const data = await fetchYouTubePlaylistVideos(listId);
+        if (data.videos.length > 0) {
+          addPlaylist(data.title, data.videos);
+          toast({ title: "تم الاستيراد", description: `تم حفظ مجلد ${data.title} بنجاح.` });
+        }
+      }
+    } else {
+      addPlaylist(input);
+      toast({ title: "تم الإنشاء", description: `تم إنشاء المجلد ${input}` });
+    }
+    setNewPlaylistName("");
+    setIsPlaylistInputLocked(true);
+  };
+
+  const handlePlaylistInputKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (isPlaylistInputLocked) {
       if (e.key === 'Enter' || e.key === '5') {
-        process.nextTick(() => {
-          setIsPlaylistInputLocked(false);
-          setTimeout(() => playlistInputRef.current?.focus(), 50);
-        });
+        process.nextTick(() => { setIsPlaylistInputLocked(false); setTimeout(() => playlistInputRef.current?.focus(), 50); });
       }
       return;
     }
     if (e.key === 'Enter') {
-      if (newPlaylistName.trim()) {
-        addPlaylist(newPlaylistName);
-        setNewPlaylistName("");
-      }
-      setIsPlaylistInputLocked(true);
+      await createPlaylistFromInput();
     }
   };
 
   const handleReciterClick = (r: YouTubeChannel) => {
     setSelectedReciter(r.name); setSearch(r.name); incrementReciterClick(r.channelid);
-    // AUTO-FLOW TO JUZ
     setTimeout(() => {
       const firstJuz = document.querySelector('[data-nav-id="juz-item-0"]') as HTMLElement;
-      if (firstJuz) {
-        firstJuz.focus();
-        firstJuz.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
+      firstJuz?.focus();
     }, 200);
   };
 
@@ -221,13 +204,9 @@ export function MediaView() {
     const filtered = allSurahs.filter(s => surahIds.includes(s.id));
     setSurahs(filtered);
     setSearch(selectedReciter ? `${selectedReciter} الجزء ${juzNum}` : `الجزء ${juzNum}`);
-    // AUTO-FLOW TO SURAH
     setTimeout(() => {
       const firstSurah = document.querySelector('[data-nav-id="surah-0"]') as HTMLElement;
-      if (firstSurah) {
-        firstSurah.focus();
-        firstSurah.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
+      firstSurah?.focus();
     }, 200);
   };
 
@@ -239,16 +218,20 @@ export function MediaView() {
 
   const handleDirectPlaylistFetch = async () => {
     setIsFetchingPlaylists(true);
-    toast({ title: "جلب سحابي", description: "جاري مزامنة المجلدات والاشتراكات من السحابة السيادية..." });
-    try {
-      await fetchSpecificBin(JSONBIN_MASTER_BIN_ID);
-      toast({ title: "اكتملت المزامنة", description: "تم تحديث كافة المجلدات بنجاح." });
-    } finally {
-      setIsFetchingPlaylists(false);
-    }
+    try { await fetchSpecificBin(JSONBIN_MASTER_BIN_ID); } finally { setIsFetchingPlaylists(false); }
   };
 
   const currentPlaylist = useMemo(() => playlists.find(p => p.id === selectedPlaylist), [playlists, selectedPlaylist]);
+
+  useEffect(() => {
+    if (selectedPlaylist && currentPlaylist) {
+      setTimeout(() => {
+        const firstVid = document.querySelector('[data-nav-id="playlist-results-item-0"]') as HTMLElement;
+        firstVid?.focus();
+      }, 500);
+    }
+  }, [selectedPlaylist, currentPlaylist]);
+
   const horizontalListClass = "w-full flex gap-4 px-8 py-0 overflow-x-auto no-scrollbar scroll-smooth justify-start items-center";
 
   const renderVideoGrid = (vids: YouTubeVideo[], rowId: string) => (
@@ -293,17 +276,23 @@ export function MediaView() {
           </div>
           
           {!isSidebarShrinked && (
-            <div className="px-4 py-6 space-y-4" data-row-id="sidebar-playlists">
+            <div className="px-4 py-4 space-y-3" data-row-id="sidebar-playlists">
                 <h4 className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] px-2">مجلداتك السيادية</h4>
                 {playlists.map((p, idx) => (
-                  <div key={p.id} onClick={() => { setSelectedPlaylist(p.id); setSelectedChannel(null); setSearchResults([]); setIsSidebarShrinked(true); }} className={cn("flex items-center justify-between p-5 rounded-[2rem] cursor-pointer transition-all focusable group border-2", selectedPlaylist === p.id ? "bg-indigo-600 border-indigo-400 text-white shadow-glow" : "bg-indigo-900/20 border-white/5 text-white/80")} tabIndex={0} data-nav-id={`sidebar-playlist-${idx}`}>
-                     <div className="flex items-center gap-4">
-                        <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg", selectedPlaylist === p.id ? "bg-white/20" : "bg-indigo-600")}><Library className="w-7 h-7 text-white" /></div>
-                        <div className="flex flex-col"><span className="text-base font-black truncate max-w-[140px] tracking-tighter">{p.name}</span><span className="text-[9px] font-black opacity-60 uppercase">{p.videos.length} تلاوة</span></div>
+                  <div key={p.id} onClick={() => { setSelectedPlaylist(p.id); setSelectedChannel(null); setSearchResults([]); setIsSidebarShrinked(true); }} className={cn("flex items-center justify-between p-1.5 px-3 rounded-xl cursor-pointer transition-all focusable group border", selectedPlaylist === p.id ? "bg-indigo-600 border-indigo-400 text-white shadow-glow" : "bg-indigo-900/10 border-white/5 text-white/80")} tabIndex={0} data-nav-id={`sidebar-playlist-${idx}`}>
+                     <div className="flex items-center gap-3">
+                        <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center shadow-lg", selectedPlaylist === p.id ? "bg-white/20" : "bg-indigo-600")}><Library className="w-3.5 h-3.5 text-white" /></div>
+                        <div className="flex flex-col min-w-0"><span className="text-[11px] font-black truncate max-w-[90px] tracking-tighter">{p.name}</span><span className="text-[7px] font-black opacity-60 uppercase">{p.videos.length} تلاوة</span></div>
                      </div>
+                     <button 
+                        onClick={(e) => { e.stopPropagation(); removePlaylist(p.id); }}
+                        className="w-7 h-7 rounded-full bg-red-600/20 text-red-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity focusable shrink-0 ml-2"
+                     >
+                        <Trash2 className="w-4 h-4" />
+                     </button>
                   </div>
                 ))}
-                <div className="flex gap-2 pt-2 px-2" data-row-id="sidebar-new-playlist">
+                <div className="flex gap-2 pt-1 px-2 items-center" data-row-id="sidebar-new-playlist">
                   <Input 
                     ref={playlistInputRef}
                     value={newPlaylistName} 
@@ -311,11 +300,15 @@ export function MediaView() {
                     onKeyDown={handlePlaylistInputKeyDown}
                     onDoubleClick={() => setIsPlaylistInputLocked(false)}
                     readOnly={isPlaylistInputLocked}
-                    placeholder={isPlaylistInputLocked ? "5 للكتابة..." : "قائمة جديدة..."} 
-                    className={cn("h-12 border-none text-xs rounded-xl focusable transition-all", isPlaylistInputLocked ? "bg-white/5 text-white/30" : "bg-white/10 text-white")} 
+                    placeholder={isPlaylistInputLocked ? "5 للكتابة..." : "رابط مجلد أو اسم..."} 
+                    className={cn("h-10 border-none text-xs rounded-xl focusable transition-all flex-1", isPlaylistInputLocked ? "bg-white/5 text-white/30" : "bg-white/10 text-white")} 
                     data-nav-id="sidebar-playlist-input-0"
                   />
-                  <Button size="icon" className="h-12 w-12 bg-indigo-600 rounded-xl focusable" onClick={() => { if(newPlaylistName) { addPlaylist(newPlaylistName); setNewPlaylistName(""); } }}><Plus className="w-5 h-5" /></Button>
+                  {!isPlaylistInputLocked && (
+                    <button onClick={createPlaylistFromInput} className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-glow animate-in zoom-in duration-300">
+                       <Send className="w-5 h-5" />
+                    </button>
+                  )}
                 </div>
             </div>
           )}
@@ -348,6 +341,9 @@ export function MediaView() {
               />
             </div>
             <button onClick={() => performSearch()} className="h-16 px-10 rounded-[2rem] bg-red-600 text-white font-black text-lg focusable flex items-center" data-nav-id="content-search-btn-0"><Youtube className="w-6 h-6 ml-3" /> استكشاف</button>
+            <Button onClick={handleDirectPlaylistFetch} variant="outline" size="icon" className="w-16 h-16 rounded-[2rem] bg-indigo-600/20 text-indigo-400 border-indigo-500/30 ml-4">
+               <CloudDownload className={cn("w-6 h-6", isFetchingPlaylists && "animate-spin")} />
+            </Button>
           </div>
         </section>
 
@@ -358,17 +354,8 @@ export function MediaView() {
                 key={i} 
                 onClick={() => {
                   if (occ.isOman) {
-                    setActiveIptv({
-                      stream_id: "oman-live-direct",
-                      name: "عُمان مباشر",
-                      stream_icon: "https://gallery-images.me/pics/arabicfta/oman.png",
-                      category_id: "direct",
-                      url: occ.query,
-                      type: 'web'
-                    });
-                  } else {
-                    performSearch(occ.query);
-                  }
+                    setActiveIptv({ stream_id: "oman-live-direct", name: "عُمان مباشر", stream_icon: "https://gallery-images.me/pics/arabicfta/oman.png", category_id: "direct", url: occ.query, type: 'web' });
+                  } else { performSearch(occ.query); }
                 }}
                 className={cn("px-6 py-4 rounded-full font-black text-sm focusable border-2 shrink-0 transition-all", occ.isDate ? "bg-white text-black border-white shadow-glow text-lg" : occ.isOman ? "bg-[#ed2b5c] text-white border-white/40 shadow-glow animate-pulse" : occ.isSport ? "bg-red-600/20 text-red-500 border-red-600/40" : occ.isUpcoming ? "bg-amber-600/20 text-amber-400 border-amber-500/30" : "bg-indigo-600 text-white border-indigo-400/50 shadow-glow")} 
                 data-nav-id={`occ-item-${i}`}
@@ -438,23 +425,24 @@ export function MediaView() {
                     {idx === 0 ? <Library className="w-6 h-6 text-white" /> : <Star className="w-6 h-6 text-black fill-current" />}
                   </div>
                   <h2 className="text-2xl font-black text-white uppercase tracking-widest">{idx === 0 ? "المجلدات والترددات المجرسة" : `ترددات ${data.name}`}</h2>
-                  {idx === 0 && (
-                    <Button 
-                      variant="outline" 
-                      size="icon" 
-                      onClick={handleDirectPlaylistFetch}
-                      disabled={isFetchingPlaylists}
-                      className="w-12 h-12 rounded-full bg-indigo-600/20 text-indigo-400 border-indigo-500/30 focusable ml-4"
-                      data-nav-id="content-sync-btn-0"
-                    >
-                      <CloudDownload className={cn("w-6 h-6", isFetchingPlaylists && "animate-spin")} />
-                    </Button>
-                  )}
                 </div>
                 <div className={horizontalListClass}>
                   {idx === 0 && playlists.map((p, pIdx) => (
-                    <div key={p.id} onClick={() => { setSelectedPlaylist(p.id); setIsSidebarShrinked(true); }} className="w-80 h-48 group relative overflow-hidden bg-indigo-900/40 border-2 border-indigo-500/30 rounded-[3rem] focusable cursor-pointer shrink-0 flex flex-col items-center justify-center p-8 shadow-2xl transition-all outline-none" tabIndex={0} data-nav-id={`all-playlist-${pIdx}`}>
-                      <div className="flex flex-col items-center gap-3 text-center relative z-10"><span className="text-3xl font-black text-white tracking-tighter drop-shadow-[0_0_20px_rgba(0,0,0,0.8)] shadow-indigo-500/50 group-hover:scale-110 transition-transform">{p.name}</span><div className="px-5 py-1.5 bg-indigo-600/20 rounded-full border border-indigo-500/40 shadow-glow"><span className="text-[11px] font-black text-indigo-100 uppercase">{p.videos.length} تلاوة</span></div></div>
+                    <div key={p.id} onClick={() => { setSelectedPlaylist(p.id); setIsSidebarShrinked(true); }} className="w-80 h-48 group relative overflow-hidden bg-zinc-900 border-2 border-white/10 rounded-[2.5rem] focusable cursor-pointer shrink-0 flex flex-col justify-end p-6 shadow-2xl transition-all outline-none" tabIndex={0} data-nav-id={`all-playlist-${pIdx}`}>
+                      {p.videos.length > 0 && (
+                        <div className="absolute inset-0 z-0">
+                          <img src={p.videos[0].thumbnail} className="w-full h-full object-cover opacity-60 group-hover:scale-110 transition-transform duration-700" alt="" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
+                        </div>
+                      )}
+                      <div className="relative z-10 text-right">
+                        <span className="text-2xl font-black text-white tracking-tighter drop-shadow-[0_4px_10px_rgba(0,0,0,0.8)] leading-tight">{p.name}</span>
+                        <div className="mt-2 flex items-center gap-2">
+                          <div className="px-3 py-1 bg-white/20 backdrop-blur-md rounded-full border border-white/20">
+                            <span className="text-[9px] font-black text-white uppercase tracking-widest">{p.videos.length} تلاوة</span>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   ))}
                   {data.vids.map((video, vIdx) => (

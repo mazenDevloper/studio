@@ -103,7 +103,7 @@ interface MediaState {
   removeReminder: (id: string) => void; toggleReminder: (id: string) => void; skipReminder: (id: string) => void;
   addAzkar: (azkar: Reminder) => void; updateAzkar: (id: string, azkar: Partial<Reminder>) => void;
   removeAzkar: (id: string) => void;
-  addPlaylist: (name: string) => void; removePlaylist: (id: string) => void; addVideoToPlaylist: (playlistId: string, video: YouTubeVideo) => void;
+  addPlaylist: (name: string, videos?: YouTubeVideo[]) => Playlist; removePlaylist: (id: string) => void; addVideoToPlaylist: (playlistId: string, video: YouTubeVideo) => void;
   removeVideoFromPlaylist: (playlistId: string, videoId: string) => void; toggleLooping: () => void;
   addCustomFont: (name: string, url: string) => void; removeCustomFont: (name: string, url: string) => void;
   addCustomWallBackground: (url: string) => void; removeCustomWallBackground: (url: string) => void;
@@ -140,32 +140,49 @@ const updateBin = async (binId: string, data: any) => {
   try {
     await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
       method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Master-Key': JSONBIN_MASTER_KEY,
-        'X-Bin-Versioning': 'false'
-      },
-      mode: 'cors',
-      referrerPolicy: "no-referrer",
-      cache: 'no-store',
-      body: JSON.stringify(data)
+      headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_MASTER_KEY, 'X-Bin-Versioning': 'false' },
+      mode: 'cors', body: JSON.stringify(data)
     });
-  } catch (e) {
-    console.error("Sovereign Cloud PUT Resilience Triggered:", e);
-  }
-};
-
-const DEFAULT_GLOBAL_MAPPINGS: Record<string, string[]> = {
-  nav_up: ['ArrowUp', '2'], nav_down: ['ArrowDown', '8'], nav_left: ['ArrowLeft', '4'], nav_right: ['ArrowRight', '6'], nav_ok: ['Enter', '5'],
-  nav_scroll_up: ['PageUp'], nav_scroll_down: ['PageDown'],
-  goto_home: ['H', '1'], goto_media: ['M', '3'], goto_quran: ['Q', '7'], goto_hihi2: ['F', '9'], goto_iptv: ['0'], goto_football: ['T'], goto_settings: ['SETTINGS'],
-  delete_item: ['Red'], toggle_star: ['Yellow'], toggle_reorder: ['Blue']
+  } catch (e) {}
 };
 
 const DEFAULT_CONTEXT_MAPPINGS: Record<string, Record<string, string[]>> = {
-  global: DEFAULT_GLOBAL_MAPPINGS,
-  player: { player_next: ['ChannelUp', '3'], player_prev: ['PageDown', '1'], player_save: ['3'], player_close: ['Red'], player_playlist: ['Blue'], player_minimize: ['M', 'Green'], player_settings: ['Yellow'], player_fullscreen: ['8'], player_mode: ['Info'] },
-  dashboard: {}, media: { focus_search: ['0'], focus_reciters: ['1'], focus_surahs: ['2'] }, quran: { focus_search: ['0'], focus_reciters: ['1'], focus_surahs: ['2'] }, football: {}, iptv: {}, settings: {}
+  global: { 
+    nav_up: ['ArrowUp', '2'], 
+    nav_down: ['ArrowDown', '8'], 
+    nav_left: ['ArrowLeft', '4'], 
+    nav_right: ['ArrowRight', '6'], 
+    nav_ok: ['Enter', '5'], 
+    nav_scroll_up: ['PageUp'], 
+    nav_scroll_down: ['PageDown'], 
+    goto_home: ['1'], 
+    goto_media: ['3'], 
+    goto_quran: ['7'], 
+    goto_hihi2: ['9'], 
+    goto_iptv: ['0'], 
+    goto_football: ['*'], 
+    goto_settings: [], 
+    delete_item: ['Red'], 
+    toggle_star: ['Yellow'], 
+    toggle_reorder: ['Blue'] 
+  },
+  player: { 
+    player_next: ['ChannelUp', '3'], 
+    player_prev: ['PageDown', '1'], 
+    player_save: ['3'], 
+    player_close: ['Red'], 
+    player_playlist: ['Blue'], 
+    player_minimize: ['Green'], 
+    player_settings: ['Yellow'], 
+    player_fullscreen: ['8'], 
+    player_mode: ['Info'] 
+  },
+  dashboard: {}, 
+  media: { focus_search: ['0'], focus_reciters: ['1'], focus_surahs: ['2'] }, 
+  quran: { focus_search: ['0'], focus_reciters: ['1'], focus_surahs: ['2'] }, 
+  football: {}, 
+  iptv: {}, 
+  settings: {}
 };
 
 const DEFAULT_PRAYER_SETTINGS: PrayerSetting[] = [
@@ -181,7 +198,7 @@ export const useMediaStore = create<MediaState>()(
   persist(
     (set, get) => ({
       favoriteChannels: [], savedVideos: [], videoProgress: {}, favoriteTeams: [], favoriteLeagueIds: [307, 39, 2, 140, 135], belledMatchIds: [], skippedMatchIds: [], skippedReminderIds: [], favoriteIptvChannels: [], favoriteReciters: [], iptvPlaylist: [], iptvPlaylistIndex: 0, prayerTimes: prayerTimesData, prayerSettings: DEFAULT_PRAYER_SETTINGS, reminders: [], generalAzkar: [], customManuscripts: [], manuscriptScales: {}, customFonts: [], customWallBackgrounds: [], playlists: [], isLooping: true,
-      mapSettings: { zoom: 20.0, tilt: 65, carScale: 1.02, backgroundIndex: 0, showManuscriptBg: true, manuscriptBgUrl: "https://www.image2url.com/r2/default/images/1782382707952-d99447c6-bc60-475d-9406-5fd2ef320bd5.png", fontScale: 1.0, manuscriptColor: '#ffffff', showManuscriptOnMoon: false, moonManuIdx: 0, hue: 0, saturation: 100, brightness: 100, winwinUrl: "https://psee.io/9f4ngl", beinUrl: "https://idebsports.ly/matches", omanUrl: "https://player.mangomolo.com/v1/live?id=MTY4&channelid=MTYx&countries=Q0M%3D&filter=DENY&signature=3fd1e8dd84138a41bf33d93afd4a7f09&language=en&app_id=&fullscreen=yes&player_profile=&base_url=aHR0cHM6Ly9heW4ub20vbGl2ZS8xNjEvJUQ5JTgyJUQ5JTg2JUQ4JUE3JUQ4JUE5LSVEOCVCOSVEOSU4NSVEOCVBNyVEOSU4Ni0lRDklODUlRDglQTglRDglQTclRDglQjQlRDglQjE%3D&autoplay=false&vast=true", bein1Url: "https://online.aflam4you.net/zremb472.php/?vid=68&aflam_s=1&aflam_w=360&aflam_w=360&aflam_h=250&aflam_k=18311111", mbc1Url: "https://online.aflam4you.net/zremb472.php?vid=5&aflam_s=1&aflam_w=360&aflam_h=250&aflam_k=18311111" },
+      mapSettings: { zoom: 20.0, tilt: 65, carScale: 1.02, backgroundIndex: 0, showManuscriptBg: true, manuscriptBgUrl: "https://www.image2url.com/r2/default/images/1782382707952-d99447c6-bc60-475d-9406-5fd2ef320bd5.png", fontScale: 1.0, manuscriptColor: '#ffffff', showManuscriptOnMoon: false, moonManuIdx: 0, hue: 0, saturation: 100, brightness: 100, winwinUrl: "https://psee.io/9f4ngl", beinUrl: "https://idebsports.ly/matches", omanUrl: "https://player.mangomolo.com/v1/live?id=MTY8&channelid=MTYx&countries=Q0M%3D&filter=DENY&signature=3fd1e8dd84138a41bf33d93afd4a7f09&language=en&app_id=&fullscreen=yes&player_profile=&base_url=aHR0cHM6Ly9heW4ub20vbGl2ZS8xNjEvJUQ5JTgyJUQ5JTg2JUQ4JUE3JUQ4JUE5LSVEOCVCOSVEOSU4NSVEOCVBNyVEOSU4Ni0lRDklODUlRDglQTglRDglQTclRDglQjQlRDglQjE%3D&autoplay=false&vast=true", bein1Url: "https://online.aflam4you.net/zremb472.php/?vid=68&aflam_s=1&aflam_w=360&aflam_w=360&aflam_h=250&aflam_k=18311111", mbc1Url: "https://online.aflam4you.net/zremb472.php?vid=5&aflam_s=1&aflam_w=360&aflam_h=250&aflam_k=18311111" },
       displayScale: 1.0, dockScale: 1.0, keyMappings: DEFAULT_CONTEXT_MAPPINGS, activeVideo: null, lastPlayedVideo: null, activeIptv: null, activeQuranUrl: "https://quran.com/ar/radio?autoplay=1", playlist: [], playlistIndex: 0, isPlaying: false, isMinimized: false, isFullScreen: false, isPlayerControlsExpanded: false, isPlayerPlaylistOpen: false, gridMode: 'hidden', dockSide: 'left', showIslands: true, autoHideIsland: true, isSidebarShrinked: false, wallPlateType: null, wallPlateData: null, isReorderMode: false, isRecordingKey: false, recordingAction: null, isInitialLoading: true, aiSuggestions: [], pickedUpId: null,
       
       setPickedUpId: (id) => set({ pickedUpId: id }), setIsRecordingKey: (v) => set({ isRecordingKey: v }), setRecordingAction: (v) => set({ recordingAction: v }), setDockScale: (v) => set({ dockScale: v }), setDisplayScale: (v) => set({ displayScale: v }), setIsSidebarShrinked: (v) => set({ isSidebarShrinked: v }), setGridMode: (v) => set({ gridMode: v }), setIsPlayerControlsExpanded: (v) => set({ isPlayerControlsExpanded: v }), setIsPlayerPlaylistOpen: (v) => set({ isPlayerPlaylistOpen: v }),
@@ -234,7 +251,13 @@ export const useMediaStore = create<MediaState>()(
       addIptvChannel: (ch) => set((s) => { const n = [...s.favoriteIptvChannels, ch]; setTimeout(() => get().saveIptvReorder(), 100); return { favoriteIptvChannels: n }; }),
       reorderIptvChannelTo: (f, t) => set((s) => { const l = [...s.favoriteIptvChannels], fI = l.findIndex(i => i.stream_id === f), tI = l.findIndex(i => i.stream_id === t); if (fI === -1 || tI === -1) return s; const [m] = l.splice(fI, 1); l.splice(tI, 0, m); return { favoriteIptvChannels: l }; }),
       
-      addPlaylist: (name) => set((s) => { const n = [...s.playlists, { id: Date.now().toString(), name, videos: [] }]; setTimeout(() => get().syncMasterBin(), 100); return { playlists: n }; }),
+      addPlaylist: (name, videos = []) => {
+        const id = Date.now().toString();
+        const p = { id, name, videos };
+        set((s) => { const n = [...s.playlists, p]; return { playlists: n }; });
+        setTimeout(() => get().syncMasterBin(), 200);
+        return p;
+      },
       removePlaylist: (id) => set((s) => { const n = s.playlists.filter(p => p.id !== id); setTimeout(() => get().syncMasterBin(), 100); return { playlists: n }; }),
       addVideoToPlaylist: (pId, v) => set((s) => { const n = s.playlists.map(p => p.id === pId ? { ...p, videos: [...p.videos.filter(vi => vi.id !== v.id), v] } : p); setTimeout(() => get().syncMasterBin(), 100); return { playlists: n }; }),
       removeVideoFromPlaylist: (pId, vId) => set((s) => { const n = s.playlists.map(p => p.id === pId ? { ...p, videos: p.videos.filter(vi => vi.id !== vId) } : p); setTimeout(() => get().syncMasterBin(), 100); return { playlists: n }; }),
