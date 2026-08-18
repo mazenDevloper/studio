@@ -31,7 +31,8 @@ export const YT_KEYS_POOL = [
   "AIzaSyBWsvSFb6VNx89VOzjP0-zq7sWgPhfiWjE",
   "AIzaSyDb4_3-IBy5ZPsIwlkv81z3EDS9Tue98n4",
   "AIzaSyABJ0ChF7XVsXeppoLS9VBIxNJglc-0rB0",
-  "AIzaSyB3Rk_x-Xponn6i-PXuTgPr2wisD28GvuM"
+  "AIzaSyB3Rk_x-Xponn6i-PXuTgPr2wisD28GvuM",
+  "AIzaSyBI6enu3YIXcsgWCBK-ZyqiQsIzX4iPQiI"
 ];
 
 export const JSONBIN_MASTER_KEY = '$2a$10$SYrYv.ct8hiMU9YeUxEQ.ecRkOrTqs.TDchJRV3wW.aKJnDXy2oVy';

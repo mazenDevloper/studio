@@ -9,8 +9,8 @@ import { init } from "@noriginmedia/norigin-spatial-navigation";
 import { useToast } from "@/hooks/use-toast";
 
 /**
- * RemotePointer v720.0 - Absolute Centering & Unified Navigation Engine
- * Features: Removal of Input Row Isolation + Adaptive Key Trapping for Typing.
+ * RemotePointer v860.0 - Sovereign Anchor & Auto-Flow Engine
+ * Features: Auto-Collapse Sidebar on Level 3 entry + Forced Centering Scroll.
  */
 export function RemotePointer() {
   const pathname = usePathname();
@@ -68,21 +68,15 @@ export function RemotePointer() {
       return;
     }
 
-    const currentZone = current.closest('[data-nav-zone]')?.getAttribute('data-nav-zone') || 'global';
     const currentRowId = current.closest('[data-row-id]')?.getAttribute('data-row-id');
-    const isVertical = direction === "ArrowUp" || direction === "ArrowDown";
-    const isHorizontal = direction === "ArrowLeft" || direction === "ArrowRight";
+    const currentZone = current.closest('[data-nav-zone]')?.getAttribute('data-nav-zone') || 'global';
+    const currentNavId = current.getAttribute('data-nav-id') || '';
+    const isFirstInRow = currentNavId.endsWith('-0') || currentNavId.endsWith('surah-0') || currentNavId.endsWith('cat-0');
 
-    if (isVertical) {
-      const sameZoneFocusables = focusables.filter(el => el.closest('[data-nav-zone]')?.getAttribute('data-nav-zone') === currentZone);
-      findNext(current, sameZoneFocusables, direction);
-      return;
-    }
-
-    if (isHorizontal) {
-      const sameZoneFocusables = focusables.filter(el => el.closest('[data-nav-zone]')?.getAttribute('data-nav-zone') === currentZone);
-      const candidatesInRow = sameZoneFocusables.filter(el => el.closest('[data-row-id]')?.getAttribute('data-row-id') === currentRowId);
-      const nextInRow = findBestCandidate(current, candidatesInRow, direction);
+    // 1. HORIZONTAL NAVIGATION: Level Transitions & Auto-Collapse
+    if (['ArrowLeft', 'ArrowRight'].includes(direction)) {
+      const sameRowFocusables = focusables.filter(el => el.closest('[data-row-id]')?.getAttribute('data-row-id') === currentRowId);
+      const nextInRow = findBestCandidate(current, sameRowFocusables, direction);
       
       if (nextInRow) {
         nextInRow.focus();
@@ -90,34 +84,57 @@ export function RemotePointer() {
         return;
       }
 
-      // Removal of Isolation: Search the rest of the zone before jumping out
-      const nextInZone = findBestCandidate(current, sameZoneFocusables, direction);
-      if (nextInZone) {
-        nextInZone.focus();
-        nextInZone.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
-        return;
-      }
-
+      // CROSS-ZONE TRANSITION
       const targetZoneFocusables = focusables.filter(el => el.closest('[data-nav-zone]')?.getAttribute('data-nav-zone') !== currentZone);
       const bestZoneTarget = findBestCandidate(current, targetZoneFocusables, direction);
 
       if (bestZoneTarget) {
         const targetZone = bestZoneTarget.closest('[data-nav-zone]')?.getAttribute('data-nav-zone');
+        
         if (targetZone === 'sidebar') {
           const target = document.querySelector('[data-nav-id="sidebar-channel-0"]') as HTMLElement || bestZoneTarget;
-          target.focus(); 
-          target.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
-          setIsSidebarShrinked(false); return;
+          target.focus(); target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          setIsSidebarShrinked(false); // EXPAND ON ENTRY
+          return;
         }
+        
         if (targetZone === 'content') {
-          const target = document.querySelector('[data-nav-zone="content"] .focusable') as HTMLElement || bestZoneTarget;
-          target.focus(); 
-          target.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
-          setIsSidebarShrinked(true); return;
+          const target = document.querySelector('[data-nav-id="reciter-item-0"]') as HTMLElement || document.querySelector('[data-nav-zone="content"] .focusable') as HTMLElement || bestZoneTarget;
+          target.focus(); target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          setIsSidebarShrinked(true); // COLLAPSE ON ENTRY
+          return;
         }
+
         bestZoneTarget.focus();
-        bestZoneTarget.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+        bestZoneTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
+      return;
+    }
+
+    // 2. VERTICAL NAVIGATION: Structured Jump between First Items
+    const sameZoneFocusables = focusables.filter(el => el.closest('[data-nav-zone]')?.getAttribute('data-nav-zone') === currentZone);
+    const nextInZone = findBestCandidate(current, sameZoneFocusables, direction);
+
+    if (nextInZone) {
+      const targetRowId = nextInZone.closest('[data-row-id]')?.getAttribute('data-row-id');
+      
+      // SOVEREIGN ANCHOR: If we are at index 0 and moving to a DIFFERENT row
+      if (isFirstInRow && targetRowId !== currentRowId) {
+         const firstInTargetRow = focusables.find(el => {
+            const row = el.closest('[data-row-id]')?.getAttribute('data-row-id');
+            const navId = el.getAttribute('data-nav-id') || '';
+            return row === targetRowId && (navId.endsWith('-0') || navId.endsWith('surah-0'));
+         });
+         if (firstInTargetRow) {
+            firstInTargetRow.focus();
+            firstInTargetRow.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+            return;
+         }
+      }
+
+      nextInZone.focus();
+      nextInZone.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+      return;
     }
   }, [wallPlateType, setIsSidebarShrinked]);
 
@@ -131,28 +148,21 @@ export function RemotePointer() {
       const p1 = { x: currentRect.left + currentRect.width / 2, y: currentRect.top + currentRect.height / 2 };
       const p2 = { x: rect2.left + rect2.width / 2, y: rect2.top + rect2.height / 2 };
       const dx = p2.x - p1.x; const dy = p2.y - p1.y;
+      
       if (direction === "ArrowRight" && dx <= 5) continue;
       if (direction === "ArrowLeft" && dx >= -5) continue;
       if (direction === "ArrowDown" && dy <= 5) continue;
       if (direction === "ArrowUp" && dy >= -5) continue;
+      
       const d = Math.sqrt(dx * dx + dy * dy);
       if (d < minDistance) { minDistance = d; next = el; }
     }
     return next;
   };
 
-  const findNext = (current: HTMLElement, candidates: HTMLElement[], direction: string) => {
-    const next = findBestCandidate(current, candidates, direction);
-    if (next) {
-      next.focus();
-      next.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
-    }
-  };
-
   const executeAction = useCallback((finalKey: string, e: KeyboardEvent | null) => {
     const activeEl = document.activeElement as any;
-    // An input is only "Active" (trapping keys) if it is NOT read-only
-    const isInputActive = (activeEl?.tagName === 'INPUT' || activeEl?.tagName === 'TEXTAREA' || activeEl?.getAttribute('contenteditable') === 'true') && !activeEl?.readOnly;
+    const isTypingMode = (activeEl?.tagName === 'INPUT' || activeEl?.tagName === 'TEXTAREA') && !activeEl?.readOnly;
 
     if (isRecordingKey && recordingAction) {
       const FORBIDDEN_KEYS = ['Backspace', 'Escape', 'Back', 'Delete'];
@@ -166,16 +176,19 @@ export function RemotePointer() {
       return;
     } 
 
-    // If we are actively typing, let arrows/enter move the cursor/submit.
-    if (isInputActive && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter'].includes(finalKey)) return;
-    // For other keys, still trap them to prevent triggering global shortcuts while typing
-    if (isInputActive) return;
+    if (isTypingMode) {
+       if (['ArrowUp', 'ArrowDown'].includes(finalKey)) {
+          e?.preventDefault();
+          navigate(finalKey);
+          return;
+       }
+    }
 
     const isPlayerActive = (activeVideo || activeIptv) && isFullScreen && !isMinimized;
     if (isPlayerActive) {
       if (isAction(finalKey, 'player_next')) { e?.preventDefault(); nextTrack(); return; }
       if (isAction(finalKey, 'player_prev')) { e?.preventDefault(); prevTrack(); return; }
-      if (isAction(finalKey, 'player_close')) { e?.preventDefault(); setActiveVideo(null); setActiveIptv(null); return; }
+      if (isAction(finalKey, 'player_close')) { e?.preventDefault(); handleClose(); return; }
     }
 
     if (isAction(finalKey, 'nav_scroll_up')) { e?.preventDefault(); handleScroll('up'); return; }
@@ -185,7 +198,7 @@ export function RemotePointer() {
     if (isAction(finalKey, 'nav_left')) { e?.preventDefault(); navigate("ArrowLeft"); return; }
     if (isAction(finalKey, 'nav_right')) { e?.preventDefault(); navigate("ArrowRight"); return; }
     if (isAction(finalKey, 'nav_ok') || (e && (e.keyCode === 13 || e.key === 'Enter'))) { 
-      if (activeEl?.classList.contains("focusable")) { e?.preventDefault(); activeEl.click(); }
+      if (activeEl?.classList.contains("focusable") && !isTypingMode) { e?.preventDefault(); activeEl.click(); }
     }
     
     if (isAction(finalKey, 'goto_home')) { e?.preventDefault(); router.push('/dashboard'); return; }
@@ -195,7 +208,7 @@ export function RemotePointer() {
     if (isAction(finalKey, 'goto_iptv')) { e?.preventDefault(); router.push('/iptv'); return; }
     if (isAction(finalKey, 'goto_football')) { e?.preventDefault(); router.push('/football'); return; }
     if (isAction(finalKey, 'goto_settings')) { e?.preventDefault(); router.push('/settings'); return; }
-  }, [navigate, isAction, wallPlateType, router, isRecordingKey, recordingAction, setIsRecordingKey, setRecordingAction, setKeyMapping, toast, activeVideo, activeIptv, isFullScreen, isMinimized, nextTrack, prevTrack, setActiveVideo, setActiveIptv, setGridMode]);
+  }, [navigate, isAction, wallPlateType, router, isRecordingKey, recordingAction, setIsRecordingKey, setRecordingAction, setKeyMapping, toast, activeVideo, activeIptv, isFullScreen, isMinimized, nextTrack, prevTrack, setActiveVideo, setActiveIptv]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -206,6 +219,11 @@ export function RemotePointer() {
     window.addEventListener("keydown", handleKeyDown, true);
     return () => window.removeEventListener("keydown", handleKeyDown, true);
   }, [executeAction]);
+
+  const handleClose = () => { 
+     useMediaStore.getState().setActiveVideo(null); 
+     useMediaStore.getState().setActiveIptv(null); 
+  };
 
   return (
     <>{pressedKey && <div className="fixed top-6 right-6 z-[10003] animate-in fade-in zoom-in duration-200"><div className="bg-black/60 backdrop-blur-3xl px-3 py-1 rounded-lg border border-white/10 shadow-2xl flex items-center gap-2"><span className="text-[14px] font-black text-white tracking-tighter uppercase tabular-nums">{pressedKey}</span></div></div>}</>

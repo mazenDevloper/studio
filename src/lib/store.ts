@@ -278,7 +278,7 @@ export const useMediaStore = create<MediaState>()(
       updatePrayerSetting: (id, updates) => set((s) => { const n = s.prayerSettings.map(p => p.id === id ? { ...p, ...updates } : p); setTimeout(() => get().syncMasterBin(), 100); return { prayerSettings: n }; }),
     }),
     {
-      name: "drivecast-sovereign-v140", 
+      name: "drivecast-sovereign-v141", 
       partialize: (s) => ({ dockSide: s.dockSide, displayScale: s.displayScale, dockScale: s.dockScale, isLooping: s.isLooping }),
     }
   )

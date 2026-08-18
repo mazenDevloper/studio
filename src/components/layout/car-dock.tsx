@@ -1,4 +1,3 @@
-
 "use client";
 
 import { LayoutDashboard, Radio, Settings, ArrowLeft, Trophy, ArrowRightLeft, Tv, BookOpen, Sparkles, ChevronUp, ChevronDown } from "lucide-react";
@@ -161,24 +160,24 @@ export function CarDock() {
         </div>
       </div>
 
-      {/* Sovereign Floating Controls */}
+      {/* Sovereign Floating Controls - Non-Focusable by Design */}
       <div className={cn(
         "fixed bottom-8 z-[10002] flex flex-col gap-4 items-center",
         dockSide === 'left' ? "right-8" : "left-8"
       )}>
         <div className="flex flex-col gap-2 bg-black/40 backdrop-blur-3xl p-2 rounded-full border border-white/10 shadow-2xl">
-           <button onClick={() => handleScroll('up')} className="w-12 h-12 rounded-full bg-white/5 hover:bg-white/20 text-white flex items-center justify-center focusable transition-all relative">
+           <button onClick={() => handleScroll('up')} className="w-12 h-12 rounded-full bg-white/5 hover:bg-white/20 text-white flex items-center justify-center transition-all relative">
               <ShortcutBadge action="nav_scroll_up" className="-top-3 -right-3 scale-75" />
               <ChevronUp className="w-6 h-6" />
            </button>
-           <button onClick={() => handleScroll('down')} className="w-12 h-12 rounded-full bg-white/5 hover:bg-white/20 text-white flex items-center justify-center focusable transition-all relative">
+           <button onClick={() => handleScroll('down')} className="w-12 h-12 rounded-full bg-white/5 hover:bg-white/20 text-white flex items-center justify-center transition-all relative">
               <ShortcutBadge action="nav_scroll_down" className="-bottom-3 -right-3 scale-75" />
               <ChevronDown className="w-6 h-6" />
            </button>
         </div>
         <button 
           onClick={toggleDockSide} 
-          className="w-14 h-14 rounded-full bg-primary/20 backdrop-blur-3xl border-2 border-primary/40 text-primary shadow-glow flex items-center justify-center focusable active:scale-90 transition-all"
+          className="w-14 h-14 rounded-full bg-primary/20 backdrop-blur-3xl border-2 border-primary/40 text-primary shadow-glow flex items-center justify-center active:scale-90 transition-all"
         >
           <ArrowRightLeft className="w-6 h-6" />
         </button>

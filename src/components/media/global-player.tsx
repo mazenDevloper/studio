@@ -1,10 +1,10 @@
 
 "use client";
 
-import { useMediaStore } from "@/lib/store";
+import { useMediaStore, YouTubeVideo } from "@/lib/store";
 import { X, Monitor, ChevronRight, ChevronLeft, Maximize2, BookmarkCheck, Volume2, ListPlus, LayoutList, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { SovereignIframe } from "@/components/ui/sovereign-iframe";
 import { Input } from "@/components/ui/input";
 import { ShortcutBadge } from "@/components/layout/car-dock";
@@ -13,8 +13,8 @@ import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 /**
- * GlobalVideoPlayer v720.0 - Sovereign Background Persistence Engine
- * Features: 10-Second Transition Pulse + Silent Audio Heartbeat + Visibility Lock.
+ * GlobalVideoPlayer v750.0 - Sovereign Post-End Watchdog
+ * Features: Pure Duration-based detection (No API dependency) + 5s Post-End Countdown + Background Audio Lock.
  */
 export function GlobalVideoPlayer() {
   const { 
@@ -30,11 +30,25 @@ export function GlobalVideoPlayer() {
   const [mounted, setMounted] = useState(false);
   const [iframeKey, setIframeKey] = useState(0);
   const [urlInput, setUrlInput] = useState("https://idebsports.ly/matches");
-  const [countdown, setCountdown] = useState<number | null>(null);
-  const lastProcessedIdRef = useRef<string | null>(null);
+  
+  // SOVEREIGN DURATION WATCHDOG
+  const [localElapsed, setLocalElapsed] = useState(0);
+  const [postEndTimer, setPostEndTimer] = useState(0);
+  const [isEnded, setIsEnded] = useState(false);
+  
   const audioHeartbeatRef = useRef<HTMLAudioElement>(null);
-
   const isActive = !!(activeVideo || activeIptv);
+
+  // Helper to parse duration string (M:SS or H:MM:SS) to seconds
+  const parseDurationToSeconds = (dur: string): number => {
+    if (!dur || dur === "FEED") return 0;
+    const parts = dur.split(':').map(Number);
+    if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+    if (parts.length === 2) return parts[0] * 60 + parts[1];
+    return 0;
+  };
+
+  const totalDuration = useMemo(() => activeVideo ? parseDurationToSeconds(activeVideo.duration || "") : 0, [activeVideo]);
 
   // SOVEREIGN HEARTBEAT: Silent Audio to keep process alive in background
   useEffect(() => {
@@ -45,97 +59,81 @@ export function GlobalVideoPlayer() {
     }
   }, [isPlaying, isActive]);
 
-  // SOVEREIGN BACKGROUND PULSE: Advanced MediaSession Integration
+  // DURATION WATCHDOG TICKER
+  useEffect(() => {
+    let interval: any;
+    if (isPlaying && activeVideo && !isEnded && totalDuration > 0) {
+      interval = setInterval(() => {
+        setLocalElapsed(prev => {
+          if (prev >= totalDuration) {
+            setIsEnded(true);
+            return prev;
+          }
+          return prev + 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [isPlaying, activeVideo, isEnded, totalDuration]);
+
+  // POST-END COUNTDOWN TICKER
+  useEffect(() => {
+    let interval: any;
+    if (isEnded) {
+      interval = setInterval(() => {
+        setPostEndTimer(prev => {
+          if (prev >= 5) {
+            nextTrack();
+            resetWatchdog();
+            return 0;
+          }
+          return prev + 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [isEnded, nextTrack]);
+
+  const resetWatchdog = () => {
+    setLocalElapsed(0);
+    setPostEndTimer(0);
+    setIsEnded(false);
+  };
+
+  useEffect(() => {
+    resetWatchdog();
+  }, [activeVideo?.id]);
+
+  // MEDIA SESSION INTEGRATION
   useEffect(() => {
     if (activeVideo && 'mediaSession' in navigator) {
       navigator.mediaSession.metadata = new MediaMetadata({
         title: activeVideo.title,
         artist: activeVideo.channelTitle || 'DriveCast Sovereign',
         album: 'المجلد السيادي المستمر',
-        artwork: [
-          { src: activeVideo.thumbnail, sizes: '512x512', type: 'image/jpeg' }
-        ]
+        artwork: [{ src: activeVideo.thumbnail, sizes: '512x512', type: 'image/jpeg' }]
       });
-
       navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
-
       const actionHandlers: [MediaSessionAction, () => void][] = [
-        ['play', () => { setIsPlaying(true); }],
-        ['pause', () => { setIsPlaying(false); }],
-        ['nexttrack', () => { nextTrack(); setCountdown(null); }],
-        ['previoustrack', () => { prevTrack(); setCountdown(null); }],
-        ['stop', () => { handleClose(); }]
+        ['play', () => setIsPlaying(true)],
+        ['pause', () => setIsPlaying(false)],
+        ['nexttrack', () => { nextTrack(); resetWatchdog(); }],
+        ['previoustrack', () => { prevTrack(); resetWatchdog(); }],
+        ['stop', () => handleClose()]
       ];
-
       actionHandlers.forEach(([action, handler]) => {
-        try {
-          navigator.mediaSession.setActionHandler(action, handler);
-        } catch (e) {}
+        try { navigator.mediaSession.setActionHandler(action, handler); } catch (e) {}
       });
     }
   }, [activeVideo, isPlaying, setIsPlaying, nextTrack, prevTrack]);
 
-  // VISIBILITY WATCHDOG
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && isPlaying && isActive) {
-        setIframeKey(prev => prev + 0);
-      }
-    };
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
-  }, [isPlaying, isActive]);
-
-  // SOVEREIGN TIME WATCHDOG: 10-Second Transition logic
-  useEffect(() => {
-    if (!activeVideo || !activeVideo.duration || activeVideo.duration === "FEED") {
-      setCountdown(null);
-      return;
-    }
-
-    setCountdown(null);
-    lastProcessedIdRef.current = null;
-
-    const parts = activeVideo.duration.split(':').map(Number);
-    let totalSeconds = 0;
-    if (parts.length === 3) totalSeconds = parts[0] * 3600 + parts[1] * 60 + parts[2];
-    else if (parts.length === 2) totalSeconds = parts[0] * 60 + parts[1];
-
-    if (totalSeconds <= 0) return;
-
-    // Trigger countdown 10 seconds before end
-    const triggerTime = (totalSeconds - 10) * 1000;
-    const watchdog = setTimeout(() => {
-      if (lastProcessedIdRef.current !== activeVideo.id) {
-         setCountdown(10);
-         lastProcessedIdRef.current = activeVideo.id;
-      }
-    }, triggerTime > 0 ? triggerTime : 100); 
-
-    return () => clearTimeout(watchdog);
-  }, [activeVideo?.id, activeVideo?.duration]);
-
-  // COUNTDOWN CYCLE
-  useEffect(() => {
-    if (countdown === null) return;
-    if (countdown === 0) {
-      setCountdown(null);
-      nextTrack();
-      return;
-    }
-    const timer = setTimeout(() => setCountdown(prev => (prev !== null ? prev - 1 : null)), 1000);
-    return () => clearTimeout(timer);
-  }, [countdown, nextTrack]);
-
   useEffect(() => {
     setMounted(true);
     if (isActive) {
-      const timer = setTimeout(() => {
+      setTimeout(() => {
         const targetId = isMinimized ? "player-close-btn-min" : "player-close-btn";
-        const closeBtn = document.querySelector(`[data-nav-id="${targetId}"]`) as HTMLElement;
-        closeBtn?.focus();
+        (document.querySelector(`[data-nav-id="${targetId}"]`) as HTMLElement)?.focus();
       }, 800);
-      return () => clearTimeout(timer);
     }
   }, [activeVideo?.id, activeIptv?.stream_id, isMinimized, isActive]);
 
@@ -154,16 +152,9 @@ export function GlobalVideoPlayer() {
   }, [activeVideo?.id, videoProgress]);
 
   const handleClose = () => { 
-    setActiveVideo(null); 
-    setActiveIptv(null); 
-    setGridMode('hidden'); 
-    setIsPlayerControlsExpanded(false); 
-    setIsFullScreen(false);
-    setIsMinimized(false);
-    setIsPlayerPlaylistOpen(false);
-    setCountdown(null);
-    lastProcessedIdRef.current = null;
-    setIsPlaying(false);
+    setActiveVideo(null); setActiveIptv(null); setGridMode('hidden'); 
+    setIsPlayerControlsExpanded(false); setIsFullScreen(false); setIsMinimized(false);
+    setIsPlayerPlaylistOpen(false); resetWatchdog(); setIsPlaying(false);
   };
 
   const handlePutToIframe = () => {
@@ -179,6 +170,8 @@ export function GlobalVideoPlayer() {
   if (!mounted || !isActive) return null;
   const popupSideClass = dockSide === 'left' ? "right-12" : "left-12";
   const ctrlBtnClass = "rounded-full flex items-center justify-center focusable transition-all shadow-glow active:scale-90 w-12 h-12 min-[968px]:w-14 min-[968px]:h-14 max-[968px]:w-16 max-[968px]:h-16";
+
+  const effectiveCountdown = isEnded ? 5 - postEndTimer : null;
 
   return (
     <>
@@ -200,26 +193,26 @@ export function GlobalVideoPlayer() {
                 activeIptv?.url && <SovereignIframe key={`web-${activeIptv.stream_id}-${iframeKey}`} src={activeIptv.url} title={activeIptv.name} />
               )}
 
-              {countdown !== null && (
+              {(effectiveCountdown !== null && effectiveCountdown > 0) && (
                 <div className="absolute inset-0 z-[100] flex flex-col items-center justify-center bg-black/80 backdrop-blur-3xl animate-in fade-in duration-300">
                   <div className="relative flex items-center justify-center">
                      <div className="w-40 h-40 rounded-full border-4 border-white/5 flex items-center justify-center relative">
-                        <span className="text-7xl font-black text-white tabular-nums drop-shadow-[0_0_20px_rgba(255,255,255,0.4)]">{countdown}</span>
+                        <span className="text-7xl font-black text-white tabular-nums drop-shadow-[0_0_20px_rgba(255,255,255,0.4)]">{effectiveCountdown}</span>
                         <svg className="absolute inset-0 -rotate-90 w-40 h-40">
                           <circle
                             cx="80" cy="80" r="76"
                             fill="none" stroke="currentColor" strokeWidth="8"
                             className="text-primary transition-all duration-1000 ease-linear"
-                            style={{ strokeDasharray: 477, strokeDashoffset: 477 * (1 - countdown / 10) }}
+                            style={{ strokeDasharray: 477, strokeDashoffset: 477 * (1 - effectiveCountdown / 5) }}
                           />
                         </svg>
                      </div>
                   </div>
                   <div className="mt-8 text-center space-y-2">
                      <h2 className="text-2xl font-black text-white tracking-widest uppercase">الانتقال للتلاوة التالية</h2>
-                     <p className="text-white/40 font-bold uppercase tracking-[0.5em] text-[10px]">Sovereign 10s Sequence active</p>
+                     <p className="text-white/40 font-bold uppercase tracking-[0.5em] text-[10px]">Sovereign Post-End Watchdog</p>
                   </div>
-                  <button onClick={() => setCountdown(null)} className="mt-12 h-14 px-10 rounded-full bg-white/10 border border-white/20 text-white font-black hover:bg-white/20 transition-all focusable flex items-center gap-3"><RotateCcw className="w-5 h-5" /> إلغاء العد</button>
+                  <button onClick={() => resetWatchdog()} className="mt-12 h-14 px-10 rounded-full bg-white/10 border border-white/20 text-white font-black hover:bg-white/20 transition-all focusable flex items-center gap-3"><RotateCcw className="w-5 h-5" /> إلغاء العد</button>
                 </div>
               )}
            </div>
@@ -236,7 +229,7 @@ export function GlobalVideoPlayer() {
                <ScrollArea className="flex-1">
                  <div className="p-4 space-y-3">
                    {playlist.map((v, i) => (
-                     <button key={v.id + i} onClick={() => { setActiveVideo(v, playlist); lastProcessedIdRef.current = null; setCountdown(null); }} className={cn("w-full p-4 rounded-[1.8rem] flex items-center gap-4 transition-all focusable text-right border-2", i === playlistIndex ? "bg-indigo-600 border-indigo-400 text-white shadow-glow scale-[1.02]" : "bg-white/5 border-transparent text-white/60 hover:bg-white/10")}>
+                     <button key={v.id + i} onClick={() => { setActiveVideo(v, playlist); resetWatchdog(); }} className={cn("w-full p-4 rounded-[1.8rem] flex items-center gap-4 transition-all focusable text-right border-2", i === playlistIndex ? "bg-indigo-600 border-indigo-400 text-white shadow-glow scale-[1.02]" : "bg-white/5 border-transparent text-white/60 hover:bg-white/10")}>
                        <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 border border-white/10"><img src={v.thumbnail} className="w-full h-full object-cover" alt="" /></div>
                        <div className="flex flex-col min-w-0"><span className="text-[11px] font-black truncate">{v.title}</span><span className="text-[9px] opacity-40 font-bold mt-1">{v.duration || "---"}</span></div>
                      </button>
@@ -287,13 +280,13 @@ export function GlobalVideoPlayer() {
                 {!isWebType && (
                   <>
                     <div className="relative group">
-                      <button onClick={prevTrack} className={cn(ctrlBtnClass, "bg-white/5 text-white")}>
+                      <button onClick={() => { prevTrack(); resetWatchdog(); }} className={cn(ctrlBtnClass, "bg-white/5 text-white")}>
                         <ChevronRight className="w-6 h-6" />
                       </button>
                       <ShortcutBadge action="player_prev" className="-bottom-4 left-1/2 -translate-x-1/2 scale-75" />
                     </div>
                     <div className="relative group">
-                      <button onClick={nextTrack} className={cn(ctrlBtnClass, "bg-white/5 text-white")}>
+                      <button onClick={() => { nextTrack(); resetWatchdog(); }} className={cn(ctrlBtnClass, "bg-white/5 text-white")}>
                         <ChevronLeft className="w-6 h-6" />
                       </button>
                       <ShortcutBadge action="player_next" className="-bottom-4 left-1/2 -translate-x-1/2 scale-75" />
