@@ -8,15 +8,13 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useEffect, useCallback } from "react";
-import { suggestPersonalizedYouTubeContent } from "@/ai/flows/suggest-personalized-youtube-content-flow";
-import { searchYouTubeVideos, fetchChannelVideos } from "@/lib/youtube";
-import { fetchFootballData } from "@/lib/football-api";
+import { searchYouTubeVideos } from "@/lib/youtube";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { JSONBIN_MANUSCRIPTS_BIN_ID, JSONBIN_PRAYER_TIMES_BIN_ID } from "@/lib/constants";
 
 /**
- * SovereignShortcutsWidget v200.0 - Editable Links & Search Pulse
+ * SovereignShortcutsWidget v210.0 - Unified Oman TV & Editable Links
  */
 export function SovereignShortcutsWidget() {
   const router = useRouter();
@@ -27,7 +25,6 @@ export function SovereignShortcutsWidget() {
   } = useMediaStore();
 
   const [footballHeadline, setFootballHeadline] = useState("رصد حي للملاعب");
-  const [isAiDiscoveryActive, setIsAiDiscoveryActive] = useState(false);
   const [isSystemRefreshing, setIsSystemRefreshing] = useState(false);
   const [isQuranProcessing, setIsQuranProcessing] = useState(false);
   const [isOmanProcessing, setIsOmanProcessing] = useState(false);
@@ -68,7 +65,7 @@ export function SovereignShortcutsWidget() {
         name: "قناة عمان مباشر",
         stream_icon: OMAN_TV_AVATAR,
         category_id: "direct",
-        url: mapSettings.omanUrl,
+        url: mapSettings.omanUrl || "https://player.mangomolo.com/v1/live?id=MTY8&channelid=MTYx&countries=Q0M%3D&filter=DENY&signature=3fd1e8dd84138a41bf33d93afd4a7f09&language=en&app_id=&fullscreen=yes&player_profile=&base_url=aHR0cHM6Ly9heW4ub20vbGl2ZS8xNjEvJUQ5JTgyJUQ5JTg2JUQ4JUE3JUQ4JUE5LSVEOCVCOSVEOSU4NSVEOCVBNyVEOSU4Ni0lRDklODUlRDglQTglRDglQTclRDglQjQlRDglQjE%3D&autoplay=false&vast=true",
         type: 'web'
       });
     } catch (e) {

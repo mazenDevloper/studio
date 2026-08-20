@@ -43,12 +43,6 @@
   }
 }
 
-/* ABSOLUTE FLOATING PLAYER FIX - ENSURES NO LAYOUT IMPACT */
-.fixed.z-\[99999\].shadow-\[0_0_100px_rgba\(0\,0\,0\,0\.9\)\].transition-all.duration-500.overflow-hidden.pointer-events-auto.bottom-8.left-8.w-\[420px\].h-24.rounded-\[2rem\].premium-glass.bg-black\/80.border.border-white\/20,
-.fixed.z-\[99999\].shadow-\[0_0_100px_rgba\(0\,0\,0\,0\.9\)\].transition-all.duration-500.overflow-hidden.pointer-events-auto.bottom-12.left-12.w-\[35vw\].h-\[40vh\].premium-glass.rounded-\[3\.5rem\].bg-black\/95.border-2.border-white\/10 {
-    position: fixed !important;
-}
-
 .premium-glass {
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0) 100%);
   backdrop-filter: blur(25px);
@@ -62,3 +56,96 @@
 
 .shadow-glow { box-shadow: 0 0 30px rgba(0, 136, 255, 0.5); }
 .no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* --- SOVEREIGN MOBILE TRANSFORMATION PROTOCOL (v920.0) --- */
+@media (max-width: 768px) {
+  body {
+    overflow-y: auto !important;
+    height: auto !important;
+  }
+
+  [data-nav-zone="dock"] {
+    @apply fixed bottom-0 top-auto left-0 right-0 w-full h-16 flex-row py-0 px-2 border-t border-l-0 border-r-0 border-white/10 z-[150] items-center justify-between !important;
+    background: rgba(0, 0, 0, 0.9) !important;
+    backdrop-filter: blur(40px) !important;
+  }
+
+  [data-nav-zone="dock"] > div:first-child {
+    @apply flex-row justify-around w-full gap-0 !important;
+  }
+
+  [data-nav-id^="dock-"] {
+    @apply w-12 h-12 mb-0 rounded-xl scale-90 !important;
+  }
+
+  [data-nav-zone="dock"] .mt-auto {
+    @apply hidden !important;
+  }
+
+  .flex-1.h-full.overflow-hidden {
+    @apply pl-0 pr-0 pb-20 !important;
+  }
+
+  [data-row-id="main-widgets-row"] {
+    @apply grid-cols-1 gap-4 !important;
+  }
+
+  [data-row-id="main-widgets-row"] > div {
+    @apply col-span-1 h-auto min-h-[320px] !important;
+  }
+
+  [data-row-id="row-shortcuts"] .grid-cols-7 {
+    @apply grid-cols-2 p-4 gap-3 !important;
+  }
+
+  [data-row-id="row-shortcuts"] .h-48 {
+    @apply h-36 !important;
+  }
+
+  [data-row-id="row-prayer-bar"] .flex-nowrap {
+    @apply flex-col gap-3 p-4 !important;
+  }
+
+  [data-row-id="row-prayer-bar"] .flex-1 {
+    @apply w-full min-w-0 !important;
+  }
+
+  .h-screen.flex {
+    @apply flex-col !important;
+  }
+
+  [data-nav-zone="sidebar"] {
+    @apply w-full h-auto border-b border-r-0 border-l-0 !important;
+    display: none;
+  }
+
+  [data-nav-zone="content"] {
+    @apply px-4 pt-4 pb-32 !important;
+  }
+
+  .grid.grid-cols-4 {
+    @apply grid-cols-1 !important;
+  }
+
+  /* 5. Player Mobile Adaptations - ESCAPED SLASHES FIXED */
+  .fixed.z-\[99999\].bottom-12 {
+    @apply bottom-16 left-0 right-0 w-full h-auto aspect-video rounded-none border-t border-b border-l-0 border-r-0 !important;
+  }
+
+  .fixed.z-\[100000\].left-1\/2.-translate-x-1\/2.bottom-0 {
+    @apply bottom-16 scale-75 !important;
+  }
+
+  h1 { @apply text-2xl !important; }
+  .text-4xl { @apply text-2xl !important; }
+  .text-5xl { @apply text-3xl !important; }
+  .text-6xl { @apply text-4xl !important; }
+
+  .fixed.top-6.right-6.z-\[10003\] {
+    @apply top-2 right-2 scale-75 !important;
+  }
+
+  .fixed.bottom-8.z-\[10002\] {
+    @apply hidden !important;
+  }
+}

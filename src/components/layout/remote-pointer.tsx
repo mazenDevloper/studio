@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useCallback, useRef, useState } from "react";
@@ -9,8 +8,9 @@ import { init } from "@noriginmedia/norigin-spatial-navigation";
 import { useToast } from "@/hooks/use-toast";
 
 /**
- * RemotePointer v860.0 - Sovereign Anchor & Auto-Flow Engine
- * Features: Auto-Collapse Sidebar on Level 3 entry + Forced Centering Scroll.
+ * RemotePointer v940.0 - Sovereign Anchor & Smart Joystick Engine
+ * Features: Auto-Collapse Sidebar on Content entry + Joystick Inversion Logic + 90° Rotation for Portrait.
+ * Fixed: Vertical navigation between levels in MediaView.
  */
 export function RemotePointer() {
   const pathname = usePathname();
@@ -21,7 +21,8 @@ export function RemotePointer() {
     wallPlateType, isFullScreen, isMinimized, 
     activeVideo, activeIptv, setGridMode,
     setIsRecordingKey, isRecordingKey, recordingAction, setRecordingAction,
-    setIsSidebarShrinked, setKeyMapping, nextTrack, prevTrack, setActiveVideo, setActiveIptv
+    setIsSidebarShrinked, setKeyMapping, nextTrack, prevTrack, setActiveVideo, setActiveIptv,
+    mapSettings
   } = useMediaStore();
 
   const [pressedKey, setPressedKey] = useState<string | null>(null);
@@ -53,6 +54,29 @@ export function RemotePointer() {
 
   const navigate = useCallback((direction: string) => {
     if (wallPlateType) return;
+
+    let finalDir = direction;
+
+    // Apply 90-degree Rotation Logic for Portrait/Side installations
+    const isSmallScreen = typeof window !== 'undefined' && window.innerWidth < 968;
+    if (mapSettings.autoRotateNav90 && isSmallScreen) {
+      // Rotation Mapping (Counter-Clockwise 90): Up -> Left, Left -> Down, Down -> Right, Right -> Up
+      if (finalDir === 'ArrowUp') finalDir = 'ArrowLeft';
+      else if (finalDir === 'ArrowLeft') finalDir = 'ArrowDown';
+      else if (finalDir === 'ArrowDown') finalDir = 'ArrowRight';
+      else if (finalDir === 'ArrowRight') finalDir = 'ArrowUp';
+    }
+
+    // Apply Standard Joystick Inversion Logic
+    if (mapSettings.invertJoystickX) {
+      if (finalDir === 'ArrowLeft') finalDir = 'ArrowRight';
+      else if (finalDir === 'ArrowRight') finalDir = 'ArrowLeft';
+    }
+    if (mapSettings.invertJoystickY) {
+      if (finalDir === 'ArrowUp') finalDir = 'ArrowDown';
+      else if (finalDir === 'ArrowDown') finalDir = 'ArrowUp';
+    }
+
     const focusables = Array.from(document.querySelectorAll(".focusable")).filter(el => {
       const rect = el.getBoundingClientRect();
       return rect.width > 0 && rect.height > 0;
@@ -74,9 +98,9 @@ export function RemotePointer() {
     const isFirstInRow = currentNavId.endsWith('-0') || currentNavId.endsWith('surah-0') || currentNavId.endsWith('cat-0');
 
     // 1. HORIZONTAL NAVIGATION: Level Transitions & Auto-Collapse
-    if (['ArrowLeft', 'ArrowRight'].includes(direction)) {
+    if (['ArrowLeft', 'ArrowRight'].includes(finalDir)) {
       const sameRowFocusables = focusables.filter(el => el.closest('[data-row-id]')?.getAttribute('data-row-id') === currentRowId);
-      const nextInRow = findBestCandidate(current, sameRowFocusables, direction);
+      const nextInRow = findBestCandidate(current, sameRowFocusables, finalDir);
       
       if (nextInRow) {
         nextInRow.focus();
@@ -86,39 +110,45 @@ export function RemotePointer() {
 
       // CROSS-ZONE TRANSITION
       const targetZoneFocusables = focusables.filter(el => el.closest('[data-nav-zone]')?.getAttribute('data-nav-zone') !== currentZone);
-      const bestZoneTarget = findBestCandidate(current, targetZoneFocusables, direction);
+      const bestZoneTarget = findBestCandidate(current, targetZoneFocusables, finalDir);
 
       if (bestZoneTarget) {
         const targetZone = bestZoneTarget.closest('[data-nav-zone]')?.getAttribute('data-nav-zone');
         
         if (targetZone === 'sidebar') {
           const target = document.querySelector('[data-nav-id="sidebar-channel-0"]') as HTMLElement || bestZoneTarget;
-          target.focus(); target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          setIsSidebarShrinked(false); // EXPAND ON ENTRY
+          target.focus(); target.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+          setIsSidebarShrinked(false);
           return;
         }
         
         if (targetZone === 'content') {
           const target = document.querySelector('[data-nav-id="reciter-item-0"]') as HTMLElement || document.querySelector('[data-nav-zone="content"] .focusable') as HTMLElement || bestZoneTarget;
-          target.focus(); target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          setIsSidebarShrinked(true); // COLLAPSE ON ENTRY
+          target.focus(); target.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+          setIsSidebarShrinked(true);
+          return;
+        }
+
+        if (targetZone === 'dock') {
+          const target = document.querySelector('[data-nav-id="dock-Media"]') as HTMLElement || bestZoneTarget;
+          target.focus(); target.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+          setIsSidebarShrinked(false);
           return;
         }
 
         bestZoneTarget.focus();
-        bestZoneTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        bestZoneTarget.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
       }
       return;
     }
 
     // 2. VERTICAL NAVIGATION: Structured Jump between First Items
     const sameZoneFocusables = focusables.filter(el => el.closest('[data-nav-zone]')?.getAttribute('data-nav-zone') === currentZone);
-    const nextInZone = findBestCandidate(current, sameZoneFocusables, direction);
+    const nextInZone = findBestCandidate(current, sameZoneFocusables, finalDir);
 
     if (nextInZone) {
       const targetRowId = nextInZone.closest('[data-row-id]')?.getAttribute('data-row-id');
       
-      // SOVEREIGN ANCHOR: If we are at index 0 and moving to a DIFFERENT row
       if (isFirstInRow && targetRowId !== currentRowId) {
          const firstInTargetRow = focusables.find(el => {
             const row = el.closest('[data-row-id]')?.getAttribute('data-row-id');
@@ -136,7 +166,7 @@ export function RemotePointer() {
       nextInZone.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
       return;
     }
-  }, [wallPlateType, setIsSidebarShrinked]);
+  }, [wallPlateType, setIsSidebarShrinked, mapSettings]);
 
   const findBestCandidate = (current: HTMLElement, candidates: HTMLElement[], direction: string) => {
     const currentRect = current.getBoundingClientRect();
@@ -165,7 +195,7 @@ export function RemotePointer() {
     const isTypingMode = (activeEl?.tagName === 'INPUT' || activeEl?.tagName === 'TEXTAREA') && !activeEl?.readOnly;
 
     if (isRecordingKey && recordingAction) {
-      const FORBIDDEN_KEYS = ['Backspace', 'Escape', 'Back', 'Delete'];
+      const FORBIDDEN_KEYS = ['Backspace', 'Escape', 'Back', 'Exit', 'Delete'];
       if (FORBIDDEN_KEYS.includes(finalKey)) {
         toast({ variant: 'destructive', title: "مفتاح محظور", description: "هذا المفتاح مخصص لوظائف النظام الأساسية" });
         setIsRecordingKey(false); setRecordingAction(null); return;
@@ -177,7 +207,7 @@ export function RemotePointer() {
     } 
 
     if (isTypingMode) {
-       if (['ArrowUp', 'ArrowDown'].includes(finalKey)) {
+       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(finalKey)) {
           e?.preventDefault();
           navigate(finalKey);
           return;
@@ -208,6 +238,12 @@ export function RemotePointer() {
     if (isAction(finalKey, 'goto_iptv')) { e?.preventDefault(); router.push('/iptv'); return; }
     if (isAction(finalKey, 'goto_football')) { e?.preventDefault(); router.push('/football'); return; }
     if (isAction(finalKey, 'goto_settings')) { e?.preventDefault(); router.push('/settings'); return; }
+
+    // Media Navigation Shortcuts
+    if (isAction(finalKey, 'focus_search')) { e?.preventDefault(); (document.querySelector('[data-nav-id="content-search-input-0"]') as HTMLElement)?.focus(); return; }
+    if (isAction(finalKey, 'focus_reciters')) { e?.preventDefault(); (document.querySelector('[data-nav-id="reciter-item-0"]') as HTMLElement)?.focus(); return; }
+    if (isAction(finalKey, 'focus_surahs')) { e?.preventDefault(); (document.querySelector('[data-nav-id="surah-0"]') as HTMLElement)?.focus(); return; }
+
   }, [navigate, isAction, wallPlateType, router, isRecordingKey, recordingAction, setIsRecordingKey, setRecordingAction, setKeyMapping, toast, activeVideo, activeIptv, isFullScreen, isMinimized, nextTrack, prevTrack, setActiveVideo, setActiveIptv]);
 
   useEffect(() => {

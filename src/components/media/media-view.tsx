@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { 
-  Plus, Loader2, X, List, Youtube, Star, Mic, Layers, Sparkles, Clock, Bookmark, Trash2, RefreshCw, CloudDownload, Trophy, Baby, Library, FolderHeart, CalendarDays, Send
+  Plus, Loader2, X, List, Youtube, Star, Mic, Layers, Sparkles, Clock, Bookmark, Trash2, RefreshCw, CloudDownload, Trophy, Baby, Library, FolderHeart, CalendarDays, Send, Edit3, Save
 } from "lucide-react";
 import { useMediaStore, YouTubeChannel, YouTubeVideo } from "@/lib/store";
 import { fetchChannelVideos, searchYouTubeVideos, fetchYouTubePlaylistVideos } from "@/lib/youtube";
@@ -28,10 +28,10 @@ const JUZ_COLORS = [
   "shadow-[0_0_2px_rgba(138,43,226,0.05)] border-blueviolet-500/10", "shadow-[0_0_2px_rgba(0,250,154,0.05)] border-mediumspringgreen-500/10",
   "shadow-[0_0_2px_rgba(255,140,0,0.05)] border-darkorange-500/10", "shadow-[0_0_2px_rgba(32,178,170,0.05)] border-lightseagreen-500/10",
   "shadow-[0_0_2px_rgba(240,128,128,0.05)] border-lightcoral-500/10", "shadow-[0_0_2px_rgba(124,252,0,0.05)] border-lawngreen-500/10",
-  "shadow-[0_0_2px_rgba(0,191,255,0.05)] border-deepskyblue-500/10", "shadow-[0_0_2px_rgba(255,0,255,0.05)] border-magenta-500/10",
-  "shadow-[0_0_2px_rgba(250,128,114,0.05)] border-salmon-500/10", "shadow-[0_0_2px_rgba(0,255,127,0.05)] border-springgreen-500/10",
-  "shadow-[0_0_2px_rgba(238,232,170,0.05)] border-palegoldenrod-500/10", "shadow-[0_0_2px_rgba(176,196,222,0.05)] border-lightsteelblue-500/10",
-  "shadow-[0_0_2px_rgba(221,160,221,0.05)] border-plum-500/10", "shadow-[0_0_2px_rgba(127,255,212,0.05)] border-aquamarine-500/10"
+  "shadow-[0_0_191,255,0.05)] border-deepskyblue-500/10", "shadow-[0_0_2px_rgba(255,0,255,0.05)] border-magenta-500/10",
+  "shadow-[0_0_250,128,114,0.05)] border-salmon-500/10", "shadow-[0_0_2px_rgba(0,255,127,0.05)] border-springgreen-500/10",
+  "shadow-[0_0_238,232,170,0.05)] border-palegoldenrod-500/10", "shadow-[0_0_176,196,222,0.05)] border-lightsteelblue-500/10",
+  "shadow-[0_0_221,160,221,0.05)] border-plum-500/10", "shadow-[0_0_127,255,212,0.05)] border-aquamarine-500/10"
 ];
 
 const JUZ_SURAH_MAP: Record<number, number[]> = {
@@ -45,8 +45,8 @@ const JUZ_SURAH_MAP: Record<number, number[]> = {
 };
 
 /**
- * MediaView v895.0 - Unified Cloud Sync & Rapid Import
- * Features: "Go" button for playlist import + Fixed Cloud Persistence.
+ * MediaView v990.0 - Sovereign Importer Engine
+ * Features: YouTube Playlist URL detection + Automatic video extraction & sync.
  */
 export function MediaView() {
   const { toast } = useToast();
@@ -54,7 +54,7 @@ export function MediaView() {
     favoriteChannels, setActiveVideo, dockSide, isSidebarShrinked, setIsSidebarShrinked,
     selectedChannel, setSelectedChannel, channelVideos, setChannelVideos,
     favoriteReciters, incrementReciterClick, playlists, addPlaylist, removePlaylist,
-    setActiveIptv, fetchSpecificBin, addVideoToPlaylist
+    setActiveIptv, fetchSpecificBin, mapSettings, updateMapSettings, syncMasterBin
   } = useMediaStore();
 
   const [search, setSearch] = useState("");
@@ -70,6 +70,9 @@ export function MediaView() {
   const [selectedPlaylist, setSelectedPlaylist] = useState<string | null>(null);
   const [newPlaylistName, setNewPlaylistName] = useState("");
   const [isFetchingPlaylists, setIsFetchingPlaylists] = useState(false);
+  
+  const [isEditingOmanUrl, setIsEditingOmanUrl] = useState(false);
+  const [omanUrlInput, setOmanUrlInput] = useState(mapSettings.omanUrl || "");
 
   const [starredLists, setStarredLists] = useState<Record<string, { name: string, vids: YouTubeVideo[] }>>({});
 
@@ -81,7 +84,7 @@ export function MediaView() {
 
   const occasionSuggestions = useMemo(() => {
     const list: { label: string, query: string, isDate?: boolean, isOman?: boolean, isSpecial?: boolean, isUpcoming?: boolean, isSport?: boolean }[] = [];
-    list.push({ label: "عُمان مباشر 📺", query: "https://player.mangomolo.com/v1/live?id=MTY8&channelid=MTYx&countries=Q0M%3D&filter=DENY&signature=3fd1e8dd84138a41bf33d93afd4a7f09&language=en&app_id=&fullscreen=yes&player_profile=&base_url=aHR0cHM6Ly9heW4ub20vbGl2ZS8xNjEvJUQ5JTgyJUQ5JTg2JUQ4JUE3JUQ4JUE5LSVEOCVCOSVEOSU4NSVEOCVBNyVEOSU4Ni0lRDklODUlRDglQTglRDglQTclRDglQjQlRDglQjE%3D&autoplay=false&vast=true", isOman: true });
+    list.push({ label: "عُمان مباشر 📺", query: mapSettings.omanUrl || "", isOman: true });
     list.push({ label: `${hijriInfo.dayName} ${hijriInfo.day} ${hijriInfo.monthName} ${hijriInfo.year}`, query: `${hijriInfo.monthName} ${hijriInfo.year}`, isDate: true });
     list.push({ label: "ملخص أهداف اليوم ⚽", query: "ملخص اهداف مباريات اليوم كاملة HD", isSport: true });
     list.push({ label: "ياسر الدوسري - سورة اليوم 📖", query: "ياسر الدوسري سورة اليوم تلاوة خاشعة", isSpecial: true });
@@ -94,7 +97,7 @@ export function MediaView() {
     list.push({ label: " تعليم النطق للأطفال 👶", query: "تعليم الحروف العربية للأطفال" });
     list.push({ label: "بث مباشر مكة المكرمة 🕌", query: "بث مباشر مكة المكرمة الآن" });
     return list.slice(0, 13);
-  }, [hijriInfo]);
+  }, [hijriInfo, mapSettings.omanUrl]);
 
   useEffect(() => {
     async function fetchHomeContent() {
@@ -159,16 +162,24 @@ export function MediaView() {
     const input = newPlaylistName.trim();
     if (!input) return;
     
-    if (input.includes('list=')) {
-      const url = new URL(input);
-      const listId = url.searchParams.get('list');
-      if (listId) {
-        toast({ title: "جاري الاستيراد", description: "جاري سحب المجلد من سحابة يوتيوب..." });
+    // SOVEREIGN IMPORTER: Detect YouTube Playlist URL
+    const listMatch = input.match(/[?&]list=([^&]+)/);
+    if (listMatch) {
+      const listId = listMatch[1];
+      setLoading(true);
+      toast({ title: "جاري الاستيراد", description: "جاري سحب المجلد من سحابة يوتيوب..." });
+      try {
         const data = await fetchYouTubePlaylistVideos(listId);
         if (data.videos.length > 0) {
           addPlaylist(data.title, data.videos);
           toast({ title: "تم الاستيراد", description: `تم حفظ مجلد ${data.title} بنجاح.` });
+        } else {
+          toast({ variant: "destructive", title: "فشل الاستيراد", description: "لم يتم العثور على فيديوهات في هذا المجلد." });
         }
+      } catch (e) {
+        toast({ variant: "destructive", title: "خطأ", description: "فشل الاتصال بخوادم يوتيوب." });
+      } finally {
+        setLoading(false);
       }
     } else {
       addPlaylist(input);
@@ -219,6 +230,13 @@ export function MediaView() {
   const handleDirectPlaylistFetch = async () => {
     setIsFetchingPlaylists(true);
     try { await fetchSpecificBin(JSONBIN_MASTER_BIN_ID); } finally { setIsFetchingPlaylists(false); }
+  };
+
+  const handleSaveOmanUrl = async () => {
+    updateMapSettings({ omanUrl: omanUrlInput });
+    await syncMasterBin();
+    setIsEditingOmanUrl(false);
+    toast({ title: "تم الحفظ", description: "تم تحديث رابط عمان مباشر سحابياً." });
   };
 
   const currentPlaylist = useMemo(() => playlists.find(p => p.id === selectedPlaylist), [playlists, selectedPlaylist]);
@@ -350,21 +368,45 @@ export function MediaView() {
         <section data-row-id="row-occasions" className="py-2">
           <div className={horizontalListClass}>
             {occasionSuggestions.map((occ, i) => (
-              <button 
-                key={i} 
-                onClick={() => {
-                  if (occ.isOman) {
-                    setActiveIptv({ stream_id: "oman-live-direct", name: "عُمان مباشر", stream_icon: "https://gallery-images.me/pics/arabicfta/oman.png", category_id: "direct", url: occ.query, type: 'web' });
-                  } else { performSearch(occ.query); }
-                }}
-                className={cn("px-6 py-4 rounded-full font-black text-sm focusable border-2 shrink-0 transition-all", occ.isDate ? "bg-white text-black border-white shadow-glow text-lg" : occ.isOman ? "bg-[#ed2b5c] text-white border-white/40 shadow-glow animate-pulse" : occ.isSport ? "bg-red-600/20 text-red-500 border-red-600/40" : occ.isUpcoming ? "bg-amber-600/20 text-amber-400 border-amber-500/30" : "bg-indigo-600 text-white border-indigo-400/50 shadow-glow")} 
-                data-nav-id={`occ-item-${i}`}
-              >
-                <div className="flex items-center gap-3">
-                   {occ.isDate ? <CalendarDays className="w-6 h-6 ml-2" /> : occ.isOman ? <img src="https://gallery-images.me/pics/arabicfta/oman.png" className="w-8 h-8 rounded-full border border-white/20" alt="" /> : occ.isSport ? <Trophy className="w-5 h-5 ml-2" /> : <Sparkles className="w-5 h-5 ml-2" />}
-                   {occ.label}
-                </div>
-              </button>
+              <div key={i} className="relative group shrink-0">
+                <button 
+                  onClick={() => {
+                    if (occ.isOman) {
+                      if (isEditingOmanUrl) return;
+                      const url = mapSettings.omanUrl || "";
+                      if (url.includes('youtube.com') || url.includes('youtu.be')) {
+                        const vidMatch = url.match(/(?:v=|\/)([0-9A-Za-z_-]{11})/);
+                        if (vidMatch) {
+                           setActiveVideo({ id: vidMatch[1], title: "عُمان مباشر", thumbnail: "https://gallery-images.me/pics/arabicfta/oman.png", description: "", publishedAt: new Date().toISOString() });
+                           return;
+                        }
+                      }
+                      setActiveIptv({ stream_id: "oman-live-direct", name: "عُمان مباشر", stream_icon: "https://gallery-images.me/pics/arabicfta/oman.png", category_id: "direct", url: mapSettings.omanUrl, type: 'web' });
+                    } else { performSearch(occ.query); }
+                  }}
+                  className={cn("px-6 py-4 rounded-full font-black text-sm focusable border-2 shrink-0 transition-all", occ.isDate ? "bg-white text-black border-white shadow-glow text-lg" : occ.isOman ? "bg-[#ed2b5c] text-white border-white/40 shadow-glow animate-pulse" : occ.isSport ? "bg-red-600/20 text-red-500 border-red-600/40" : occ.isUpcoming ? "bg-amber-600/20 text-amber-400 border-amber-500/30" : "bg-indigo-600 text-white border-indigo-400/50 shadow-glow")} 
+                  data-nav-id={`occ-item-${i}`}
+                >
+                  <div className="flex items-center gap-3">
+                     {occ.isDate ? <CalendarDays className="w-6 h-6 ml-2" /> : occ.isOman ? <img src="https://gallery-images.me/pics/arabicfta/oman.png" className="w-8 h-8 rounded-full border border-white/20" alt="" /> : occ.isSport ? <Trophy className="w-5 h-5 ml-2" /> : <Sparkles className="w-5 h-5 ml-2" />}
+                     {occ.label}
+                  </div>
+                </button>
+                
+                {occ.isOman && (
+                   <div className="absolute -top-12 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity z-50 flex flex-col items-center gap-2">
+                      {isEditingOmanUrl ? (
+                         <div className="flex items-center gap-2 bg-black/80 backdrop-blur-xl p-2 rounded-2xl border border-white/20 shadow-2xl animate-in zoom-in-95 duration-200">
+                            <Input value={omanUrlInput} onChange={(e) => setOmanUrlInput(e.target.value)} className="h-10 w-64 bg-white/5 border-none text-[10px] text-white font-bold" placeholder="رابط البث الجديد..." />
+                            <button onClick={handleSaveOmanUrl} className="w-10 h-10 rounded-xl bg-emerald-500 text-black flex items-center justify-center shadow-glow"><Save className="w-5 h-5" /></button>
+                            <button onClick={() => setIsEditingOmanUrl(false)} className="w-10 h-10 rounded-xl bg-red-600/20 text-red-500 flex items-center justify-center"><X className="w-5 h-5" /></button>
+                         </div>
+                      ) : (
+                         <button onClick={() => setIsEditingOmanUrl(true)} className="w-10 h-10 rounded-full bg-black/60 text-white border border-white/20 flex items-center justify-center shadow-glow backdrop-blur-md focusable"><Edit3 className="w-5 h-5" /></button>
+                      )}
+                   </div>
+                )}
+              </div>
             ))}
           </div>
         </section>
@@ -418,33 +460,46 @@ export function MediaView() {
           </div>
         ) : (
           <div className="space-y-16 mt-10">
+            {playlists.length > 0 && (
+              <section data-row-id="row-all-playlists" className="py-4">
+                 <div className="px-10 mb-6 flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center shadow-glow">
+                       <Library className="w-6 h-6 text-white" />
+                    </div>
+                    <h2 className="text-2xl font-black text-white uppercase tracking-widest">المجلدات والترددات المجرسة</h2>
+                 </div>
+                 <div className={horizontalListClass}>
+                    {playlists.map((p, pIdx) => (
+                       <div key={p.id} onClick={() => { setSelectedPlaylist(p.id); setIsSidebarShrinked(true); }} className="w-80 h-48 group relative overflow-hidden bg-zinc-900 border-2 border-white/10 rounded-[2.5rem] focusable cursor-pointer shrink-0 flex flex-col justify-end p-6 shadow-2xl transition-all outline-none" tabIndex={0} data-nav-id={`all-playlist-${pIdx}`}>
+                         {p.videos.length > 0 && (
+                           <div className="absolute inset-0 z-0">
+                             <img src={p.videos[0].thumbnail} className="w-full h-full object-cover opacity-60 group-hover:scale-110 transition-transform duration-700" alt="" />
+                             <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
+                           </div>
+                         )}
+                         <div className="relative z-10 text-right">
+                           <span className="text-2xl font-black text-white tracking-tighter drop-shadow-[0_4px_10px_rgba(0,0,0,0.8)] leading-tight">{p.name}</span>
+                           <div className="mt-2 flex items-center gap-2">
+                             <div className="px-3 py-1 bg-white/20 backdrop-blur-md rounded-full border border-white/20">
+                               <span className="text-[9px] font-black text-white uppercase tracking-widest">{p.videos.length} تلاوة</span>
+                             </div>
+                           </div>
+                         </div>
+                       </div>
+                    ))}
+                 </div>
+              </section>
+            )}
+
             {Object.entries(starredLists).map(([cid, data], idx) => (
               <section key={cid} data-row-id={`row-starred-${idx}`} className="py-4">
                 <div className="px-10 mb-6 flex items-center gap-4">
-                  <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shadow-glow", idx === 0 ? "bg-indigo-600" : "bg-yellow-500")}>
-                    {idx === 0 ? <Library className="w-6 h-6 text-white" /> : <Star className="w-6 h-6 text-black fill-current" />}
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-glow bg-yellow-500">
+                    <Star className="w-6 h-6 text-black fill-current" />
                   </div>
-                  <h2 className="text-2xl font-black text-white uppercase tracking-widest">{idx === 0 ? "المجلدات والترددات المجرسة" : `ترددات ${data.name}`}</h2>
+                  <h2 className="text-2xl font-black text-white uppercase tracking-widest">{`ترددات ${data.name}`}</h2>
                 </div>
                 <div className={horizontalListClass}>
-                  {idx === 0 && playlists.map((p, pIdx) => (
-                    <div key={p.id} onClick={() => { setSelectedPlaylist(p.id); setIsSidebarShrinked(true); }} className="w-80 h-48 group relative overflow-hidden bg-zinc-900 border-2 border-white/10 rounded-[2.5rem] focusable cursor-pointer shrink-0 flex flex-col justify-end p-6 shadow-2xl transition-all outline-none" tabIndex={0} data-nav-id={`all-playlist-${pIdx}`}>
-                      {p.videos.length > 0 && (
-                        <div className="absolute inset-0 z-0">
-                          <img src={p.videos[0].thumbnail} className="w-full h-full object-cover opacity-60 group-hover:scale-110 transition-transform duration-700" alt="" />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
-                        </div>
-                      )}
-                      <div className="relative z-10 text-right">
-                        <span className="text-2xl font-black text-white tracking-tighter drop-shadow-[0_4px_10px_rgba(0,0,0,0.8)] leading-tight">{p.name}</span>
-                        <div className="mt-2 flex items-center gap-2">
-                          <div className="px-3 py-1 bg-white/20 backdrop-blur-md rounded-full border border-white/20">
-                            <span className="text-[9px] font-black text-white uppercase tracking-widest">{p.videos.length} تلاوة</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
                   {data.vids.map((video, vIdx) => (
                     <div 
                       key={video.id + vIdx} 
