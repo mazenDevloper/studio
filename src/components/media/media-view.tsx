@@ -45,8 +45,7 @@ const JUZ_SURAH_MAP: Record<number, number[]> = {
 };
 
 /**
- * MediaView v990.0 - Sovereign Importer Engine
- * Features: YouTube Playlist URL detection + Automatic video extraction & sync.
+ * MediaView v1000.0 - Sovereign Precision Hub
  */
 export function MediaView() {
   const { toast } = useToast();
@@ -162,7 +161,6 @@ export function MediaView() {
     const input = newPlaylistName.trim();
     if (!input) return;
     
-    // SOVEREIGN IMPORTER: Detect YouTube Playlist URL
     const listMatch = input.match(/[?&]list=([^&]+)/);
     if (listMatch) {
       const listId = listMatch[1];
@@ -414,7 +412,7 @@ export function MediaView() {
         <section data-row-id="row-reciters" className="py-2">
           <div className={cn(horizontalListClass, "gap-8")}>
             {favoriteReciters.map((r, i) => (
-              <button key={i} onClick={() => handleReciterClick(r)} className={cn("flex flex-col items-center gap-4 px-4 py-4 rounded-[2.5rem] focusable border-2 shrink-0 transition-all", selectedReciter === r.name ? "border-emerald-500 bg-emerald-500/10 shadow-glow" : "border-transparent hover:bg-emerald-600/10")} tabIndex={0} data-nav-id={`reciter-item-${i}`}>
+              <button key={i} className={cn("flex flex-col items-center gap-4 px-4 py-4 rounded-[2.5rem] focusable border-2 shrink-0 transition-all", selectedReciter === r.name ? "border-emerald-500 bg-emerald-500/10 shadow-glow" : "border-transparent hover:bg-emerald-600/10")} onClick={() => handleReciterClick(r)} tabIndex={0} data-nav-id={`reciter-item-${i}`}>
                 <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-emerald-500/30 shadow-2xl"><img src={r.image} className="w-full h-full object-cover" alt="" /></div>
                 <span className="text-[10px] font-black text-white">{r.name}</span>
               </button>
