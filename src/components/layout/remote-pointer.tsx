@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useCallback, useRef, useState } from "react";
@@ -8,9 +9,9 @@ import { init } from "@noriginmedia/norigin-spatial-navigation";
 import { useToast } from "@/hooks/use-toast";
 
 /**
- * RemotePointer v940.0 - Sovereign Anchor & Smart Joystick Engine
+ * RemotePointer v910.0 - Sovereign Anchor & Smart Joystick Engine
  * Features: Auto-Collapse Sidebar on Content entry + Joystick Inversion Logic + 90° Rotation for Portrait.
- * Fixed: Vertical navigation between levels in MediaView.
+ * Updated: Conditional X/Y Inversion for small screens with auto-enable.
  */
 export function RemotePointer() {
   const pathname = usePathname();
@@ -38,7 +39,7 @@ export function RemotePointer() {
     const normalizedKey = key.toLowerCase();
     const screenMap: Record<string, string> = { '/': 'dashboard', '/dashboard': 'dashboard', '/media': 'media', '/quran': 'quran', '/football': 'football', '/iptv': 'iptv', '/settings': 'settings' };
     const pageCtx = screenMap[pathname] || 'global';
-    const match = (keysArr: string[] | undefined) => keysArr?.some(k => k.toLowerCase() === normalizedKey);
+    const match = (keysArr: string[] | undefined) => (Array.isArray(keysArr) ? keysArr : []).some(k => k.toLowerCase() === normalizedKey);
     
     if (isPlayerActive && match(mappings.player?.[action])) return true;
     if (pageCtx !== 'global' && match(mappings[pageCtx]?.[action])) return true;
@@ -59,7 +60,7 @@ export function RemotePointer() {
 
     // Apply 90-degree Rotation Logic for Portrait/Side installations
     const isSmallScreen = typeof window !== 'undefined' && window.innerWidth < 968;
-    if (mapSettings.autoRotateNav90 && isSmallScreen) {
+    if ((mapSettings.autoRotateNav90 ?? true) && isSmallScreen) {
       // Rotation Mapping (Counter-Clockwise 90): Up -> Left, Left -> Down, Down -> Right, Right -> Up
       if (finalDir === 'ArrowUp') finalDir = 'ArrowLeft';
       else if (finalDir === 'ArrowLeft') finalDir = 'ArrowDown';
@@ -67,12 +68,12 @@ export function RemotePointer() {
       else if (finalDir === 'ArrowRight') finalDir = 'ArrowUp';
     }
 
-    // Apply Standard Joystick Inversion Logic
-    if (mapSettings.invertJoystickX) {
+    // Apply Standard Joystick Inversion Logic ONLY on small screens for auto-activation
+    if (isSmallScreen && (mapSettings.invertJoystickX ?? true)) {
       if (finalDir === 'ArrowLeft') finalDir = 'ArrowRight';
       else if (finalDir === 'ArrowRight') finalDir = 'ArrowLeft';
     }
-    if (mapSettings.invertJoystickY) {
+    if (isSmallScreen && (mapSettings.invertJoystickY ?? true)) {
       if (finalDir === 'ArrowUp') finalDir = 'ArrowDown';
       else if (finalDir === 'ArrowDown') finalDir = 'ArrowUp';
     }
@@ -238,12 +239,6 @@ export function RemotePointer() {
     if (isAction(finalKey, 'goto_iptv')) { e?.preventDefault(); router.push('/iptv'); return; }
     if (isAction(finalKey, 'goto_football')) { e?.preventDefault(); router.push('/football'); return; }
     if (isAction(finalKey, 'goto_settings')) { e?.preventDefault(); router.push('/settings'); return; }
-
-    // Media Navigation Shortcuts
-    if (isAction(finalKey, 'focus_search')) { e?.preventDefault(); (document.querySelector('[data-nav-id="content-search-input-0"]') as HTMLElement)?.focus(); return; }
-    if (isAction(finalKey, 'focus_reciters')) { e?.preventDefault(); (document.querySelector('[data-nav-id="reciter-item-0"]') as HTMLElement)?.focus(); return; }
-    if (isAction(finalKey, 'focus_surahs')) { e?.preventDefault(); (document.querySelector('[data-nav-id="surah-0"]') as HTMLElement)?.focus(); return; }
-
   }, [navigate, isAction, wallPlateType, router, isRecordingKey, recordingAction, setIsRecordingKey, setRecordingAction, setKeyMapping, toast, activeVideo, activeIptv, isFullScreen, isMinimized, nextTrack, prevTrack, setActiveVideo, setActiveIptv]);
 
   useEffect(() => {

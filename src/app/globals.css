@@ -51,10 +51,15 @@
 
 .focusable:focus {
   @apply border-primary z-50;
-  box-shadow: 0 0 0 4px rgba(0, 136, 255, 0.4), 0 0 60px rgba(0, 136, 255, 0.6);
+  box-shadow: 0 0 0 6px rgba(0, 136, 255, 0.6), 0 0 120px rgba(0, 136, 255, 0.9), inset 0 0 20px rgba(0, 136, 255, 0.3);
+  transform: scale(1.03) !important;
+  position: relative;
 }
 
-.shadow-glow { box-shadow: 0 0 30px rgba(0, 136, 255, 0.5); }
+.shadow-glow { 
+  box-shadow: 0 0 50px rgba(0, 136, 255, 0.8); 
+}
+
 .no-scrollbar::-webkit-scrollbar { display: none; }
 
 /* --- SOVEREIGN MOBILE TRANSFORMATION PROTOCOL (v920.0) --- */
@@ -127,11 +132,12 @@
     @apply grid-cols-1 !important;
   }
 
-  /* 5. Player Mobile Adaptations - ESCAPED SLASHES FIXED */
+  /* 5. Player Mobile Adaptations */
   .fixed.z-\[99999\].bottom-12 {
     @apply bottom-16 left-0 right-0 w-full h-auto aspect-video rounded-none border-t border-b border-l-0 border-r-0 !important;
   }
 
+  /* Escaped slashes for selector compatibility */
   .fixed.z-\[100000\].left-1\/2.-translate-x-1\/2.bottom-0 {
     @apply bottom-16 scale-75 !important;
   }

@@ -203,10 +203,10 @@ export const useMediaStore = create<MediaState>()(
       mapSettings: { 
         zoom: 20.0, tilt: 65, carScale: 1.02, backgroundIndex: 0, showManuscriptBg: true, 
         manuscriptBgUrl: "https://www.image2url.com/r2/default/images/1782382707952-d99447c6-bc60-475d-9406-5fd2ef320bd5.png", 
-        fontScale: 1.0, manuscriptColor: '#ffffff', showManuscriptOnMoon: false, moonManuIdx: 0, 
+        fontScale: 1.0, manuscriptColor: '#ffffff', showManuscriptOnMoon: true, moonManuIdx: 0, 
         hue: 0, saturation: 100, brightness: 100, winwinUrl: "https://psee.io/9f4ngl", 
         beinUrl: "https://idebsports.ly/matches", 
-        omanUrl: "https://player.mangomolo.com/v1/live?id=MTY4&channelid=MTYx&countries=Q0M%3D&filter=DENY&signature=3fd1e8dd84138a41bf33d93afd4a7f09&language=en&app_id=&fullscreen=yes&player_profile=&base_url=aHR0cHM6Ly9heW4ub20vbGl2ZS8xNjEvJUQ5JTgyJUQ5JTg2JUQ4JUE3JUQ4JUE5LSVEOCVCOSVEOSU4NSVEOCVBNyVEOSU4Ni0lRDklODUlRDglQTglRDglQTclRDglQjQlRDglQjE%3D&autoplay=false&vast=true", 
+        omanUrl: "https://player.mangomolo.com/v1/live?id=MTY8&channelid=MTYx&countries=Q0M%3D&filter=DENY&signature=3fd1e8dd84138a41bf33d93afd4a7f09&language=en&app_id=&fullscreen=yes&player_profile=&base_url=aHR0cHM6Ly9heW4ub20vbGl2ZS8xNjEvJUQ5JTgyJUQ5JTg2JUQ4JUE3JUQ4JUE5LSVEOCVCOSVEOSU4NSVEOCVBNyVEOSU4Ni0lRDklODUlRDglQTglRDglQTclRDglQjQlRDglQjE%3D&autoplay=false&vast=true", 
         bein1Url: "https://online.aflam4you.net/zremb472.php/?vid=68&aflam_s=1&aflam_w=360&aflam_w=360&aflam_h=250&aflam_k=18311111", 
         mbc1Url: "https://online.aflam4you.net/zremb472.php?vid=5&aflam_s=1&aflam_w=360&aflam_h=250&aflam_k=18311111", 
         invertJoystickX: true, invertJoystickY: true, autoRotateNav90: true 
@@ -261,7 +261,7 @@ export const useMediaStore = create<MediaState>()(
 
       addChannel: (ch) => set((s) => { const n = [...s.favoriteChannels.filter(i => i.channelid !== ch.channelid), ch]; setTimeout(() => get().saveChannelsReorder(), 100); return { favoriteChannels: n }; }),
       removeChannel: (id) => set((s) => { const n = s.favoriteChannels.filter(i => i.channelid !== id); setTimeout(() => get().saveChannelsReorder(), 100); return { favoriteChannels: n }; }),
-      addReciter: (r) => set((s) => { const n = [...s.favoriteReciters.filter(i => i.channelid !== r.channelid), { ...r, clickschannel: 0 }]; setTimeout(() => get().saveRecitersReorder(), 100); return { favoriteReciters: n }; }),
+      addReciter: (r) => set((s) => { const n = [...s.favoriteReciters.filter(i => i.channelid !== r.channelid), { ...r, clickschannel: (r as any).clickschannel || 0 }]; setTimeout(() => get().saveRecitersReorder(), 100); return { favoriteReciters: n }; }),
       removeReciter: (id) => set((s) => { const n = s.favoriteReciters.filter(i => i.channelid !== id); setTimeout(() => get().saveRecitersReorder(), 100); return { favoriteReciters: n }; }),
       updateReciterName: (id, name) => set((s) => { const n = s.favoriteReciters.map(r => r.channelid === id ? { ...r, name } : r); setTimeout(() => get().saveRecitersReorder(), 100); return { favoriteReciters: n }; }),
       incrementReciterClick: (id) => set((s) => { const n = s.favoriteReciters.map(r => r.channelid === id ? { ...r, clickschannel: (r.clickschannel || 0) + 1 } : r).sort((a, b) => (b.clickschannel || 0) - (a.clickschannel || 0)); setTimeout(() => get().saveRecitersReorder(), 100); return { favoriteReciters: n }; }),
@@ -300,7 +300,7 @@ export const useMediaStore = create<MediaState>()(
       toggleFavoriteTeam: (t) => set((s) => ({ favoriteTeams: s.favoriteTeams.some(i => i.id === t.id) ? s.favoriteTeams.filter(i => i.id !== t.id) : [...s.favoriteTeams, t] })),
       toggleBelledMatch: (matchId) => set((s) => ({ belledMatchIds: s.belledMatchIds.includes(matchId) ? s.belledMatchIds.filter(i => i !== matchId) : [...s.belledMatchIds, matchId] })),
       updateMapSettings: (s) => set((st) => { const n = { ...st.mapSettings, ...s }; if (s.manuscriptBgUrl || s.winwinUrl || s.beinUrl || s.omanUrl || s.bein1Url || s.mbc1Url || s.autoRotateNav90 !== undefined) setTimeout(() => get().syncMasterBin(), 100); return { mapSettings: n }; }),
-      setKeyMapping: (ctx, act, key) => set((s) => { const m = { ...s.keyMappings }; if (!m[ctx]) m[ctx] = {}; let k = Array.isArray(m[ctx][act]) ? [...m[ctx][act]] : []; if (k.includes(key)) return s; k.push(key); m[ctx][act] = k.slice(-2); return { keyMappings: m }; }),
+      setKeyMapping: (ctx, act, key) => set((s) => { const m = { ...s.keyMappings }; if (!m[ctx]) m[ctx] = {}; let k = Array.isArray(m[ctx][act]) ? [...m[ctx][act]] : []; if (k.includes(key)) return s; k.push(key); m[ctx][act] = k.slice(-3); return { keyMappings: m }; }),
       removeSpecificKeyMapping: (ctx, act, key) => set((s) => { const m = { ...s.keyMappings }; if (m[ctx] && m[ctx][act]) { m[ctx][act] = m[ctx][act].filter(v => v !== key); return { keyMappings: m }; } return s; }),
       setActiveVideo: (v, ctx) => set({ playlist: ctx || (v ? [v] : []), playlistIndex: ctx ? ctx.findIndex(i => i.id === v?.id) : 0, activeVideo: v, lastPlayedVideo: v || get().lastPlayedVideo, activeIptv: null, isPlaying: !!v, isMinimized: false, isFullScreen: !!v, isPlayerPlaylistOpen: false }),
       setActiveIptv: (ch, ctx) => set({ iptvPlaylist: ctx || (ch ? [ch] : []), iptvPlaylistIndex: ctx ? ctx.findIndex(c => c.stream_id === ch?.stream_id) : 0, activeIptv: ch, activeVideo: null, isPlaying: !!ch, isMinimized: false, isFullScreen: !!ch, isPlayerPlaylistOpen: false }),
@@ -323,7 +323,7 @@ export const useMediaStore = create<MediaState>()(
       updatePrayerSetting: (id, updates) => set((s) => { const n = s.prayerSettings.map(p => p.id === id ? { ...p, ...updates } : p); setTimeout(() => get().syncMasterBin(), 100); return { prayerSettings: n }; }),
     }),
     {
-      name: "drivecast-sovereign-v141", 
+      name: "drivecast-sovereign-v142", 
       partialize: (s) => ({ dockSide: s.dockSide, displayScale: s.displayScale, dockScale: s.dockScale, isLooping: s.isLooping }),
     }
   )

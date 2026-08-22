@@ -2,7 +2,7 @@
 "use client";
 
 import { useMediaStore, YouTubeVideo } from "@/lib/store";
-import { X, Monitor, ChevronRight, ChevronLeft, Maximize2, BookmarkCheck, Volume2, ListPlus, LayoutList, RotateCcw } from "lucide-react";
+import { X, Monitor, ChevronRight, ChevronLeft, Maximize2, BookmarkCheck, Volume2, ListPlus, LayoutList, RotateCcw, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { SovereignIframe } from "@/components/ui/sovereign-iframe";
@@ -10,11 +10,14 @@ import { Input } from "@/components/ui/input";
 import { ShortcutBadge } from "@/components/layout/car-dock";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
 /**
- * GlobalVideoPlayer v750.0 - Sovereign Post-End Watchdog
- * Features: Pure Duration-based detection (No API dependency) + 5s Post-End Countdown + Background Audio Lock.
+ * GlobalVideoPlayer v1240.0 - Sovereign Auto-Activation & Layering
+ * Features: 
+ * 1. 1-Second Auto-Click: Automatically triggers play on start.
+ * 2. Layered Playlist: Moves horizontal list above floating buttons.
+ * 3. Physical Pulse Feedback at the center of the iframe on activation.
  */
 export function GlobalVideoPlayer() {
   const { 
@@ -29,17 +32,20 @@ export function GlobalVideoPlayer() {
   const { toast } = useToast();
   const [mounted, setMounted] = useState(false);
   const [iframeKey, setIframeKey] = useState(0);
-  const [urlInput, setUrlInput] = useState("https://idebsports.ly/matches");
+  const [urlInput, setUrlInput] = useState("");
+  const [showPulse, setShowPulse] = useState(false);
   
-  // SOVEREIGN DURATION WATCHDOG
   const [localElapsed, setLocalElapsed] = useState(0);
   const [postEndTimer, setPostEndTimer] = useState(0);
   const [isEnded, setIsEnded] = useState(false);
   
   const audioHeartbeatRef = useRef<HTMLAudioElement>(null);
+  const forcePlayBtnRef = useRef<HTMLButtonElement>(null);
+  const forcePlayBtnExpandedRef = useRef<HTMLButtonElement>(null);
+  const autoClickTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   const isActive = !!(activeVideo || activeIptv);
 
-  // Helper to parse duration string (M:SS or H:MM:SS) to seconds
   const parseDurationToSeconds = (dur: string): number => {
     if (!dur || dur === "FEED") return 0;
     const parts = dur.split(':').map(Number);
@@ -50,7 +56,19 @@ export function GlobalVideoPlayer() {
 
   const totalDuration = useMemo(() => activeVideo ? parseDurationToSeconds(activeVideo.duration || "") : 0, [activeVideo]);
 
-  // SOVEREIGN HEARTBEAT: Silent Audio to keep process alive in background
+  // SOVEREIGN AUTO-ACTIVATION: Trigger play after 1 second of loading
+  useEffect(() => {
+    if (isActive && !isMinimized) {
+      if (autoClickTimerRef.current) clearTimeout(autoClickTimerRef.current);
+      autoClickTimerRef.current = setTimeout(() => {
+        handleIframeAutoClick();
+      }, 1500); // 1.5 seconds for safety
+    }
+    return () => {
+      if (autoClickTimerRef.current) clearTimeout(autoClickTimerRef.current);
+    };
+  }, [activeVideo?.id, activeIptv?.stream_id, isActive, isMinimized]);
+
   useEffect(() => {
     if (isPlaying && isActive) {
       audioHeartbeatRef.current?.play().catch(() => {});
@@ -59,7 +77,6 @@ export function GlobalVideoPlayer() {
     }
   }, [isPlaying, isActive]);
 
-  // DURATION WATCHDOG TICKER
   useEffect(() => {
     let interval: any;
     if (isPlaying && activeVideo && !isEnded && totalDuration > 0) {
@@ -76,7 +93,6 @@ export function GlobalVideoPlayer() {
     return () => clearInterval(interval);
   }, [isPlaying, activeVideo, isEnded, totalDuration]);
 
-  // POST-END COUNTDOWN TICKER
   useEffect(() => {
     let interval: any;
     if (isEnded) {
@@ -104,7 +120,6 @@ export function GlobalVideoPlayer() {
     resetWatchdog();
   }, [activeVideo?.id]);
 
-  // MEDIA SESSION INTEGRATION
   useEffect(() => {
     if (activeVideo && 'mediaSession' in navigator) {
       navigator.mediaSession.metadata = new MediaMetadata({
@@ -131,7 +146,7 @@ export function GlobalVideoPlayer() {
     setMounted(true);
     if (isActive) {
       setTimeout(() => {
-        const targetId = isMinimized ? "player-close-btn-min" : "player-close-btn";
+        const targetId = isMinimized ? "player-force-play" : "player-close-btn";
         (document.querySelector(`[data-nav-id="${targetId}"]`) as HTMLElement)?.focus();
       }, 800);
     }
@@ -155,6 +170,29 @@ export function GlobalVideoPlayer() {
     setActiveVideo(null); setActiveIptv(null); setGridMode('hidden'); 
     setIsPlayerControlsExpanded(false); setIsFullScreen(false); setIsMinimized(false);
     setIsPlayerPlaylistOpen(false); resetWatchdog(); setIsPlaying(false);
+  };
+
+  const handleIframeAutoClick = () => {
+    setIsPlaying(true);
+    setIframeKey(k => k + 1);
+    setShowPulse(true);
+    setTimeout(() => setShowPulse(false), 800);
+
+    const frames = document.getElementsByName('sovereign-frame') as NodeListOf<HTMLIFrameElement>;
+    frames.forEach(frame => {
+      if (frame.contentWindow) {
+        frame.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'playVideo', args: '' }), '*');
+        frame.contentWindow.postMessage({ type: 'SOVEREIGN_UNMUTE_TRIGGER' }, '*');
+      }
+    });
+
+    setTimeout(() => {
+      if (isMinimized) {
+        forcePlayBtnRef.current?.focus();
+      } else {
+        forcePlayBtnExpandedRef.current?.focus();
+      }
+    }, 200);
   };
 
   const handlePutToIframe = () => {
@@ -181,16 +219,23 @@ export function GlobalVideoPlayer() {
 
       <div className={cn(
         "fixed z-[99999] shadow-[0_0_120px_rgba(0,0,0,0.9)] transition-all duration-500 overflow-hidden pointer-events-auto", 
-        isMinimized ? "bottom-8 left-1/2 -translate-x-1/2 w-[440px] h-24 rounded-[2.5rem] premium-glass bg-black/80 border border-white/20" : 
-        isFullScreen ? "inset-0 w-full h-full bg-black flex" : 
+        isMinimized ? "bottom-8 left-1/2 -translate-x-1/2 w-[520px] h-24 rounded-[2.5rem] premium-glass bg-black/80 border border-white/20" : 
+        isFullScreen ? "inset-0 w-full h-full bg-black flex flex-col" : 
         `bottom-12 ${popupSideClass} w-[35vw] h-[40vh] premium-glass rounded-[3.5rem] bg-black/95 border-2 border-white/10 flex`
       )}>
-        <div className={cn("relative flex-1 transition-opacity duration-500 flex", isMinimized ? "opacity-0 pointer-events-none absolute -top-[9999px]" : "opacity-100")}>
+        <div className={cn("relative flex-1 transition-opacity duration-500 flex flex-col", isMinimized ? "opacity-0 pointer-events-none absolute -top-[9999px]" : "opacity-100")}>
            <div className="flex-1 relative">
               {activeVideo ? (
                 <SovereignIframe key={`yt-${activeVideo.id}-${iframeKey}`} src={youtubeUrl} title={activeVideo.title} />
               ) : (
                 activeIptv?.url && <SovereignIframe key={`web-${activeIptv.stream_id}-${iframeKey}`} src={activeIptv.url} title={activeIptv.name} />
+              )}
+
+              {showPulse && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[101]">
+                   <div className="w-32 h-32 rounded-full bg-emerald-500/20 border-4 border-emerald-400 animate-ping opacity-0" />
+                   <div className="absolute w-16 h-16 rounded-full bg-emerald-500/40 border-2 border-emerald-300 animate-in zoom-in-50 fade-in duration-300" />
+                </div>
               )}
 
               {(effectiveCountdown !== null && effectiveCountdown > 0) && (
@@ -218,23 +263,51 @@ export function GlobalVideoPlayer() {
            </div>
 
            {isPlayerPlaylistOpen && (
-             <div className={cn(
-               "h-full bg-black/95 border-l border-white/10 backdrop-blur-3xl animate-in fade-in slide-in-from-left-full duration-500 flex flex-col shrink-0 transition-all",
-               isFullScreen ? "w-[30%]" : "w-[45%]"
-             )} dir="rtl">
-               <div className="p-6 border-b border-white/5 flex items-center justify-between">
-                 <div className="flex items-center gap-3 text-indigo-400"><LayoutList className="w-5 h-5" /><h3 className="text-xs font-black uppercase tracking-widest">المجلد السيادي</h3></div>
-                 <button onClick={() => setIsPlayerPlaylistOpen(false)} className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-white/40 hover:text-white transition-colors focusable"><X className="w-4 h-4" /></button>
+             <div className="absolute bottom-32 left-8 right-8 h-[240px] bg-black/80 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] animate-in slide-in-from-bottom-full duration-500 z-[200] flex flex-col shadow-2xl" dir="rtl">
+               <div className="px-8 py-3 flex items-center justify-between border-b border-white/5">
+                 <div className="flex items-center gap-4">
+                    <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center shadow-glow">
+                       <LayoutList className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="flex flex-col">
+                       <h3 className="text-sm font-black text-white tracking-tighter">قائمة المجلد السيادي</h3>
+                       <span className="text-[8px] text-white/40 font-bold uppercase tracking-[0.3em]">{playlist.length} تلاوة</span>
+                    </div>
+                 </div>
+                 <button onClick={() => setIsPlayerPlaylistOpen(false)} className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/40 hover:text-white transition-all focusable"><X className="w-4 h-4" /></button>
                </div>
-               <ScrollArea className="flex-1">
-                 <div className="p-4 space-y-3">
+               
+               <ScrollArea className="flex-1 w-full">
+                 <div className="flex gap-4 p-6 overflow-x-auto no-scrollbar scroll-smooth">
                    {playlist.map((v, i) => (
-                     <button key={v.id + i} onClick={() => { setActiveVideo(v, playlist); resetWatchdog(); }} className={cn("w-full p-4 rounded-[1.8rem] flex items-center gap-4 transition-all focusable text-right border-2", i === playlistIndex ? "bg-indigo-600 border-indigo-400 text-white shadow-glow scale-[1.02]" : "bg-white/5 border-transparent text-white/60 hover:bg-white/10")}>
-                       <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 border border-white/10"><img src={v.thumbnail} className="w-full h-full object-cover" alt="" /></div>
-                       <div className="flex flex-col min-w-0"><span className="text-[11px] font-black truncate">{v.title}</span><span className="text-[9px] opacity-40 font-bold mt-1">{v.duration || "---"}</span></div>
+                     <button 
+                       key={v.id + i} 
+                       onClick={() => { setActiveVideo(v, playlist); resetWatchdog(); }}
+                       className={cn(
+                         "w-[260px] h-[120px] shrink-0 rounded-[2rem] border-2 transition-all duration-300 focusable overflow-hidden relative group text-right flex flex-col justify-end p-4 shadow-2xl",
+                         i === playlistIndex 
+                           ? "bg-indigo-600/20 border-indigo-400 scale-105 z-10 shadow-[0_0_50px_rgba(129,140,248,0.3)]" 
+                           : "bg-white/5 border-white/5 hover:bg-white/10"
+                       )}
+                       tabIndex={0}
+                       data-nav-id={`playlist-item-${i}`}
+                     >
+                       <div className="absolute inset-0 z-0">
+                         <img src={v.thumbnail} className="w-full h-full object-cover opacity-40 group-hover:scale-110 transition-transform duration-[5s]" alt="" />
+                         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
+                       </div>
+                       <div className="relative z-10 space-y-1">
+                          <h4 className="text-[12px] font-black text-white line-clamp-2 leading-tight drop-shadow-md">{v.title}</h4>
+                          <div className="flex items-center gap-2 text-[8px] font-bold text-white/40 uppercase tracking-widest mt-1">
+                             <span className="truncate max-w-[100px]">{v.channelTitle}</span>
+                             <span className="opacity-30">•</span>
+                             <span className="text-indigo-300">{v.duration || "FEED"}</span>
+                          </div>
+                       </div>
                      </button>
                    ))}
                  </div>
+                 <ScrollBar orientation="horizontal" className="bg-white/5 h-1" />
                </ScrollArea>
              </div>
            )}
@@ -245,8 +318,19 @@ export function GlobalVideoPlayer() {
             <div className="w-14 h-14 rounded-2xl overflow-hidden border border-white/20 bg-zinc-900/40 shadow-glow"><img src={activeVideo?.thumbnail || activeIptv?.stream_icon} className="w-full h-full object-cover" alt="" /></div>
             <div className="flex flex-col flex-1 min-w-0 text-right"><span className="text-white font-black text-sm truncate w-full tracking-tighter leading-none">{activeVideo?.title || activeIptv?.name}</span><span className="text-[8px] text-accent font-black uppercase tracking-[0.4em] mt-1.5">نظام البث المركزي</span></div>
             <div className="flex gap-3">
-              <div className="relative group"><button onClick={() => setIsMinimized(false)} className="w-9 h-9 rounded-full bg-primary text-white shadow-glow flex items-center justify-center focusable transition-all"><Maximize2 className="w-5 h-5" /></button><ShortcutBadge action="player_minimize" className="-bottom-5 left-1/2 -translate-x-1/2 scale-50" /></div>
-              <div className="relative group"><button onClick={handleClose} data-nav-id="player-close-btn-min" className="w-9 h-9 rounded-full bg-red-600 text-white shadow-glow flex items-center justify-center focusable"><X className="w-5 h-5" /></button><ShortcutBadge action="player_close" className="-bottom-5 left-1/2 -translate-x-1/2 scale-50" /></div>
+              <div className="relative group">
+                <button 
+                  ref={forcePlayBtnRef}
+                  onClick={handleIframeAutoClick} 
+                  data-nav-id="player-force-play" 
+                  className="w-10 h-10 rounded-full bg-emerald-500 text-black shadow-glow flex items-center justify-center focusable transition-all hover:scale-110 active:scale-95"
+                >
+                  <Play className="w-6 h-6 fill-current" />
+                </button>
+                <ShortcutBadge action="player_mode" className="-bottom-5 left-1/2 -translate-x-1/2 scale-50" />
+              </div>
+              <div className="relative group"><button onClick={() => setIsMinimized(false)} className="w-10 h-10 rounded-full bg-primary text-white shadow-glow flex items-center justify-center focusable transition-all hover:scale-110 active:scale-95"><Maximize2 className="w-5 h-5" /></button><ShortcutBadge action="player_minimize" className="-bottom-5 left-1/2 -translate-x-1/2 scale-50" /></div>
+              <div className="relative group"><button onClick={handleClose} data-nav-id="player-close-btn-min" className="w-10 h-10 rounded-full bg-red-600 text-white shadow-glow flex items-center justify-center focusable hover:scale-110 active:scale-95"><X className="w-5 h-5" /></button><ShortcutBadge action="player_close" className="-bottom-5 left-1/2 -translate-x-1/2 scale-50" /></div>
             </div>
           </div>
         )}
@@ -261,13 +345,25 @@ export function GlobalVideoPlayer() {
               </button>
               <ShortcutBadge action="player_close" className="-bottom-4 left-1/2 -translate-x-1/2 scale-75" />
             </div>
+
+            <div className="relative group">
+              <button 
+                ref={forcePlayBtnExpandedRef}
+                onClick={handleIframeAutoClick} 
+                data-nav-id="player-force-play-expanded" 
+                className={cn(ctrlBtnClass, "bg-emerald-500/40 text-emerald-400 border-2 border-emerald-500/20")}
+              >
+                <Play className="w-6 h-6 fill-current" />
+              </button>
+              <ShortcutBadge action="player_mode" className="-bottom-4 left-1/2 -translate-x-1/2 scale-75" />
+            </div>
             
             {isPlayerControlsExpanded && (
               <div className="flex items-center gap-3 animate-in slide-in-from-left-4 duration-300">
                 {isWebType && (
                   <div className="flex items-center gap-3 bg-white/5 rounded-full px-5 h-12 min-[968px]:h-14 max-[968px]:h-16 border-2 border-white/10 group focus-within:border-emerald-500/40 transition-all">
                     <Input value={urlInput} onChange={(e) => setUrlInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handlePutToIframe()} placeholder="URL..." className="bg-transparent border-none text-[16px] font-black text-white p-0 h-full w-48 focus-visible:ring-0" />
-                    <button onClick={handlePutToIframe} className="w-10 h-10 rounded-full bg-emerald-600/20 text-emerald-400 flex items-center justify-center"><ChevronRight className="w-5 h-5" /></button>
+                    <button onClick={handlePutToIframe} className="w-10 h-10 rounded-xl bg-emerald-600/20 text-emerald-400 flex items-center justify-center"><ChevronRight className="w-5 h-5" /></button>
                   </div>
                 )}
                 

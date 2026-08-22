@@ -45,7 +45,8 @@ const JUZ_SURAH_MAP: Record<number, number[]> = {
 };
 
 /**
- * MediaView v1000.0 - Sovereign Precision Hub
+ * MediaView v1180.0 - Sovereign Precision Hub
+ * Features: Fixed Navigation to Cloud Fetch Button + Multi-Row Continuity.
  */
 export function MediaView() {
   const { toast } = useToast();
@@ -80,6 +81,10 @@ export function MediaView() {
   const playlistInputRef = useRef<HTMLInputElement>(null);
 
   const hijriInfo = useMemo(() => getCurrentHijriDate(), []);
+
+  useEffect(() => {
+    fetchSpecificBin(JSONBIN_MASTER_BIN_ID);
+  }, [fetchSpecificBin]);
 
   const occasionSuggestions = useMemo(() => {
     const list: { label: string, query: string, isDate?: boolean, isOman?: boolean, isSpecial?: boolean, isUpcoming?: boolean, isSport?: boolean }[] = [];
@@ -357,7 +362,7 @@ export function MediaView() {
               />
             </div>
             <button onClick={() => performSearch()} className="h-16 px-10 rounded-[2rem] bg-red-600 text-white font-black text-lg focusable flex items-center" data-nav-id="content-search-btn-0"><Youtube className="w-6 h-6 ml-3" /> استكشاف</button>
-            <Button onClick={handleDirectPlaylistFetch} variant="outline" size="icon" className="w-16 h-16 rounded-[2rem] bg-indigo-600/20 text-indigo-400 border-indigo-500/30 ml-4">
+            <Button onClick={handleDirectPlaylistFetch} variant="outline" size="icon" className="w-16 h-16 rounded-[2rem] bg-indigo-600/20 text-indigo-400 border-indigo-500/30 ml-4 shadow-glow focusable" data-nav-id="content-cloud-fetch-0">
                <CloudDownload className={cn("w-6 h-6", isFetchingPlaylists && "animate-spin")} />
             </Button>
           </div>
