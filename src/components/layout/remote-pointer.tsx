@@ -9,9 +9,8 @@ import { init } from "@noriginmedia/norigin-spatial-navigation";
 import { useToast } from "@/hooks/use-toast";
 
 /**
- * RemotePointer v910.0 - Sovereign Anchor & Smart Joystick Engine
- * Features: Auto-Collapse Sidebar on Content entry + Joystick Inversion Logic + 90° Rotation for Portrait.
- * Updated: Conditional X/Y Inversion for small screens with auto-enable.
+ * RemotePointer v1460.0 - Sovereign Precision Engine
+ * Features: Screen-Aware Selective Joystick Inversion + Advanced Input Isolation.
  */
 export function RemotePointer() {
   const pathname = usePathname();
@@ -57,18 +56,17 @@ export function RemotePointer() {
     if (wallPlateType) return;
 
     let finalDir = direction;
-
-    // Apply 90-degree Rotation Logic for Portrait/Side installations
     const isSmallScreen = typeof window !== 'undefined' && window.innerWidth < 968;
-    if ((mapSettings.autoRotateNav90 ?? true) && isSmallScreen) {
-      // Rotation Mapping (Counter-Clockwise 90): Up -> Left, Left -> Down, Down -> Right, Right -> Up
+
+    // Apply 90-degree Rotation Logic for Portrait/Side installations - ONLY for small screens
+    if (isSmallScreen && (mapSettings.autoRotateNav90 ?? true)) {
       if (finalDir === 'ArrowUp') finalDir = 'ArrowLeft';
       else if (finalDir === 'ArrowLeft') finalDir = 'ArrowDown';
       else if (finalDir === 'ArrowDown') finalDir = 'ArrowRight';
       else if (finalDir === 'ArrowRight') finalDir = 'ArrowUp';
     }
 
-    // Apply Standard Joystick Inversion Logic ONLY on small screens for auto-activation
+    // Apply Standard Joystick Inversion Logic - ONLY for small screens
     if (isSmallScreen && (mapSettings.invertJoystickX ?? true)) {
       if (finalDir === 'ArrowLeft') finalDir = 'ArrowRight';
       else if (finalDir === 'ArrowRight') finalDir = 'ArrowLeft';
@@ -98,7 +96,6 @@ export function RemotePointer() {
     const currentNavId = current.getAttribute('data-nav-id') || '';
     const isFirstInRow = currentNavId.endsWith('-0') || currentNavId.endsWith('surah-0') || currentNavId.endsWith('cat-0');
 
-    // 1. HORIZONTAL NAVIGATION: Level Transitions & Auto-Collapse
     if (['ArrowLeft', 'ArrowRight'].includes(finalDir)) {
       const sameRowFocusables = focusables.filter(el => el.closest('[data-row-id]')?.getAttribute('data-row-id') === currentRowId);
       const nextInRow = findBestCandidate(current, sameRowFocusables, finalDir);
@@ -109,7 +106,6 @@ export function RemotePointer() {
         return;
       }
 
-      // CROSS-ZONE TRANSITION
       const targetZoneFocusables = focusables.filter(el => el.closest('[data-nav-zone]')?.getAttribute('data-nav-zone') !== currentZone);
       const bestZoneTarget = findBestCandidate(current, targetZoneFocusables, finalDir);
 
@@ -143,7 +139,6 @@ export function RemotePointer() {
       return;
     }
 
-    // 2. VERTICAL NAVIGATION: Structured Jump between First Items
     const sameZoneFocusables = focusables.filter(el => el.closest('[data-nav-zone]')?.getAttribute('data-nav-zone') === currentZone);
     const nextInZone = findBestCandidate(current, sameZoneFocusables, finalDir);
 
@@ -198,21 +193,25 @@ export function RemotePointer() {
     if (isRecordingKey && recordingAction) {
       const FORBIDDEN_KEYS = ['Backspace', 'Escape', 'Back', 'Exit', 'Delete'];
       if (FORBIDDEN_KEYS.includes(finalKey)) {
-        toast({ variant: 'destructive', title: "مفتاح محظور", description: "هذا المفتاح مخصص لوظائف النظام الأساسية" });
+        toast({ variant: 'destructive', title: "مفتاح محظور" });
         setIsRecordingKey(false); setRecordingAction(null); return;
       }
       setKeyMapping(recordingAction.ctx, recordingAction.act, finalKey);
       setIsRecordingKey(false); setRecordingAction(null);
-      toast({ title: "تم البرمجة", description: `تم ربط المفتاح ${finalKey} بنجاح` });
+      toast({ title: "تم البرمجة" });
       return;
     } 
 
     if (isTypingMode) {
+       // INPUT ISOLATION: Only allow navigation within input or via arrow keys
+       // Block numeric shortcuts and other mapped actions while typing
        if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(finalKey)) {
           e?.preventDefault();
           navigate(finalKey);
           return;
        }
+       // Do not run isAction checks for any other keys when typing
+       return;
     }
 
     const isPlayerActive = (activeVideo || activeIptv) && isFullScreen && !isMinimized;
@@ -239,7 +238,7 @@ export function RemotePointer() {
     if (isAction(finalKey, 'goto_iptv')) { e?.preventDefault(); router.push('/iptv'); return; }
     if (isAction(finalKey, 'goto_football')) { e?.preventDefault(); router.push('/football'); return; }
     if (isAction(finalKey, 'goto_settings')) { e?.preventDefault(); router.push('/settings'); return; }
-  }, [navigate, isAction, wallPlateType, router, isRecordingKey, recordingAction, setIsRecordingKey, setRecordingAction, setKeyMapping, toast, activeVideo, activeIptv, isFullScreen, isMinimized, nextTrack, prevTrack, setActiveVideo, setActiveIptv]);
+  }, [navigate, isAction, wallPlateType, router, isRecordingKey, recordingAction, setIsRecordingKey, setRecordingAction, setKeyMapping, toast, activeVideo, activeIptv, isFullScreen, isMinimized, nextTrack, prevTrack]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

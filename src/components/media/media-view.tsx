@@ -21,14 +21,14 @@ const JUZ_COLORS = [
   "shadow-[0_0_2px_rgba(255,255,0,0.05)] border-yellow-500/10", "shadow-[0_0_2px_rgba(0,255,0,0.05)] border-green-500/10",
   "shadow-[0_0_2px_rgba(0,0,255,0.05)] border-blue-500/10", "shadow-[0_0_2px_rgba(75,0,130,0.05)] border-indigo-500/10",
   "shadow-[0_0_2px_rgba(148,0,211,0.05)] border-violet-500/10", "shadow-[0_0_2px_rgba(255,20,147,0.05)] border-pink-500/10",
-  "shadow-[0_0_2px_rgba(0,255,255,0.05)] border-cyan-500/10", "shadow-[0_0_2px_rgba(173,255,47,0.05)] border-lime-500/10",
-  "shadow-[0_0_2px_rgba(255,69,0,0.05)] border-orangered-500/10", "shadow-[0_0_2px_rgba(30,144,255,0.05)] border-dodgerblue-500/10",
-  "shadow-[0_0_2px_rgba(218,112,214,0.05)] border-orchid-500/10", "shadow-[0_0_2px_rgba(50,205,50,0.05)] border-limegreen-500/10",
-  "shadow-[0_0_2px_rgba(255,215,0,0.05)] border-gold-500/10", "shadow-[0_0_2px_rgba(255,105,180,0.05)] border-hotpink-500/10",
-  "shadow-[0_0_2px_rgba(138,43,226,0.05)] border-blueviolet-500/10", "shadow-[0_0_2px_rgba(0,250,154,0.05)] border-mediumspringgreen-500/10",
-  "shadow-[0_0_2px_rgba(255,140,0,0.05)] border-darkorange-500/10", "shadow-[0_0_2px_rgba(32,178,170,0.05)] border-lightseagreen-500/10",
-  "shadow-[0_0_2px_rgba(240,128,128,0.05)] border-lightcoral-500/10", "shadow-[0_0_2px_rgba(124,252,0,0.05)] border-lawngreen-500/10",
-  "shadow-[0_0_191,255,0.05)] border-deepskyblue-500/10", "shadow-[0_0_2px_rgba(255,0,255,0.05)] border-magenta-500/10",
+  "shadow-[0_0_2px_rgba(0,255,255,0.05)] border-cyan-500/10", "shadow-[0_0_173,255,47,0.05)] border-lime-500/10",
+  "shadow-[0_0_2px_rgba(255,69,0,0.05)] border-orangered-500/10", "shadow-[0_0_30,144,255,0.05)] border-dodgerblue-500/10",
+  "shadow-[0_0_218,112,214,0.05)] border-orchid-500/10", "shadow-[0_0_50,205,50,0.05)] border-limegreen-500/10",
+  "shadow-[0_0_255,215,0,0.05)] border-gold-500/10", "shadow-[0_0_255,105,180,0.05)] border-hotpink-500/10",
+  "shadow-[0_0_138,43,226,0.05)] border-blueviolet-500/10", "shadow-[0_0_0,250,154,0.05)] border-mediumspringgreen-500/10",
+  "shadow-[0_0_255,140,0,0.05)] border-darkorange-500/10", "shadow-[0_0_32,178,170,0.05)] border-lightseagreen-500/10",
+  "shadow-[0_0_240,128,128,0.05)] border-lightcoral-500/10", "shadow-[0_0_124,252,0,0.05)] border-lawngreen-500/10",
+  "shadow-[0_0_191,255,0,0.05)] border-deepskyblue-500/10", "shadow-[0_0_2px_rgba(255,0,255,0.05)] border-magenta-500/10",
   "shadow-[0_0_250,128,114,0.05)] border-salmon-500/10", "shadow-[0_0_2px_rgba(0,255,127,0.05)] border-springgreen-500/10",
   "shadow-[0_0_238,232,170,0.05)] border-palegoldenrod-500/10", "shadow-[0_0_176,196,222,0.05)] border-lightsteelblue-500/10",
   "shadow-[0_0_221,160,221,0.05)] border-plum-500/10", "shadow-[0_0_127,255,212,0.05)] border-aquamarine-500/10"
@@ -44,10 +44,17 @@ const JUZ_SURAH_MAP: Record<number, number[]> = {
   30: [78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114]
 };
 
-/**
- * MediaView v1180.0 - Sovereign Precision Hub
- * Features: Fixed Navigation to Cloud Fetch Button + Multi-Row Continuity.
- */
+interface OccasionSuggestion {
+  label: string;
+  query: string;
+  isDate?: boolean;
+  isOman?: boolean;
+  isSpecial?: boolean;
+  isUpcoming?: boolean;
+  isSport?: boolean;
+  isLivePriority?: boolean;
+}
+
 export function MediaView() {
   const { toast } = useToast();
   const { 
@@ -73,6 +80,8 @@ export function MediaView() {
   
   const [isEditingOmanUrl, setIsEditingOmanUrl] = useState(false);
   const [omanUrlInput, setOmanUrlInput] = useState(mapSettings.omanUrl || "");
+  
+  const DEFAULT_OMAN_URL = "https://player.mangomolo.com/v1/live?id=MTY4&channelid=MTYx&countries=Q0M%3D&filter=DENY&signature=3fd1e8dd84138a41bf33d93afd4a7f09&language=en&app_id=&fullscreen=yes&player_profile=&base_url=aHR0cHM6Ly9heW4ub20vbGl2ZS8xNjEvJUQ5JTgyJUQ5JTg2JUQ4JUE3JUQ4JUE5LSVEOCVCOSVEOSU4NSVEOCVBNyVEOSU4Ni0lRDklODUlRDglQTglRDglQTclRDglQjQlRDglQjE%3D&autoplay=false&vast=true";
 
   const [starredLists, setStarredLists] = useState<Record<string, { name: string, vids: YouTubeVideo[] }>>({});
 
@@ -87,20 +96,13 @@ export function MediaView() {
   }, [fetchSpecificBin]);
 
   const occasionSuggestions = useMemo(() => {
-    const list: { label: string, query: string, isDate?: boolean, isOman?: boolean, isSpecial?: boolean, isUpcoming?: boolean, isSport?: boolean }[] = [];
-    list.push({ label: "عُمان مباشر 📺", query: mapSettings.omanUrl || "", isOman: true });
-    list.push({ label: `${hijriInfo.dayName} ${hijriInfo.day} ${hijriInfo.monthName} ${hijriInfo.year}`, query: `${hijriInfo.monthName} ${hijriInfo.year}`, isDate: true });
-    list.push({ label: "ملخص أهداف اليوم ⚽", query: "ملخص اهداف مباريات اليوم كاملة HD", isSport: true });
-    list.push({ label: "ياسر الدوسري - سورة اليوم 📖", query: "ياسر الدوسري سورة اليوم تلاوة خاشعة", isSpecial: true });
-    list.push({ label: "تلاوات نادرة - ياسر الدوسري ✨", query: "ياسر الدوسري تلاوات نادرة قديمة" });
-    list.push({ label: "ياسر الدوسري - المصحف الكامل 🕋", query: "ياسر الدوسري المصحف المرتل كامل" });
+    const list: OccasionSuggestion[] = [];
+    list.push({ label: "عُمان مباشر 📺", query: mapSettings.omanUrl || DEFAULT_OMAN_URL, isOman: true });
+    list.push({ label: `${hijriInfo.dayNumArabic} ${hijriInfo.monthName} 🕌`, query: `${hijriInfo.fullDate} الحرم المكي`, isDate: true });
+    list.push({ label: "أهداف اليوم ⚽", query: "ملخص أهداف مباريات اليوم كاملة HD", isSport: true });
     const contextOccasions = getIslamicOccasions(hijriInfo);
-    contextOccasions.forEach(occ => list.push({ ...occ }));
-    list.push({ label: "دروس إيمانية 📚", query: "أجمل الدروس الدينية القصيرة" });
-    list.push({ label: "تلاوات هادئة 🌿", query: "تلاوات قرآنية هادئة للنوم" });
-    list.push({ label: " تعليم النطق للأطفال 👶", query: "تعليم الحروف العربية للأطفال" });
-    list.push({ label: "بث مباشر مكة المكرمة 🕌", query: "بث مباشر مكة المكرمة الآن" });
-    return list.slice(0, 13);
+    contextOccasions.forEach(occ => list.push(occ));
+    return list.slice(0, 15);
   }, [hijriInfo, mapSettings.omanUrl]);
 
   useEffect(() => {
@@ -162,36 +164,6 @@ export function MediaView() {
     if (e.key === 'Enter') { performSearch(); setIsSearchLocked(true); }
   };
 
-  const createPlaylistFromInput = async () => {
-    const input = newPlaylistName.trim();
-    if (!input) return;
-    
-    const listMatch = input.match(/[?&]list=([^&]+)/);
-    if (listMatch) {
-      const listId = listMatch[1];
-      setLoading(true);
-      toast({ title: "جاري الاستيراد", description: "جاري سحب المجلد من سحابة يوتيوب..." });
-      try {
-        const data = await fetchYouTubePlaylistVideos(listId);
-        if (data.videos.length > 0) {
-          addPlaylist(data.title, data.videos);
-          toast({ title: "تم الاستيراد", description: `تم حفظ مجلد ${data.title} بنجاح.` });
-        } else {
-          toast({ variant: "destructive", title: "فشل الاستيراد", description: "لم يتم العثور على فيديوهات في هذا المجلد." });
-        }
-      } catch (e) {
-        toast({ variant: "destructive", title: "خطأ", description: "فشل الاتصال بخوادم يوتيوب." });
-      } finally {
-        setLoading(false);
-      }
-    } else {
-      addPlaylist(input);
-      toast({ title: "تم الإنشاء", description: `تم إنشاء المجلد ${input}` });
-    }
-    setNewPlaylistName("");
-    setIsPlaylistInputLocked(true);
-  };
-
   const handlePlaylistInputKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (isPlaylistInputLocked) {
       if (e.key === 'Enter' || e.key === '5') {
@@ -200,7 +172,10 @@ export function MediaView() {
       return;
     }
     if (e.key === 'Enter') {
-      await createPlaylistFromInput();
+      const input = newPlaylistName.trim();
+      if (!input) return;
+      addPlaylist(input);
+      setNewPlaylistName(""); setIsPlaylistInputLocked(true);
     }
   };
 
@@ -239,19 +214,10 @@ export function MediaView() {
     updateMapSettings({ omanUrl: omanUrlInput });
     await syncMasterBin();
     setIsEditingOmanUrl(false);
-    toast({ title: "تم الحفظ", description: "تم تحديث رابط عمان مباشر سحابياً." });
+    toast({ title: "تم الحفظ" });
   };
 
   const currentPlaylist = useMemo(() => playlists.find(p => p.id === selectedPlaylist), [playlists, selectedPlaylist]);
-
-  useEffect(() => {
-    if (selectedPlaylist && currentPlaylist) {
-      setTimeout(() => {
-        const firstVid = document.querySelector('[data-nav-id="playlist-results-item-0"]') as HTMLElement;
-        firstVid?.focus();
-      }, 500);
-    }
-  }, [selectedPlaylist, currentPlaylist]);
 
   const horizontalListClass = "w-full flex gap-4 px-8 py-0 overflow-x-auto no-scrollbar scroll-smooth justify-start items-center";
 
@@ -326,7 +292,7 @@ export function MediaView() {
                     data-nav-id="sidebar-playlist-input-0"
                   />
                   {!isPlaylistInputLocked && (
-                    <button onClick={createPlaylistFromInput} className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-glow animate-in zoom-in duration-300">
+                    <button onClick={() => { if(newPlaylistName.trim()) addPlaylist(newPlaylistName); setNewPlaylistName(""); setIsPlaylistInputLocked(true); }} className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-glow animate-in zoom-in duration-300">
                        <Send className="w-5 h-5" />
                     </button>
                   )}
@@ -345,7 +311,11 @@ export function MediaView() {
         </div>
       </aside>
 
-      <main data-nav-zone="content" className="flex-1 overflow-y-auto relative pt-0 pb-40 px-10 no-scrollbar" style={{ direction: 'rtl' }}>
+      <main 
+        data-nav-zone="content" 
+        className="flex-1 overflow-y-auto relative pt-0 pb-40 px-10 no-scrollbar" 
+        style={{ direction: isDockLeft ? 'ltr' : 'rtl' }}
+      >
         <section data-row-id="row-search" className="py-4">
           <div className="flex gap-3">
             <div className="relative flex-1">
@@ -376,18 +346,10 @@ export function MediaView() {
                   onClick={() => {
                     if (occ.isOman) {
                       if (isEditingOmanUrl) return;
-                      const url = mapSettings.omanUrl || "";
-                      if (url.includes('youtube.com') || url.includes('youtu.be')) {
-                        const vidMatch = url.match(/(?:v=|\/)([0-9A-Za-z_-]{11})/);
-                        if (vidMatch) {
-                           setActiveVideo({ id: vidMatch[1], title: "عُمان مباشر", thumbnail: "https://gallery-images.me/pics/arabicfta/oman.png", description: "", publishedAt: new Date().toISOString() });
-                           return;
-                        }
-                      }
-                      setActiveIptv({ stream_id: "oman-live-direct", name: "عُمان مباشر", stream_icon: "https://gallery-images.me/pics/arabicfta/oman.png", category_id: "direct", url: mapSettings.omanUrl, type: 'web' });
+                      setActiveIptv({ stream_id: "oman-live-direct", name: "عُمان مباشر", stream_icon: "https://gallery-images.me/pics/arabicfta/oman.png", category_id: "direct", url: mapSettings.omanUrl || DEFAULT_OMAN_URL, type: 'web' });
                     } else { performSearch(occ.query); }
                   }}
-                  className={cn("px-6 py-4 rounded-full font-black text-sm focusable border-2 shrink-0 transition-all", occ.isDate ? "bg-white text-black border-white shadow-glow text-lg" : occ.isOman ? "bg-[#ed2b5c] text-white border-white/40 shadow-glow animate-pulse" : occ.isSport ? "bg-red-600/20 text-red-500 border-red-600/40" : occ.isUpcoming ? "bg-amber-600/20 text-amber-400 border-amber-500/30" : "bg-indigo-600 text-white border-indigo-400/50 shadow-glow")} 
+                  className={cn("px-6 py-4 rounded-full font-black text-sm focusable border-2 shrink-0 transition-all", occ.isDate ? "bg-white text-black border-white shadow-glow text-lg" : occ.isOman ? "bg-[#ed2b5c] text-white border-white/40 shadow-glow animate-pulse" : occ.isSport ? "bg-red-600/20 text-red-500 border-red-600/40" : occ.isSpecial ? "bg-emerald-600/20 text-emerald-400 border-emerald-500/30" : "bg-indigo-600 text-white border-indigo-400/50 shadow-glow")} 
                   data-nav-id={`occ-item-${i}`}
                 >
                   <div className="flex items-center gap-3">
@@ -405,7 +367,7 @@ export function MediaView() {
                             <button onClick={() => setIsEditingOmanUrl(false)} className="w-10 h-10 rounded-xl bg-red-600/20 text-red-500 flex items-center justify-center"><X className="w-5 h-5" /></button>
                          </div>
                       ) : (
-                         <button onClick={() => setIsEditingOmanUrl(true)} className="w-10 h-10 rounded-full bg-black/60 text-white border border-white/20 flex items-center justify-center shadow-glow backdrop-blur-md focusable"><Edit3 className="w-5 h-5" /></button>
+                         <button onClick={() => setIsEditingOmanUrl(true)} className="w-10 h-10 rounded-full bg-black/60 text-white border border-white/10 flex items-center justify-center shadow-glow backdrop-blur-md focusable"><Edit3 className="w-5 h-5" /></button>
                       )}
                    </div>
                 )}

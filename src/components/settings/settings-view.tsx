@@ -2,13 +2,13 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useMediaStore, Reminder, Manuscript, MappingContext, AppAction, ManuscriptWord, YouTubeChannel, IptvChannel, Playlist } from "@/lib/store";
+import { useMediaStore, Reminder, Manuscript, MappingContext, AppAction, ManuscriptWord, YouTubeChannel, IptvChannel, Playlist, updateBin } from "@/lib/store";
 import { 
    Settings, Bell, Trash2, Edit2, Plus, Minus, Keyboard, Timer, ArrowRightLeft, 
    Loader2, RefreshCw, Mic, X, Type, Zap, Sparkles, Upload, Clock, Youtube, Tv, Star, Magnet,
   ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Maximize, Minimize, ImageIcon, Download, Search, Move,
   Maximize2, CloudDownload, FileImage, Save, BookOpen, Gamepad2, Palette, Library, UserCheck, Send, Check, Bookmark, 
-  Play, SkipBack, SkipForward, VolumeX, Gamepad
+  Play, SkipBack, SkipForward, VolumeX, Gamepad, Trophy, EyeOff, Calendar, Eye
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,16 +24,130 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
    JSONBIN_CHANNELS_BIN_ID, JSONBIN_POPULAR_RECITERS_BIN_ID, JSONBIN_IPTV_FAVS_BIN_ID, 
-   JSONBIN_MANUSCRIPTS_BIN_ID, JSONBIN_MASTER_BIN_ID, JSONBIN_FONTS_BIN_ID, JSONBIN_BACKGROUNDS_BIN_ID 
+   JSONBIN_MANUSCRIPTS_BIN_ID, JSONBIN_MASTER_BIN_ID, JSONBIN_FONTS_BIN_ID, JSONBIN_BACKGROUNDS_BIN_ID,
+   JSONBIN_TEAM_LOGOS_BIN_ID, JSONBIN_MASTER_KEY
 } from "@/lib/constants";
 
+// --- SUB-COMPONENTS ---
+
+const ManualTimeCounter = ({ 
+  field, 
+  label, 
+  time, 
+  onAdjust 
+}: { 
+  field: 'manualStartTime' | 'manualEndTime', 
+  label: string, 
+  time: string, 
+  onAdjust: (field: 'manualStartTime' | 'manualEndTime', part: 'h' | 'm' | 'p', delta: number) => void 
+}) => {
+  const [h24, m] = time.split(':').map(Number);
+  const h12 = h24 % 12 || 12;
+  const isPm = h24 >= 12;
+
+  return (
+    <div className="space-y-3">
+      <Label className="mr-4 font-black opacity-40">{label}</Label>
+      <div className="flex items-center gap-2 bg-white/5 p-2 rounded-2xl border border-white/10 shadow-glow">
+        <div className="flex flex-col items-center gap-1">
+           <button onClick={() => onAdjust(field, 'h', 1)} className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center focusable"><Plus className="w-4 h-4" /></button>
+           <span className="text-xl font-black w-10 text-center">{h12}</span>
+           <button onClick={() => onAdjust(field, 'h', -1)} className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center focusable"><Minus className="w-4 h-4" /></button>
+        </div>
+        <span className="font-black text-xl">:</span>
+        <div className="flex flex-col items-center gap-1">
+           <button onClick={() => onAdjust(field, 'm', 5)} className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center focusable"><Plus className="w-4 h-4" /></button>
+           <span className="text-xl font-black w-10 text-center">{m.toString().padStart(2, '0')}</span>
+           <button onClick={() => onAdjust(field, 'm', -5)} className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center focusable"><Minus className="w-4 h-4" /></button>
+        </div>
+        <button onClick={() => onAdjust(field, 'p', 0)} className="h-16 px-4 bg-primary/20 text-primary border border-primary/20 rounded-xl font-black text-sm focusable ml-2">
+          {isPm ? 'مساءً' : 'صباحاً'}
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const TeamSelector = ({ 
+  side, 
+  search, 
+  setSearch, 
+  teamLogos, 
+  remForm, 
+  onSelect,
+  onAddToCloud
+}: { 
+  side: 'home' | 'away', 
+  search: string, 
+  setSearch: (v: string) => void, 
+  teamLogos: any[], 
+  remForm: any,
+  onSelect: (logo: string, name: string) => void,
+  onAddToCloud: (name: string, logo: string) => void
+}) => {
+  const logoField = side === 'home' ? 'homeLogo' : 'awayLogo';
+  const nameField = side === 'home' ? 'homeName' : 'awayName';
+  const filteredTeams = teamLogos.filter(t => t.name.toLowerCase().includes(search.toLowerCase())).slice(0, 12);
+
+  return (
+    <div className="space-y-4">
+      <Label className="mr-4 font-black opacity-40">{side === 'home' ? 'الفريق الأول (صاحب الأرض)' : 'الفريق الثاني (الضيف)'}</Label>
+      <div className="relative">
+         <Input 
+           value={search} 
+           onChange={(e) => setSearch(e.target.value)} 
+           className="h-16 bg-white/5 border-white/10 rounded-2xl font-black px-6 focusable" 
+           placeholder="ابحث عن الفريق أو اكتب الاسم يدوياً..." 
+         />
+         {search && filteredTeams.length > 0 && (
+           <div className="absolute top-full left-0 right-0 z-[100] mt-2 bg-zinc-950 border border-white/10 rounded-3xl overflow-hidden shadow-[0_0_100px_rgba(0,0,0,1)] animate-in fade-in slide-in-from-top-2 p-4">
+              <h4 className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] mb-4 px-2">نتائج البحث السيادية</h4>
+              <div className="grid grid-cols-3 gap-3">
+                {filteredTeams.map((team, idx) => (
+                  <button 
+                    key={idx} 
+                    onClick={() => onSelect(team.logo, team.name)}
+                    className="flex flex-col items-center gap-2 p-3 rounded-2xl hover:bg-white/10 transition-all border border-transparent hover:border-primary/20 group focusable"
+                  >
+                    <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center border border-white/10 p-2">
+                       <img src={team.logo} className="w-full h-full object-contain group-hover:scale-110 transition-transform" alt="" />
+                    </div>
+                    <span className="font-black text-[10px] text-white/60 truncate w-full text-center">{team.name}</span>
+                  </button>
+                ))}
+              </div>
+           </div>
+         )}
+      </div>
+      <div className="flex items-center gap-4 bg-black/40 p-4 rounded-2xl border border-white/5">
+         <div className="w-16 h-16 rounded-xl bg-white/5 flex items-center justify-center border border-white/10 overflow-hidden">
+            {remForm[logoField] ? <img src={remForm[logoField]} className="w-12 h-12 object-contain" alt="" /> : <Trophy className="w-8 h-8 text-white/10" />}
+         </div>
+         <Input 
+           value={remForm[logoField] || ""} 
+           onChange={(e) => onSelect(e.target.value, remForm[nameField] || search)}
+           className="h-12 bg-white/5 border-white/10 rounded-xl text-xs font-bold flex-1" 
+           placeholder="رابط الشعار يدوياً (اختياري)..." 
+         />
+         <Button 
+           onClick={() => onAddToCloud(remForm[nameField] || search, remForm[logoField] || "")}
+           variant="outline"
+           className="h-12 w-12 rounded-xl bg-emerald-600/20 text-emerald-400 border-emerald-500/30 focusable"
+           title="إضافة للفريق للسحابة"
+         >
+           <Plus className="w-6 h-6" />
+         </Button>
+      </div>
+    </div>
+  );
+};
+
 /**
- * SettingsView v1240.0 - Sovereign Management Hub
- * Features: Full-Screen Key Mapping Hub + 1s Auto-Play Defaults + Enhanced Media Keys.
+ * SettingsView v1400.0 - Sovereign Management Hub
  */
 export function SettingsView() {
   const { 
-     addReminder, removeReminder, reminders, updateReminder,
+     addReminder, removeReminder, reminders, updateReminder, skipMatch, skippedMatchIds,
     generalAzkar, addAzkar, updateAzkar, removeAzkar,
     mapSettings, updateMapSettings, prayerSettings,
     customManuscripts, addManuscript, updateManuscript, removeManuscript,
@@ -53,6 +167,11 @@ export function SettingsView() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   
+  // Team Search States
+  const [teamLogos, setTeamLogos] = useState<{name: string, logo: string}[]>([]);
+  const [homeSearch, setHomeSearch] = useState("");
+  const [awaySearch, setAwaySearch] = useState("");
+
   // Manuscript States
   const [manuscriptMode, setManuscriptMode] = useState<'write' | 'arrange'>('write');
   const [manuscriptInput, setManuscriptInput] = useState("");
@@ -89,10 +208,29 @@ export function SettingsView() {
   const [isAddingPlaylist, setIsAddingPlaylist] = useState(false);
 
   // New Creation States
+  const [editingRemId, setEditingRemId] = useState<string | null>(null);
   const [remForm, setRemForm] = useState<Partial<Reminder>>({
     label: "", color: "text-primary", iconType: "bell", startType: "azan", startReference: "fajr", startOffset: 0,
-    endType: "duration", durationMinutes: 30, countdownWindow: 15, showCountdown: true, manualStartTime: "05:00", manualEndTime: "22:00"
+    endType: "duration", durationMinutes: 30, countdownWindow: 15, showCountdown: true, manualStartTime: "05:00", manualEndTime: "22:00",
+    homeLogo: "", awayLogo: "", matchDate: new Date().toISOString().split('T')[0], homeName: "", awayName: ""
   });
+
+  const [editingZikrId, setEditingZikrId] = useState<string | null>(null);
+  const [zikrInput, setZikrInput] = useState("");
+
+  // Fetch Team Logos on mount
+  useEffect(() => {
+    const fetchLogos = async () => {
+      try {
+        const r = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_TEAM_LOGOS_BIN_ID}/latest`, { headers: { 'X-Master-Key': JSONBIN_MASTER_KEY } });
+        if (r.ok) {
+           const data = (await r.json()).record;
+           setTeamLogos(Array.isArray(data) ? data : data.teams || []);
+        }
+      } catch(e) {}
+    };
+    fetchLogos();
+  }, []);
 
   const handleManualRefresh = useCallback(async () => {
     setIsRefreshing(true);
@@ -106,23 +244,87 @@ export function SettingsView() {
   };
 
   const handleAddReminder = async () => {
-    if (!remForm.label) return;
-    addReminder({ ...remForm, id: Date.now().toString(), completed: false, showCountup: false } as Reminder);
-    setRemForm({ ...remForm, label: "" });
+    if (!remForm.label && remForm.iconType !== 'match') return;
+    if (editingRemId) {
+      updateReminder(editingRemId, remForm);
+      setEditingRemId(null);
+      toast({ title: "تم تحديث التذكير" });
+    } else {
+      addReminder({ ...remForm, id: Date.now().toString(), completed: false, showCountup: false } as Reminder);
+      toast({ title: "تم إضافة التذكير" });
+    }
+    setRemForm({ label: "", color: "text-primary", iconType: "bell", startType: "azan", startReference: "fajr", startOffset: 0, endType: "duration", durationMinutes: 30, countdownWindow: 15, showCountdown: true, manualStartTime: "05:00", manualEndTime: "22:00", matchDate: new Date().toISOString().split('T')[0], homeName: "", awayName: "" });
+    setHomeSearch(""); setAwaySearch("");
     await syncMasterBin();
-    toast({ title: "تم إضافة التذكير" });
   };
 
   const handleAddGeneralZikr = async () => {
-    if (!manuscriptInput.trim()) return;
-    addAzkar({ 
-       id: Date.now().toString(), label: manuscriptInput, color: "text-emerald-400", iconType: "circle",
-      startType: "manual", startOffset: 0, endType: "duration", durationMinutes: 1440,
-      showCountdown: false, showCountup: false, completed: false, countdownWindow: 0
-    });
-    setManuscriptInput("");
+    const text = zikrInput.trim();
+    if (!text) return;
+    if (editingZikrId) {
+      updateAzkar(editingZikrId, { label: text });
+      setEditingZikrId(null);
+      toast({ title: "تم تحديث الذكر" });
+    } else {
+      addAzkar({ 
+         id: Date.now().toString(), label: text, color: "text-emerald-400", iconType: "circle",
+        startType: "manual", startOffset: 0, endType: "duration", durationMinutes: 1440,
+        showCountdown: false, showCountup: false, completed: false, countdownWindow: 0
+      });
+      toast({ title: "تم إضافة الذكر" });
+    }
+    setZikrInput("");
     await syncMasterBin();
-    toast({ title: "تم إضافة الذكر" });
+  };
+
+  const handleAddTeamToCloud = async (name: string, logo: string) => {
+    if (!name || !logo) {
+      toast({ variant: "destructive", title: "بيانات ناقصة", description: "يرجى إدخال اسم الفريق ورابط الشعار." });
+      return;
+    }
+    toast({ title: "جاري الرفع سحابياً", description: "جاري إضافة الفريق لقاعدة البيانات..." });
+    try {
+      const r = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_TEAM_LOGOS_BIN_ID}/latest`, { headers: { 'X-Master-Key': JSONBIN_MASTER_KEY } });
+      const current = (await r.json()).record;
+      const teams = Array.isArray(current) ? current : (current.teams || []);
+      
+      const exists = teams.some((t: any) => t.name === name);
+      if (exists) {
+        toast({ title: "الفريق موجود مسبقاً", description: "هذا الفريق مسجل بالفعل في السحابة." });
+        return;
+      }
+      
+      const updated = { teams: [...teams, { id: Date.now(), name, logo }] };
+      await updateBin(JSONBIN_TEAM_LOGOS_BIN_ID, updated);
+      setTeamLogos(updated.teams);
+      toast({ title: "تم الإضافة بنجاح", description: `تم حفظ ${name} في السحابة السيادية.` });
+    } catch (e) {
+      toast({ variant: "destructive", title: "خطأ سحابي", description: "فشل الاتصال بمركز البيانات." });
+    }
+  };
+
+  const adjustManualTime = (field: 'manualStartTime' | 'manualEndTime', part: 'h' | 'm' | 'p', delta: number) => {
+    const current = remForm[field] || "05:00";
+    let [h, m] = current.split(':').map(Number);
+    
+    if (part === 'h') {
+      h = (h + delta + 24) % 24;
+    } else if (part === 'm') {
+      m = (m + delta + 60) % 60;
+    } else if (part === 'p') {
+      h = (h + 12) % 24; 
+    }
+    
+    const newVal = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+    setRemForm(prev => ({ ...prev, [field]: newVal }));
+  };
+
+  const handleTeamSelect = (side: 'home' | 'away', logo: string, name: string) => {
+    const logoField = side === 'home' ? 'homeLogo' : 'awayLogo';
+    const nameField = side === 'home' ? 'homeName' : 'awayName';
+    setRemForm(prev => ({ ...prev, [logoField]: logo, [nameField]: name }));
+    if (side === 'home') setHomeSearch(name);
+    else setAwaySearch(name);
   };
 
   const handleSaveReciterName = async (id: string) => {
@@ -260,7 +462,7 @@ export function SettingsView() {
       <header className="flex items-center justify-between">
         <div className="flex flex-col gap-2">
           <h1 className="text-6xl font-black text-white tracking-tighter flex items-center gap-6">الإعدادات السيادية <Settings className="w-12 h-12 text-primary" /></h1>
-          <p className="text-white/40 font-bold uppercase tracking-[0.6em] text-sm">Unified System Hub v1240.0</p>
+          <p className="text-white/40 font-bold uppercase tracking-[0.6em] text-sm">Unified System Hub v1400.0</p>
         </div>
         <div className="flex gap-4">
           <Button onClick={handleManualRefresh} disabled={isRefreshing} className="bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-full h-14 px-8 font-black focusable"><RefreshCw className={cn("w-5 h-5 ml-2", isRefreshing && "animate-spin")} /> تحديث محلي</Button>
@@ -296,7 +498,7 @@ export function SettingsView() {
             </div>
             
             <div className="bg-black/40 p-8 rounded-[2rem] border border-white/5 mb-8 flex gap-4 shadow-2xl">
-               <Input placeholder="أدخل النص ثم اضغط تقطيع للتحكم بالكلمات..." value={manuscriptInput} onChange={(e) => setManuscriptInput(e.target.value)} className="h-16 bg-white/5 border-none rounded-xl text-2xl font-black text-white px-8 focusable" />
+               <Input placeholder="أدخل نص النص ثم اضغط تقطيع للتحكم بالكلمات..." value={manuscriptInput} onChange={(e) => setManuscriptInput(e.target.value)} className="h-16 bg-white/5 border-none rounded-xl text-2xl font-black text-white px-8 focusable" />
                <Button onClick={splitToWords} className="h-16 px-8 bg-blue-600 text-white rounded-xl font-black focusable">تقطيع الكلمات</Button>
                <Select value={selectedFont} onValueChange={setSelectedFont}>
                   <SelectTrigger className="w-64 h-16 bg-white/5 border-white/10 rounded-xl text-lg font-black focusable"><SelectValue placeholder="اختر الخط" /></SelectTrigger>
@@ -369,106 +571,196 @@ export function SettingsView() {
               <div className="bg-black/40 p-10 rounded-[3rem] border border-white/5 space-y-8 mb-12 shadow-2xl">
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div className="space-y-3">
-                       <Label className="mr-4 font-black opacity-40">نص التذكير</Label>
-                       <Input value={remForm.label} onChange={(e) => setRemForm({...remForm, label: e.target.value})} className="h-16 bg-white/5 border-white/10 rounded-2xl text-xl font-black focusable" placeholder="مثال: قراءة أذكار الصباح..." />
+                       <Label className="mr-4 font-black opacity-40">اسم التذكير / المباراة</Label>
+                       <Input value={remForm.label} onChange={(e) => setRemForm({...remForm, label: e.target.value})} className="h-16 bg-white/5 border-white/10 rounded-2xl text-xl font-black focusable" placeholder="مثال: ديربي لندن..." />
                     </div>
                     <div className="space-y-3">
-                       <Label className="mr-4 font-black opacity-40">اللون المميز</Label>
-                       <Select value={remForm.color} onValueChange={(v) => setRemForm({...remForm, color: v})}>
+                       <Label className="mr-4 font-black opacity-40">النوع / الأيقونة</Label>
+                       <Select value={remForm.iconType} onValueChange={(v) => setRemForm({...remForm, iconType: v as any})}>
                           <SelectTrigger className="h-16 bg-white/5 border-white/10 rounded-2xl text-xl font-black focusable"><SelectValue /></SelectTrigger>
                           <SelectContent className="bg-zinc-950">
-                             <SelectItem value="text-primary">أزرق سيادي</SelectItem>
-                             <SelectItem value="text-emerald-400">أخضر ملكي</SelectItem>
-                             <SelectItem value="text-yellow-500">ذهبي فاخر</SelectItem>
-                             <SelectItem value="text-red-500">أحمر تنبيهي</SelectItem>
+                             <SelectItem value="bell">تنبيه جرس</SelectItem>
+                             <SelectItem value="play">تشغيل وسائط</SelectItem>
+                             <SelectItem value="match">مباراة كرة قدم ⚽</SelectItem>
                           </SelectContent>
                        </Select>
-                    </div>
-                 </div>
-                 
-                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    <div className="space-y-3">
-                       <Label className="mr-4 font-black opacity-40">البداية</Label>
-                       <Select value={remForm.startType} onValueChange={(v) => setRemForm({...remForm, startType: v as any})}>
-                          <SelectTrigger className="h-16 bg-white/5 border-white/10 rounded-2xl text-lg font-black focusable"><SelectValue /></SelectTrigger>
-                          <SelectContent className="bg-zinc-950">
-                             <SelectItem value="azan">مرتبط بالأذان</SelectItem>
-                             <SelectItem value="iqamah">مرتبط بالإقامة</SelectItem>
-                             <SelectItem value="manual">توقيت يدوي</SelectItem>
-                          </SelectContent>
-                       </Select>
-                    </div>
-                    {remForm.startType !== 'manual' ? (
-                       <div className="space-y-3">
-                          <Label className="mr-4 font-black opacity-40">مرجع الصلاة</Label>
-                          <Select value={remForm.startReference} onValueChange={(v) => setRemForm({...remForm, startReference: v})}>
-                             <SelectTrigger className="h-16 bg-white/5 border-white/10 rounded-2xl text-lg font-black focusable"><SelectValue /></SelectTrigger>
-                             <SelectContent className="bg-zinc-950">
-                                {prayerSettings.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                             </SelectContent>
-                          </Select>
-                       </div>
-                    ) : (
-                       <div className="space-y-3">
-                          <Label className="mr-4 font-black opacity-40">وقت البداية (HH:MM)</Label>
-                          <Input type="time" value={remForm.manualStartTime} onChange={(e) => setRemForm({...remForm, manualStartTime: e.target.value})} className="h-16 bg-white/5 border-white/10 rounded-2xl text-center font-black focusable" />
-                       </div>
-                    )}
-                    <div className="space-y-3">
-                       <Label className="mr-4 font-black opacity-40">الإزاحة (دقائق)</Label>
-                       <Input type="number" value={remForm.startOffset} onChange={(e) => setRemForm({...remForm, startOffset: parseInt(e.target.value) || 0})} className="h-16 bg-white/5 border-white/10 rounded-2xl text-center font-black focusable" />
                     </div>
                  </div>
 
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div className="space-y-3">
-                       <Label className="mr-4 font-black opacity-40">نوع النهاية</Label>
-                       <Select value={remForm.endType} onValueChange={(v) => setRemForm({...remForm, endType: v as any})}>
-                          <SelectTrigger className="h-16 bg-white/5 border-white/10 rounded-2xl text-lg font-black focusable"><SelectValue /></SelectTrigger>
-                          <SelectContent className="bg-zinc-950">
-                             <SelectItem value="duration">مدة زمنية محددة</SelectItem>
-                             <SelectItem value="prayer">مرتبط بصلاة أخرى</SelectItem>
-                             <SelectItem value="manual">توقيت يدوي ثابت</SelectItem>
-                          </SelectContent>
-                       </Select>
-                    </div>
-                    {remForm.endType === 'duration' ? (
-                       <div className="space-y-3">
-                          <Label className="mr-4 font-black opacity-40">المدة بالدقائق</Label>
-                          <Input type="number" value={remForm.durationMinutes} onChange={(e) => setRemForm({...remForm, durationMinutes: parseInt(e.target.value) || 30})} className="h-16 bg-white/5 border-white/10 rounded-2xl text-center font-black focusable" />
-                       </div>
-                    ) : remForm.endType === 'manual' ? (
-                       <div className="space-y-3">
-                          <Label className="mr-4 font-black opacity-40">وقت الانتهاء (HH:MM)</Label>
-                          <Input type="time" value={remForm.manualEndTime} onChange={(e) => setRemForm({...remForm, manualEndTime: e.target.value})} className="h-16 bg-white/5 border-white/10 rounded-2xl text-center font-black focusable" />
-                       </div>
-                    ) : (
-                       <div className="space-y-3">
-                          <Label className="mr-4 font-black opacity-40">مرجع الانتهاء (الصلاة)</Label>
-                          <Select value={remForm.endReference} onValueChange={(v) => setRemForm({...remForm, endReference: v})}>
-                             <SelectTrigger className="h-16 bg-white/5 border-white/10 rounded-2xl text-lg font-black focusable"><SelectValue /></SelectTrigger>
-                             <SelectContent className="bg-zinc-950">
-                                {prayerSettings.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                             </SelectContent>
-                          </Select>
-                       </div>
-                    )}
-                 </div>
+                 {remForm.iconType === 'match' ? (
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-10 animate-in zoom-in-95">
+                      <TeamSelector 
+                        side="home" 
+                        search={homeSearch} 
+                        setSearch={setHomeSearch} 
+                        teamLogos={teamLogos} 
+                        remForm={remForm} 
+                        onSelect={(logo, name) => handleTeamSelect('home', logo, name)}
+                        onAddToCloud={handleAddTeamToCloud}
+                      />
+                      <TeamSelector 
+                        side="away" 
+                        search={awaySearch} 
+                        setSearch={setAwaySearch} 
+                        teamLogos={teamLogos} 
+                        remForm={remForm} 
+                        onSelect={(logo, name) => handleTeamSelect('away', logo, name)}
+                        onAddToCloud={handleAddTeamToCloud}
+                      />
+                      <div className="space-y-3">
+                         <Label className="mr-4 font-black opacity-40">تاريخ المباراة</Label>
+                         <div className="flex items-center gap-4 bg-white/5 p-4 rounded-2xl border border-white/10 h-16 shadow-glow">
+                            <Calendar className="w-6 h-6 text-primary" />
+                            <Input 
+                              type="date" 
+                              value={remForm.matchDate} 
+                              onChange={(e) => setRemForm(p => ({ ...p, matchDate: e.target.value }))}
+                              className="bg-transparent border-none text-xl font-black text-white p-0 focus-visible:ring-0" 
+                            />
+                         </div>
+                         <p className="text-[10px] font-bold text-white/20 mr-4">ستظهر المباراة فقط في التاريخ المحدد</p>
+                      </div>
+                      <ManualTimeCounter 
+                        field="manualStartTime" 
+                        label="توقيت المباراة" 
+                        time={remForm.manualStartTime || "05:00"} 
+                        onAdjust={adjustManualTime} 
+                      />
+                   </div>
+                 ) : (
+                    <>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                         <div className="space-y-3">
+                            <Label className="mr-4 font-black opacity-40">اللون المميز</Label>
+                            <Select value={remForm.color} onValueChange={(v) => setRemForm({...remForm, color: v})}>
+                               <SelectTrigger className="h-16 bg-white/5 border-white/10 rounded-2xl text-xl font-black focusable"><SelectValue /></SelectTrigger>
+                               <SelectContent className="bg-zinc-950">
+                                  <SelectItem value="text-primary">أزرق سيادي</SelectItem>
+                                  <SelectItem value="text-emerald-400">أخضر ملكي</SelectItem>
+                                  <SelectItem value="text-yellow-500">ذهبي فاخر</SelectItem>
+                                  <SelectItem value="text-red-500">أحمر تنبيهي</SelectItem>
+                               </SelectContent>
+                            </Select>
+                         </div>
+                      </div>
 
-                 <Button onClick={handleAddReminder} className="w-full h-20 bg-primary text-white rounded-[1.5rem] font-black text-2xl shadow-glow focusable"><Plus className="w-8 h-8 ml-4" /> حفظ التذكير السيادي الجديد</Button>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                          <div className="space-y-3">
+                             <Label className="mr-4 font-black opacity-40">البداية</Label>
+                             <Select value={remForm.startType} onValueChange={(v) => setRemForm({...remForm, startType: v as any})}>
+                                <SelectTrigger className="h-16 bg-white/5 border-white/10 rounded-2xl text-lg font-black focusable"><SelectValue /></SelectTrigger>
+                                <SelectContent className="bg-zinc-950">
+                                   <SelectItem value="azan">مرتبط بالأذان</SelectItem>
+                                   <SelectItem value="iqamah">مرتبط بالإقامة</SelectItem>
+                                   <SelectItem value="manual">توقيت يدوي</SelectItem>
+                                </SelectContent>
+                             </Select>
+                          </div>
+                          {remForm.startType !== 'manual' ? (
+                             <>
+                               <div className="space-y-3">
+                                  <Label className="mr-4 font-black opacity-40">مرجع الصلاة</Label>
+                                  <Select value={remForm.startReference} onValueChange={(v) => setRemForm({...remForm, startReference: v})}>
+                                     <SelectTrigger className="h-16 bg-white/5 border-white/10 rounded-2xl text-lg font-black focusable"><SelectValue /></SelectTrigger>
+                                     <SelectContent className="bg-zinc-950">
+                                        {prayerSettings.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                                     </SelectContent>
+                                  </Select>
+                               </div>
+                             </>
+                          ) : (
+                             <ManualTimeCounter 
+                               field="manualStartTime" 
+                               label="وقت البداية المختار" 
+                               time={remForm.manualStartTime || "05:00"} 
+                               onAdjust={adjustManualTime} 
+                             />
+                          )}
+                          <div className="space-y-3">
+                              <Label className="mr-4 font-black opacity-40">الإزاحة (دقائق)</Label>
+                              <div className="flex items-center gap-2 bg-white/5 p-2 rounded-2xl border border-white/10 shadow-glow h-16">
+                                 <button onClick={() => setRemForm(p => ({ ...p, startOffset: (p.startOffset || 0) + 5 }))} className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center focusable"><Plus className="w-4 h-4" /></button>
+                                 <span className="text-2xl font-black w-16 text-center">{remForm.startOffset || 0}</span>
+                                 <button onClick={() => setRemForm(p => ({ ...p, startOffset: Math.max(-120, (p.startOffset || 0) - 5) }))} className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center focusable"><Minus className="w-6 h-6" /></button>
+                              </div>
+                           </div>
+                       </div>
+
+                       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                          <div className="space-y-3">
+                             <Label className="mr-4 font-black opacity-40">نوع النهاية</Label>
+                             <Select value={remForm.endType} onValueChange={(v) => setRemForm({...remForm, endType: v as any})}>
+                                <SelectTrigger className="h-16 bg-white/5 border-white/10 rounded-2xl text-lg font-black focusable"><SelectValue /></SelectTrigger>
+                                <SelectContent className="bg-zinc-950">
+                                   <SelectItem value="duration">مدة زمنية محددة</SelectItem>
+                                   <SelectItem value="prayer">مرتبط بصلاة أخرى</SelectItem>
+                                   <SelectItem value="manual">توقيت يدوي ثابت</SelectItem>
+                                </SelectContent>                             </Select>
+                          </div>
+                          {remForm.endType === 'duration' ? (
+                             <div className="space-y-3">
+                                <Label className="mr-4 font-black opacity-40">المدة الزمنية (بالدقائق)</Label>
+                                <div className="flex items-center gap-3 bg-white/5 p-2 rounded-2xl border border-white/10 shadow-glow">
+                                   <button onClick={() => setRemForm(p => ({ ...p, durationMinutes: (p.durationMinutes || 0) + 15 }))} className="h-16 w-16 rounded-xl bg-white/10 flex items-center justify-center focusable"><Plus className="w-8 h-8" /></button>
+                                   <span className="flex-1 text-3xl font-black text-center">{remForm.durationMinutes || 30}</span>
+                                   <button onClick={() => setRemForm(p => ({ ...p, durationMinutes: Math.max(0, (p.durationMinutes || 0) - 15) }))} className="h-16 w-16 rounded-xl bg-white/10 flex items-center justify-center focusable"><Minus className="w-8 h-8" /></button>
+                                </div>
+                             </div>
+                          ) : remForm.endType === 'manual' ? (
+                             <ManualTimeCounter 
+                               field="manualEndTime" 
+                               label="وقت الانتهاء المختار" 
+                               time={remForm.manualEndTime || "22:00"} 
+                               onAdjust={adjustManualTime} 
+                             />
+                          ) : (
+                             <div className="space-y-3">
+                                <Label className="mr-4 font-black opacity-40">مرجع الانتهاء (الصلاة)</Label>
+                                <Select value={remForm.endReference} onValueChange={(v) => setRemForm({...remForm, endReference: v})}>
+                                   <SelectTrigger className="h-16 bg-white/5 border-white/10 rounded-2xl text-lg font-black focusable"><SelectValue /></SelectTrigger>
+                                   <SelectContent className="bg-zinc-950">
+                                      {prayerSettings.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                                   </SelectContent>
+                                </Select>
+                             </div>
+                          )}
+                       </div>
+                    </>
+                 )}
+
+                 <Button onClick={handleAddReminder} className="w-full h-20 bg-primary text-white rounded-[1.5rem] font-black text-2xl shadow-glow focusable">
+                    {editingRemId ? <Edit2 className="w-8 h-8 ml-4" /> : <Plus className="w-8 h-8 ml-4" />}
+                    {editingRemId ? "تحديث التذكير السيادي" : "حفظ التذكير السيادي الجديد"}
+                 </Button>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                  {reminders.map(rem => (
-                   <div key={rem.id} className="bg-black/60 p-8 rounded-[2.5rem] border border-white/10 flex items-center justify-between shadow-xl transition-all hover:border-primary/20">
+                   <div key={rem.id} className={cn("bg-black/60 p-8 rounded-[2.5rem] border flex items-center justify-between shadow-xl transition-all hover:border-primary/20", editingRemId === rem.id ? "border-primary shadow-glow" : "border-white/10")}>
                       <div className="flex items-center gap-6">
-                        <div className={cn("w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center", rem.color)}><Bell className="w-7 h-7" /></div>
+                        <div className={cn("w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center", rem.iconType === 'match' ? "text-emerald-400" : rem.color)}>
+                           {rem.iconType === 'match' ? <Trophy className="w-7 h-7" /> : <Bell className="w-7 h-7" />}
+                        </div>
                         <div className="flex flex-col">
                            <span className={cn("text-2xl font-black", rem.color)}>{rem.label}</span>
                            <span className="text-[10px] font-bold text-white/20 uppercase tracking-widest">تنشيط: {rem.startType} | {rem.endType}</span>
+                           {rem.iconType === 'match' && <span className="text-[10px] font-black text-primary mt-1">يوم المباراة: {rem.matchDate}</span>}
                         </div>
                       </div>
-                      <Button onClick={() => removeReminder(rem.id)} variant="ghost" className="w-12 h-12 rounded-full text-red-500 hover:bg-red-500/10 focusable"><Trash2 className="w-6 h-6" /></Button>
+                      <div className="flex gap-2">
+                         {rem.iconType === 'match' && (
+                           <Button 
+                             onClick={() => skipMatch(rem.id)} 
+                             variant="ghost" 
+                             className={cn("w-12 h-12 rounded-full focusable", skippedMatchIds.includes(rem.id) ? "text-red-500 hover:bg-red-500/10" : "text-emerald-400 hover:bg-emerald-400/10")} 
+                             title={skippedMatchIds.includes(rem.id) ? "إظهار في الجزيرة" : "إخفاء من الجزيرة"}
+                           >
+                             {skippedMatchIds.includes(rem.id) ? <EyeOff className="w-6 h-6" /> : <Eye className="w-6 h-6" />}
+                           </Button>
+                         )}
+                         <Button onClick={() => { setEditingRemId(rem.id); setRemForm(rem); if(rem.homeName) setHomeSearch(rem.homeName); if(rem.awayName) setAwaySearch(rem.awayName); }} variant="ghost" className="w-12 h-12 rounded-full text-emerald-400 hover:bg-emerald-400/10 focusable"><Edit2 className="w-6 h-6" /></Button>
+                         <Button onClick={() => removeReminder(rem.id)} variant="ghost" className="w-12 h-12 rounded-full text-red-500 hover:bg-red-500/10 focusable"><Trash2 className="w-6 h-6" /></Button>
+                      </div>
                    </div>
                  ))}
               </div>
@@ -483,17 +775,23 @@ export function SettingsView() {
               </div>
 
               <div className="bg-black/40 p-10 rounded-[3rem] border border-white/5 flex gap-6 mb-12 shadow-2xl">
-                 <Input placeholder="أدخل نص الذكر السيادي الجديد..." value={manuscriptInput} onChange={(e) => setManuscriptInput(e.target.value)} className="h-16 bg-white/5 border-none rounded-xl text-2xl font-black text-white px-8 focusable flex-1" />
-                 <Button onClick={handleAddGeneralZikr} className="h-16 px-12 bg-emerald-600 text-white text-xl font-black rounded-xl shadow-glow focusable"><Plus className="w-6 h-6 ml-3" /> إضافة</Button>
+                 <Input placeholder="أدخل نص الذكر السيادي الجديد..." value={zikrInput} onChange={(e) => setZikrInput(e.target.value)} className="h-16 bg-white/5 border-none rounded-xl text-2xl font-black text-white px-8 focusable flex-1" />
+                 <Button onClick={handleAddGeneralZikr} className="h-16 px-12 bg-emerald-600 text-white text-xl font-black rounded-xl shadow-glow focusable">
+                    {editingZikrId ? <Edit2 className="w-6 h-6 ml-3" /> : <Plus className="w-6 h-6 ml-3" />}
+                    {editingZikrId ? "تحديث" : "إضافة"}
+                 </Button>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                  {generalAzkar.map(zikr => (
-                   <div key={zikr.id} className="bg-black/60 p-8 rounded-[2.5rem] border border-white/10 flex flex-col justify-between shadow-xl min-h-[160px] group transition-all hover:border-emerald-500/20">
+                   <div key={zikr.id} className={cn("bg-black/60 p-8 rounded-[2.5rem] border flex flex-col justify-between shadow-xl min-h-[160px] group transition-all", editingZikrId === zikr.id ? "border-emerald-500 shadow-glow" : "border-white/10 hover:border-emerald-500/20")}>
                       <p className="text-2xl font-black text-white leading-relaxed line-clamp-3">{zikr.label}</p>
                       <div className="flex items-center justify-between pt-4 border-t border-white/5 mt-4">
+                         <div className="flex gap-2">
+                            <button onClick={() => { setEditingZikrId(zikr.id); setZikrInput(zikr.label); }} className="w-10 h-10 rounded-full bg-emerald-600/20 text-emerald-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity focusable"><Edit2 className="w-5 h-5" /></button>
+                            <button onClick={() => removeAzkar(zikr.id)} className="w-10 h-10 rounded-full bg-red-600/20 text-red-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity focusable"><Trash2 className="w-5 h-5" /></button>
+                         </div>
                          <span className="text-[10px] font-black text-white/20 uppercase tracking-widest">محفوظ سحابياً</span>
-                         <button onClick={() => removeAzkar(zikr.id)} className="w-10 h-10 rounded-full bg-red-600/20 text-red-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity focusable"><Trash2 className="w-5 h-5" /></button>
                       </div>
                    </div>
                  ))}
@@ -719,7 +1017,7 @@ export function SettingsView() {
         <TabsContent value="buttonmap" className="space-y-8 animate-in fade-in duration-0">
            <Card className="bg-white/5 border-white/10 p-10 rounded-[3.5rem] shadow-2xl relative">
               <div className="flex justify-between items-center mb-12">
-                 <CardTitle className="text-4xl font-black text-white flex items-center gap-6"><Gamepad2 className="w-12 h-12 text-primary" /> معايرة التحكم السيادية v1240.0</CardTitle>
+                 <CardTitle className="text-4xl font-black text-white flex items-center gap-6"><Gamepad2 className="w-12 h-12 text-primary" /> معايرة التحكم السيادية v1400.0</CardTitle>
                  <div className="flex gap-4">
                     <Button onClick={() => handleDirectFetch(JSONBIN_MASTER_BIN_ID, "الأزرار")} variant="outline" className="w-14 h-14 rounded-full bg-white/5 border-white/10 flex items-center justify-center text-white/40 focusable shadow-glow"><CloudDownload className="w-6 h-6" /></Button>
                     <Button onClick={async () => { setIsSyncing(true); await syncMasterBin(); setIsSyncing(false); toast({ title: "تم الحفظ سحابياً" }); }} className="w-14 h-14 rounded-full bg-primary text-white flex items-center justify-center shadow-glow focusable">{isSyncing ? <Loader2 className="w-6 h-6 animate-spin" /> : <Zap className="w-6 h-6" />}</Button>

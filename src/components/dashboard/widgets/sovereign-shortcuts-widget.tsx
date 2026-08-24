@@ -31,8 +31,10 @@ export function SovereignShortcutsWidget() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [tempUrl, setTempUrl] = useState("");
 
-  const QURAN_CHANNEL_AVATAR = "https://yt3.ggpht.com/ytc/AIdro_mesiGG76gww2WnpFVUFbMz-s2d4IjJJVhDqJuCVscqKLY=s88-c-k-c0xffffffff-no-rj-mo";
+  const QURAN_CHANNEL_AVATAR = "https://yt3.ggpht.com/ytc/AIdro_mesiGG76gww2WnpFVUFbMz-s2d4IjJJVhDqJuCVscKLY=s88-c-k-c0xffffffff-no-rj-mo";
   const OMAN_TV_AVATAR = "https://gallery-images.me/pics/arabicfta/oman.png";
+  
+  const DEFAULT_OMAN_URL = "https://player.mangomolo.com/v1/live?id=MTY4&channelid=MTYx&countries=Q0M%3D&filter=DENY&signature=3fd1e8dd84138a41bf33d93afd4a7f09&language=en&app_id=&fullscreen=yes&player_profile=&base_url=aHR0cHM6Ly9heW4ub20vbGl2ZS8xNjEvJUQ5JTgyJUQ5JTg2JUQ4JUE3JUQ4JUE5LSVEOCVCOSVEOSU4NSVEOCVBNyVEOSU4Ni0lRDklODUlRDglQTglRDglQTclRDglQjQlRDglQjE%3D&autoplay=false&vast=true";
 
   const executeSpiritualPulse = useCallback(async () => {
     if (isQuranProcessing) return;
@@ -65,7 +67,7 @@ export function SovereignShortcutsWidget() {
         name: "قناة عمان مباشر",
         stream_icon: OMAN_TV_AVATAR,
         category_id: "direct",
-        url: mapSettings.omanUrl || "https://player.mangomolo.com/v1/live?id=MTY8&channelid=MTYx&countries=Q0M%3D&filter=DENY&signature=3fd1e8dd84138a41bf33d93afd4a7f09&language=en&app_id=&fullscreen=yes&player_profile=&base_url=aHR0cHM6Ly9heW4ub20vbGl2ZS8xNjEvJUQ5JTgyJUQ5JTg2JUQ4JUE3JUQ4JUE5LSVEOCVCOSVEOSU4NSVEOCVBNyVEOSU4Ni0lRDklODUlRDglQTglRDglQTclRDglQjQlRDglQjE%3D&autoplay=false&vast=true",
+        url: mapSettings.omanUrl || DEFAULT_OMAN_URL,
         type: 'web'
       });
     } catch (e) {
@@ -93,7 +95,7 @@ export function SovereignShortcutsWidget() {
 
   const handleStartEdit = (id: string, currentUrl: string) => {
     setEditingId(id);
-    setTempUrl(currentUrl);
+    setTempUrl(currentUrl || (id === 'oman-live' ? DEFAULT_OMAN_URL : ""));
   };
 
   const handleSaveEdit = async () => {
@@ -129,7 +131,7 @@ export function SovereignShortcutsWidget() {
       action: executeOmanLive,
       isLoading: isOmanProcessing,
       editable: true,
-      url: mapSettings.omanUrl
+      url: mapSettings.omanUrl || DEFAULT_OMAN_URL
     },
     {
       id: "bein-1",

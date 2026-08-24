@@ -2,7 +2,7 @@
 "use client";
 
 import { useMediaStore, YouTubeVideo } from "@/lib/store";
-import { X, Monitor, ChevronRight, ChevronLeft, Maximize2, BookmarkCheck, Volume2, ListPlus, LayoutList, RotateCcw, Play } from "lucide-react";
+import { X, Monitor, ChevronRight, ChevronLeft, Maximize2, BookmarkCheck, Volume2, ListPlus, LayoutList, RotateCcw, Play, MousePointer2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { SovereignIframe } from "@/components/ui/sovereign-iframe";
@@ -13,11 +13,11 @@ import { useToast } from "@/hooks/use-toast";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
 /**
- * GlobalVideoPlayer v1240.0 - Sovereign Auto-Activation & Layering
+ * GlobalVideoPlayer v1270.0 - Invisible Activation Protocol
  * Features: 
- * 1. 1-Second Auto-Click: Automatically triggers play on start.
- * 2. Layered Playlist: Moves horizontal list above floating buttons.
- * 3. Physical Pulse Feedback at the center of the iframe on activation.
+ * 1. Interaction Audio Unlocker: Unlocks browser audio policy on first keypress.
+ * 2. Automated Unmute Engine: Sends unmute/play commands to iframes.
+ * 3. Removal of explicit Play button for a seamless UI.
  */
 export function GlobalVideoPlayer() {
   const { 
@@ -33,16 +33,13 @@ export function GlobalVideoPlayer() {
   const [mounted, setMounted] = useState(false);
   const [iframeKey, setIframeKey] = useState(0);
   const [urlInput, setUrlInput] = useState("");
-  const [showPulse, setShowPulse] = useState(false);
   
-  const [localElapsed, setLocalElapsed] = useState(0);
-  const [postEndTimer, setPostEndTimer] = useState(0);
   const [isEnded, setIsEnded] = useState(false);
+  const [postEndTimer, setPostEndTimer] = useState(0);
+  const [localElapsed, setLocalElapsed] = useState(0);
   
   const audioHeartbeatRef = useRef<HTMLAudioElement>(null);
-  const forcePlayBtnRef = useRef<HTMLButtonElement>(null);
-  const forcePlayBtnExpandedRef = useRef<HTMLButtonElement>(null);
-  const autoClickTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const isAudioUnlockedRef = useRef(false);
 
   const isActive = !!(activeVideo || activeIptv);
 
@@ -56,19 +53,27 @@ export function GlobalVideoPlayer() {
 
   const totalDuration = useMemo(() => activeVideo ? parseDurationToSeconds(activeVideo.duration || "") : 0, [activeVideo]);
 
-  // SOVEREIGN AUTO-ACTIVATION: Trigger play after 1 second of loading
+  // SOVEREIGN AUDIO UNLOCKER: Bless the session on any keypress
   useEffect(() => {
-    if (isActive && !isMinimized) {
-      if (autoClickTimerRef.current) clearTimeout(autoClickTimerRef.current);
-      autoClickTimerRef.current = setTimeout(() => {
-        handleIframeAutoClick();
-      }, 1500); // 1.5 seconds for safety
-    }
-    return () => {
-      if (autoClickTimerRef.current) clearTimeout(autoClickTimerRef.current);
+    const unlockAudio = () => {
+      if (isAudioUnlockedRef.current) return;
+      audioHeartbeatRef.current?.play().then(() => {
+        isAudioUnlockedRef.current = true;
+        // console.log("Sovereign Audio Blessed");
+        window.removeEventListener('keydown', unlockAudio);
+        window.removeEventListener('mousedown', unlockAudio);
+      }).catch(() => {});
     };
-  }, [activeVideo?.id, activeIptv?.stream_id, isActive, isMinimized]);
 
+    window.addEventListener('keydown', unlockAudio);
+    window.addEventListener('mousedown', unlockAudio);
+    return () => {
+      window.removeEventListener('keydown', unlockAudio);
+      window.removeEventListener('mousedown', unlockAudio);
+    };
+  }, []);
+
+  // Sync isPlaying state with hidden heartbeat
   useEffect(() => {
     if (isPlaying && isActive) {
       audioHeartbeatRef.current?.play().catch(() => {});
@@ -121,32 +126,10 @@ export function GlobalVideoPlayer() {
   }, [activeVideo?.id]);
 
   useEffect(() => {
-    if (activeVideo && 'mediaSession' in navigator) {
-      navigator.mediaSession.metadata = new MediaMetadata({
-        title: activeVideo.title,
-        artist: activeVideo.channelTitle || 'DriveCast Sovereign',
-        album: 'المجلد السيادي المستمر',
-        artwork: [{ src: activeVideo.thumbnail, sizes: '512x512', type: 'image/jpeg' }]
-      });
-      navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
-      const actionHandlers: [MediaSessionAction, () => void][] = [
-        ['play', () => setIsPlaying(true)],
-        ['pause', () => setIsPlaying(false)],
-        ['nexttrack', () => { nextTrack(); resetWatchdog(); }],
-        ['previoustrack', () => { prevTrack(); resetWatchdog(); }],
-        ['stop', () => handleClose()]
-      ];
-      actionHandlers.forEach(([action, handler]) => {
-        try { navigator.mediaSession.setActionHandler(action, handler); } catch (e) {}
-      });
-    }
-  }, [activeVideo, isPlaying, setIsPlaying, nextTrack, prevTrack]);
-
-  useEffect(() => {
     setMounted(true);
     if (isActive) {
       setTimeout(() => {
-        const targetId = isMinimized ? "player-force-play" : "player-close-btn";
+        const targetId = isMinimized ? "player-close-btn-min" : "player-close-btn";
         (document.querySelector(`[data-nav-id="${targetId}"]`) as HTMLElement)?.focus();
       }, 800);
     }
@@ -172,29 +155,6 @@ export function GlobalVideoPlayer() {
     setIsPlayerPlaylistOpen(false); resetWatchdog(); setIsPlaying(false);
   };
 
-  const handleIframeAutoClick = () => {
-    setIsPlaying(true);
-    setIframeKey(k => k + 1);
-    setShowPulse(true);
-    setTimeout(() => setShowPulse(false), 800);
-
-    const frames = document.getElementsByName('sovereign-frame') as NodeListOf<HTMLIFrameElement>;
-    frames.forEach(frame => {
-      if (frame.contentWindow) {
-        frame.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'playVideo', args: '' }), '*');
-        frame.contentWindow.postMessage({ type: 'SOVEREIGN_UNMUTE_TRIGGER' }, '*');
-      }
-    });
-
-    setTimeout(() => {
-      if (isMinimized) {
-        forcePlayBtnRef.current?.focus();
-      } else {
-        forcePlayBtnExpandedRef.current?.focus();
-      }
-    }, 200);
-  };
-
   const handlePutToIframe = () => {
     if (!urlInput.trim()) return;
     let target = urlInput.trim();
@@ -213,6 +173,7 @@ export function GlobalVideoPlayer() {
 
   return (
     <>
+      {/* Sovereign Silent Heartbeat - Essential for Audio Policy Bypass */}
       <audio ref={audioHeartbeatRef} loop className="hidden">
         <source src="data:audio/wav;base64,UklGRigAAABXQVZFRm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA==" type="audio/wav" />
       </audio>
@@ -229,13 +190,6 @@ export function GlobalVideoPlayer() {
                 <SovereignIframe key={`yt-${activeVideo.id}-${iframeKey}`} src={youtubeUrl} title={activeVideo.title} />
               ) : (
                 activeIptv?.url && <SovereignIframe key={`web-${activeIptv.stream_id}-${iframeKey}`} src={activeIptv.url} title={activeIptv.name} />
-              )}
-
-              {showPulse && (
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[101]">
-                   <div className="w-32 h-32 rounded-full bg-emerald-500/20 border-4 border-emerald-400 animate-ping opacity-0" />
-                   <div className="absolute w-16 h-16 rounded-full bg-emerald-500/40 border-2 border-emerald-300 animate-in zoom-in-50 fade-in duration-300" />
-                </div>
               )}
 
               {(effectiveCountdown !== null && effectiveCountdown > 0) && (
@@ -318,17 +272,6 @@ export function GlobalVideoPlayer() {
             <div className="w-14 h-14 rounded-2xl overflow-hidden border border-white/20 bg-zinc-900/40 shadow-glow"><img src={activeVideo?.thumbnail || activeIptv?.stream_icon} className="w-full h-full object-cover" alt="" /></div>
             <div className="flex flex-col flex-1 min-w-0 text-right"><span className="text-white font-black text-sm truncate w-full tracking-tighter leading-none">{activeVideo?.title || activeIptv?.name}</span><span className="text-[8px] text-accent font-black uppercase tracking-[0.4em] mt-1.5">نظام البث المركزي</span></div>
             <div className="flex gap-3">
-              <div className="relative group">
-                <button 
-                  ref={forcePlayBtnRef}
-                  onClick={handleIframeAutoClick} 
-                  data-nav-id="player-force-play" 
-                  className="w-10 h-10 rounded-full bg-emerald-500 text-black shadow-glow flex items-center justify-center focusable transition-all hover:scale-110 active:scale-95"
-                >
-                  <Play className="w-6 h-6 fill-current" />
-                </button>
-                <ShortcutBadge action="player_mode" className="-bottom-5 left-1/2 -translate-x-1/2 scale-50" />
-              </div>
               <div className="relative group"><button onClick={() => setIsMinimized(false)} className="w-10 h-10 rounded-full bg-primary text-white shadow-glow flex items-center justify-center focusable transition-all hover:scale-110 active:scale-95"><Maximize2 className="w-5 h-5" /></button><ShortcutBadge action="player_minimize" className="-bottom-5 left-1/2 -translate-x-1/2 scale-50" /></div>
               <div className="relative group"><button onClick={handleClose} data-nav-id="player-close-btn-min" className="w-10 h-10 rounded-full bg-red-600 text-white shadow-glow flex items-center justify-center focusable hover:scale-110 active:scale-95"><X className="w-5 h-5" /></button><ShortcutBadge action="player_close" className="-bottom-5 left-1/2 -translate-x-1/2 scale-50" /></div>
             </div>
@@ -344,18 +287,6 @@ export function GlobalVideoPlayer() {
                 <X className="w-6 h-6" />
               </button>
               <ShortcutBadge action="player_close" className="-bottom-4 left-1/2 -translate-x-1/2 scale-75" />
-            </div>
-
-            <div className="relative group">
-              <button 
-                ref={forcePlayBtnExpandedRef}
-                onClick={handleIframeAutoClick} 
-                data-nav-id="player-force-play-expanded" 
-                className={cn(ctrlBtnClass, "bg-emerald-500/40 text-emerald-400 border-2 border-emerald-500/20")}
-              >
-                <Play className="w-6 h-6 fill-current" />
-              </button>
-              <ShortcutBadge action="player_mode" className="-bottom-4 left-1/2 -translate-x-1/2 scale-75" />
             </div>
             
             {isPlayerControlsExpanded && (

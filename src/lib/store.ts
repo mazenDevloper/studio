@@ -18,11 +18,29 @@ import {
 } from "./constants";
 
 export interface Reminder {
-  id: string; label: string; color: string; iconType: 'play' | 'bell' | 'circle';
-  startType: 'azan' | 'iqamah' | 'manual'; startReference?: string; startOffset: number;
-  endType: 'azan' | 'iqamah' | 'manual' | 'duration' | 'prayer'; endReference?: string; endOffset: number;
-  manualStartTime?: string; manualEndTime?: string; durationMinutes?: number;
-  showCountdown: boolean; showCountup: boolean; completed: boolean; countdownWindow: number;
+  id: string; 
+  label: string; 
+  color: string; 
+  iconType: 'play' | 'bell' | 'circle' | 'match'; 
+  startType: 'azan' | 'iqamah' | 'manual'; 
+  startReference?: string; 
+  startOffset: number;
+  endType: 'azan' | 'iqamah' | 'manual' | 'duration' | 'prayer'; 
+  endReference?: string; 
+  endOffset: number;
+  manualStartTime?: string; 
+  manualEndTime?: string; 
+  durationMinutes?: number;
+  showCountdown: boolean; 
+  showCountup: boolean; 
+  completed: boolean; 
+  countdownWindow: number;
+  // Match Specific
+  homeLogo?: string;
+  awayLogo?: string;
+  matchDate?: string;
+  homeName?: string;
+  awayName?: string;
 }
 
 export interface Playlist {
@@ -102,7 +120,7 @@ interface MediaState {
   incrementReciterClick: (channelid: string) => void; toggleSaveVideo: (video: YouTubeVideo) => void;
   removeVideo: (id: string) => void; toggleStarChannel: (channelid: string) => void;
   addReminder: (reminder: Reminder) => void; updateReminder: (id: string, reminder: Partial<Reminder>) => void;
-  removeReminder: (id: string) => void; toggleReminder: (id: string) => void; skipReminder: (id: string) => void;
+  removeReminder: (id: string) => void; toggleReminder: (id: string) => void; skipReminder: (id: string) => void; skipMatch: (id: string) => void;
   addAzkar: (azkar: Reminder) => void; updateAzkar: (id: string, azkar: Partial<Reminder>) => void;
   removeAzkar: (id: string) => void;
   addPlaylist: (name: string, videos?: YouTubeVideo[]) => Playlist; removePlaylist: (id: string) => void; addVideoToPlaylist: (playlistId: string, video: YouTubeVideo) => void;
@@ -138,7 +156,7 @@ interface MediaState {
   saveManuscriptsReorder: () => Promise<void>;
 }
 
-const updateBin = async (binId: string, data: any) => {
+export const updateBin = async (binId: string, data: any) => {
   try {
     await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
       method: 'PUT',
@@ -206,7 +224,7 @@ export const useMediaStore = create<MediaState>()(
         fontScale: 1.0, manuscriptColor: '#ffffff', showManuscriptOnMoon: true, moonManuIdx: 0, 
         hue: 0, saturation: 100, brightness: 100, winwinUrl: "https://psee.io/9f4ngl", 
         beinUrl: "https://idebsports.ly/matches", 
-        omanUrl: "https://player.mangomolo.com/v1/live?id=MTY8&channelid=MTYx&countries=Q0M%3D&filter=DENY&signature=3fd1e8dd84138a41bf33d93afd4a7f09&language=en&app_id=&fullscreen=yes&player_profile=&base_url=aHR0cHM6Ly9heW4ub20vbGl2ZS8xNjEvJUQ5JTgyJUQ5JTg2JUQ4JUE3JUQ4JUE5LSVEOCVCOSVEOSU4NSVEOCVBNyVEOSU4Ni0lRDklODUlRDglQTglRDglQTclRDglQjQlRDglQjE%3D&autoplay=false&vast=true", 
+        omanUrl: "https://player.mangomolo.com/v1/live?id=MTY4&channelid=MTYx&countries=Q0M%3D&filter=DENY&signature=3fd1e8dd84138a41bf33d93afd4a7f09&language=en&app_id=&fullscreen=yes&player_profile=&base_url=aHR0cHM6Ly9heW4ub20vbGl2ZS8xNjEvJUQ5JTgyJUQ5JTg2JUQ4JUE3JUQ4JUE5LSVEOCVCOSVEOSU4NSVEOCVBNyVEOSU4Ni0lRDklODUlRDglQTglRDglQTclRDglQjQlRDglQjE%3D&autoplay=false&vast=true", 
         bein1Url: "https://online.aflam4you.net/zremb472.php/?vid=68&aflam_s=1&aflam_w=360&aflam_w=360&aflam_h=250&aflam_k=18311111", 
         mbc1Url: "https://online.aflam4you.net/zremb472.php?vid=5&aflam_s=1&aflam_w=360&aflam_h=250&aflam_k=18311111", 
         invertJoystickX: true, invertJoystickY: true, autoRotateNav90: true 
@@ -237,7 +255,8 @@ export const useMediaStore = create<MediaState>()(
             savedVideos: data.savedVideos || get().savedVideos, 
             manuscriptScales: data.manuscriptScales || get().manuscriptScales, 
             lastPlayedVideo: data.lastPlayedVideo || get().lastPlayedVideo, 
-            playlists: data.playlists || get().playlists || [] 
+            playlists: data.playlists || get().playlists || [],
+            skippedMatchIds: data.skippedMatchIds || []
           });
         } catch (e) {}
       },
@@ -292,14 +311,29 @@ export const useMediaStore = create<MediaState>()(
       addReminder: (r) => set((s) => { const n = [...s.reminders, r]; setTimeout(() => get().syncMasterBin(), 100); return { reminders: n }; }),
       updateReminder: (id, u) => set((s) => { const n = s.reminders.map(r => r.id === id ? { ...r, ...u } : r); setTimeout(() => get().syncMasterBin(), 100); return { reminders: n }; }),
       removeReminder: (id) => set((s) => { const n = s.reminders.filter(r => r.id !== id); setTimeout(() => get().syncMasterBin(), 100); return { reminders: n }; }),
-      toggleReminder: (id) => set((s) => ({ reminders: s.reminders.map(r => r.id === id ? { ...r, completed: !r.completed } : r) })),
+      toggleReminder: (id) => set((s) => {
+        const n = s.reminders.map(r => r.id === id ? { ...r, completed: !r.completed } : r);
+        setTimeout(() => get().syncMasterBin(), 100);
+        return { reminders: n };
+      }),
       skipReminder: (id) => set((s) => ({ skippedReminderIds: [...s.skippedReminderIds, id] })),
+      skipMatch: (id) => set((s) => {
+        const isSkipped = s.skippedMatchIds.includes(id);
+        const n = isSkipped ? s.skippedMatchIds.filter(i => i !== id) : [...s.skippedMatchIds, id];
+        setTimeout(() => get().syncMasterBin(), 100);
+        return { skippedMatchIds: n };
+      }),
       addAzkar: (a) => set((s) => { const n = [...s.generalAzkar, a]; setTimeout(() => get().syncMasterBin(), 100); return { generalAzkar: n }; }),
       updateAzkar: (id, u) => set((s) => { const n = s.generalAzkar.map(a => a.id === id ? { ...a, ...u } : a); setTimeout(() => get().syncMasterBin(), 100); return { generalAzkar: n }; }),
       removeAzkar: (id) => set((s) => { const n = s.generalAzkar.filter(a => a.id !== id); setTimeout(() => get().syncMasterBin(), 100); return { generalAzkar: n }; }),
       toggleFavoriteTeam: (t) => set((s) => ({ favoriteTeams: s.favoriteTeams.some(i => i.id === t.id) ? s.favoriteTeams.filter(i => i.id !== t.id) : [...s.favoriteTeams, t] })),
       toggleBelledMatch: (matchId) => set((s) => ({ belledMatchIds: s.belledMatchIds.includes(matchId) ? s.belledMatchIds.filter(i => i !== matchId) : [...s.belledMatchIds, matchId] })),
-      updateMapSettings: (s) => set((st) => { const n = { ...st.mapSettings, ...s }; if (s.manuscriptBgUrl || s.winwinUrl || s.beinUrl || s.omanUrl || s.bein1Url || s.mbc1Url || s.autoRotateNav90 !== undefined) setTimeout(() => get().syncMasterBin(), 100); return { mapSettings: n }; }),
+      updateMapSettings: (s) => set((st) => { 
+        const n = { ...st.mapSettings, ...s }; 
+        if (s.manuscriptBgUrl || s.winwinUrl || s.beinUrl || s.omanUrl || s.bein1Url || s.mbc1Url || s.autoRotateNav90 !== undefined || s.invertJoystickX !== undefined || s.invertJoystickY !== undefined) 
+          setTimeout(() => get().syncMasterBin(), 100); 
+        return { mapSettings: n }; 
+      }),
       setKeyMapping: (ctx, act, key) => set((s) => { const m = { ...s.keyMappings }; if (!m[ctx]) m[ctx] = {}; let k = Array.isArray(m[ctx][act]) ? [...m[ctx][act]] : []; if (k.includes(key)) return s; k.push(key); m[ctx][act] = k.slice(-3); return { keyMappings: m }; }),
       removeSpecificKeyMapping: (ctx, act, key) => set((s) => { const m = { ...s.keyMappings }; if (m[ctx] && m[ctx][act]) { m[ctx][act] = m[ctx][act].filter(v => v !== key); return { keyMappings: m }; } return s; }),
       setActiveVideo: (v, ctx) => set({ playlist: ctx || (v ? [v] : []), playlistIndex: ctx ? ctx.findIndex(i => i.id === v?.id) : 0, activeVideo: v, lastPlayedVideo: v || get().lastPlayedVideo, activeIptv: null, isPlaying: !!v, isMinimized: false, isFullScreen: !!v, isPlayerPlaylistOpen: false }),
@@ -323,7 +357,7 @@ export const useMediaStore = create<MediaState>()(
       updatePrayerSetting: (id, updates) => set((s) => { const n = s.prayerSettings.map(p => p.id === id ? { ...p, ...updates } : p); setTimeout(() => get().syncMasterBin(), 100); return { prayerSettings: n }; }),
     }),
     {
-      name: "drivecast-sovereign-v142", 
+      name: "drivecast-sovereign-v143", 
       partialize: (s) => ({ dockSide: s.dockSide, displayScale: s.displayScale, dockScale: s.dockScale, isLooping: s.isLooping }),
     }
   )

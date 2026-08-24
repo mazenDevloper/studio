@@ -46,6 +46,7 @@ export const JSONBIN_SAVED_VIDEOS_BIN_ID = '68e4ac20d0ea881f4098138c';
 export const JSONBIN_PRAYER_TIMES_BIN_ID = '69a00f6eae596e708f4b7291'; 
 export const JSONBIN_MANUSCRIPTS_BIN_ID = '69b63c5cc3097a1dd5278b25'; 
 export const JSONBIN_POPULAR_RECITERS_BIN_ID = '6909c1cd43b1c97be997b522';
+export const JSONBIN_TEAM_LOGOS_BIN_ID = '699d8c2aae596e708f452936';
 
 export const prayerTimesData = [
     {"date":"2026-03-05","day":"الخميس","fajr":"05:27","sunrise":"06:39","dhuhr":"12:40","asr":"16:02","maghrib":"18:36","isha":"19:43"}

@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Moon, RotateCcw, Sun, CheckCircle2, Bookmark, Plus, Trash2, Sparkles, Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -34,7 +34,7 @@ const AZKAR_DATA = [
   { id: 'etm-4', label: 'الاستغاثة', count: 1, category: 'evening', text: 'يا حي يا قيوم برحمتك أستغيث، أصلح لي شأني كله ولا تكلني إلى نفسي طرفة عين.' },
   { id: 'etl-1', label: 'النعمة', count: 1, category: 'evening', text: 'اللهم ما أمسى بي من نعمة أو بأحد من خلقك فمنك وحدك لا شريك لك، فلك الحمد ولك الشكر.' },
   { id: 'etl-2', label: 'سيد الاستغفار', count: 1, category: 'evening', text: 'اللهم أنت ربي لا إله إلا أنت، خلقتني وأنا عبدك، وأنا على عهدك ووعدك ما استطعت، أعوذ بك من شر ما صنعت، أبوء لك بنعمتك علي، وأبوء بذنبي فاغفر لي، فإنه لا يغفر الذنوب إلا أنت.' },
-  { id: 'etsl-1', label: 'العافية', count: 1, category: 'evening', text: 'اللهم إني أسألك العفو والعافية في الدنيا والآخرة، اللهم إني أسألك العفو والعافية في ديني ودنياي وأهلي ومالي، اللهم استر عوراتي وآمن روعاتي، اللهم احفظني من بين يدي ومن خلفي وعن يميني وعن شمالي ومن فوقي، وأعوذ بعظمتك أن أُغتال من تحتي.' },
+  { id: 'etsl-1', label: 'العافية', count: 1, category: 'evening', text: 'اللهم إني أسألك العفو والعافية في الدنيا والآخرة، اللهم إني أسألك العفو والعافية في ديني ودنياي وأهلي ومالي، اللهم استر عوراتي وآمن روعاتي، اللهم احفظني من بين يدي ومن خلفي عن يميني وعن شمالي ومن فوقي، وأعوذ بعظمتك أن أُغتال من تحتي.' },
   { id: 'etsl-2', label: 'أمسينا وأمسى الملك لله', count: 1, category: 'evening', text: 'أمسينا وأمسى الملك لله، والحمد لله، لا إله إلا الله وحده لا شريك له، له الملك وله الحمد وهو على كل شيء قدير. رب أسألك خير ما في هذه الليلة وخير ما بعدها، وأعوذ بك من شر ما في هذه الليلة وشر ما بعدها، رب أعوذ بك من الكسل وسوء الكبر، رب أعوذ بك من عذاب في النار وعذاب في القبر.' },
 ];
 
@@ -44,11 +44,21 @@ export function AzkarView() {
   const [activeTab, setActiveTab] = useState("morning");
   const [newReminderText, setNewReminderText] = useState("");
 
-  const handleIncrement = (id: string, max: number) => {
+  const handleIncrement = (id: string, max: number, idx: number) => {
     setCounters(prev => {
       const current = prev[id] || 0;
       if (current >= max) return prev;
-      return { ...prev, [id]: current + 1 };
+      const nextCount = current + 1;
+      
+      // AUTO-NEXT LOGIC: Focus next item when completed
+      if (nextCount === max) {
+         setTimeout(() => {
+            const nextEl = document.querySelector(`[data-nav-id="zikr-item-${idx + 1}"]`) as HTMLElement;
+            if (nextEl) nextEl.focus();
+         }, 400);
+      }
+      
+      return { ...prev, [id]: nextCount };
     });
   };
 
@@ -125,7 +135,7 @@ export function AzkarView() {
 
            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {(generalAzkar || []).map((rem, idx) => (
-                <Card key={rem.id} className="bg-zinc-900/40 backdrop-blur-3xl border border-white/5 rounded-[3rem] p-8 focusable group shadow-2xl transition-all relative overflow-hidden h-64 flex flex-col justify-between" tabIndex={0}>
+                <Card key={rem.id} className="bg-zinc-900/40 backdrop-blur-3xl border border-white/5 rounded-[3rem] p-8 focusable group shadow-2xl transition-all relative overflow-hidden h-64 flex flex-col justify-between" tabIndex={0} data-nav-id={`general-zikr-${idx}`}>
                    <div className="flex items-start justify-between gap-4">
                       <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
                          <Bell className="w-6 h-6 text-emerald-400" />
@@ -159,10 +169,10 @@ export function AzkarView() {
             return (
               <Card 
                 key={rem.id}
-                onClick={() => handleIncrement(rem.id, rem.count)}
+                onClick={() => handleIncrement(rem.id, rem.count, idx)}
                 className={cn(
-                  "bg-zinc-900/40 backdrop-blur-3xl border border-white/5 rounded-[3rem] p-10 focusable cursor-pointer group shadow-2xl min-h-[220px] flex flex-col justify-between transition-all active:scale-95 outline-none",
-                  isCompleted && "border-emerald-500/40 bg-emerald-500/5",
+                  "bg-zinc-900/40 backdrop-blur-3xl border-4 focusable cursor-pointer group shadow-2xl min-h-[220px] flex flex-col justify-between transition-all active:scale-95 outline-none rounded-[3rem] p-10",
+                  isCompleted ? "border-emerald-500/40 bg-emerald-500/5 shadow-[0_0_60px_rgba(16,185,129,0.2)]" : "border-white/5",
                   (rem.id.startsWith('tl') || rem.id.startsWith('tsl') || rem.text.length > 200) && "lg:col-span-2"
                 )}
                 tabIndex={0}
