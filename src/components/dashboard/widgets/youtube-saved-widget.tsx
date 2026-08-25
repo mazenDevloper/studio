@@ -2,22 +2,50 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Bookmark, Play, Trash2, Clock, Activity } from "lucide-react";
-import { useMediaStore } from "@/lib/store";
+import { Bookmark, Play, Trash2, Clock, Activity, Library, Star, Youtube, Loader2 } from "lucide-react";
+import { useMediaStore, YouTubeVideo } from "@/lib/store";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { ShortcutBadge } from "@/components/layout/car-dock";
+import { useEffect, useState } from "react";
+import { fetchChannelVideos } from "@/lib/youtube";
 
+/**
+ * SovereignFrequenciesWidget v1590.0 - Frequencies & Folders Hub
+ * Features: Showcases playlists and top videos from starred channels with fixed Loader2.
+ */
 export function YouTubeSavedWidget() {
-  const { savedVideos, removeVideo, setActiveVideo } = useMediaStore();
+  const { playlists, favoriteChannels, setActiveVideo } = useMediaStore();
+  const [topVideos, setTopVideos] = useState<YouTubeVideo[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const formatTime = (seconds: number) => {
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    const s = Math.floor(seconds % 60);
-    if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-    return `${m}:${s.toString().padStart(2, '0')}`;
-  };
+  useEffect(() => {
+    async function fetchTopContent() {
+      const starred = favoriteChannels.filter(c => c.starred);
+      if (starred.length === 0) {
+        setTopVideos([]);
+        return;
+      }
+      
+      setLoading(true);
+      const tops: YouTubeVideo[] = [];
+      try {
+        for (const ch of starred) {
+          const vids = await fetchChannelVideos(ch.channelid, 10);
+          if (vids.length > 0) {
+            const topOne = [...vids].sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0))[0];
+            tops.push({ ...topOne, channelAvatar: ch.image });
+          }
+        }
+        setTopVideos(tops);
+      } catch (e) {
+        console.error("Dashboard Frequencies Error:", e);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchTopContent();
+  }, [favoriteChannels]);
 
   const horizontalListClass = "w-full flex gap-4 px-8 pb-4 overflow-x-auto no-scrollbar scroll-smooth justify-start items-center";
 
@@ -25,62 +53,73 @@ export function YouTubeSavedWidget() {
     <Card className="border-none bg-zinc-900/50 rounded-[2.5rem] shadow-2xl overflow-hidden">
       <CardHeader className="p-8 flex flex-row items-center justify-between space-y-0 pb-4">
         <CardTitle className="text-xl font-bold font-headline text-white flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-accent flex items-center justify-center shadow-lg">
-            <Bookmark className="h-6 w-6 text-black fill-current" />
+          <div className="w-10 h-10 rounded-2xl bg-indigo-600 flex items-center justify-center shadow-lg">
+            <Library className="h-6 w-6 text-white" />
           </div>
-          البثوث المحفوظة
-          <span className="text-xs text-muted-foreground uppercase tracking-widest ml-2 font-bold opacity-50">Saved Feed</span>
+          المجلدات والترددات المجرسة
+          <span className="text-[10px] text-white/20 uppercase tracking-[0.2em] font-bold ml-2">Sovereign Frequencies</span>
         </CardTitle>
-        <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 bg-white/5 rounded-full border border-white/5">
-          {savedVideos?.length || 0} فيديو
-        </span>
       </CardHeader>
+      
       <CardContent className="p-0">
-        {!savedVideos || savedVideos.length === 0 ? (
-          <div className="py-12 mx-8 text-center bg-white/5 rounded-[2rem] border border-dashed border-white/5"><p className="text-muted-foreground italic text-lg font-medium">لا توجد فيديوهات محفوظة حالياً.</p></div>
-        ) : (
-          <div className={horizontalListClass}>
-            {savedVideos.map((video, idx) => (
-              <div 
-                key={video.id} 
-                className="w-80 group relative overflow-hidden bg-zinc-900/80 border-none rounded-[2rem] transition-all hover:scale-[1.02] cursor-pointer shadow-xl focusable shrink-0 outline-none"
-                onClick={() => setActiveVideo(video, savedVideos)}
-                tabIndex={0}
-                data-nav-id={`saved-video-${idx}`}
-                data-video-id={video.id}
-              >
-                <div className="aspect-video relative overflow-hidden">
-                  <Image src={video.thumbnail} alt={video.title} fill className="object-cover opacity-80 group-hover:opacity-100" />
-                  <ShortcutBadge action="delete_item" className="-top-1 -right-1 scale-90 opacity-0 group-focus:opacity-100 transition-opacity" />
-                  
-                  {video.duration && <div className="absolute bottom-2 right-2 bg-black text-white text-[14px] px-3 py-1.5 rounded-lg font-black z-10 border border-white/20">{video.duration}</div>}
-
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-3xl flex items-center justify-center border border-white/20 opacity-0 group-hover:opacity-100 transition-all scale-75 group-hover:scale-100 shadow-2xl">
-                      <Play className="w-8 h-8 text-white fill-white ml-1" />
+        <div className={horizontalListClass}>
+          {/* 1. Folders (Playlists) */}
+          {playlists.map((p, idx) => (
+             <div 
+               key={`pl-${p.id}`} 
+               className="w-80 h-48 group relative overflow-hidden bg-zinc-900 border-2 border-white/5 rounded-[2.5rem] focusable cursor-pointer shrink-0 flex flex-col justify-end p-6 shadow-2xl transition-all outline-none"
+               tabIndex={0}
+             >
+               {p.videos.length > 0 && (
+                 <div className="absolute inset-0 z-0">
+                   <img src={p.videos[0].thumbnail} className="w-full h-full object-cover opacity-40 group-hover:scale-110 transition-transform" alt="" />
+                   <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
+                 </div>
+               )}
+               <div className="relative z-10 text-right">
+                  <h4 className="text-2xl font-black text-white tracking-tighter leading-tight">{p.name}</h4>
+                  <div className="mt-2 flex items-center gap-2">
+                    <div className="px-3 py-1 bg-indigo-600/40 backdrop-blur-md rounded-full border border-indigo-400/30">
+                       <span className="text-[9px] font-black text-white uppercase tracking-widest">{p.videos.length} تلاوة</span>
                     </div>
                   </div>
+               </div>
+             </div>
+          ))}
 
-                  {video.progress && video.progress > 0 && (
-                    <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-black/40">
-                      <div className="h-full bg-accent shadow-[0_0_12px_hsl(var(--accent))]" style={{ width: `${Math.min(100, (video.progress / 3600) * 100)}%` }} />
-                    </div>
-                  )}
-                </div>
-                <div className="p-5 space-y-2 text-right">
-                  <h3 className="font-bold text-base truncate text-white font-headline">{video.title}</h3>
-                  <div className="flex items-center justify-end gap-3 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                     {video.progress && video.progress > 0 ? (
-                       <span className="text-accent flex items-center gap-1"><Activity className="w-3 h-3" /> استكمال عند {formatTime(video.progress)}</span>
-                     ) : (<span>جاهز للمشاهدة</span>)}
-                     <span className="opacity-30">•</span>
-                     <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {video.duration || "---"}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+          {/* 2. Top Videos from Starred Channels */}
+          {topVideos.map((video, vIdx) => (
+             <div 
+               key={`top-${video.id}`} 
+               className="w-80 h-48 group relative overflow-hidden bg-zinc-900 border-2 border-white/5 rounded-[2.5rem] focusable cursor-pointer shrink-0 flex flex-col justify-end p-6 shadow-2xl transition-all outline-none"
+               onClick={() => setActiveVideo(video, topVideos)}
+               tabIndex={0}
+             >
+               <div className="absolute inset-0 z-0">
+                 <img src={video.thumbnail} className="w-full h-full object-cover opacity-60 group-hover:scale-110 transition-transform" alt="" />
+                 <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
+               </div>
+               <div className="relative z-10 text-right">
+                 <span className="text-[12px] font-black text-white line-clamp-2 leading-tight mb-2 drop-shadow-md">{video.title}</span>
+                 <div className="flex items-center gap-2">
+                   <img src={video.channelAvatar} className="w-6 h-6 rounded-full border border-white/20" alt="" />
+                   <span className="text-[9px] font-black text-white/60 truncate max-w-[120px]">{video.channelTitle}</span>
+                   <div className="ml-auto px-2 py-0.5 bg-yellow-500/20 text-yellow-500 rounded-md border border-yellow-500/40 text-[7px] font-black uppercase">الأكثر مشاهدة</div>
+                 </div>
+               </div>
+             </div>
+          ))}
+
+          {playlists.length === 0 && topVideos.length === 0 && !loading && (
+            <div className="py-12 w-full text-center opacity-20 italic">لا توجد محتويات مجرسة حالياً</div>
+          )}
+          
+          {loading && (
+            <div className="flex items-center justify-center p-20 w-full">
+              <Loader2 className="w-8 h-8 animate-spin text-white/20" />
+            </div>
+          )}
+        </div>
       </CardContent>
     </Card>
   );

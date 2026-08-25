@@ -1,3 +1,4 @@
+
 "use client";
 
 import { LayoutDashboard, Radio, Settings, ArrowLeft, Trophy, ArrowRightLeft, Tv, BookOpen, Sparkles, ChevronUp, ChevronDown } from "lucide-react";
@@ -67,7 +68,7 @@ export function ShortcutBadge({ action, className, context = 'default' }: { acti
 export function CarDock() {
   const pathname = usePathname();
   const router = useRouter();
-  const { dockSide, toggleDockSide, resetMediaView, dockScale } = useMediaStore();
+  const { dockSide, toggleDockSide, resetMediaView, dockScale, fetchPriorityData } = useMediaStore();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
@@ -76,7 +77,6 @@ export function CarDock() {
   useEffect(() => {
     if (!mounted) return;
     
-    // 1. Permanent Focus for /quran
     if (pathname === '/quran') {
       const quranIcon = document.querySelector('[data-nav-id="dock-Quran"]') as HTMLElement;
       quranIcon?.focus();
@@ -101,9 +101,14 @@ export function CarDock() {
 
   const handleNavigate = (href: string) => {
     if (pathname === href && href === '/media') resetMediaView();
+    
+    // SOVEREIGN AUTO-REFRESH: Automatically trigger local fetch for Media and Settings
+    if (href === '/media' || href === '/settings') {
+      fetchPriorityData('all');
+    }
+    
     router.push(href);
     
-    // SOVEREIGN FOCUS: Signal target page for initial focus
     setTimeout(() => {
       const firstTarget = document.querySelector('[data-nav-zone="content"] .focusable') as HTMLElement;
       firstTarget?.focus();
@@ -160,7 +165,6 @@ export function CarDock() {
         </div>
       </div>
 
-      {/* Sovereign Floating Controls - Non-Focusable by Design */}
       <div className={cn(
         "fixed bottom-8 z-[10002] flex flex-col gap-4 items-center",
         dockSide === 'left' ? "right-8" : "left-8"

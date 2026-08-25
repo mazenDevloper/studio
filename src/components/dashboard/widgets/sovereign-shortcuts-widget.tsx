@@ -4,7 +4,7 @@
 import { useMediaStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { 
-  Sparkles, Youtube, Search, Trophy, RefreshCw, Activity, BookOpen, Loader2, MonitorPlay, Minimize2, Edit3, Save 
+  Sparkles, Youtube, Search, Trophy, RefreshCw, Activity, BookOpen, Loader2, MonitorPlay, Minimize2, Edit3, Save, Radio 
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useEffect, useCallback } from "react";
@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { JSONBIN_MANUSCRIPTS_BIN_ID, JSONBIN_PRAYER_TIMES_BIN_ID } from "@/lib/constants";
 
 /**
- * SovereignShortcutsWidget v210.0 - Unified Oman TV & Editable Links
+ * SovereignShortcutsWidget v220.0 - Quran Radio Sync
  */
 export function SovereignShortcutsWidget() {
   const router = useRouter();
@@ -102,8 +102,6 @@ export function SovereignShortcutsWidget() {
     if (!editingId) return;
     const updates: any = {};
     if (editingId === 'oman-live') updates.omanUrl = tempUrl;
-    else if (editingId === 'bein-1') updates.bein1Url = tempUrl;
-    else if (editingId === 'mbc-1') updates.mbc1Url = tempUrl;
     
     updateMapSettings(updates);
     setEditingId(null);
@@ -134,22 +132,16 @@ export function SovereignShortcutsWidget() {
       url: mapSettings.omanUrl || DEFAULT_OMAN_URL
     },
     {
-      id: "bein-1",
-      label: "beIN Sports 1",
-      sublabel: "البث المباشر للمباريات",
-      icon: MonitorPlay,
-      avatar: "https://gallery-images.me/pics/bein/bein-sports-2.png",
-      gradient: "from-purple-600/20 to-purple-950/60",
-      action: () => setActiveIptv({
-        stream_id: "bein-1-live",
-        name: "beIN Sports 1 HD",
-        stream_icon: "https://gallery-images.me/pics/bein/bein-sports-2.png",
-        category_id: "direct",
-        url: mapSettings.bein1Url,
-        type: 'web'
-      }),
-      editable: true,
-      url: mapSettings.bein1Url
+      id: "quran-radio",
+      label: "راديو القرآن",
+      sublabel: "التلاوات الأكثر شيوعاً",
+      icon: Radio,
+      avatar: "https://yt3.ggpht.com/ytc/AIdro_mesiGG76gww2WnpFVUFbMz-s2d4IjJJVhDqJuCVscKLY=s88-c-k-c0xffffffff-no-rj-mo",
+      gradient: "from-indigo-600/20 to-indigo-950/60",
+      action: () => {
+        setActiveQuranUrl("https://quran.com/ar/radio?autoplay=1");
+        router.push("/quran");
+      }
     },
     {
       id: "mbc-1",
@@ -197,7 +189,7 @@ export function SovereignShortcutsWidget() {
       action: executeSystemOptimizer,
       isLoading: isSystemRefreshing
     }
-  ], [lastPlayedVideo, footballHeadline, isSystemRefreshing, isQuranProcessing, isOmanProcessing, executeSpiritualPulse, executeOmanLive, executeSystemOptimizer, router, setActiveVideo, setActiveIptv, mapSettings]);
+  ], [lastPlayedVideo, footballHeadline, isSystemRefreshing, isQuranProcessing, isOmanProcessing, executeSpiritualPulse, executeOmanLive, executeSystemOptimizer, router, setActiveVideo, setActiveIptv, mapSettings, setActiveQuranUrl]);
 
   return (
     <div className="grid grid-cols-7 gap-4 p-8 h-full items-center">

@@ -28,9 +28,8 @@ interface AlertItem {
 }
 
 /**
- * LiveMatchIsland v1470.0 - Anti-Distortion Edition
- * Features: Corrected aspect ratio for all SVG text to prevent stretching.
- * Optimized container widths for maximum scale without distortion.
+ * LiveMatchIsland v1590.0 - Ultra-Small Desktop Scale Protocol
+ * Features: Reduced scale (0.80) on large screens for minimal visual footprint.
  */
 export function LiveMatchIsland() {
   const { 
@@ -187,7 +186,7 @@ export function LiveMatchIsland() {
   if (autoHideIsland && !activeAlerts.length) return null;
 
   return (
-    <div className={cn("fixed top-6 left-1/2 -translate-x-1/2 z-[10001] flex flex-col items-center gap-3 pointer-events-none scale-100 min-[968px]:scale-110 dir-rtl transition-all duration-700", (showIslands || activeAlerts.length) ? "translate-y-0 opacity-100" : "-translate-y-20 opacity-0")}>
+    <div className={cn("fixed top-6 left-1/2 -translate-x-1/2 z-[10001] flex flex-col items-center gap-3 pointer-events-none scale-90 min-[968px]:scale-[0.80] dir-rtl transition-all duration-700", (showIslands || activeAlerts.length) ? "translate-y-0 opacity-100" : "-translate-y-20 opacity-0")}>
       <div className="flex items-start gap-3">
         <div onClick={toggleShowIslands} className="pointer-events-auto shadow-2xl w-12 h-12 rounded-full flex items-center justify-center premium-glass cursor-pointer border border-white/10 active:scale-90 transition-all">{showIslands ? <Eye className="w-5 h-5 text-accent" /> : <EyeOff className="w-5 h-5 text-white/20" />}</div>
         {showIslands && (

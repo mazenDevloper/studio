@@ -53,6 +53,9 @@ interface OccasionSuggestion {
   isUpcoming?: boolean;
   isSport?: boolean;
   isLivePriority?: boolean;
+  isIptv?: boolean;
+  icon?: string;
+  iptvChannel?: any;
 }
 
 export function MediaView() {
@@ -61,7 +64,7 @@ export function MediaView() {
     favoriteChannels, setActiveVideo, dockSide, isSidebarShrinked, setIsSidebarShrinked,
     selectedChannel, setSelectedChannel, channelVideos, setChannelVideos,
     favoriteReciters, incrementReciterClick, playlists, addPlaylist, removePlaylist,
-    setActiveIptv, fetchSpecificBin, mapSettings, updateMapSettings, syncMasterBin
+    setActiveIptv, favoriteIptvChannels, fetchSpecificBin, mapSettings, updateMapSettings, syncMasterBin
   } = useMediaStore();
 
   const [search, setSearch] = useState("");
@@ -84,6 +87,7 @@ export function MediaView() {
   const DEFAULT_OMAN_URL = "https://player.mangomolo.com/v1/live?id=MTY4&channelid=MTYx&countries=Q0M%3D&filter=DENY&signature=3fd1e8dd84138a41bf33d93afd4a7f09&language=en&app_id=&fullscreen=yes&player_profile=&base_url=aHR0cHM6Ly9heW4ub20vbGl2ZS8xNjEvJUQ5JTgyJUQ5JTg2JUQ4JUE3JUQ4JUE5LSVEOCVCOSVEOSU4NSVEOCVBNyVEOSU4Ni0lRDklODUlRDglQTglRDglQTclRDglQjQlRDglQjE%3D&autoplay=false&vast=true";
 
   const [starredLists, setStarredLists] = useState<Record<string, { name: string, vids: YouTubeVideo[] }>>({});
+  const [topVideos, setTopVideos] = useState<YouTubeVideo[]>([]);
 
   const isDockLeft = dockSide === 'left';
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -97,42 +101,71 @@ export function MediaView() {
 
   const occasionSuggestions = useMemo(() => {
     const list: OccasionSuggestion[] = [];
-    list.push({ label: "عُمان مباشر 📺", query: mapSettings.omanUrl || DEFAULT_OMAN_URL, isOman: true });
-    list.push({ label: `${hijriInfo.dayNumArabic} ${hijriInfo.monthName} 🕌`, query: `${hijriInfo.fullDate} الحرم المكي`, isDate: true });
-    list.push({ label: "أهداف اليوم ⚽", query: "ملخص أهداف مباريات اليوم كاملة HD", isSport: true });
+    
+    if (favoriteIptvChannels && favoriteIptvChannels.length > 0) {
+      const firstIptv = favoriteIptvChannels[0];
+      list.push({ 
+        label: firstIptv.name, 
+        query: firstIptv.url || "", 
+        isIptv: true, 
+        icon: firstIptv.stream_icon,
+        iptvChannel: firstIptv
+      });
+    } else {
+      list.push({ label: "عُمان مباشر 📺", query: mapSettings.omanUrl || DEFAULT_OMAN_URL, isOman: true });
+    }
+
+    list.push({ 
+      label: `${hijriInfo.dayNumArabic} ${hijriInfo.monthName} 🕌`, 
+      query: `${hijriInfo.day} ${hijriInfo.monthName} ${hijriInfo.year} القارئ الحرم`, 
+      isDate: true 
+    });
+
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayGregStr = yesterday.toLocaleDateString('ar-EG', { day: 'numeric', month: 'long', year: 'numeric' });
+    list.push({ 
+      label: "أهداف اليوم ⚽", 
+      query: `أهداف مباريات أمس ${yesterdayGregStr}`, 
+      isSport: true 
+    });
+
     const contextOccasions = getIslamicOccasions(hijriInfo);
     contextOccasions.forEach(occ => list.push(occ));
     return list.slice(0, 15);
-  }, [hijriInfo, mapSettings.omanUrl]);
+  }, [hijriInfo, mapSettings.omanUrl, favoriteIptvChannels]);
 
   useEffect(() => {
     async function fetchHomeContent() {
-      const starred = favoriteChannels.filter(c => c.starred).slice(0, 3);
+      const starred = favoriteChannels.filter(c => c.starred);
+      
+      // 1. Fetch latest videos for first 3 channels (Previous behavior)
+      const top3 = starred.slice(0, 3);
       const lists: Record<string, any> = {};
-      for (const ch of starred) {
+      for (const ch of top3) {
         const vids = await fetchChannelVideos(ch.channelid, 12);
         lists[ch.channelid] = { name: ch.name, vids };
       }
       setStarredLists(lists);
+
+      // 2. Fetch TOP video (most viewed) for EACH starred channel (One per channel)
+      const tops: YouTubeVideo[] = [];
+      for (const ch of starred) {
+        const vids = await fetchChannelVideos(ch.channelid, 10);
+        if (vids.length > 0) {
+          // Find the most viewed video in the batch
+          const topOne = [...vids].sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0))[0];
+          tops.push({ ...topOne, channelAvatar: ch.image });
+        }
+      }
+      setTopVideos(tops);
     }
     fetchHomeContent();
   }, [favoriteChannels]);
 
-  useEffect(() => {
-    if (selectedChannel) {
-      setLoading(true);
-      fetchChannelVideos(selectedChannel.channelid, 40).then(vids => {
-        setChannelVideos(vids);
-        setTimeout(() => {
-          const firstVid = document.querySelector('[data-nav-id="channel-results-item-0"]') as HTMLElement;
-          firstVid?.focus();
-        }, 500);
-      }).finally(() => setLoading(false));
-    }
-  }, [selectedChannel, setChannelVideos]);
-
   const performSearch = async (query?: string) => {
     const q = query || search; if (!q.trim()) return;
+    setSearch(q); 
     setLoading(true); setSelectedChannel(null); setSelectedPlaylist(null);
     try { 
       const res = await searchYouTubeVideos(q, 40); 
@@ -313,7 +346,7 @@ export function MediaView() {
 
       <main 
         data-nav-zone="content" 
-        className="flex-1 overflow-y-auto relative pt-0 pb-40 px-10 no-scrollbar" 
+        className="flex-1 overflow-y-auto relative pt-24 pb-40 px-10 no-scrollbar" 
         style={{ direction: isDockLeft ? 'ltr' : 'rtl' }}
       >
         <section data-row-id="row-search" className="py-4">
@@ -344,16 +377,28 @@ export function MediaView() {
               <div key={i} className="relative group shrink-0">
                 <button 
                   onClick={() => {
-                    if (occ.isOman) {
+                    if (occ.isIptv && occ.iptvChannel) {
+                       setActiveIptv(occ.iptvChannel);
+                    } else if (occ.isOman) {
                       if (isEditingOmanUrl) return;
-                      setActiveIptv({ stream_id: "oman-live-direct", name: "عُمان مباشر", stream_icon: "https://gallery-images.me/pics/arabicfta/oman.png", category_id: "direct", url: mapSettings.omanUrl || DEFAULT_OMAN_URL, type: 'web' });
+                      setActiveIptv({ 
+                        stream_id: "oman-live-direct", 
+                        name: "عُمان مباشر", 
+                        stream_icon: "https://gallery-images.me/pics/arabicfta/oman.png", 
+                        category_id: "direct", 
+                        url: mapSettings.omanUrl || DEFAULT_OMAN_URL, 
+                        type: 'web' 
+                      });
                     } else { performSearch(occ.query); }
                   }}
-                  className={cn("px-6 py-4 rounded-full font-black text-sm focusable border-2 shrink-0 transition-all", occ.isDate ? "bg-white text-black border-white shadow-glow text-lg" : occ.isOman ? "bg-[#ed2b5c] text-white border-white/40 shadow-glow animate-pulse" : occ.isSport ? "bg-red-600/20 text-red-500 border-red-600/40" : occ.isSpecial ? "bg-emerald-600/20 text-emerald-400 border-emerald-500/30" : "bg-indigo-600 text-white border-indigo-400/50 shadow-glow")} 
+                  className={cn("px-6 py-4 rounded-full font-black text-sm focusable border-2 shrink-0 transition-all", occ.isDate ? "bg-white text-black border-white shadow-glow text-lg" : occ.isOman || occ.isIptv ? "bg-[#ed2b5c] text-white border-white/40 shadow-glow animate-pulse" : occ.isSport ? "bg-red-600/20 text-red-500 border-red-600/40" : occ.isSpecial ? "bg-emerald-600/20 text-emerald-400 border-emerald-500/30" : "bg-indigo-600 text-white border-indigo-400/50 shadow-glow")} 
                   data-nav-id={`occ-item-${i}`}
                 >
                   <div className="flex items-center gap-3">
-                     {occ.isDate ? <CalendarDays className="w-6 h-6 ml-2" /> : occ.isOman ? <img src="https://gallery-images.me/pics/arabicfta/oman.png" className="w-8 h-8 rounded-full border border-white/20" alt="" /> : occ.isSport ? <Trophy className="w-5 h-5 ml-2" /> : <Sparkles className="w-5 h-5 ml-2" />}
+                     {occ.isIptv ? <img src={occ.icon} className="w-8 h-8 rounded-full border border-white/20 ml-1" alt="" /> : 
+                      occ.isDate ? <CalendarDays className="w-6 h-6 ml-2" /> : 
+                      occ.isOman ? <img src="https://gallery-images.me/pics/arabicfta/oman.png" className="w-8 h-8 rounded-full border border-white/20" alt="" /> : 
+                      occ.isSport ? <Trophy className="w-5 h-5 ml-2" /> : <Sparkles className="w-5 h-5 ml-2" />}
                      {occ.label}
                   </div>
                 </button>
@@ -406,7 +451,13 @@ export function MediaView() {
         {loading ? (
           <div className="flex justify-center py-40"><Loader2 className="w-16 h-16 animate-spin text-primary" /></div>
         ) : searchResults.length > 0 ? (
-          renderVideoGrid(searchResults, "search-results")
+          <div className="space-y-6">
+             <div className="flex items-center justify-between px-10 mt-10">
+                <h2 className="text-3xl font-black text-white flex items-center gap-4"><Search className="w-8 h-8 text-primary" /> نتائج استكشاف "{search}"</h2>
+                <Button onClick={resetView} className="h-12 px-6 rounded-full bg-red-600/20 text-red-500 border border-red-500/40 font-black focusable flex items-center gap-2"><X className="w-5 h-5" /> إغلاق النتائج</Button>
+             </div>
+             {renderVideoGrid(searchResults, "search-results")}
+          </div>
         ) : selectedPlaylist ? (
           <div className="space-y-10 mt-10">
              <div className="flex items-center justify-between px-10">
@@ -425,8 +476,8 @@ export function MediaView() {
           </div>
         ) : (
           <div className="space-y-16 mt-10">
-            {playlists.length > 0 && (
-              <section data-row-id="row-all-playlists" className="py-4">
+            {/* SOVEREIGN STARRED AND PLAYLISTS SECTION */}
+            <section data-row-id="row-all-playlists" className="py-4">
                  <div className="px-10 mb-6 flex items-center gap-4">
                     <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center shadow-glow">
                        <Library className="w-6 h-6 text-white" />
@@ -452,17 +503,44 @@ export function MediaView() {
                          </div>
                        </div>
                     ))}
+                    
+                    {/* SOVEREIGN TOP VIDEOS: One top video per starred channel */}
+                    {topVideos.map((video, vIdx) => (
+                       <div 
+                         key={video.id + vIdx} 
+                         className="w-80 h-48 group relative overflow-hidden bg-zinc-900 border-2 border-white/10 rounded-[2.5rem] focusable cursor-pointer shrink-0 flex flex-col justify-end p-6 shadow-2xl transition-all outline-none"
+                         onClick={() => setActiveVideo(video, topVideos)}
+                         tabIndex={0}
+                         data-nav-id={`top-video-week-${vIdx}`}
+                       >
+                         <div className="absolute inset-0 z-0">
+                           <img src={video.thumbnail} className="w-full h-full object-cover opacity-60 group-hover:scale-110 transition-transform duration-700" alt="" />
+                           <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
+                         </div>
+                         <div className="relative z-10 text-right">
+                           <span className="text-[12px] font-black text-white line-clamp-2 leading-tight drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] mb-2">{video.title}</span>
+                           <div className="flex items-center gap-2">
+                             <img src={video.channelAvatar} className="w-6 h-6 rounded-full border border-white/20" alt="" />
+                             <span className="text-[10px] font-black text-white/60 truncate max-w-[120px]">{video.channelTitle}</span>
+                             <div className="ml-auto px-2 py-0.5 bg-yellow-500/20 text-yellow-500 rounded-md border border-yellow-500/40 text-[8px] font-black uppercase">رائج الأسبوع</div>
+                           </div>
+                         </div>
+                       </div>
+                    ))}
                  </div>
-              </section>
-            )}
+            </section>
 
+            {/* FULL LISTS: Top 3 channels latest videos */}
             {Object.entries(starredLists).map(([cid, data], idx) => (
               <section key={cid} data-row-id={`row-starred-${idx}`} className="py-4">
-                <div className="px-10 mb-6 flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-glow bg-yellow-500">
-                    <Star className="w-6 h-6 text-black fill-current" />
+                <div className="px-10 mb-6 flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-glow bg-yellow-500">
+                      <Star className="w-6 h-6 text-black fill-current" />
+                    </div>
+                    <h2 className="text-2xl font-black text-white uppercase tracking-widest">{`أحدث تلاوات: ${data.name}`}</h2>
                   </div>
-                  <h2 className="text-2xl font-black text-white uppercase tracking-widest">{`ترددات ${data.name}`}</h2>
+                  <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em]">الترتيب المعتاد</span>
                 </div>
                 <div className={horizontalListClass}>
                   {data.vids.map((video, vIdx) => (

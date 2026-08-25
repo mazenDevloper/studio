@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useMediaStore, Reminder, Manuscript, MappingContext, AppAction, ManuscriptWord, YouTubeChannel, IptvChannel, Playlist, updateBin } from "@/lib/store";
 import { 
    Settings, Bell, Trash2, Edit2, Plus, Minus, Keyboard, Timer, ArrowRightLeft, 
@@ -143,7 +143,7 @@ const TeamSelector = ({
 };
 
 /**
- * SettingsView v1400.0 - Sovereign Management Hub
+ * SettingsView v1560.0 - Sovereign Management Hub
  */
 export function SettingsView() {
   const { 
@@ -217,6 +217,27 @@ export function SettingsView() {
 
   const [editingZikrId, setEditingZikrId] = useState<string | null>(null);
   const [zikrInput, setZikrInput] = useState("");
+
+  // SOVEREIGN MATCH SORTING: Sort by date ASC, then time ASC
+  const sortedMatchReminders = useMemo(() => {
+    return reminders
+      .filter(r => r.iconType === 'match')
+      .sort((a, b) => {
+        const dateA = a.matchDate || "9999-12-31";
+        const dateB = b.matchDate || "9999-12-31";
+        if (dateA !== dateB) return dateA.localeCompare(dateB);
+        return (a.manualStartTime || "00:00").localeCompare(b.manualStartTime || "00:00");
+      });
+  }, [reminders]);
+
+  // Helper to get day name from date string
+  const getDayName = (dateStr?: string) => {
+    if (!dateStr) return "";
+    try {
+      const date = new Date(dateStr);
+      return date.toLocaleDateString('ar-EG', { weekday: 'long' });
+    } catch (e) { return ""; }
+  };
 
   // Fetch Team Logos on mount
   useEffect(() => {
@@ -462,7 +483,7 @@ export function SettingsView() {
       <header className="flex items-center justify-between">
         <div className="flex flex-col gap-2">
           <h1 className="text-6xl font-black text-white tracking-tighter flex items-center gap-6">الإعدادات السيادية <Settings className="w-12 h-12 text-primary" /></h1>
-          <p className="text-white/40 font-bold uppercase tracking-[0.6em] text-sm">Unified System Hub v1400.0</p>
+          <p className="text-white/40 font-bold uppercase tracking-[0.6em] text-sm">Unified System Hub v1560.0</p>
         </div>
         <div className="flex gap-4">
           <Button onClick={handleManualRefresh} disabled={isRefreshing} className="bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-full h-14 px-8 font-black focusable"><RefreshCw className={cn("w-5 h-5 ml-2", isRefreshing && "animate-spin")} /> تحديث محلي</Button>
@@ -544,7 +565,7 @@ export function SettingsView() {
               {customManuscripts.map(m => (
                 <div key={m.id} className="bg-black/60 p-8 rounded-[3rem] border border-white/10 flex flex-col items-center shadow-2xl transition-all hover:border-primary/20 group">
                    <div className="w-full aspect-video bg-zinc-950 rounded-2xl mb-6 flex items-center justify-center overflow-hidden border border-white/5"><img src={m.pngDataUrl} className="max-w-[80%] max-h-[80%] object-contain drop-shadow-[0_0_20px_rgba(255,255,255,0.2)]" alt="" /></div>
-                   <div className="flex gap-2 w-full"><Button onClick={() => { setEditingManuscriptId(m.id); setManuscriptInput(m.content); setCurrentWords(m.words || []); setSelectedFont(m.fontFamily || "Aref Ruqaa"); }} className="flex-1 h-12 bg-emerald-600/10 text-emerald-400 border border-emerald-500/20 rounded-2xl focusable">تحرير</Button><Button onClick={() => removeManuscript(m.id)} className="w-12 h-12 bg-red-600/10 text-red-500 border border-red-500/20 rounded-2xl h-12 focusable"><Trash2 className="w-5 h-5" /></Button></div>
+                   <div className="flex gap-2 w-full"><Button onClick={() => { setEditingManuscriptId(m.id); setManuscriptInput(m.content); setCurrentWords(m.words || []); setSelectedFont(m.fontFamily || "Aref Ruqaa"); }} className="flex-1 h-12 bg-emerald-600/10 text-emerald-400 border border-emerald-500/20 rounded-2xl h-12 focusable">تحرير</Button><Button onClick={() => removeManuscript(m.id)} className="w-12 h-12 bg-red-600/10 text-red-500 border border-red-500/20 rounded-2xl h-12 focusable"><Trash2 className="w-5 h-5" /></Button></div>
                 </div>
               ))}
               <div onClick={() => document.getElementById('manu-image-upload')?.click()} className="bg-black/40 border-2 border-dashed border-white/10 rounded-[3rem] p-8 flex flex-col items-center justify-center gap-4 text-white/20 hover:border-primary hover:text-primary transition-all cursor-pointer focusable shadow-2xl" tabIndex={0}>
@@ -734,36 +755,83 @@ export function SettingsView() {
                  </Button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                 {reminders.map(rem => (
-                   <div key={rem.id} className={cn("bg-black/60 p-8 rounded-[2.5rem] border flex items-center justify-between shadow-xl transition-all hover:border-primary/20", editingRemId === rem.id ? "border-primary shadow-glow" : "border-white/10")}>
-                      <div className="flex items-center gap-6">
-                        <div className={cn("w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center", rem.iconType === 'match' ? "text-emerald-400" : rem.color)}>
-                           {rem.iconType === 'match' ? <Trophy className="w-7 h-7" /> : <Bell className="w-7 h-7" />}
-                        </div>
-                        <div className="flex flex-col">
-                           <span className={cn("text-2xl font-black", rem.color)}>{rem.label}</span>
-                           <span className="text-[10px] font-bold text-white/20 uppercase tracking-widest">تنشيط: {rem.startType} | {rem.endType}</span>
-                           {rem.iconType === 'match' && <span className="text-[10px] font-black text-primary mt-1">يوم المباراة: {rem.matchDate}</span>}
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                         {rem.iconType === 'match' && (
-                           <Button 
-                             onClick={() => skipMatch(rem.id)} 
-                             variant="ghost" 
-                             className={cn("w-12 h-12 rounded-full focusable", skippedMatchIds.includes(rem.id) ? "text-red-500 hover:bg-red-500/10" : "text-emerald-400 hover:bg-emerald-400/10")} 
-                             title={skippedMatchIds.includes(rem.id) ? "إظهار في الجزيرة" : "إخفاء من الجزيرة"}
-                           >
-                             {skippedMatchIds.includes(rem.id) ? <EyeOff className="w-6 h-6" /> : <Eye className="w-6 h-6" />}
-                           </Button>
-                         )}
-                         <Button onClick={() => { setEditingRemId(rem.id); setRemForm(rem); if(rem.homeName) setHomeSearch(rem.homeName); if(rem.awayName) setAwaySearch(rem.awayName); }} variant="ghost" className="w-12 h-12 rounded-full text-emerald-400 hover:bg-emerald-400/10 focusable"><Edit2 className="w-6 h-6" /></Button>
-                         <Button onClick={() => removeReminder(rem.id)} variant="ghost" className="w-12 h-12 rounded-full text-red-500 hover:bg-red-500/10 focusable"><Trash2 className="w-6 h-6" /></Button>
-                      </div>
-                   </div>
-                 ))}
-              </div>
+              <Tabs defaultValue="bell" className="w-full">
+                 <TabsList className="bg-white/5 p-1 rounded-2xl h-14 mb-8 flex gap-2">
+                    <TabsTrigger value="bell" className="flex-1 rounded-xl font-black text-xs transition-none focusable">تنبيهات الجرس</TabsTrigger>
+                    <TabsTrigger value="play" className="flex-1 rounded-xl font-black text-xs transition-none focusable">تشغيل وسائط</TabsTrigger>
+                    <TabsTrigger value="match" className="flex-1 rounded-xl font-black text-xs transition-none focusable">مركز المباريات</TabsTrigger>
+                 </TabsList>
+                 
+                 <TabsContent value="bell" className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {reminders.filter(r => r.iconType === 'bell').map(rem => (
+                       <div key={rem.id} className={cn("bg-black/60 p-8 rounded-[2.5rem] border flex items-center justify-between shadow-xl transition-all", editingRemId === rem.id ? "border-primary shadow-glow" : "border-white/10")}>
+                          <div className="flex items-center gap-6">
+                            <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center text-primary"><Bell className="w-7 h-7" /></div>
+                            <div className="flex flex-col"><span className="text-2xl font-black text-white">{rem.label}</span><span className="text-[10px] font-bold text-white/20 uppercase">تنشيط: {rem.startType}</span></div>
+                          </div>
+                          <div className="flex gap-2">
+                             <Button onClick={() => { setEditingRemId(rem.id); setRemForm(rem); }} variant="ghost" className="w-12 h-12 rounded-full text-emerald-400 hover:bg-emerald-400/10 focusable"><Edit2 className="w-6 h-6" /></Button>
+                             <Button onClick={() => removeReminder(rem.id)} variant="ghost" className="w-12 h-12 rounded-full text-red-500 hover:bg-red-500/10 focusable"><Trash2 className="w-6 h-6" /></Button>
+                          </div>
+                       </div>
+                    ))}
+                 </TabsContent>
+
+                 <TabsContent value="play" className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {reminders.filter(r => r.iconType === 'play').map(rem => (
+                       <div key={rem.id} className={cn("bg-black/60 p-8 rounded-[2.5rem] border flex items-center justify-between shadow-xl transition-all", editingRemId === rem.id ? "border-primary shadow-glow" : "border-white/10")}>
+                          <div className="flex items-center gap-6">
+                            <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center text-emerald-400"><Play className="w-7 h-7 fill-current" /></div>
+                            <div className="flex flex-col"><span className="text-2xl font-black text-white">{rem.label}</span><span className="text-[10px] font-bold text-white/20 uppercase">تنشيط: {rem.startType}</span></div>
+                          </div>
+                          <div className="flex gap-2">
+                             <Button onClick={() => { setEditingRemId(rem.id); setRemForm(rem); }} variant="ghost" className="w-12 h-12 rounded-full text-emerald-400 hover:bg-emerald-400/10 focusable"><Edit2 className="w-6 h-6" /></Button>
+                             <Button onClick={() => removeReminder(rem.id)} variant="ghost" className="w-12 h-12 rounded-full text-red-500 hover:bg-red-500/10 focusable"><Trash2 className="w-6 h-6" /></Button>
+                          </div>
+                       </div>
+                    ))}
+                 </TabsContent>
+
+                 <TabsContent value="match" className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {sortedMatchReminders.map(rem => (
+                       <div key={rem.id} className={cn("bg-black/60 p-6 rounded-[2.5rem] border flex flex-col gap-4 shadow-xl transition-all relative overflow-hidden", editingRemId === rem.id ? "border-primary shadow-glow" : "border-white/10")}>
+                          <div className="flex items-center justify-between gap-4 py-2">
+                             <div className="flex flex-col items-center flex-1 gap-2">
+                                <div className="w-16 h-16 rounded-2xl bg-white/5 p-2 flex items-center justify-center border border-white/5 shadow-inner">
+                                   {rem.homeLogo ? <img src={rem.homeLogo} className="w-full h-full object-contain" alt="" /> : <Trophy className="w-8 h-8 text-white/10" />}
+                                </div>
+                                <span className="text-[10px] font-black text-white/80 uppercase truncate w-full text-center">{rem.homeName || "HOME"}</span>
+                             </div>
+                             <div className="flex flex-col items-center justify-center min-w-[100px] gap-1">
+                                <div className="text-3xl font-black text-white tabular-nums tracking-tighter">{rem.manualStartTime}</div>
+                                <div className="px-3 py-1 rounded-full bg-primary/20 border border-primary/40 text-[9px] font-black text-primary uppercase">{rem.label || "مباراة"}</div>
+                             </div>
+                             <div className="flex flex-col items-center flex-1 gap-2">
+                                <div className="w-16 h-16 rounded-2xl bg-white/5 p-2 flex items-center justify-center border border-white/5 shadow-inner">
+                                   {rem.awayLogo ? <img src={rem.awayLogo} className="w-full h-full object-contain" alt="" /> : <Trophy className="w-8 h-8 text-white/10" />}
+                                </div>
+                                <span className="text-[10px] font-black text-white/80 uppercase truncate w-full text-center">{rem.awayName || "AWAY"}</span>
+                             </div>
+                          </div>
+                          
+                          <div className="flex items-center justify-between pt-4 border-t border-white/5">
+                             <div className="flex flex-col items-start gap-1">
+                                <div className="flex items-center gap-2">
+                                   <Calendar className="w-4 h-4 text-emerald-400" />
+                                   <span className="text-sm font-black text-white tracking-tighter">{rem.matchDate}</span>
+                                </div>
+                                <span className="text-[10px] font-bold text-white/40 uppercase mr-6">{getDayName(rem.matchDate)}</span>
+                             </div>
+                             <div className="flex gap-2">
+                                <Button onClick={() => skipMatch(rem.id)} variant="ghost" size="icon" className={cn("w-10 h-10 rounded-full", skippedMatchIds.includes(rem.id) ? "text-red-500" : "text-emerald-400")}><Eye className="w-5 h-5" /></Button>
+                                <Button onClick={() => { setEditingRemId(rem.id); setRemForm(rem); if(rem.homeName) setHomeSearch(rem.homeName); if(rem.awayName) setAwaySearch(rem.awayName); }} variant="ghost" size="icon" className="w-10 h-10 rounded-full text-emerald-400"><Edit2 className="w-5 h-5" /></Button>
+                                <Button onClick={() => removeReminder(rem.id)} variant="ghost" size="icon" className="w-10 h-10 rounded-full text-red-500"><Trash2 className="w-5 h-5" /></Button>
+                             </div>
+                          </div>
+                       </div>
+                    ))}
+                 </TabsContent>
+              </Tabs>
            </Card>
         </TabsContent>
 
@@ -1005,7 +1073,7 @@ export function SettingsView() {
                     <div key={idx} className="relative aspect-video rounded-[2.5rem] overflow-hidden border-4 border-white/5 group shadow-2xl transition-all hover:border-pink-500/20">
                        <img src={url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="" />
                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
-                          <Button onClick={() => updateMapSettings({ manuscriptBgUrl: url })} className="bg-white text-black font-black rounded-xl focusable">تطبيق كخلفية</Button>
+                          <Button onClick={async () => { updateMapSettings({ manuscriptBgUrl: url }); await syncMasterBin(); toast({ title: "تم تعيين الخلفية سحابياً" }); }} className="bg-white text-black font-black rounded-xl focusable">تطبيق كخلفية</Button>
                           <Button onClick={() => removeCustomWallBackground(url)} variant="ghost" className="w-12 h-12 rounded-full bg-red-600 text-white"><Trash2 className="w-6 h-6" /></Button>
                        </div>
                     </div>
@@ -1017,7 +1085,7 @@ export function SettingsView() {
         <TabsContent value="buttonmap" className="space-y-8 animate-in fade-in duration-0">
            <Card className="bg-white/5 border-white/10 p-10 rounded-[3.5rem] shadow-2xl relative">
               <div className="flex justify-between items-center mb-12">
-                 <CardTitle className="text-4xl font-black text-white flex items-center gap-6"><Gamepad2 className="w-12 h-12 text-primary" /> معايرة التحكم السيادية v1400.0</CardTitle>
+                 <CardTitle className="text-4xl font-black text-white flex items-center gap-6"><Gamepad2 className="w-12 h-12 text-primary" /> معايرة التحكم السيادية v1560.0</CardTitle>
                  <div className="flex gap-4">
                     <Button onClick={() => handleDirectFetch(JSONBIN_MASTER_BIN_ID, "الأزرار")} variant="outline" className="w-14 h-14 rounded-full bg-white/5 border-white/10 flex items-center justify-center text-white/40 focusable shadow-glow"><CloudDownload className="w-6 h-6" /></Button>
                     <Button onClick={async () => { setIsSyncing(true); await syncMasterBin(); setIsSyncing(false); toast({ title: "تم الحفظ سحابياً" }); }} className="w-14 h-14 rounded-full bg-primary text-white flex items-center justify-center shadow-glow focusable">{isSyncing ? <Loader2 className="w-6 h-6 animate-spin" /> : <Zap className="w-6 h-6" />}</Button>
@@ -1047,11 +1115,14 @@ export function SettingsView() {
                                   <div key={k} className="px-3 py-1.5 bg-zinc-800 rounded-xl border border-zinc-600 flex items-center gap-3 shadow-glow"><span className="text-xs font-black text-white">{k}</span><button onClick={() => removeSpecificKeyMapping(ctx as any, act as any, k)} className="text-red-500 focusable transition-colors hover:text-red-400"><X className="w-3.5 h-3.5" /></button></div>
                                 ))}
                                 
-                                <Dialog>
+                                <Dialog open={isRecordingKey && recordingAction?.ctx === ctx && recordingAction?.act === act} onOpenChange={(v) => { if(!v) { setIsRecordingKey(false); setRecordingAction(null); } }}>
                                    <DialogTrigger asChild>
                                       <button onClick={() => startRecording(ctx as any, act as any)} className="text-accent text-[10px] font-black focusable animate-pulse px-3 py-1.5 rounded-xl border border-accent/20 hover:bg-accent/10">سجل</button>
                                    </DialogTrigger>
                                    <DialogContent className="max-w-none w-screen h-screen bg-black/95 backdrop-blur-3xl border-none p-20 flex flex-col items-center justify-center">
+                                      <div className="absolute top-10 right-10 z-[200]">
+                                         <button onClick={() => { setIsRecordingKey(false); setRecordingAction(null); }} className="w-20 h-20 rounded-full bg-red-600/20 text-red-500 border-2 border-red-500/40 flex items-center justify-center shadow-glow focusable active:scale-90 transition-all"><X className="w-10 h-10" /></button>
+                                      </div>
                                       <DialogHeader className="mb-20 text-center">
                                          <DialogTitle className="text-6xl font-black text-white tracking-widest uppercase mb-4">برمجة المفتاح السيادي</DialogTitle>
                                          <p className="text-primary font-bold uppercase tracking-[0.5em]">الإجراء: {act} | السياق: {ctx}</p>

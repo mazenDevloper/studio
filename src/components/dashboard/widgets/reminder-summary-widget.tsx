@@ -22,6 +22,10 @@ interface ReminderItem {
   isNearingEnd?: boolean;
 }
 
+/**
+ * ReminderSummaryWidget v260.0 - Bell & Prayer Protocol
+ * Features: Filters strictly for Azan and 'bell' type reminders.
+ */
 export function ReminderSummaryWidget() {
   const { prayerTimes, reminders, prayerSettings } = useMediaStore();
   const [mounted, setMounted] = useState(false);
@@ -51,26 +55,34 @@ export function ReminderSummaryWidget() {
     const pData = prayerTimes.find(p => p.date === dateStr) || prayerTimes[0];
 
     if (pData) {
-      // Standard Prayers
+      // 1. Standard Prayers (Classified as System Bell alerts)
       for (const setting of prayerSettings) {
         const refTime = pData[setting.id as keyof typeof pData];
         if (!refTime) continue;
         const targetSecs = (tToM(refTime) + setting.offsetMinutes) * 60;
         let diff = targetSecs - totalCurrentSecs;
         if (diff < -43200) diff += 86400;
+        
+        // Show if upcoming or active within window
         if (diff > -600) {
           list.push({ 
-            id: `azan-${setting.id}`, name: (setting.id === 'dhuhr' && isFriday) ? "صلاة الجمعة" : setting.name, label: "الأذان", 
-            diff, icon: Clock, color: "text-accent", targetTimeStr: formatTargetTime(targetSecs), window: setting.countdownWindow * 60
+            id: `azan-${setting.id}`, 
+            name: (setting.id === 'dhuhr' && isFriday) ? "صلاة الجمعة" : setting.name, 
+            label: "الأذان", 
+            diff, 
+            icon: Clock, 
+            color: "text-accent", 
+            targetTimeStr: formatTargetTime(targetSecs), 
+            window: setting.countdownWindow * 60
           });
         }
       }
 
-      // Custom Reminders with Overnight Persistence
+      // 2. Custom Reminders - ONLY 'bell' type classified for the Dashboard Summary
       for (const rem of reminders) {
-        if (rem.completed) continue;
+        if (rem.completed || rem.iconType !== 'bell') continue;
+        
         let startSecs = 0, endSecs = 0;
-
         if (rem.startType === 'manual' && rem.manualStartTime) startSecs = tToM(rem.manualStartTime) * 60;
         else if (rem.startReference && pData[rem.startReference]) {
           const pSet = prayerSettings.find(s => s.id === rem.startReference);
@@ -100,7 +112,7 @@ export function ReminderSummaryWidget() {
             if (isActive) {
               list.push({ 
                 id: rem.id, name: rem.label, label: "تذكير", diff: sDiff, expDiff: eDiff,
-                icon: rem.iconType === 'play' ? Timer : Bell, color: rem.color, 
+                icon: Bell, color: rem.color, 
                 targetTimeStr: formatTargetTime(startSecs), 
                 endTimeStr: formatTargetTime(endSecs),
                 window: windowSecs,
@@ -111,6 +123,7 @@ export function ReminderSummaryWidget() {
         }
       }
     }
+    // Strictly sort by nearest and limit to 3 items
     return list.sort((a, b) => Math.abs(a.diff) - Math.abs(b.diff)).slice(0, 3);
   }, [now, prayerTimes, reminders, prayerSettings]);
 
