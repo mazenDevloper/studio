@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { 
-  Plus, Loader2, X, List, Youtube, Star, Mic, Layers, Sparkles, Clock, Bookmark, Trash2, RefreshCw, CloudDownload, Trophy, Baby, Library, FolderHeart, CalendarDays, Send, Edit3, Save
+  Plus, Loader2, X, List, Youtube, Star, Mic, Layers, Sparkles, Clock, Bookmark, Trash2, RefreshCw, CloudDownload, Trophy, Baby, Library, FolderHeart, CalendarDays, Send, Edit3, Save, Search
 } from "lucide-react";
 import { useMediaStore, YouTubeChannel, YouTubeVideo } from "@/lib/store";
 import { fetchChannelVideos, searchYouTubeVideos, fetchYouTubePlaylistVideos } from "@/lib/youtube";
@@ -139,7 +139,7 @@ export function MediaView() {
     async function fetchHomeContent() {
       const starred = favoriteChannels.filter(c => c.starred);
       
-      // 1. Fetch latest videos for first 3 channels (Previous behavior)
+      // 1. Fetch latest videos for first 3 channels
       const top3 = starred.slice(0, 3);
       const lists: Record<string, any> = {};
       for (const ch of top3) {
@@ -148,12 +148,11 @@ export function MediaView() {
       }
       setStarredLists(lists);
 
-      // 2. Fetch TOP video (most viewed) for EACH starred channel (One per channel)
+      // 2. Fetch TOP video (most viewed) for EACH starred channel
       const tops: YouTubeVideo[] = [];
       for (const ch of starred) {
         const vids = await fetchChannelVideos(ch.channelid, 10);
         if (vids.length > 0) {
-          // Find the most viewed video in the batch
           const topOne = [...vids].sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0))[0];
           tops.push({ ...topOne, channelAvatar: ch.image });
         }
@@ -281,6 +280,16 @@ export function MediaView() {
       ))}
     </div>
   );
+
+  useEffect(() => {
+    if (selectedChannel) {
+      setLoading(true);
+      fetchChannelVideos(selectedChannel.channelid).then(vids => {
+        setChannelVideos(vids);
+        setLoading(false);
+      });
+    }
+  }, [selectedChannel, setChannelVideos]);
 
   return (
     <div className={cn("h-screen flex bg-transparent overflow-hidden relative", isDockLeft ? "flex-row-reverse" : "flex-row")}>
@@ -476,7 +485,6 @@ export function MediaView() {
           </div>
         ) : (
           <div className="space-y-16 mt-10">
-            {/* SOVEREIGN STARRED AND PLAYLISTS SECTION */}
             <section data-row-id="row-all-playlists" className="py-4">
                  <div className="px-10 mb-6 flex items-center gap-4">
                     <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center shadow-glow">
@@ -504,7 +512,6 @@ export function MediaView() {
                        </div>
                     ))}
                     
-                    {/* SOVEREIGN TOP VIDEOS: One top video per starred channel */}
                     {topVideos.map((video, vIdx) => (
                        <div 
                          key={video.id + vIdx} 
@@ -522,7 +529,7 @@ export function MediaView() {
                            <div className="flex items-center gap-2">
                              <img src={video.channelAvatar} className="w-6 h-6 rounded-full border border-white/20" alt="" />
                              <span className="text-[10px] font-black text-white/60 truncate max-w-[120px]">{video.channelTitle}</span>
-                             <div className="ml-auto px-2 py-0.5 bg-yellow-500/20 text-yellow-500 rounded-md border border-yellow-500/40 text-[8px] font-black uppercase">رائج الأسبوع</div>
+                             <div className="ml-auto px-2 py-0.5 bg-yellow-500/20 text-yellow-500 rounded-md border border-yellow-500/40 text-[7px] font-black uppercase">رائج الأسبوع</div>
                            </div>
                          </div>
                        </div>
@@ -530,7 +537,6 @@ export function MediaView() {
                  </div>
             </section>
 
-            {/* FULL LISTS: Top 3 channels latest videos */}
             {Object.entries(starredLists).map(([cid, data], idx) => (
               <section key={cid} data-row-id={`row-starred-${idx}`} className="py-4">
                 <div className="px-10 mb-6 flex items-center justify-between">
