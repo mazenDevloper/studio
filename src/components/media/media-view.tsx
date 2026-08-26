@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { 
-  Plus, Loader2, X, List, Youtube, Star, Mic, Layers, Sparkles, Clock, Bookmark, Trash2, RefreshCw, CloudDownload, Trophy, Baby, Library, FolderHeart, CalendarDays, Send, Edit3, Save, Search, Calendar
+  Plus, Loader2, X, List, Youtube, Star, Mic, Layers, Sparkles, Clock, Bookmark, Trash2, RefreshCw, CloudDownload, Trophy, Baby, Library, FolderHeart, CalendarDays, Send, Edit3, Save, Search, Calendar, RotateCcw
 } from "lucide-react";
 import { useMediaStore, YouTubeChannel, YouTubeVideo } from "@/lib/store";
 import { fetchChannelVideos, searchYouTubeVideos, fetchYouTubePlaylistVideos } from "@/lib/youtube";
@@ -87,6 +87,10 @@ export function MediaView() {
   const [newPlaylistName, setNewPlaylistName] = useState("");
   const [isFetchingPlaylists, setIsFetchingPlaylists] = useState(false);
   
+  const [viewingSearchPlaylistId, setViewingSearchPlaylistId] = useState<string | null>(null);
+  const [searchPlaylistVideos, setSearchPlaylistVideos] = useState<YouTubeVideo[]>([]);
+  const [searchPlaylistTitle, setSearchPlaylistTitle] = useState("");
+
   const [isEditingOmanUrl, setIsEditingOmanUrl] = useState(false);
   const [omanUrlInput, setOmanUrlInput] = useState(mapSettings.omanUrl || "");
   const [showHijriSim, setShowHijriSim] = useState(false);
@@ -96,7 +100,7 @@ export function MediaView() {
   const [hMonth, setHMonth] = useState(initialHijri.monthName);
   const [hYear, setHYear] = useState(initialHijri.year.toString());
 
-  const DEFAULT_OMAN_URL = "https://player.mangomolo.com/v1/live?id=MTY4&channelid=MTYx&countries=Q0M%3D&filter=DENY&signature=3fd1e8dd84138a41bf33d93afd4a7f09&language=en&app_id=&fullscreen=yes&player_profile=&base_url=aHR0cHM6Ly9heW4ub20vbGl2ZS8xNjEvJUQ5JTgyJUQ5JTg2JUQ4JUE3JUQ4JUE5LSVEOCVCOSVEOSU4NSVEOCVBNyVEOSU4Ni0lRDklODUlRDglQTglRDglQTclRDglQjQlRDglQjE%3D&autoplay=false&vast=true";
+  const DEFAULT_OMAN_URL = "https://player.mangomolo.com/v1/live?id=MTY8&channelid=MTYx&countries=Q0M%3D&filter=DENY&signature=3fd1e8dd84138a41bf33d93afd4a7f09&language=en&app_id=&fullscreen=yes&player_profile=&base_url=aHR0cHM6Ly9heW4ub20vbGl2ZS8xNjEvJUQ5JTgyJUQ5JTg2JUQ4JUE3JUQ4JUE5LSVEOCVCOSVEOSU4NSVEOCVBNyVEOSU4Ni0lRDklODUlRDglQTglRDglQTclRDglQjQlRDglQjE%3D&autoplay=false&vast=true";
 
   const [starredLists, setStarredLists] = useState<Record<string, { name: string, vids: YouTubeVideo[] }>>({});
   const [topVideos, setTopVideos] = useState<YouTubeVideo[]>([]);
@@ -187,8 +191,33 @@ export function MediaView() {
     fetchChannelContent();
   }, [selectedChannel, setChannelVideos, setActiveVideo]);
 
+  const openSearchPlaylist = async (playlistId: string) => {
+    setLoading(true);
+    try {
+      const data = await fetchYouTubePlaylistVideos(playlistId);
+      if (data.videos.length > 0) {
+        setSearchPlaylistVideos(data.videos);
+        setSearchPlaylistTitle(data.title);
+        setViewingSearchPlaylistId(playlistId);
+        setTimeout(() => { (document.querySelector('[data-nav-id="search-playlist-item-0"]') as HTMLElement)?.focus(); }, 500);
+      }
+    } catch (e) {
+      toast({ variant: "destructive", title: "خطأ", description: "فشل استكشاف المجلد" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const performSearch = async (query?: string) => {
     const q = query || search; if (!q.trim()) return;
+
+    if (q.includes('list=')) {
+       const listMatch = q.match(/[?&]list=([^&]+)/) || [null, q.split('list=')[1]];
+       if (listMatch[1]) {
+          openSearchPlaylist(listMatch[1]);
+          return;
+       }
+    }
 
     const isDomainOrUrl = q.startsWith('http') || q.includes('youtube.com') || q.includes('youtu.be') || q.includes('.m3u8') || /^[a-zA-Z0-9-]+\.[a-z]{2,}/.test(q);
 
@@ -201,22 +230,6 @@ export function MediaView() {
         });
         return;
       }
-      if (q.includes('list=')) {
-         const listMatch = q.match(/[?&]list=([^&]+)/);
-         if (listMatch) {
-            setLoading(true);
-            try {
-               const data = await fetchYouTubePlaylistVideos(listMatch[1]);
-               setSearchResults(data.videos);
-               setSearch(data.title);
-               return;
-            } catch (e) {
-               toast({ variant: "destructive", title: "خطأ", description: "فشل تحميل محتوى المجلد" });
-            } finally {
-               setLoading(false);
-            }
-         }
-      }
       
       let finalUrl = q;
       if (!q.startsWith('http')) finalUrl = 'https://' + q;
@@ -228,7 +241,7 @@ export function MediaView() {
       return;
     }
 
-    setSearch(q); setLoading(true); setSelectedChannel(null); setSelectedPlaylist(null);
+    setSearch(q); setLoading(true); setSelectedChannel(null); setSelectedPlaylist(null); setViewingSearchPlaylistId(null);
     try { 
       const rawRes = await searchYouTubeVideos(q, 40); 
       const liveIndex = rawRes.findIndex(v => v.isLive);
@@ -253,7 +266,7 @@ export function MediaView() {
 
   useEffect(() => { fetch("https://api.quran.com/api/v4/chapters?language=ar").then(r => r.json()).then(d => { setSurahs(d.chapters || []); setAllSurahs(d.chapters || []); }); }, []);
 
-  const resetView = () => { setSelectedChannel(null); setSelectedPlaylist(null); setSearchResults([]); setSearch(""); setIsSidebarShrinked(false); setSelectedReciter(null); setSelectedSurah(null); setSelectedJuz(null); setSurahs(allSurahs); };
+  const resetView = () => { setSelectedChannel(null); setSelectedPlaylist(null); setSearchResults([]); setSearch(""); setIsSidebarShrinked(false); setSelectedReciter(null); setSelectedSurah(null); setSelectedJuz(null); setSurahs(allSurahs); setViewingSearchPlaylistId(null); };
 
   const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (isSearchLocked) { if (e.key === 'Enter' || e.key === '5') { e.preventDefault(); setIsSearchLocked(false); setTimeout(() => searchInputRef.current?.focus(), 50); } return; }
@@ -307,7 +320,7 @@ export function MediaView() {
   const renderVideoGrid = (vids: YouTubeVideo[], rowId: string) => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-10" data-row-id={rowId}>
       {vids.map((video, idx) => (
-        <div key={video.id + idx} className="group bg-white/5 border border-white/5 rounded-[2.5rem] overflow-hidden focusable transition-all hover:bg-white/10 cursor-pointer shadow-xl outline-none relative" onClick={() => video.isPlaylist ? performSearch(`list=${video.id}`) : setActiveVideo(video, vids)} tabIndex={0} data-nav-id={`${rowId}-item-${idx}`}>
+        <div key={video.id + idx} className="group bg-white/5 border border-white/5 rounded-[2.5rem] overflow-hidden focusable transition-all hover:bg-white/10 cursor-pointer shadow-xl outline-none relative" onClick={() => video.isPlaylist ? openSearchPlaylist(video.id) : setActiveVideo(video, vids)} tabIndex={0} data-nav-id={`${rowId}-item-${idx}`}>
           <div className="aspect-video relative overflow-hidden">
             <img src={video.thumbnail} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="" />
             {video.duration && <div className="absolute bottom-2 right-2 bg-black text-white text-[12px] px-2 py-1 rounded font-black z-10">{video.duration}</div>}
@@ -431,6 +444,18 @@ export function MediaView() {
 
         {loading ? (
           <div className="flex justify-center py-40"><Loader2 className="w-16 h-16 animate-spin text-primary" /></div>
+        ) : viewingSearchPlaylistId ? (
+          <div className="space-y-10 mt-10">
+            <div className="flex items-center justify-between px-10">
+              <h2 className="text-4xl font-black text-white tracking-tighter flex items-center gap-5">
+                <Library className="w-10 h-10 text-indigo-400" /> {searchPlaylistTitle}
+              </h2>
+              <Button onClick={() => setViewingSearchPlaylistId(null)} className="h-14 px-8 rounded-full bg-white/5 border border-white/10 text-white font-black focusable">
+                <RotateCcw className="w-5 h-5 ml-3" /> العودة للنتائج
+              </Button>
+            </div>
+            {renderVideoGrid(searchPlaylistVideos, "search-playlist")}
+          </div>
         ) : searchResults.length > 0 ? (
           <div className="space-y-6"><div className="flex items-center justify-between px-10 mt-10"><h2 className="text-3xl font-black text-white flex items-center gap-4"><Search className="w-8 h-8 text-primary" /> نتائج استكشاف "{search}"</h2><Button onClick={resetView} className="h-12 px-6 rounded-full bg-red-600/20 text-red-500 border border-red-500/40 font-black focusable flex items-center gap-2"><X className="w-5 h-5" /> إغلاق النتائج</Button></div>{renderVideoGrid(searchResults, "search-results")}</div>
         ) : selectedPlaylist ? (
