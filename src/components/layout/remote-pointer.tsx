@@ -83,7 +83,10 @@ export function RemotePointer() {
 
     let current = document.activeElement as HTMLElement;
     if (!current || current === document.body || !current.classList.contains("focusable")) {
-      const rescue = document.querySelector('[data-nav-zone="content"] .focusable') as HTMLElement || focusables[0];
+      // SOVEREIGN FOCUS RESCUE PROTOCOL
+      const reciterTarget = document.querySelector('[data-nav-id="reciter-item-0"]') as HTMLElement;
+      const rescue = reciterTarget || (document.querySelector('[data-nav-zone="content"] .focusable') as HTMLElement) || focusables[0];
+      
       if (rescue) {
         rescue.focus(); 
         rescue.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });

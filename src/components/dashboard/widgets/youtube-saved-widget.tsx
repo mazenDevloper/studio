@@ -6,13 +6,11 @@ import { Bookmark, Play, Trash2, Clock, Activity, Library, Star, Youtube, Loader
 import { useMediaStore, YouTubeVideo } from "@/lib/store";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
-import { ShortcutBadge } from "@/components/layout/car-dock";
 import { useEffect, useState } from "react";
 import { fetchChannelVideos } from "@/lib/youtube";
 
 /**
- * SovereignFrequenciesWidget v1590.0 - Frequencies & Folders Hub
- * Features: Showcases playlists and top videos from starred channels with fixed Loader2.
+ * YouTubeSavedWidget v1600.0 - Frequencies & Folders Hub
  */
 export function YouTubeSavedWidget() {
   const { playlists, favoriteChannels, setActiveVideo } = useMediaStore();
@@ -63,7 +61,6 @@ export function YouTubeSavedWidget() {
       
       <CardContent className="p-0">
         <div className={horizontalListClass}>
-          {/* 1. Folders (Playlists) */}
           {playlists.map((p, idx) => (
              <div 
                key={`pl-${p.id}`} 
@@ -87,7 +84,6 @@ export function YouTubeSavedWidget() {
              </div>
           ))}
 
-          {/* 2. Top Videos from Starred Channels */}
           {topVideos.map((video, vIdx) => (
              <div 
                key={`top-${video.id}`} 

@@ -22,6 +22,7 @@ export interface YouTubeVideo {
   channelTitle?: string;
   channelId?: string;
   isLive?: boolean;
+  isPlaylist?: boolean;
   viewCount?: number;
   duration?: string;
   progress?: number;
@@ -115,20 +116,23 @@ export async function searchYouTubeVideos(query: string, limit = 40): Promise<Yo
   const data = await fetchWithRotation('search', {
     part: 'snippet',
     q: query,
-    type: 'video',
+    type: 'video,playlist',
     maxResults: limit.toString(),
     order: 'relevance'
   });
 
   if (!data?.items) return [];
 
-  const videoIds = data.items.map((v: any) => v.id.videoId).filter(Boolean).join(',');
+  const videoIds = data.items
+    .filter((v: any) => v.id.kind === 'youtube#video')
+    .map((v: any) => v.id.videoId)
+    .filter(Boolean)
+    .join(',');
+    
   const channelIds = Array.from(new Set(data.items.map((v: any) => v.snippet.channelId))).filter(Boolean).join(',');
 
-  if (!videoIds) return [];
-
   const [detailsData, channelsData] = await Promise.all([
-    fetchWithRotation('videos', { part: 'snippet,contentDetails', id: videoIds }),
+    videoIds ? fetchWithRotation('videos', { part: 'snippet,contentDetails', id: videoIds }) : Promise.resolve(null),
     channelIds ? fetchWithRotation('channels', { part: 'snippet', id: channelIds }) : Promise.resolve(null)
   ]);
 
@@ -150,20 +154,26 @@ export async function searchYouTubeVideos(query: string, limit = 40): Promise<Yo
     });
   }
 
-  const results = data.items.map((v: any) => ({
-    id: v.id.videoId,
-    title: v.snippet.title,
-    description: v.snippet.description,
-    thumbnail: v.snippet.thumbnails.high?.url || v.snippet.thumbnails.default?.url,
-    publishedAt: v.snippet.publishedAt,
-    channelTitle: v.snippet.channelTitle,
-    channelId: v.snippet.channelId,
-    duration: detailsMap[v.id.videoId]?.duration || "",
-    isLive: detailsMap[v.id.videoId]?.isLive || false,
-    channelAvatar: channelAvatarMap[v.snippet.channelId]
-  })).filter(v => v.id);
+  const results = data.items.map((v: any) => {
+    const isPlaylist = v.id.kind === 'youtube#playlist';
+    const id = isPlaylist ? v.id.playlistId : v.id.videoId;
+    
+    return {
+      id,
+      title: v.snippet.title,
+      description: v.snippet.description,
+      thumbnail: v.snippet.thumbnails.high?.url || v.snippet.thumbnails.default?.url,
+      publishedAt: v.snippet.publishedAt,
+      channelTitle: v.snippet.channelTitle,
+      channelId: v.snippet.channelId,
+      duration: isPlaylist ? "LIST" : (detailsMap[id]?.duration || ""),
+      isLive: isPlaylist ? false : (detailsMap[id]?.isLive || false),
+      isPlaylist,
+      channelAvatar: channelAvatarMap[v.snippet.channelId]
+    };
+  }).filter((v: any) => v.id);
 
-  return results.sort((a, b) => (a.isLive === b.isLive) ? 0 : a.isLive ? -1 : 1);
+  return results;
 }
 
 export async function fetchChannelVideos(channelId: string, limit = 30): Promise<YouTubeVideo[]> {
