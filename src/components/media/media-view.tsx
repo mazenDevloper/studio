@@ -121,7 +121,6 @@ export function MediaView() {
     const omanQuery = mapSettings.omanUrl || DEFAULT_OMAN_URL;
     list.push({ label: "عُمان مباشر 📺", query: omanQuery, isOman: true });
 
-    // Sovereign Update: Show only ONE top IPTV channel suggestion instead of three
     if (favoriteIptvChannels && favoriteIptvChannels.length > 0) {
       favoriteIptvChannels.slice(0, 1).forEach(iptv => {
         if (!iptv.name.toLowerCase().includes("عمان")) {
@@ -168,6 +167,25 @@ export function MediaView() {
     }
     fetchHomeContent();
   }, [favoriteChannels]);
+
+  useEffect(() => {
+    async function fetchChannelContent() {
+      if (!selectedChannel) return;
+      setLoading(true);
+      try {
+        const vids = await fetchChannelVideos(selectedChannel.channelid);
+        setChannelVideos(vids);
+        if (vids.length > 0) {
+          setActiveVideo(vids[0], vids);
+        }
+      } catch (e) {
+        console.error("Fetch Channel Error:", e);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchChannelContent();
+  }, [selectedChannel, setChannelVideos, setActiveVideo]);
 
   const performSearch = async (query?: string) => {
     const q = query || search; if (!q.trim()) return;
@@ -294,7 +312,6 @@ export function MediaView() {
             <img src={video.thumbnail} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="" />
             {video.duration && <div className="absolute bottom-2 right-2 bg-black text-white text-[12px] px-2 py-1 rounded font-black z-10">{video.duration}</div>}
             
-            {/* Sovereign Add to Folder Button - Exclusive for Playlist results */}
             {video.isPlaylist && (
                <button 
                  onClick={async (e) => {
