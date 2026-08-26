@@ -109,6 +109,7 @@ export function MediaView() {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const playlistInputRef = useRef<HTMLInputElement>(null);
 
+  // Focus-in listener for collapsing sidebar when in content zone
   useEffect(() => {
     const handleFocusIn = () => {
       const active = document.activeElement;
@@ -122,8 +123,8 @@ export function MediaView() {
 
   const occasionSuggestions = useMemo(() => {
     const list: OccasionSuggestion[] = [];
-    const omanQuery = mapSettings.omanUrl || DEFAULT_OMAN_URL;
-    list.push({ label: "عُمان مباشر 📺", query: omanQuery, isOman: true });
+    const currentOmanUrl = mapSettings.omanUrl || DEFAULT_OMAN_URL;
+    list.push({ label: "عُمان مباشر 📺", query: currentOmanUrl, isOman: true });
 
     if (favoriteIptvChannels && favoriteIptvChannels.length > 0) {
       favoriteIptvChannels.slice(0, 1).forEach(iptv => {
@@ -135,10 +136,6 @@ export function MediaView() {
 
     const hijriLabel = `${initialHijri.day} ${initialHijri.monthName} 🕌`;
     list.push({ label: hijriLabel, query: `${initialHijri.day} ${initialHijri.monthName} ${initialHijri.year} القارئ الحرم`, isDate: true });
-
-    const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayGregStr = yesterday.toLocaleDateString('ar-EG', { day: 'numeric', month: 'long', year: 'numeric' });
-    list.push({ label: "أهداف اليوم ⚽", query: `أهداف مباريات أمس ${yesterdayGregStr}`, isSport: true });
 
     const contextOccasions = getIslamicOccasions(initialHijri);
     contextOccasions.forEach(occ => {
@@ -179,9 +176,13 @@ export function MediaView() {
       try {
         const vids = await fetchChannelVideos(selectedChannel.channelid);
         setChannelVideos(vids);
-        if (vids.length > 0) {
-          setActiveVideo(vids[0], vids);
-        }
+        
+        // SOVEREIGN UPDATE: Focus the first video card in the list automatically
+        // This provides visual feedback without starting the player.
+        setTimeout(() => {
+          const firstVideo = document.querySelector('[data-nav-id="channel-results-item-0"]') as HTMLElement;
+          firstVideo?.focus();
+        }, 800);
       } catch (e) {
         console.error("Fetch Channel Error:", e);
       } finally {
@@ -189,7 +190,7 @@ export function MediaView() {
       }
     }
     fetchChannelContent();
-  }, [selectedChannel, setChannelVideos, setActiveVideo]);
+  }, [selectedChannel, setChannelVideos]);
 
   const openSearchPlaylist = async (playlistId: string) => {
     setLoading(true);
@@ -318,7 +319,7 @@ export function MediaView() {
   const horizontalListClass = "w-full flex gap-4 px-8 py-0 overflow-x-auto no-scrollbar scroll-smooth justify-start items-center";
 
   const renderVideoGrid = (vids: YouTubeVideo[], rowId: string) => (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-10" data-row-id={rowId}>
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mt-10" data-row-id={rowId}>
       {vids.map((video, idx) => (
         <div key={video.id + idx} className="group bg-white/5 border border-white/5 rounded-[2.5rem] overflow-hidden focusable transition-all hover:bg-white/10 cursor-pointer shadow-xl outline-none relative" onClick={() => video.isPlaylist ? openSearchPlaylist(video.id) : setActiveVideo(video, vids)} tabIndex={0} data-nav-id={`${rowId}-item-${idx}`}>
           <div className="aspect-video relative overflow-hidden">
@@ -392,7 +393,7 @@ export function MediaView() {
         <section data-row-id="row-search" className="py-4 space-y-6">
           <div className="flex gap-3">
             <div className="relative flex-1"><Input ref={searchInputRef} placeholder={isSearchLocked ? "اضغط 5 للكتابة أو الصق رابطاً..." : "ابحث عن تلاوة أو الصق رابط يوتيوب/فيديو/دومين..."} value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={handleSearchKeyDown} onDoubleClick={() => setIsSearchLocked(false)} readOnly={isSearchLocked} className={cn("h-16 border-none rounded-[2rem] pr-10 text-xl font-bold focusable", isSearchLocked ? "bg-white/5 text-white/30" : "bg-white/10 text-white")} data-nav-id="content-search-input-0" /></div>
-            <button onClick={() => performSearch()} className="h-16 px-10 rounded-[2rem] bg-red-600 text-white font-black text-lg focusable flex items-center" data-nav-id="content-search-btn-0"><Youtube className="w-6 h-6 ml-3" /> استكشاف</button>
+            <button onClick={() => performSearch()} className="h-16 px-10 rounded-[2rem] bg-red-600 text-white font-black text-lg focusable flex items-center" data-nav-id="content-search-btn-0"><Search className="w-6 h-6 ml-3" /> استكشاف</button>
             <Button onClick={handleDirectPlaylistFetch} variant="outline" size="icon" className="w-16 h-16 rounded-[2rem] bg-indigo-600/20 text-indigo-400 border-indigo-500/30 ml-4 shadow-glow focusable" data-nav-id="content-cloud-fetch-0"><CloudDownload className={cn("w-6 h-6", isFetchingPlaylists && "animate-spin")} /></Button>
           </div>
 
