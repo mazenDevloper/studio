@@ -87,7 +87,6 @@ const TeamSelector = ({
 }) => {
   const logoField = side === 'home' ? 'homeLogo' : 'awayLogo';
   const nameField = side === 'home' ? 'homeName' : 'awayName';
-  const filteredTeams = teamLogos.filter(t => t.name.toLowerCase().includes(search.toLowerCase())).slice(0, 12);
 
   return (
     <div className="space-y-4">
@@ -99,25 +98,6 @@ const TeamSelector = ({
            className="h-16 bg-white/5 border-white/10 rounded-2xl font-black px-6 focusable" 
            placeholder="ابحث عن الفريق أو اكتب الاسم يدوياً..." 
          />
-         {search && filteredTeams.length > 0 && (
-           <div className="absolute top-full left-0 right-0 z-[100] mt-2 bg-zinc-950 border border-white/10 rounded-3xl overflow-hidden shadow-[0_0_100px_rgba(0,0,0,1)] animate-in fade-in slide-in-from-top-2 p-4">
-              <h4 className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] mb-4 px-2">نتائج البحث السيادية</h4>
-              <div className="grid grid-cols-3 gap-3">
-                {filteredTeams.map((team, idx) => (
-                  <button 
-                    key={idx} 
-                    onClick={() => onSelect(team.logo, team.name)}
-                    className="flex flex-col items-center gap-2 p-3 rounded-2xl hover:bg-white/10 transition-all border border-transparent hover:border-primary/20 group focusable"
-                  >
-                    <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center border border-white/10 p-2">
-                       <img src={team.logo} className="w-full h-full object-contain group-hover:scale-110 transition-transform" alt="" />
-                    </div>
-                    <span className="font-black text-[10px] text-white/60 truncate w-full text-center">{team.name}</span>
-                  </button>
-                ))}
-              </div>
-           </div>
-         )}
       </div>
       <div className="flex items-center gap-4 bg-black/40 p-4 rounded-2xl border border-white/5">
          <div className="w-16 h-16 rounded-xl bg-white/5 flex items-center justify-center border border-white/10 overflow-hidden">
@@ -1058,7 +1038,7 @@ export function SettingsView() {
               <div className="flex justify-between items-center mb-12">
                  <CardTitle className="text-4xl font-black text-white flex items-center gap-6"><Palette className="w-12 h-12 text-pink-500" /> إدارة الخلفيات والبيئة البصرية</CardTitle>
                  <div className="flex gap-4">
-                    <Button onClick={() => handleDirectFetch(JSONBIN_BACKGROUNDS_BIN_ID, "الخلفيات")} variant="outline" className="w-14 h-14 rounded-full bg-white/5 border-white/10 flex items-center justify-center text-white/40 focusable"><CloudDownload className="w-6 h-6" /></Button>
+                    <Button onClick={() => handleDirectFetch(JSONBIN_BACKGROUNDS_BIN_ID, "الخلفيات")} variant="outline" className="w-14 h-14 rounded-full bg-white/5 border-white/10 flex items-center justify-center text-white/40 focusable shadow-glow"><CloudDownload className="w-6 h-6" /></Button>
                     <button onClick={() => document.getElementById('bg-upload-input')?.click()} className="h-14 px-8 bg-pink-600 text-white rounded-full font-black shadow-glow focusable"><Upload className="w-5 h-5 ml-2" /> رفع خلفية جديدة</button>
                     <input id="bg-upload-input" type="file" className="hidden" accept="image/*" onChange={(e) => {
                        const file = e.target.files?.[0]; if (!file) return;

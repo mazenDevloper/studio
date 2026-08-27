@@ -65,6 +65,7 @@ export function YouTubeSavedWidget() {
              <div 
                key={`pl-${p.id}`} 
                className="w-80 h-48 group relative overflow-hidden bg-zinc-900 border-2 border-white/5 rounded-[2.5rem] focusable cursor-pointer shrink-0 flex flex-col justify-end p-6 shadow-2xl transition-all outline-none"
+               onClick={() => { if(p.videos.length > 0) setActiveVideo(p.videos[0], p.videos); }}
                tabIndex={0}
              >
                {p.videos.length > 0 && (

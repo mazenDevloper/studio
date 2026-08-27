@@ -109,7 +109,6 @@ export function MediaView() {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const playlistInputRef = useRef<HTMLInputElement>(null);
 
-  // Focus-in listener for collapsing sidebar when in content zone
   useEffect(() => {
     const handleFocusIn = () => {
       const active = document.activeElement;
@@ -136,6 +135,12 @@ export function MediaView() {
 
     const hijriLabel = `${initialHijri.day} ${initialHijri.monthName} 🕌`;
     list.push({ label: hijriLabel, query: `${initialHijri.day} ${initialHijri.monthName} ${initialHijri.year} القارئ الحرم`, isDate: true });
+
+    // Yesterday's Goals Suggestion
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toLocaleDateString('ar-EG', { day: 'numeric', month: 'long' });
+    list.push({ label: `أهداف مباريات اليوم (${yesterdayStr}) ⚽`, query: `أهداف مباريات اليوم ${yesterdayStr}`, isSport: true });
 
     const contextOccasions = getIslamicOccasions(initialHijri);
     contextOccasions.forEach(occ => {
@@ -176,9 +181,6 @@ export function MediaView() {
       try {
         const vids = await fetchChannelVideos(selectedChannel.channelid);
         setChannelVideos(vids);
-        
-        // SOVEREIGN UPDATE: Focus the first video card in the list automatically
-        // This provides visual feedback without starting the player.
         setTimeout(() => {
           const firstVideo = document.querySelector('[data-nav-id="channel-results-item-0"]') as HTMLElement;
           firstVideo?.focus();
@@ -440,8 +442,6 @@ export function MediaView() {
         </section>
         
         <section data-row-id="row-reciters" className="py-2"><div className={cn(horizontalListClass, "gap-8")}>{favoriteReciters.map((r, i) => (<button key={i} className={cn("flex flex-col items-center gap-4 px-4 py-4 rounded-[2.5rem] focusable border-2 shrink-0 transition-all", selectedReciter === r.name ? "border-emerald-500 bg-emerald-500/10 shadow-glow" : "border-transparent hover:bg-emerald-600/10")} onClick={() => handleReciterClick(r)} tabIndex={0} data-nav-id={`reciter-item-${i}`}><div className="w-24 h-24 rounded-full overflow-hidden border-4 border-emerald-500/30 shadow-2xl"><img src={r.image} className="w-full h-full object-cover" alt="" /></div><span className="text-[10px] font-black text-white">{r.name}</span></button>))}</div></section>
-        <section data-row-id="row-juz" className="py-2"><div className={horizontalListClass}>{[...Array(30).keys()].map(i => (<button key={i} onClick={() => handleJuzClick(i+1)} className={cn("px-8 py-3 rounded-full text-white font-black text-sm focusable border-2 shrink-0 transition-all", selectedJuz === i+1 ? "bg-white text-black border-white shadow-glow" : JUZ_COLORS[i].split('shadow-')[0])} tabIndex={0} data-nav-id={`juz-item-${i}`}>الجزء {i+1}</button>))}</div></section>
-        <section data-row-id="row-surahs" className="py-2"><div className={horizontalListClass}>{surahs.map((s, i) => (<button key={i} onClick={() => handleSurahClick(s.name_arabic)} className={cn("px-10 py-4 rounded-full border-2 text-white font-black text-sm focusable shrink-0 transition-all", selectedSurah === s.name_arabic ? "bg-blue-600 border-blue-400 shadow-glow" : "bg-white/5 border-white/10")} tabIndex={0} data-nav-id={`surah-${i}`}>سورة {s.name_arabic}</button>))}</div></section>
 
         {loading ? (
           <div className="flex justify-center py-40"><Loader2 className="w-16 h-16 animate-spin text-primary" /></div>
@@ -466,6 +466,11 @@ export function MediaView() {
         ) : (
           <div className="space-y-16 mt-10">
             <section data-row-id="row-all-playlists" className="py-4"><div className="px-10 mb-6 flex items-center gap-4"><div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center shadow-glow"><Library className="w-6 h-6 text-white" /></div><h2 className="text-2xl font-black text-white uppercase tracking-widest">المجلدات والترددات المجرسة</h2></div><div className={horizontalListClass}>{playlists.map((p, pIdx) => (<div key={p.id} onClick={() => { setSelectedPlaylist(p.id); setIsSidebarShrinked(true); }} className="w-80 h-48 group relative overflow-hidden bg-zinc-900 border-2 border-white/10 rounded-[2.5rem] focusable cursor-pointer shrink-0 flex flex-col justify-end p-6 shadow-2xl transition-all outline-none" tabIndex={0} data-nav-id={`all-playlist-${pIdx}`}>{p.videos.length > 0 && (<div className="absolute inset-0 z-0"><img src={p.videos[0].thumbnail} className="w-full h-full object-cover opacity-60 group-hover:scale-110 transition-transform duration-700" alt="" /><div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" /></div>)}<div className="relative z-10 text-right"><span className="text-2xl font-black text-white tracking-tighter drop-shadow-[0_4px_10px_rgba(0,0,0,0.8)] leading-tight">{p.name}</span><div className="mt-2 flex items-center gap-2"><div className="px-3 py-1 bg-white/20 backdrop-blur-md rounded-full border border-white/20"><span className="text-[9px] font-black text-white uppercase tracking-widest">{p.videos.length} تلاوة</span></div></div></div></div>))}{topVideos.map((video, vIdx) => (<div key={video.id + vIdx} className="w-80 h-48 group relative overflow-hidden bg-zinc-900 border-2 border-white/10 rounded-[2.5rem] focusable cursor-pointer shrink-0 flex flex-col justify-end p-6 shadow-2xl transition-all outline-none" onClick={() => setActiveVideo(video, topVideos)} tabIndex={0} data-nav-id={`top-video-week-${vIdx}`}><div className="absolute inset-0 z-0"><img src={video.thumbnail} className="w-full h-full object-cover opacity-60 group-hover:scale-110 transition-transform duration-700" alt="" /><div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" /></div><div className="relative z-10 text-right"><span className="text-[12px] font-black text-white line-clamp-2 leading-tight drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] mb-2">{video.title}</span><div className="flex items-center gap-2"><img src={video.channelAvatar} className="w-6 h-6 rounded-full border border-white/20" alt="" /><span className="text-[10px] font-black text-white/60 truncate max-w-[120px]">{video.channelTitle}</span><div className="ml-auto px-2 py-0.5 bg-yellow-500/20 text-yellow-500 rounded-md border border-yellow-500/40 text-[7px] font-black uppercase">رائج الأسبوع</div></div></div></div>))}</div></section>
+            
+            {/* Juz and Surahs moved under playlists */}
+            <section data-row-id="row-juz" className="py-2"><div className="px-10 mb-4 flex items-center gap-4"><div className="w-8 h-8 rounded-lg bg-emerald-600/20 flex items-center justify-center border border-emerald-500/30"><Layers className="w-5 h-5 text-emerald-400" /></div><h2 className="text-xl font-black text-white/60 uppercase tracking-widest">تصفح بالأجزاء</h2></div><div className={horizontalListClass}>{[...Array(30).keys()].map(i => (<button key={i} onClick={() => handleJuzClick(i+1)} className={cn("px-8 py-3 rounded-full text-white font-black text-sm focusable border-2 shrink-0 transition-all", selectedJuz === i+1 ? "bg-white text-black border-white shadow-glow" : JUZ_COLORS[i].split('shadow-')[0])} tabIndex={0} data-nav-id={`juz-item-${i}`}>الجزء {i+1}</button>))}</div></section>
+            <section data-row-id="row-surahs" className="py-2"><div className="px-10 mb-4 flex items-center gap-4"><div className="w-8 h-8 rounded-lg bg-blue-600/20 flex items-center justify-center border border-blue-500/30"><BookOpen className="w-5 h-5 text-blue-400" /></div><h2 className="text-xl font-black text-white/60 uppercase tracking-widest">تصفح بالسور</h2></div><div className={horizontalListClass}>{surahs.map((s, i) => (<button key={i} onClick={() => handleSurahClick(s.name_arabic)} className={cn("px-10 py-4 rounded-full border-2 text-white font-black text-sm focusable shrink-0 transition-all", selectedSurah === s.name_arabic ? "bg-blue-600 border-blue-400 shadow-glow" : "bg-white/5 border-white/10")} tabIndex={0} data-nav-id={`surah-${i}`}>سورة {s.name_arabic}</button>))}</div></section>
+
             {Object.entries(starredLists).map(([cid, data], idx) => (
               <section key={cid} data-row-id={`row-starred-${idx}`} className="py-4">
                 <div className="px-10 mb-6 flex items-center justify-between">
