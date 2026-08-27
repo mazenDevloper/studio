@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -131,7 +130,10 @@ export function MediaView() {
     // Yesterday's Goals Suggestion - Priority after Hijri
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toLocaleDateString('ar-EG', { day: 'numeric', month: 'long' });
+    const d_y = yesterday.getDate().toString().padStart(2, '0');
+    const m_y = (yesterday.getMonth() + 1).toString().padStart(2, '0');
+    const y_y = yesterday.getFullYear();
+    const yesterdayStr = `${d_y}-${m_y}-${y_y}`;
     list.push({ label: `أهداف مباريات اليوم (${yesterdayStr}) ⚽`, query: `أهداف مباريات اليوم ${yesterdayStr}`, isSport: true });
 
     if (favoriteIptvChannels && favoriteIptvChannels.length > 0) {
@@ -181,10 +183,13 @@ export function MediaView() {
       try {
         const vids = await fetchChannelVideos(selectedChannel.channelid);
         setChannelVideos(vids);
-        // SOVEREIGN FOCUS: Automatically focus first video in subscription results
+        // SOVEREIGN FOCUS: Automatically focus first video in results
         setTimeout(() => {
           const firstVideo = document.querySelector('[data-nav-id="channel-results-item-0"]') as HTMLElement;
-          firstVideo?.focus();
+          if (firstVideo) {
+            firstVideo.focus();
+            firstVideo.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
         }, 800);
       } catch (e) {
         console.error("Fetch Channel Error:", e);
@@ -472,7 +477,7 @@ export function MediaView() {
             
             {/* Juz and Surahs moved under playlists */}
             <section data-row-id="row-juz" className="py-2"><div className="px-10 mb-4 flex items-center gap-4"><div className="w-8 h-8 rounded-lg bg-emerald-600/20 flex items-center justify-center border border-emerald-500/30"><Layers className="w-5 h-5 text-emerald-400" /></div><h2 className="text-xl font-black text-white/60 uppercase tracking-widest">تصفح بالأجزاء</h2></div><div className={horizontalListClass}>{[...Array(30).keys()].map(i => (<button key={i} onClick={() => handleJuzClick(i+1)} className={cn("px-8 py-3 rounded-full text-white font-black text-sm focusable border-2 shrink-0 transition-all", selectedJuz === i+1 ? "bg-white text-black border-white shadow-glow" : JUZ_COLORS[i].split('shadow-')[0])} tabIndex={0} data-nav-id={`juz-item-${i}`}>الجزء {i+1}</button>))}</div></section>
-            <section data-row-id="row-surahs" className="py-2"><div className="px-10 mb-4 flex items-center gap-4"><div className="w-8 h-8 rounded-lg bg-blue-600/20 flex items-center justify-center border border-blue-500/30"><BookOpen className="w-5 h-5 text-blue-400" /></div><h2 className="text-xl font-black text-white/60 uppercase tracking-widest">تصفح بالسور</h2></div><div className={horizontalListClass}>{surahs.map((s, i) => (<button key={i} onClick={() => handleSurahClick(s.name_arabic)} className={cn("px-10 py-4 rounded-full border-2 text-white font-black text-sm focusable shrink-0 transition-all", selectedSurah === s.name_arabic ? "bg-blue-600 border-blue-400 shadow-glow" : "bg-white/5 border-white/10")} tabIndex={0} data-nav-id={`surah-${i}`}>سورة {s.name_arabic}</button>))}</div></section>
+            <section data-row-id="row-surahs" className="py-2"><div className="px-10 mb-4 flex items-center gap-4"><div className="w-8 h-8 rounded-lg bg-blue-600/20 flex items-center justify-center border border-blue-500/30"><BookOpen className="w-5 h-5 text-blue-400" /></div><h2 classNametext-xl font-black text-white/60 uppercase tracking-widest">تصفح بالسور</h2></div><div className={horizontalListClass}>{surahs.map((s, i) => (<button key={i} onClick={() => handleSurahClick(s.name_arabic)} className={cn("px-10 py-4 rounded-full border-2 text-white font-black text-sm focusable shrink-0 transition-all", selectedSurah === s.name_arabic ? "bg-blue-600 border-blue-400 shadow-glow" : "bg-white/5 border-white/10")} tabIndex={0} data-nav-id={`surah-${i}`}>سورة {s.name_arabic}</button>))}</div></section>
 
             {Object.entries(starredLists).map(([cid, data], idx) => (
               <section key={cid} data-row-id={`row-starred-${idx}`} className="py-4">
