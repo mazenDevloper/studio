@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { 
-  Plus, Loader2, X, List, Youtube, Star, Mic, Layers, Sparkles, Clock, Bookmark, Trash2, RefreshCw, CloudDownload, Trophy, Baby, Library, FolderHeart, CalendarDays, Send, Edit3, Save, Search, Calendar, RotateCcw
+  Plus, Loader2, X, List, Youtube, Star, Mic, Layers, Sparkles, Clock, Bookmark, Trash2, RefreshCw, CloudDownload, Trophy, Baby, Library, FolderHeart, CalendarDays, Send, Edit3, Save, Search, Calendar, RotateCcw, BookOpen
 } from "lucide-react";
 import { useMediaStore, YouTubeChannel, YouTubeVideo } from "@/lib/store";
 import { fetchChannelVideos, searchYouTubeVideos, fetchYouTubePlaylistVideos } from "@/lib/youtube";
@@ -125,6 +125,15 @@ export function MediaView() {
     const currentOmanUrl = mapSettings.omanUrl || DEFAULT_OMAN_URL;
     list.push({ label: "عُمان مباشر 📺", query: currentOmanUrl, isOman: true });
 
+    const hijriLabel = `${initialHijri.day} ${initialHijri.monthName} 🕌`;
+    list.push({ label: hijriLabel, query: `${initialHijri.day} ${initialHijri.monthName} ${initialHijri.year} القارئ الحرم`, isDate: true });
+
+    // Yesterday's Goals Suggestion - Priority after Hijri
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toLocaleDateString('ar-EG', { day: 'numeric', month: 'long' });
+    list.push({ label: `أهداف مباريات اليوم (${yesterdayStr}) ⚽`, query: `أهداف مباريات اليوم ${yesterdayStr}`, isSport: true });
+
     if (favoriteIptvChannels && favoriteIptvChannels.length > 0) {
       favoriteIptvChannels.slice(0, 1).forEach(iptv => {
         if (!iptv.name.toLowerCase().includes("عمان")) {
@@ -132,15 +141,6 @@ export function MediaView() {
         }
       });
     }
-
-    const hijriLabel = `${initialHijri.day} ${initialHijri.monthName} 🕌`;
-    list.push({ label: hijriLabel, query: `${initialHijri.day} ${initialHijri.monthName} ${initialHijri.year} القارئ الحرم`, isDate: true });
-
-    // Yesterday's Goals Suggestion
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toLocaleDateString('ar-EG', { day: 'numeric', month: 'long' });
-    list.push({ label: `أهداف مباريات اليوم (${yesterdayStr}) ⚽`, query: `أهداف مباريات اليوم ${yesterdayStr}`, isSport: true });
 
     const contextOccasions = getIslamicOccasions(initialHijri);
     contextOccasions.forEach(occ => {
@@ -181,6 +181,7 @@ export function MediaView() {
       try {
         const vids = await fetchChannelVideos(selectedChannel.channelid);
         setChannelVideos(vids);
+        // SOVEREIGN FOCUS: Automatically focus first video in subscription results
         setTimeout(() => {
           const firstVideo = document.querySelector('[data-nav-id="channel-results-item-0"]') as HTMLElement;
           firstVideo?.focus();
@@ -285,6 +286,7 @@ export function MediaView() {
     setSelectedReciter(r.name); 
     setSearch(r.name); 
     incrementReciterClick(r.channelid); 
+    // SOVEREIGN FOCUS: Transfer focus to Juz list after selecting reciter
     setTimeout(() => { (document.querySelector('[data-nav-id="juz-item-0"]') as HTMLElement)?.focus(); }, 200); 
   };
   
@@ -294,6 +296,7 @@ export function MediaView() {
     const filtered = allSurahs.filter(s => surahIds.includes(s.id)); 
     setSurahs(filtered); 
     setSearch(selectedReciter ? `${selectedReciter} الجزء ${juzNum}` : `الجزء ${juzNum}`); 
+    // SOVEREIGN FOCUS: Transfer focus to Surah list
     setTimeout(() => { (document.querySelector('[data-nav-id="surah-0"]') as HTMLElement)?.focus(); }, 200); 
   };
   
