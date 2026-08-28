@@ -20,7 +20,7 @@ export function PlayingNowWidget() {
               src={activeVideo.thumbnail} 
               alt={activeVideo.title} 
               fill 
-              className="object-cover opacity-60 group-hover:scale-110 transition-transform duration-[10s]"
+              className="object-cover opacity-60 group-hover:scale-110 transition-transform duration-[10000ms]"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
           </div>

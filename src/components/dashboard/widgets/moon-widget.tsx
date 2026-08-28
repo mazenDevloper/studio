@@ -76,7 +76,7 @@ export function MoonWidget() {
   return (
     <div className="h-full w-full bg-black rounded-[2.5rem] overflow-hidden relative flex flex-col items-center justify-center p-1 outline-none group focusable" tabIndex={0} onClick={() => setWallPlate('moon', { image: moonImageUrl, day: displayValue, label })}>
       <div className="absolute inset-0 z-0 flex items-center justify-center bg-black">
-        <Image src={moonImageUrl} alt="Moon" width={800} height={800} className="w-[100%] h-auto object-contain pointer-events-none group-hover:scale-110 transition-transform duration-[20s] opacity-60 unoptimized" priority unoptimized />
+        <Image src={moonImageUrl} alt="Moon" width={800} height={800} className="w-[100%] h-auto object-contain pointer-events-none group-hover:scale-110 transition-transform duration-[20000ms] opacity-60 unoptimized" priority unoptimized />
       </div>
 
       <div className="absolute top-6 left-6 flex items-center gap-3 z-50 opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-none">

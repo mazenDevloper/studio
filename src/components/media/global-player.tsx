@@ -14,10 +14,6 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
 /**
  * GlobalVideoPlayer v1270.0 - Invisible Activation Protocol
- * Features: 
- * 1. Interaction Audio Unlocker: Unlocks browser audio policy on first keypress.
- * 2. Automated Unmute Engine: Sends unmute/play commands to iframes.
- * 3. Removal of explicit Play button for a seamless UI.
  */
 export function GlobalVideoPlayer() {
   const { 
@@ -53,13 +49,11 @@ export function GlobalVideoPlayer() {
 
   const totalDuration = useMemo(() => activeVideo ? parseDurationToSeconds(activeVideo.duration || "") : 0, [activeVideo]);
 
-  // SOVEREIGN AUDIO UNLOCKER: Bless the session on any keypress
   useEffect(() => {
     const unlockAudio = () => {
       if (isAudioUnlockedRef.current) return;
       audioHeartbeatRef.current?.play().then(() => {
         isAudioUnlockedRef.current = true;
-        // console.log("Sovereign Audio Blessed");
         window.removeEventListener('keydown', unlockAudio);
         window.removeEventListener('mousedown', unlockAudio);
       }).catch(() => {});
@@ -73,7 +67,6 @@ export function GlobalVideoPlayer() {
     };
   }, []);
 
-  // Sync isPlaying state with hidden heartbeat
   useEffect(() => {
     if (isPlaying && isActive) {
       audioHeartbeatRef.current?.play().catch(() => {});
@@ -173,7 +166,6 @@ export function GlobalVideoPlayer() {
 
   return (
     <>
-      {/* Sovereign Silent Heartbeat - Essential for Audio Policy Bypass */}
       <audio ref={audioHeartbeatRef} loop className="hidden">
         <source src="data:audio/wav;base64,UklGRigAAABXQVZFRm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA==" type="audio/wav" />
       </audio>
@@ -247,7 +239,7 @@ export function GlobalVideoPlayer() {
                        data-nav-id={`playlist-item-${i}`}
                      >
                        <div className="absolute inset-0 z-0">
-                         <img src={v.thumbnail} className="w-full h-full object-cover opacity-40 group-hover:scale-110 transition-transform duration-[5s]" alt="" />
+                         <img src={v.thumbnail} className="w-full h-full object-cover opacity-40 group-hover:scale-110 transition-transform duration-[5000ms]" alt="" />
                          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
                        </div>
                        <div className="relative z-10 space-y-1">

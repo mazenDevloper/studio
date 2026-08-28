@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
@@ -442,7 +443,7 @@ export function SettingsView() {
               <div className="flex gap-4">
                  <Button onClick={() => handleDirectFetch(JSONBIN_MANUSCRIPTS_BIN_ID, "المخطوطات")} variant="outline" className="w-14 h-14 rounded-full bg-white/5 border-white/10 flex items-center justify-center text-white/40 focusable" title="جلب المخطوطات"><CloudDownload className="w-6 h-6" /></Button>
                  <Button onClick={() => handleDirectFetch(JSONBIN_FONTS_BIN_ID, "الخطوط")} variant="outline" className="w-14 h-14 rounded-full bg-white/5 border-white/10 flex items-center justify-center text-white/40 focusable" title="جلب الخطوط"><Download className="w-6 h-6" /></Button>
-                 <button onClick={() => document.getElementById('font-upload-input')?.click()} className="w-14 h-14 rounded-full bg-indigo-600/20 text-indigo-400 flex items-center justify-center shadow-glow border border-indigo-500/30 focusable" title="رفع خط جديد"><Upload className="w-6 h-6" /></Button>
+                 <button onClick={() => document.getElementById('font-upload-input')?.click()} className="w-14 h-14 rounded-full bg-indigo-600/20 text-indigo-400 flex items-center justify-center shadow-glow border border-indigo-500/30 focusable" title="رفع خط جديد"><Upload className="w-6 h-6" /></button>
                  <input id="font-upload-input" type="file" className="hidden" accept=".ttf,.otf" onChange={handleFontUpload} />
                  <button onClick={() => setIsFullscreenEditor(!isFullscreenEditor)} className="w-14 h-14 rounded-full bg-white/10 flex items-center justify-center text-white shadow-glow border border-white/20 focusable">{isFullscreenEditor ? <Minimize className="w-6 h-6" /> : <Maximize2 className="w-6 h-6" />}</button>
                  <Button onClick={handleSaveManuscript} className="bg-emerald-500 text-black rounded-full h-14 px-8 font-black shadow-glow focusable">حفظ المخطوطة</Button>
@@ -496,7 +497,7 @@ export function SettingsView() {
                     <div className="space-y-3">
                        <Label className="mr-4 font-black opacity-40">النوع / الأيقونة</Label>
                        <Select value={remForm.iconType} onValueChange={(v) => setRemForm({...remForm, iconType: v as any})}>
-                          <SelectTrigger className="h-16 bg-white/5 border-white/10 rounded-2xl text-xl font-black focusable"><SelectValue /></SelectValue>
+                          <SelectTrigger className="h-16 bg-white/5 border-white/10 rounded-2xl text-xl font-black focusable"><SelectValue /></SelectTrigger>
                           <SelectContent className="bg-zinc-950">
                              <SelectItem value="bell">تنبيه جرس</SelectItem>
                              <SelectItem value="play">تشغيل وسائط</SelectItem>
