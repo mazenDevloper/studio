@@ -8,7 +8,7 @@ import {
    Loader2, RefreshCw, Mic, X, Type, Zap, Sparkles, Upload, Clock, Youtube, Tv, Star, Magnet,
   ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Maximize, Minimize, ImageIcon, Download, Search, Move,
   Maximize2, CloudDownload, FileImage, Save, BookOpen, Gamepad2, Palette, Library, UserCheck, Send, Check, Bookmark, 
-  Play, SkipBack, SkipForward, VolumeX, Gamepad, Trophy, EyeOff, Calendar, Eye
+  Play, SkipBack, SkipForward, VolumeX, Gamepad, Trophy, EyeOff, Calendar, Eye, Layers
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,7 +21,7 @@ import { searchYouTubeChannels, fetchYouTubePlaylistVideos } from "@/lib/youtube
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { 
    JSONBIN_CHANNELS_BIN_ID, JSONBIN_POPULAR_RECITERS_BIN_ID, JSONBIN_IPTV_FAVS_BIN_ID, 
    JSONBIN_MANUSCRIPTS_BIN_ID, JSONBIN_MASTER_BIN_ID, JSONBIN_FONTS_BIN_ID, JSONBIN_BACKGROUNDS_BIN_ID,
@@ -74,17 +74,24 @@ const TeamSelector = ({
   setSearch, 
   remForm, 
   onSelect,
-  onAddToCloud
+  onAddToCloud,
+  allTeams
 }: { 
   side: 'home' | 'away', 
   search: string, 
   setSearch: (v: string) => void, 
   remForm: any,
   onSelect: (logo: string, name: string) => void,
-  onAddToCloud: (name: string, logo: string) => void
+  onAddToCloud: (name: string, logo: string) => void,
+  allTeams: any[]
 }) => {
   const logoField = side === 'home' ? 'homeLogo' : 'awayLogo';
   const nameField = side === 'home' ? 'homeName' : 'awayName';
+
+  const filteredTeams = useMemo(() => {
+    if (!search || search.length < 1) return [];
+    return allTeams.filter(t => t.name.toLowerCase().includes(search.toLowerCase())).slice(0, 15);
+  }, [allTeams, search]);
 
   return (
     <div className="space-y-4">
@@ -93,8 +100,26 @@ const TeamSelector = ({
         value={search} 
         onChange={(e) => { setSearch(e.target.value); onSelect(remForm[logoField] || "", e.target.value); }} 
         className="h-16 bg-white/5 border-white/10 rounded-2xl font-black px-6 focusable" 
-        placeholder="اكتب اسم الفريق..." 
+        placeholder="ابحث عن الفريق..." 
       />
+      
+      {filteredTeams.length > 0 && (
+        <div className="bg-black/60 p-4 rounded-3xl border border-white/10 grid grid-cols-5 gap-3 max-h-48 overflow-y-auto no-scrollbar animate-in slide-in-from-top-2 duration-300">
+          {filteredTeams.map((t, i) => (
+            <button 
+              key={i} 
+              onClick={() => onSelect(t.logo, t.name)}
+              className="group flex flex-col items-center gap-2 p-2 rounded-xl hover:bg-primary/20 transition-all border border-transparent hover:border-primary/40 focusable"
+            >
+              <div className="w-10 h-10 relative">
+                <img src={t.logo} className="w-full h-full object-contain drop-shadow-md" alt="" />
+              </div>
+              <span className="text-[8px] font-black text-white/60 truncate w-full text-center">{t.name}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="flex items-center gap-4 bg-black/40 p-4 rounded-2xl border border-white/5">
          <div className="w-16 h-16 rounded-xl bg-white/5 flex items-center justify-center border border-white/10 overflow-hidden">
             {remForm[logoField] ? <img src={remForm[logoField]} className="w-12 h-12 object-contain" alt="" /> : <Trophy className="w-8 h-8 text-white/10" />}
@@ -119,7 +144,7 @@ const TeamSelector = ({
 };
 
 /**
- * SettingsView v1560.0 - Sovereign Management Hub
+ * SettingsView v1900.0 - Sovereign Management Hub
  */
 export function SettingsView() {
   const { 
@@ -142,6 +167,7 @@ export function SettingsView() {
   
   const [isSyncing, setIsSyncing] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [cloudTeams, setCloudTeams] = useState<any[]>([]);
   
   // Team Search States
   const [homeSearch, setHomeSearch] = useState("");
@@ -192,6 +218,19 @@ export function SettingsView() {
 
   const [editingZikrId, setEditingZikrId] = useState<string | null>(null);
   const [zikrInput, setZikrInput] = useState("");
+
+  useEffect(() => {
+    const loadCloudTeams = async () => {
+      try {
+        const r = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_TEAM_LOGOS_BIN_ID}/latest`, {
+          headers: { 'X-Master-Key': JSONBIN_MASTER_KEY }
+        });
+        const data = await r.json();
+        setCloudTeams(data.record.teams || []);
+      } catch (e) {}
+    };
+    loadCloudTeams();
+  }, []);
 
   const sortedMatchReminders = useMemo(() => {
     return reminders
@@ -509,8 +548,8 @@ export function SettingsView() {
 
                  {remForm.iconType === 'match' ? (
                    <div className="grid grid-cols-1 md:grid-cols-2 gap-10 animate-in zoom-in-95">
-                      <TeamSelector side="home" search={homeSearch} setSearch={setHomeSearch} remForm={remForm} onSelect={(logo, name) => handleTeamSelect('home', logo, name)} onAddToCloud={handleAddTeamToCloud} />
-                      <TeamSelector side="away" search={awaySearch} setSearch={setAwaySearch} remForm={remForm} onSelect={(logo, name) => handleTeamSelect('away', logo, name)} onAddToCloud={handleAddTeamToCloud} />
+                      <TeamSelector side="home" search={homeSearch} setSearch={setHomeSearch} remForm={remForm} onSelect={(logo, name) => handleTeamSelect('home', logo, name)} onAddToCloud={handleAddTeamToCloud} allTeams={cloudTeams} />
+                      <TeamSelector side="away" search={awaySearch} setSearch={setAwaySearch} remForm={remForm} onSelect={(logo, name) => handleTeamSelect('away', logo, name)} onAddToCloud={handleAddTeamToCloud} allTeams={cloudTeams} />
                       <div className="space-y-3">
                          <Label className="mr-4 font-black opacity-40">تاريخ المباراة</Label>
                          <div className="flex items-center gap-4 bg-white/5 p-4 rounded-2xl border border-white/10 h-16 shadow-glow">
@@ -599,7 +638,84 @@ export function SettingsView() {
               </Tabs>
            </Card>
         </TabsContent>
+
+        <TabsContent value="iptv" className="space-y-8 animate-in fade-in duration-0">
+           <Card className="bg-white/5 border-white/10 p-10 rounded-[3.5rem] shadow-2xl relative">
+              <div className="flex justify-between items-center mb-12">
+                 <CardTitle className="text-4xl font-black text-white flex items-center gap-6"><Tv className="w-12 h-12 text-emerald-500" /> إدارة قنوات IPTV السيادية</CardTitle>
+                 <Button onClick={() => setIsAddingIptv(true)} className="h-14 px-8 bg-emerald-600 text-white rounded-full font-black shadow-glow focusable"><Plus className="w-5 h-5 ml-2" /> إضافة قناة جديدة</Button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {favoriteIptvChannels.map((ch, idx) => (
+                  <div key={idx} className="bg-black/60 p-6 rounded-[2.5rem] border border-white/10 flex flex-col gap-4 shadow-xl hover:border-emerald-500/40 transition-all group">
+                    <div className="flex items-center gap-4">
+                      <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 overflow-hidden flex items-center justify-center shrink-0">
+                        {ch.stream_icon ? <img src={ch.stream_icon} className="w-full h-full object-cover" alt="" /> : <Tv className="w-6 h-6 text-white/20" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="text-lg font-black text-white truncate">{ch.name}</h4>
+                        <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">تنسيق: {ch.type}</span>
+                      </div>
+                      <button onClick={() => { setEditingIptvId(ch.stream_id); setIptvEditForm(ch); }} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/40 hover:text-white transition-all focusable"><Edit2 className="w-4 h-4" /></button>
+                      <button onClick={() => toggleFavoriteIptvChannel(ch)} className="w-10 h-10 rounded-full bg-red-600/20 text-red-500 flex items-center justify-center focusable"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+           </Card>
+        </TabsContent>
+
+        <TabsContent value="reciters" className="space-y-8 animate-in fade-in duration-0">
+           <Card className="bg-white/5 border-white/10 p-10 rounded-[3.5rem] shadow-2xl">
+              <div className="flex justify-between items-center mb-12">
+                 <CardTitle className="text-4xl font-black text-white flex items-center gap-6"><Mic className="w-12 h-12 text-primary" /> مجمع القراء السيادي</CardTitle>
+                 <div className="flex gap-4">
+                   <div className="relative flex items-center bg-white/5 rounded-full px-6 h-14 border border-white/10 w-96">
+                     <Search className="w-5 h-5 text-white/20 absolute right-6" />
+                     <Input 
+                       value={reciterSearch} 
+                       onChange={(e) => setReciterSearch(e.target.value)} 
+                       onKeyDown={(e) => e.key === 'Enter' && performReciterSearch()} 
+                       className="bg-transparent border-none text-lg font-black text-white pr-10 focus-visible:ring-0" 
+                       placeholder="ابحث عن قارئ في يوتيوب..." 
+                     />
+                   </div>
+                   <Button onClick={performReciterSearch} disabled={isSearchingReciters} className="h-14 px-8 bg-primary text-white rounded-full font-black shadow-glow focusable">
+                     {isSearchingReciters ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5 ml-2" />} إضافة
+                   </Button>
+                 </div>
+              </div>
+
+              {reciterResults.length > 0 && (
+                <div className="bg-black/60 p-8 rounded-[3rem] border border-white/10 mb-12 grid grid-cols-2 md:grid-cols-4 gap-6 animate-in slide-in-from-top-4 duration-500 shadow-2xl">
+                  {reciterResults.map((r, i) => (
+                    <div key={i} className="flex flex-col items-center gap-4 p-6 rounded-[2rem] bg-white/5 hover:bg-white/10 transition-all border border-transparent hover:border-primary/40 group">
+                      <img src={r.image} className="w-24 h-24 rounded-full border-4 border-white/10 shadow-xl group-hover:scale-105 transition-transform" alt="" />
+                      <span className="text-sm font-black text-white text-center line-clamp-1">{r.name}</span>
+                      <Button onClick={() => handleAddReciterWithClicks(r)} size="sm" className="bg-primary text-white rounded-xl h-10 w-full font-black focusable">تثبيت القارئ</Button>
+                    </div>
+                  ))}
+                  <button onClick={() => setReciterResults([])} className="col-span-full h-10 text-[10px] font-black text-white/20 uppercase tracking-widest hover:text-white transition-colors">إغلاق نتائج البحث</button>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-8">
+                 {favoriteReciters.map((r, idx) => (
+                   <div key={idx} className="bg-black/40 p-6 rounded-[2.5rem] border border-white/5 flex flex-col items-center gap-4 shadow-xl hover:border-primary/20 transition-all relative group">
+                      <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-primary/20 shadow-2xl"><img src={r.image} className="w-full h-full object-cover" alt="" /></div>
+                      <div className="text-center space-y-1">
+                        <span className="text-sm font-black text-white line-clamp-1">{r.name}</span>
+                        <div className="flex items-center justify-center gap-2 text-[8px] font-black text-primary uppercase tracking-widest"><Magnet className="w-3 h-3" /> {r.clickschannel || 0} نقرة</div>
+                      </div>
+                      <button onClick={() => removeReciter(r.channelid)} className="absolute top-4 left-4 w-10 h-10 rounded-full bg-red-600/20 text-red-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity focusable shadow-glow"><Trash2 className="w-5 h-5" /></button>
+                   </div>
+                 ))}
+              </div>
+           </Card>
+        </TabsContent>
       </Tabs>
     </div>
   );
 }
+
