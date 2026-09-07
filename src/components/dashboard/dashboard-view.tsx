@@ -16,8 +16,8 @@ import { X } from "lucide-react";
 import Image from "next/image";
 
 /**
- * DashboardView v240.0 - Sovereign Precision Layout
- * Features: Auto-sync all cloud resources on load + Second Shortcut Focus.
+ * DashboardView v250.0 - Optimized Focus Protocol
+ * Removed redundant focusable containers to eliminate "double click" barrier.
  */
 export function DashboardView() {
   const { 
@@ -26,18 +26,11 @@ export function DashboardView() {
   } = useMediaStore();
   
   useEffect(() => {
-    // Sovereign Auto-Click Trigger: Fetch all priority data immediately on first mount
     fetchPriorityData('all');
-    
     const timer = setTimeout(() => {
-      // SOVEREIGN FOCUS: Target the SECOND shortcut item (Index 1) as requested
       const targetShortcut = document.querySelector('[data-nav-id="shortcut-item-1"]') as HTMLElement;
-      if (targetShortcut) {
-        targetShortcut.focus();
-      } else {
-        const firstShortcut = document.querySelector('[data-nav-id="shortcut-item-0"]') as HTMLElement;
-        firstShortcut?.focus();
-      }
+      if (targetShortcut) targetShortcut.focus();
+      else (document.querySelector('[data-nav-id="shortcut-item-0"]') as HTMLElement)?.focus();
     }, 1000);
     return () => clearTimeout(timer);
   }, [fetchPriorityData]);
@@ -92,15 +85,20 @@ export function DashboardView() {
         </div>
       )}
 
-      {/* Primary Widget Array */}
+      {/* Zero-Barrier Grid: Outer containers no longer trap focus v250 */}
       <div className="grid grid-cols-12 gap-6 min-h-[480px]" data-row-id="main-widgets-row">
-        <div className="col-span-4 rounded-[3rem] overflow-hidden relative shadow-2xl h-[480px] bg-black focusable" tabIndex={0}><ActiveAzkarWidget /></div>
-        <div className="col-span-4 rounded-[3rem] relative flex items-center justify-center h-[480px] shadow-2xl focusable bg-black outline-none" tabIndex={0}><ReminderSummaryWidget /></div>
+        <div className="col-span-4 rounded-[3rem] overflow-hidden relative shadow-2xl h-[480px] bg-black"><ActiveAzkarWidget /></div>
+        <div className="col-span-4 rounded-[3rem] relative flex items-center justify-center h-[480px] shadow-2xl bg-black"><ReminderSummaryWidget /></div>
         <div className="col-span-4 flex flex-col gap-4 h-[480px] relative">
-          <div className="flex-1 relative overflow-hidden bg-black rounded-[3rem] shadow-2xl focusable" tabIndex={0}>
-            <Carousel opts={{ loop: true }} className="w-full h-full"><CarouselContent className="h-full ml-0 overflow-hidden no-scrollbar transition-none"><CarouselItem className="pl-0 h-full flex items-center justify-center bg-black transition-none"><MoonWidget /></CarouselItem>{activeVideo && <CarouselItem className="pl-0 h-full flex items-center justify-center bg-black transition-none"><PlayingNowWidget /></CarouselItem>}</CarouselContent></Carousel>
+          <div className="flex-1 relative overflow-hidden bg-black rounded-[3rem] shadow-2xl">
+            <Carousel opts={{ loop: true }} className="w-full h-full">
+              <CarouselContent className="h-full ml-0 overflow-hidden no-scrollbar transition-none">
+                <CarouselItem className="pl-0 h-full flex items-center justify-center bg-black transition-none"><MoonWidget /></CarouselItem>
+                {activeVideo && <CarouselItem className="pl-0 h-full flex items-center justify-center bg-black transition-none"><PlayingNowWidget /></CarouselItem>}
+              </CarouselContent>
+            </Carousel>
           </div>
-          <div className="flex-[0.35] rounded-[3rem] relative overflow-hidden shadow-2xl focusable bg-black" tabIndex={0}><DateAndClockWidget /></div>
+          <div className="flex-[0.35] rounded-[3rem] relative overflow-hidden shadow-2xl bg-black"><DateAndClockWidget /></div>
         </div>
       </div>
 

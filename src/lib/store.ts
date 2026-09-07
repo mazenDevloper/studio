@@ -35,7 +35,6 @@ export interface Reminder {
   showCountup: boolean; 
   completed: boolean; 
   countdownWindow: number;
-  // Match Specific
   homeLogo?: string;
   awayLogo?: string;
   matchDate?: string;
@@ -160,7 +159,11 @@ export const updateBin = async (binId: string, data: any) => {
   try {
     await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_MASTER_KEY, 'X-Bin-Versioning': 'false' },
+      headers: { 
+        'Content-Type': 'application/json', 
+        'X-Master-Key': JSONBIN_MASTER_KEY, 
+        'X-Bin-Versioning': 'true' 
+      },
       mode: 'cors', body: JSON.stringify(data)
     });
   } catch (e) {}
@@ -224,7 +227,7 @@ export const useMediaStore = create<MediaState>()(
         fontScale: 1.0, manuscriptColor: '#ffffff', showManuscriptOnMoon: true, moonManuIdx: 0, 
         hue: 0, saturation: 100, brightness: 100, winwinUrl: "https://psee.io/9f4ngl", 
         beinUrl: "https://idebsports.ly/matches", 
-        omanUrl: "https://player.mangomolo.com/v1/live?id=MTY4&channelid=MTYx&countries=Q0M%3D&filter=DENY&signature=3fd1e8dd84138a41bf33d93afd4a7f09&language=en&app_id=&fullscreen=yes&player_profile=&base_url=aHR0cHM6Ly9heW4ub20vbGl2ZS8xNjEvJUQ5JTgyJUQ5JTg2JUQ4JUE3JUQ4JUE5LSVEOCVCOSVEOSU4NSVEOCVBNyVEOSU4Ni0lRDklODUlRDglQTglRDglQTclRDglQjQlRDglQjE%3D&autoplay=false&vast=true", 
+        omanUrl: "https://player.mangomolo.com/v1/live?id=MTY8&channelid=MTYx&countries=Q0M%3D&filter=DENY&signature=3fd1e8dd84138a41bf33d93afd4a7f09&language=en&app_id=&fullscreen=yes&player_profile=&base_url=aHR0cHM6Ly9heW4ub20vbGl2ZS8xNjEvJUQ5JTgyJUQ5JTg2JUQ4JUE3JUQ4JUE5LSVEOCVCOSVEOSU4NSVEOCVBNyVEOSU4Ni0lRDklODUlRDglQTglRDglQTclRDglQjQlRDglQjE%3D&autoplay=false&vast=true", 
         bein1Url: "https://online.aflam4you.net/zremb472.php/?vid=68&aflam_s=1&aflam_w=360&aflam_w=360&aflam_h=250&aflam_k=18311111", 
         mbc1Url: "https://online.aflam4you.net/zremb472.php?vid=5&aflam_s=1&aflam_w=360&h=250&aflam_k=18311111", 
         invertJoystickX: true, invertJoystickY: true, autoRotateNav90: true 
@@ -236,9 +239,15 @@ export const useMediaStore = create<MediaState>()(
 
       fetchSpecificBin: async (binId) => {
         try {
-          const r = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, { headers: { 'X-Master-Key': JSONBIN_MASTER_KEY }, cache: 'no-store' });
+          const r = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest?v=${Date.now()}`, { 
+            headers: { 
+              'X-Master-Key': JSONBIN_MASTER_KEY,
+              'X-Bin-Meta': 'false'
+            }, 
+            cache: 'no-store' 
+          });
           if (!r.ok) return;
-          const data = (await r.json()).record;
+          const data = await r.json();
           if (binId === JSONBIN_CHANNELS_BIN_ID) set({ favoriteChannels: data.channels || data || [] });
           else if (binId === JSONBIN_POPULAR_RECITERS_BIN_ID) set({ favoriteReciters: (data.reciters || data || []).sort((a: any, b: any) => (b.clickschannel || 0) - (a.clickschannel || 0)) });
           else if (binId === JSONBIN_IPTV_FAVS_BIN_ID) set({ favoriteIptvChannels: data.iptv || data.channels || [] });
@@ -262,9 +271,13 @@ export const useMediaStore = create<MediaState>()(
       },
 
       fetchPriorityData: async (context) => {
-        await Promise.allSettled([get().fetchSpecificBin(JSONBIN_CHANNELS_BIN_ID), get().fetchSpecificBin(JSONBIN_POPULAR_RECITERS_BIN_ID)]);
-        const rest = [JSONBIN_IPTV_FAVS_BIN_ID, JSONBIN_MANUSCRIPTS_BIN_ID, JSONBIN_FONTS_BIN_ID, JSONBIN_BACKGROUNDS_BIN_ID, JSONBIN_PRAYER_TIMES_BIN_ID, JSONBIN_MASTER_BIN_ID];
-        await Promise.allSettled(rest.map(id => get().fetchSpecificBin(id)));
+        await get().fetchSpecificBin(JSONBIN_MASTER_BIN_ID);
+        const others = [
+          JSONBIN_CHANNELS_BIN_ID, JSONBIN_POPULAR_RECITERS_BIN_ID, JSONBIN_IPTV_FAVS_BIN_ID, 
+          JSONBIN_MANUSCRIPTS_BIN_ID, JSONBIN_FONTS_BIN_ID, JSONBIN_BACKGROUNDS_BIN_ID, 
+          JSONBIN_PRAYER_TIMES_BIN_ID
+        ];
+        await Promise.allSettled(others.map(id => get().fetchSpecificBin(id)));
         set({ isInitialLoading: false });
       },
 
@@ -347,7 +360,7 @@ export const useMediaStore = create<MediaState>()(
       setIsPlaying: (v) => set({ isPlaying: v }), setIsMinimized: (v) => set({ isMinimized: v, isFullScreen: false }), setIsFullScreen: (v) => set({ isFullScreen: v, isMinimized: false }),
       cyclePlayerMode: () => { const s = get(); if (s.isFullScreen) set({ isFullScreen: false, isMinimized: true }); else if (s.isMinimized) set({ isMinimized: false, isFullScreen: false }); else set({ isFullScreen: true, isMinimized: false }); },
       toggleDockSide: () => set((s) => ({ dockSide: s.dockSide === 'left' ? 'right' : 'left' })),
-      toggleShowIslands: () => set((s) => ({ showIslands: !s.showIslands })), toggleReorderMode: () => set((s) => ({ isReorderMode: !s.isReorderMode, pickedUpId: null })),
+      toggleShowIslands: () => set({ showIslands: !get().showIslands }), toggleReorderMode: () => set((s) => ({ isReorderMode: !s.isReorderMode, pickedUpId: null })),
       setWallPlate: (t, d) => set({ wallPlateType: t, wallPlateData: d }), resetMediaView: () => set({ selectedChannel: null, channelVideos: [] }),
       setAiSuggestions: (s) => set({ aiSuggestions: s }),
       addManuscript: (m) => set((s) => { const n = [...s.customManuscripts, m]; setTimeout(() => get().saveManuscriptsReorder(), 100); return { customManuscripts: n }; }),

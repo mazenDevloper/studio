@@ -8,7 +8,7 @@ import {
    Loader2, RefreshCw, Mic, X, Type, Zap, Sparkles, Upload, Clock, Youtube, Tv, Star, Magnet,
   ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Maximize, Minimize, ImageIcon, Download, Search, Move,
   Maximize2, CloudDownload, FileImage, Save, BookOpen, Gamepad2, Palette, Library, UserCheck, Send, Check, Bookmark, 
-  Play, SkipBack, SkipForward, VolumeX, Gamepad, Trophy, EyeOff, Calendar, Eye, Layers
+  Play, SkipBack, SkipForward, VolumeX, Gamepad, Trophy, EyeOff, Calendar, Eye
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,7 +21,7 @@ import { searchYouTubeChannels, fetchYouTubePlaylistVideos } from "@/lib/youtube
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
    JSONBIN_CHANNELS_BIN_ID, JSONBIN_POPULAR_RECITERS_BIN_ID, JSONBIN_IPTV_FAVS_BIN_ID, 
    JSONBIN_MANUSCRIPTS_BIN_ID, JSONBIN_MASTER_BIN_ID, JSONBIN_FONTS_BIN_ID, JSONBIN_BACKGROUNDS_BIN_ID,
@@ -48,7 +48,7 @@ const ManualTimeCounter = ({
   return (
     <div className="space-y-3">
       <Label className="mr-4 font-black opacity-40">{label}</Label>
-      <div className="flex items-center gap-2 bg-white/5 p-2 rounded-2xl border border-white/10 shadow-glow h-16">
+      <div className="flex items-center gap-2 bg-white/5 p-2 rounded-2xl border border-white/10 shadow-glow">
         <div className="flex flex-col items-center gap-1">
            <button onClick={() => onAdjust(field, 'h', 1)} className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center focusable"><Plus className="w-4 h-4" /></button>
            <span className="text-xl font-black w-10 text-center">{h12}</span>
@@ -60,7 +60,7 @@ const ManualTimeCounter = ({
            <span className="text-xl font-black w-10 text-center">{m.toString().padStart(2, '0')}</span>
            <button onClick={() => onAdjust(field, 'm', -5)} className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center focusable"><Minus className="w-4 h-4" /></button>
         </div>
-        <button onClick={() => onAdjust(field, 'p', 0)} className="h-full px-4 bg-primary/20 text-primary border border-primary/20 rounded-xl font-black text-sm focusable ml-2">
+        <button onClick={() => onAdjust(field, 'p', 0)} className="h-16 px-4 bg-primary/20 text-primary border border-primary/20 rounded-xl font-black text-sm focusable ml-2">
           {isPm ? 'مساءً' : 'صباحاً'}
         </button>
       </div>
@@ -72,69 +72,68 @@ const TeamSelector = ({
   side, 
   search, 
   setSearch, 
+  teamLogos, 
   remForm, 
   onSelect,
-  onAddToCloud,
-  allTeams
+  onAddToCloud
 }: { 
   side: 'home' | 'away', 
   search: string, 
   setSearch: (v: string) => void, 
+  teamLogos: any[], 
   remForm: any,
   onSelect: (logo: string, name: string) => void,
-  onAddToCloud: (name: string, logo: string) => void,
-  allTeams: any[]
+  onAddToCloud: (name: string, logo: string) => void
 }) => {
   const logoField = side === 'home' ? 'homeLogo' : 'awayLogo';
   const nameField = side === 'home' ? 'homeName' : 'awayName';
-
-  const filteredTeams = useMemo(() => {
-    if (!search || search.length < 1) return [];
-    return allTeams.filter(t => t.name.toLowerCase().includes(search.toLowerCase())).slice(0, 15);
-  }, [allTeams, search]);
+  const filteredTeams = teamLogos.filter(t => t.name.toLowerCase().includes(search.toLowerCase())).slice(0, 12);
 
   return (
     <div className="space-y-4">
       <Label className="mr-4 font-black opacity-40">{side === 'home' ? 'الفريق الأول (صاحب الأرض)' : 'الفريق الثاني (الضيف)'}</Label>
-      <Input 
-        value={search} 
-        onChange={(e) => { setSearch(e.target.value); onSelect(remForm[logoField] || "", e.target.value); }} 
-        className="h-16 bg-white/5 border-white/10 rounded-2xl font-black px-6 focusable" 
-        placeholder="ابحث عن الفريق..." 
-      />
-      
-      {filteredTeams.length > 0 && (
-        <div className="bg-black/60 p-4 rounded-3xl border border-white/10 grid grid-cols-5 gap-3 max-h-48 overflow-y-auto no-scrollbar animate-in slide-in-from-top-2 duration-300">
-          {filteredTeams.map((t, i) => (
-            <button 
-              key={i} 
-              onClick={() => onSelect(t.logo, t.name)}
-              className="group flex flex-col items-center gap-2 p-2 rounded-xl hover:bg-primary/20 transition-all border border-transparent hover:border-primary/40 focusable"
-            >
-              <div className="w-10 h-10 relative">
-                <img src={t.logo} className="w-full h-full object-contain drop-shadow-md" alt="" />
+      <div className="relative">
+         <Input 
+           value={search} 
+           onChange={(e) => setSearch(e.target.value)} 
+           className="h-16 bg-white/5 border-white/10 rounded-2xl font-black px-6 focusable" 
+           placeholder="ابحث عن الفريق أو اكتب الاسم يدوياً..." 
+         />
+         {search && filteredTeams.length > 0 && (
+           <div className="absolute top-full left-0 right-0 z-[100] mt-2 bg-zinc-950 border border-white/10 rounded-3xl overflow-hidden shadow-[0_0_100px_rgba(0,0,0,1)] animate-in fade-in slide-in-from-top-2 p-4">
+              <h4 className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] mb-4 px-2">نتائج البحث السيادية</h4>
+              <div className="grid grid-cols-3 gap-3">
+                {filteredTeams.map((team, idx) => (
+                  <button 
+                    key={idx} 
+                    onClick={() => onSelect(team.logo, team.name)}
+                    className="flex flex-col items-center gap-2 p-3 rounded-2xl hover:bg-white/10 transition-all border border-transparent hover:border-primary/20 group focusable"
+                  >
+                    <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center border border-white/10 p-2">
+                       <img src={team.logo} className="w-full h-full object-contain group-hover:scale-110 transition-transform" alt="" />
+                    </div>
+                    <span className="font-black text-[10px] text-white/60 truncate w-full text-center">{team.name}</span>
+                  </button>
+                ))}
               </div>
-              <span className="text-[8px] font-black text-white/60 truncate w-full text-center">{t.name}</span>
-            </button>
-          ))}
-        </div>
-      )}
-
+           </div>
+         )}
+      </div>
       <div className="flex items-center gap-4 bg-black/40 p-4 rounded-2xl border border-white/5">
          <div className="w-16 h-16 rounded-xl bg-white/5 flex items-center justify-center border border-white/10 overflow-hidden">
             {remForm[logoField] ? <img src={remForm[logoField]} className="w-12 h-12 object-contain" alt="" /> : <Trophy className="w-8 h-8 text-white/10" />}
          </div>
          <Input 
            value={remForm[logoField] || ""} 
-           onChange={(e) => onSelect(e.target.value, search)}
+           onChange={(e) => onSelect(e.target.value, remForm[nameField] || search)}
            className="h-12 bg-white/5 border-white/10 rounded-xl text-xs font-bold flex-1" 
-           placeholder="رابط الشعار (URL)..." 
+           placeholder="رابط الشعار يدوياً (اختياري)..." 
          />
          <Button 
-           onClick={() => onAddToCloud(search, remForm[logoField] || "")}
+           onClick={() => onAddToCloud(remForm[nameField] || search, remForm[logoField] || "")}
            variant="outline"
            className="h-12 w-12 rounded-xl bg-emerald-600/20 text-emerald-400 border-emerald-500/30 focusable"
-           title="حفظ الفريق للسحابة"
+           title="إضافة للفريق للسحابة"
          >
            <Plus className="w-6 h-6" />
          </Button>
@@ -143,9 +142,6 @@ const TeamSelector = ({
   );
 };
 
-/**
- * SettingsView v1900.0 - Sovereign Management Hub
- */
 export function SettingsView() {
   const { 
      addReminder, removeReminder, reminders, updateReminder, skipMatch, skippedMatchIds,
@@ -167,9 +163,9 @@ export function SettingsView() {
   
   const [isSyncing, setIsSyncing] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [cloudTeams, setCloudTeams] = useState<any[]>([]);
   
   // Team Search States
+  const [teamLogos, setTeamLogos] = useState<{name: string, logo: string}[]>([]);
   const [homeSearch, setHomeSearch] = useState("");
   const [awaySearch, setAwaySearch] = useState("");
 
@@ -219,19 +215,6 @@ export function SettingsView() {
   const [editingZikrId, setEditingZikrId] = useState<string | null>(null);
   const [zikrInput, setZikrInput] = useState("");
 
-  useEffect(() => {
-    const loadCloudTeams = async () => {
-      try {
-        const r = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_TEAM_LOGOS_BIN_ID}/latest`, {
-          headers: { 'X-Master-Key': JSONBIN_MASTER_KEY }
-        });
-        const data = await r.json();
-        setCloudTeams(data.record.teams || []);
-      } catch (e) {}
-    };
-    loadCloudTeams();
-  }, []);
-
   const sortedMatchReminders = useMemo(() => {
     return reminders
       .filter(r => r.iconType === 'match')
@@ -250,6 +233,19 @@ export function SettingsView() {
       return date.toLocaleDateString('ar-EG', { weekday: 'long' });
     } catch (e) { return ""; }
   };
+
+  useEffect(() => {
+    const fetchLogos = async () => {
+      try {
+        const r = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_TEAM_LOGOS_BIN_ID}/latest`, { headers: { 'X-Master-Key': JSONBIN_MASTER_KEY } });
+        if (r.ok) {
+           const data = (await r.json()).record;
+           setTeamLogos(Array.isArray(data) ? data : data.teams || []);
+        }
+      } catch(e) {}
+    };
+    fetchLogos();
+  }, []);
 
   const handleManualRefresh = useCallback(async () => {
     setIsRefreshing(true);
@@ -307,12 +303,16 @@ export function SettingsView() {
       const current = (await r.json()).record;
       const teams = Array.isArray(current) ? current : (current.teams || []);
       const exists = teams.some((t: any) => t.name === name);
-      if (exists) { toast({ title: "الفريق موجود مسبقاً" }); return; }
+      if (exists) {
+        toast({ title: "الفريق موجود مسبقاً", description: "هذا الفريق مسجل بالفعل في السحابة." });
+        return;
+      }
       const updated = { teams: [...teams, { id: Date.now(), name, logo }] };
       await updateBin(JSONBIN_TEAM_LOGOS_BIN_ID, updated);
-      toast({ title: "تم الإضافة بنجاح" });
+      setTeamLogos(updated.teams);
+      toast({ title: "تم الإضافة بنجاح", description: `تم حفظ ${name} في السحابة السيادية.` });
     } catch (e) {
-      toast({ variant: "destructive", title: "خطأ سحابي" });
+      toast({ variant: "destructive", title: "خطأ سحابي", description: "فشل الاتصال بمركز البيانات." });
     }
   };
 
@@ -346,7 +346,7 @@ export function SettingsView() {
     if (!input) return;
     const listMatch = input.match(/[?&]list=([^&]+)/);
     if (listMatch) {
-      toast({ title: "جاري الاستيراد" });
+      toast({ title: "جاري الاستيراد", description: "جاري سحب المجلد من يوتيوب..." });
       const data = await fetchYouTubePlaylistVideos(listMatch[1]);
       if (data.videos.length > 0) {
         addPlaylist(data.title, data.videos);
@@ -380,7 +380,7 @@ export function SettingsView() {
 
   const handleAddReciterWithClicks = (r: YouTubeChannel) => {
     addReciter({ ...r, clickschannel: parseInt(reciterClickInput) || 0 });
-    toast({ title: "تم إضافة القارئ" });
+    toast({ title: "تم إضافة القارئ", description: `بإجمالي ضغطات: ${reciterClickInput}` });
   };
 
   const handleSaveManuscript = async () => {
@@ -390,7 +390,7 @@ export function SettingsView() {
     if (editingManuscriptId) updateManuscript(editingManuscriptId, item);
     else addManuscript(item);
     setEditingManuscriptId(null); setManuscriptInput(""); setCurrentWords([]); setManuscriptMode('write'); setSelectedWordId(null); setIsFullscreenEditor(false);
-    toast({ title: "تم الحفظ" });
+    toast({ title: "تم حفظ المخطوطة السيادية" });
   };
 
   const generateManuscriptPng = (words: ManuscriptWord[], fontFamily: string): string => {
@@ -420,7 +420,11 @@ export function SettingsView() {
   }, [draggingWord]);
 
   const handlePointerDown = (wordId: string) => { if(manuscriptMode === 'arrange') { setDraggingWord({ wordId }); setSelectedWordId(wordId); } };
-  const adjustWordScale = (delta: number) => { if (!selectedWordId) return; setCurrentWords(prev => prev.map(w => w.id === selectedWordId ? { ...w, scale: Math.max(0.1, w.scale + delta) } : w)); };
+
+  const adjustWordScale = (delta: number) => {
+    if (!selectedWordId) return;
+    setCurrentWords(prev => prev.map(w => w.id === selectedWordId ? { ...w, scale: Math.max(0.1, w.scale + delta) } : w));
+  };
 
   const splitToWords = () => {
     const words = manuscriptInput.split(/\s+/).filter(Boolean);
@@ -431,9 +435,14 @@ export function SettingsView() {
   const startRecording = (ctx: MappingContext, act: AppAction) => { setIsRecordingKey(true); setRecordingAction({ ctx, act }); toast({ title: "وضع التسجيل نشط" }); };
 
   const handleFontUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]; if (!file) return;
+    const file = e.target.files?.[0];
+    if (!file) return;
     const reader = new FileReader();
-    reader.onload = (res) => { addCustomFont(file.name.split('.')[0], res.target?.result as string); toast({ title: "تم الرفع" }); };
+    reader.onload = (res) => {
+      const url = res.target?.result as string;
+      addCustomFont(file.name.split('.')[0], url);
+      toast({ title: "تم رفع الخط سحابياً" });
+    };
     reader.readAsDataURL(file);
   };
 
@@ -446,6 +455,12 @@ export function SettingsView() {
     { label: "الرجوع", key: "Back", icon: ChevronLeft, color: "bg-zinc-800" },
     { label: "التالي", key: "NextTrack", icon: SkipForward, color: "bg-zinc-700" },
     { label: "السابق", key: "PrevTrack", icon: SkipBack, color: "bg-zinc-700" },
+    { label: "تشغيل/إيقاف", key: "MediaPlayPause", icon: Play, color: "bg-zinc-700" },
+    { label: "كتم الصوت", key: "VolumeMute", icon: VolumeX, color: "bg-zinc-700" },
+    { label: "أعلى (X)", key: "BUTTON_X", icon: Gamepad, color: "bg-indigo-600" },
+    { label: "يمين (Y)", key: "BUTTON_Y", icon: Gamepad, color: "bg-indigo-600" },
+    { label: "أسفل (B)", key: "BUTTON_B", icon: Gamepad, color: "bg-indigo-600" },
+    { label: "يسار (A)", key: "BUTTON_A", icon: Gamepad, color: "bg-indigo-600" },
     ...Array.from({ length: 10 }, (_, i) => ({ label: `رقم ${i}`, key: i.toString(), icon: null, color: "bg-zinc-600" }))
   ];
 
@@ -454,7 +469,7 @@ export function SettingsView() {
       <header className="flex items-center justify-between">
         <div className="flex flex-col gap-2">
           <h1 className="text-6xl font-black text-white tracking-tighter flex items-center gap-6">الإعدادات السيادية <Settings className="w-12 h-12 text-primary" /></h1>
-          <p className="text-white/40 font-bold uppercase tracking-[0.6em] text-sm">Unified System Hub v1560.0</p>
+          <p className="text-white/40 font-bold uppercase tracking-[0.6em] text-sm">Unified System Hub v3100.0</p>
         </div>
         <div className="flex gap-4">
           <Button onClick={handleManualRefresh} disabled={isRefreshing} className="bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-full h-14 px-8 font-black focusable"><RefreshCw className={cn("w-5 h-5 ml-2", isRefreshing && "animate-spin")} /> تحديث محلي</Button>
@@ -490,7 +505,7 @@ export function SettingsView() {
             </div>
             
             <div className="bg-black/40 p-8 rounded-[2rem] border border-white/5 mb-8 flex gap-4 shadow-2xl">
-               <Input placeholder="أدخل نص النص..." value={manuscriptInput} onChange={(e) => setManuscriptInput(e.target.value)} className="h-16 bg-white/5 border-none rounded-xl text-2xl font-black text-white px-8 focusable" />
+               <Input placeholder="أدخل نص النص ثم اضغط تقطيع للتحكم بالكلمات..." value={manuscriptInput} onChange={(e) => setManuscriptInput(e.target.value)} className="h-16 bg-white/5 border-none rounded-xl text-2xl font-black text-white px-8 focusable" />
                <Button onClick={splitToWords} className="h-16 px-8 bg-blue-600 text-white rounded-xl font-black focusable">تقطيع الكلمات</Button>
                <Select value={selectedFont} onValueChange={setSelectedFont}>
                   <SelectTrigger className="w-64 h-16 bg-white/5 border-white/10 rounded-xl text-lg font-black focusable"><SelectValue placeholder="اختر الخط" /></SelectTrigger>
@@ -503,19 +518,52 @@ export function SettingsView() {
                </Select>
             </div>
 
+            {selectedWordId && (
+              <div className="flex items-center gap-4 bg-black/60 p-4 rounded-full border border-white/10 mb-6 max-w-fit mx-auto animate-in zoom-in-95 shadow-glow">
+                <span className="text-[10px] font-black text-white/40 uppercase mr-4">تحجيم الكلمة:</span>
+                <Button onClick={() => adjustWordScale(0.1)} size="icon" className="w-10 h-10 rounded-full bg-white/10 focusable"><Plus className="w-4 h-4" /></Button>
+                <Button onClick={() => adjustWordScale(-0.1)} size="icon" className="w-10 h-10 rounded-full bg-white/10 focusable"><Minus className="w-4 h-4" /></Button>
+                <Button onClick={() => setCurrentWords(prev => prev.map(w => w.id === selectedWordId ? { ...w, x: 50 } : w))} size="sm" className="bg-white/5 rounded-full px-4 text-[10px] font-black focusable">توسيط أفقي</Button>
+                <Button onClick={() => setSelectedWordId(null)} size="icon" className="w-8 h-8 rounded-full bg-red-600/20 text-red-500 ml-4"><X className="w-4 h-4" /></Button>
+              </div>
+            )}
+
             <div ref={canvasRef} onPointerMove={handlePointerMove} onPointerUp={() => setDraggingWord(null)} className={cn( "p-0 bg-zinc-900/60 rounded-[4rem] border-4 border-primary/20 relative overflow-hidden flex items-center justify-center shadow-[0_0_100px_rgba(0,0,0,0.8)] transition-none [container-type:inline-size]", isFullscreenEditor ? "h-[65vh] w-full" : "aspect-[4/3] w-full max-w-4xl mx-auto mb-10" )}>
               {currentWords.map((word) => (
-                <div key={word.id} onPointerDown={() => handlePointerDown(word.id)} style={{ position: 'absolute', left: `${word.x}%`, top: `${word.y}%`, transform: `translate(-50%, -50%) scale(${word.scale})`, zIndex: draggingWord?.wordId === word.id ? 100 : 10, cursor: 'move', fontFamily: selectedFont, color: mapSettings.manuscriptColor, fontSize: '8.5cqw', textShadow: '0 0 30px rgba(255,255,255,0.4)', transition: 'none' }} className={cn( "select-none whitespace-nowrap leading-none p-4", selectedWordId === word.id && "ring-4 ring-primary rounded-[2rem] bg-primary/10 shadow-glow" )}>{word.text}</div>
+                <div 
+                  key={word.id} 
+                  onPointerDown={() => handlePointerDown(word.id)} 
+                  style={{ 
+                    position: 'absolute', left: `${word.x}%`, top: `${word.y}%`, 
+                    transform: `translate(-50%, -50%) scale(${word.scale})`, 
+                    zIndex: draggingWord?.wordId === word.id ? 100 : 10, 
+                    cursor: 'move', fontFamily: selectedFont, color: mapSettings.manuscriptColor, 
+                    fontSize: '8.5cqw', textShadow: '0 0 30px rgba(255,255,255,0.4)', transition: 'none' 
+                  }} 
+                  className={cn( "select-none whitespace-nowrap leading-none p-4", selectedWordId === word.id && "ring-4 ring-primary rounded-[2rem] bg-primary/10 shadow-glow" )}
+                >
+                  {word.text}
+                </div>
               ))}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {customManuscripts.map(m => (
-                <div key={m.id} className="bg-black/60 p-8 rounded-[3rem] border border-white/10 flex flex-col items-center shadow-2xl transition-all hover:border-primary/20">
+                <div key={m.id} className="bg-black/60 p-8 rounded-[3rem] border border-white/10 flex flex-col items-center shadow-2xl transition-all hover:border-primary/20 group">
                    <div className="w-full aspect-video bg-zinc-950 rounded-2xl mb-6 flex items-center justify-center overflow-hidden border border-white/5"><img src={m.pngDataUrl} className="max-w-[80%] max-h-[80%] object-contain drop-shadow-[0_0_20px_rgba(255,255,255,0.2)]" alt="" /></div>
-                   <div className="flex gap-2 w-full"><Button onClick={() => { setEditingManuscriptId(m.id); setManuscriptInput(m.content); setCurrentWords(m.words || []); setSelectedFont(m.fontFamily || "Aref Ruqaa"); }} className="flex-1 bg-emerald-600/10 text-emerald-400 border border-emerald-500/20 rounded-2xl h-12 focusable">تحرير</Button><Button onClick={() => removeManuscript(m.id)} className="w-12 h-12 bg-red-600/10 text-red-500 border border-red-500/20 rounded-2xl h-12 focusable"><Trash2 className="w-5 h-5" /></Button></div>
+                   <div className="flex gap-2 w-full"><Button onClick={() => { setEditingManuscriptId(m.id); setManuscriptInput(m.content); setCurrentWords(m.words || []); setSelectedFont(m.fontFamily || "Aref Ruqaa"); }} className="flex-1 h-12 bg-emerald-600/10 text-emerald-400 border border-emerald-500/20 rounded-2xl h-12 focusable">تحرير</Button><Button onClick={() => removeManuscript(m.id)} className="w-12 h-12 bg-red-600/10 text-red-500 border border-red-500/20 rounded-2xl h-12 focusable"><Trash2 className="w-5 h-5" /></Button></div>
                 </div>
               ))}
+              <div onClick={() => document.getElementById('manu-image-upload')?.click()} className="bg-black/40 border-2 border-dashed border-white/10 rounded-[3rem] p-8 flex flex-col items-center justify-center gap-4 text-white/20 hover:border-primary hover:text-primary transition-all cursor-pointer focusable shadow-2xl" tabIndex={0}>
+                 <ImageIcon className="w-12 h-12" />
+                 <span className="font-black text-center">رفع صورة مخطوطة جاهزة</span>
+                 <input id="manu-image-upload" type="file" className="hidden" accept="image/*" onChange={(e) => {
+                   const file = e.target.files?.[0]; if (!file) return;
+                   const reader = new FileReader();
+                   reader.onload = (res) => addManuscript({ id: Date.now().toString(), type: 'image', content: "صورة مرفوعة", pngDataUrl: res.target?.result as string, words: [], fontFamily: "Aref Ruqaa", x: 50, y: 50, scale: 1.0 });
+                   reader.readAsDataURL(file);
+                 }} />
+              </div>
             </div>
           </Card>
         </TabsContent>
@@ -548,71 +596,196 @@ export function SettingsView() {
 
                  {remForm.iconType === 'match' ? (
                    <div className="grid grid-cols-1 md:grid-cols-2 gap-10 animate-in zoom-in-95">
-                      <TeamSelector side="home" search={homeSearch} setSearch={setHomeSearch} remForm={remForm} onSelect={(logo, name) => handleTeamSelect('home', logo, name)} onAddToCloud={handleAddTeamToCloud} allTeams={cloudTeams} />
-                      <TeamSelector side="away" search={awaySearch} setSearch={setAwaySearch} remForm={remForm} onSelect={(logo, name) => handleTeamSelect('away', logo, name)} onAddToCloud={handleAddTeamToCloud} allTeams={cloudTeams} />
+                      <TeamSelector 
+                        side="home" 
+                        search={homeSearch} 
+                        setSearch={setHomeSearch} 
+                        teamLogos={teamLogos} 
+                        remForm={remForm} 
+                        onSelect={(logo, name) => handleTeamSelect('home', logo, name)}
+                        onAddToCloud={handleAddTeamToCloud}
+                      />
+                      <TeamSelector 
+                        side="away" 
+                        search={awaySearch} 
+                        setSearch={setAwaySearch} 
+                        teamLogos={teamLogos} 
+                        remForm={remForm} 
+                        onSelect={(logo, name) => handleTeamSelect('away', logo, name)}
+                        onAddToCloud={handleAddTeamToCloud}
+                      />
                       <div className="space-y-3">
                          <Label className="mr-4 font-black opacity-40">تاريخ المباراة</Label>
                          <div className="flex items-center gap-4 bg-white/5 p-4 rounded-2xl border border-white/10 h-16 shadow-glow">
                             <Calendar className="w-6 h-6 text-primary" />
-                            <Input type="date" value={remForm.matchDate} onChange={(e) => setRemForm(p => ({ ...p, matchDate: e.target.value }))} className="bg-transparent border-none text-xl font-black text-white p-0 focus-visible:ring-0" />
+                            <Input 
+                              type="date" 
+                              value={remForm.matchDate} 
+                              onChange={(e) => setRemForm(p => ({ ...p, matchDate: e.target.value }))}
+                              className="bg-transparent border-none text-xl font-black text-white p-0 focus-visible:ring-0" 
+                            />
                          </div>
+                         <p className="text-[10px] font-bold text-white/20 mr-4">ستظهر المباراة فقط في التاريخ المحدد</p>
                       </div>
-                      <ManualTimeCounter field="manualStartTime" label="توقيت المباراة" time={remForm.manualStartTime || "05:00"} onAdjust={adjustManualTime} />
+                      <ManualTimeCounter 
+                        field="manualStartTime" 
+                        label="توقيت المباراة" 
+                        time={remForm.manualStartTime || "05:00"} 
+                        onAdjust={adjustManualTime} 
+                      />
                    </div>
                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                       <div className="space-y-3">
-                          <Label className="mr-4 font-black opacity-40">البداية</Label>
-                          <Select value={remForm.startType} onValueChange={(v) => setRemForm({...remForm, startType: v as any})}>
-                             <SelectTrigger className="h-16 bg-white/5 border-white/10 rounded-2xl text-lg font-black focusable"><SelectValue /></SelectTrigger>
-                             <SelectContent className="bg-zinc-950">
-                                <SelectItem value="azan">مرتبط بالأذان</SelectItem>
-                                <SelectItem value="iqamah">مرتبط بالإقامة</SelectItem>
-                                <SelectItem value="manual">توقيت يدوي</SelectItem>
-                             </SelectContent>
-                          </Select>
-                       </div>
-                       {remForm.startType !== 'manual' ? (
+                    <>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                         <div className="space-y-3">
+                            <Label className="mr-4 font-black opacity-40">اللون المميز</Label>
+                            <Select value={remForm.color} onValueChange={(v) => setRemForm({...remForm, color: v})}>
+                               <SelectTrigger className="h-16 bg-white/5 border-white/10 rounded-2xl text-xl font-black focusable"><SelectValue /></SelectTrigger>
+                               <SelectContent className="bg-zinc-950">
+                                  <SelectItem value="text-primary">أزرق سيادي</SelectItem>
+                                  <SelectItem value="text-emerald-400">أخضر ملكي</SelectItem>
+                                  <SelectItem value="text-yellow-500">ذهبي فاخر</SelectItem>
+                                  <SelectItem value="text-red-500">أحمر تنبيهي</SelectItem>
+                               </SelectContent>
+                            </Select>
+                         </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                           <div className="space-y-3">
-                             <Label className="mr-4 font-black opacity-40">مرجع الصلاة</Label>
-                             <Select value={remForm.startReference} onValueChange={(v) => setRemForm({...remForm, startReference: v})}>
+                             <Label className="mr-4 font-black opacity-40">البداية</Label>
+                             <Select value={remForm.startType} onValueChange={(v) => setRemForm({...remForm, startType: v as any})}>
                                 <SelectTrigger className="h-16 bg-white/5 border-white/10 rounded-2xl text-lg font-black focusable"><SelectValue /></SelectTrigger>
                                 <SelectContent className="bg-zinc-950">
-                                   {prayerSettings.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                                   <SelectItem value="azan">مرتبط بالأذان</SelectItem>
+                                   <SelectItem value="iqamah">مرتبط بالإقامة</SelectItem>
+                                   <SelectItem value="manual">توقيت يدوي</SelectItem>
                                 </SelectContent>
                              </Select>
                           </div>
-                       ) : (
-                          <ManualTimeCounter field="manualStartTime" label="وقت البداية" time={remForm.manualStartTime || "05:00"} onAdjust={adjustManualTime} />
-                       )}
-                       <div className="space-y-3">
-                          <Label className="mr-4 font-black opacity-40">الإزاحة (دقائق)</Label>
-                          <div className="flex items-center gap-2 bg-white/5 p-2 rounded-2xl border border-white/10 shadow-glow h-16">
-                             <button onClick={() => setRemForm(p => ({ ...p, startOffset: (p.startOffset || 0) + 5 }))} className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center focusable"><Plus className="w-4 h-4" /></button>
-                             <span className="text-2xl font-black w-16 text-center">{remForm.startOffset || 0}</span>
-                             <button onClick={() => setRemForm(p => ({ ...p, startOffset: Math.max(-120, (p.startOffset || 0) - 5) }))} className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center focusable"><Minus className="w-6 h-6" /></button>
-                          </div>
+                          {remForm.startType !== 'manual' ? (
+                             <>
+                               <div className="space-y-3">
+                                  <Label className="mr-4 font-black opacity-40">مرجع الصلاة</Label>
+                                  <Select value={remForm.startReference} onValueChange={(v) => setRemForm({...remForm, startReference: v})}>
+                                     <SelectTrigger className="h-16 bg-white/5 border-white/10 rounded-2xl text-lg font-black focusable"><SelectValue /></SelectTrigger>
+                                     <SelectContent className="bg-zinc-950">
+                                        {prayerSettings.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                                     </SelectContent>
+                                  </Select>
+                               </div>
+                             </>
+                          ) : (
+                             <ManualTimeCounter 
+                               field="manualStartTime" 
+                               label="وقت البداية المختار" 
+                               time={remForm.manualStartTime || "05:00"} 
+                               onAdjust={adjustManualTime} 
+                             />
+                          )}
+                          <div className="space-y-3">
+                              <Label className="mr-4 font-black opacity-40">الإزاحة (دقائق)</Label>
+                              <div className="flex items-center gap-2 bg-white/5 p-2 rounded-2xl border border-white/10 shadow-glow h-16">
+                                 <button onClick={() => setRemForm(p => ({ ...p, startOffset: (p.startOffset || 0) + 5 }))} className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center focusable"><Plus className="w-4 h-4" /></button>
+                                 <span className="text-2xl font-black w-16 text-center">{remForm.startOffset || 0}</span>
+                                 <button onClick={() => setRemForm(p => ({ ...p, startOffset: Math.max(-120, (p.startOffset || 0) - 5) }))} className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center focusable"><Minus className="w-6 h-6" /></button>
+                              </div>
+                           </div>
                        </div>
-                    </div>
+
+                       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                          <div className="space-y-3">
+                             <Label className="mr-4 font-black opacity-40">نوع النهاية</Label>
+                             <Select value={remForm.endType} onValueChange={(v) => setRemForm({...remForm, endType: v as any})}>
+                                <SelectTrigger className="h-16 bg-white/5 border-white/10 rounded-2xl text-lg font-black focusable"><SelectValue /></SelectTrigger>
+                                <SelectContent className="bg-zinc-950">
+                                   <SelectItem value="duration">مدة زمنية محددة</SelectItem>
+                                   <SelectItem value="prayer">مرتبط بصلاة أخرى</SelectItem>
+                                   <SelectItem value="manual">توقيت يدوي ثابت</SelectItem>
+                                </SelectContent>                             </Select>
+                          </div>
+                          {remForm.endType === 'duration' ? (
+                             <div className="space-y-3">
+                                <Label className="mr-4 font-black opacity-40">المدة الزمنية (بالدقائق)</Label>
+                                <div className="flex items-center gap-3 bg-white/5 p-2 rounded-2xl border border-white/10 shadow-glow">
+                                   <button onClick={() => setRemForm(p => ({ ...p, durationMinutes: (p.durationMinutes || 0) + 15 }))} className="h-16 w-16 rounded-xl bg-white/10 flex items-center justify-center focusable"><Plus className="w-8 h-8" /></button>
+                                   <span className="flex-1 text-3xl font-black text-center">{remForm.durationMinutes || 30}</span>
+                                   <button onClick={() => setRemForm(p => ({ ...p, durationMinutes: Math.max(0, (p.durationMinutes || 0) - 15) }))} className="h-16 w-16 rounded-xl bg-white/10 flex items-center justify-center focusable"><Minus className="w-8 h-8" /></button>
+                                </div>
+                             </div>
+                          ) : remForm.endType === 'manual' ? (
+                             <ManualTimeCounter 
+                               field="manualEndTime" 
+                               label="وقت الانتهاء المختار" 
+                               time={remForm.manualEndTime || "22:00"} 
+                               onAdjust={adjustManualTime} 
+                             />
+                          ) : (
+                             <div className="space-y-3">
+                                <Label className="mr-4 font-black opacity-40">مرجع الانتهاء (الصلاة)</Label>
+                                <Select value={remForm.endReference} onValueChange={(v) => setRemForm({...remForm, endReference: v})}>
+                                   <SelectTrigger className="h-16 bg-white/5 border-white/10 rounded-2xl text-lg font-black focusable"><SelectValue /></SelectTrigger>
+                                   <SelectContent className="bg-zinc-950">
+                                      {prayerSettings.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                                   </SelectContent>
+                                </Select>
+                             </div>
+                          )}
+                       </div>
+                    </>
                  )}
 
                  <Button onClick={handleAddReminder} className="w-full h-20 bg-primary text-white rounded-[1.5rem] font-black text-2xl shadow-glow focusable">
+                    {editingRemId ? <Edit2 className="w-8 h-8 ml-4" /> : <Plus className="w-8 h-8 ml-4" />}
                     {editingRemId ? "تحديث التذكير السيادي" : "حفظ التذكير السيادي الجديد"}
                  </Button>
               </div>
 
               <Tabs defaultValue="bell" className="w-full">
                  <TabsList className="bg-white/5 p-1 rounded-2xl h-14 mb-8 flex gap-2">
-                    <TabsTrigger value="bell" className="flex-1 rounded-xl font-black text-xs focusable">تنبيهات الجرس</TabsTrigger>
-                    <TabsTrigger value="play" className="flex-1 rounded-xl font-black text-xs focusable">تشغيل وسائط</TabsTrigger>
-                    <TabsTrigger value="match" className="flex-1 rounded-xl font-black text-xs focusable">مركز المباريات</TabsTrigger>
+                    <TabsTrigger value="bell" className="flex-1 rounded-xl font-black text-xs transition-none focusable">تنبيهات الجرس</TabsTrigger>
+                    <TabsTrigger value="play" className="flex-1 rounded-xl font-black text-xs transition-none focusable">تشغيل وسائط</TabsTrigger>
+                    <TabsTrigger value="match" className="flex-1 rounded-xl font-black text-xs transition-none focusable">مركز المباريات</TabsTrigger>
                  </TabsList>
+                 
+                 <TabsContent value="bell" className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {reminders.filter(r => r.iconType === 'bell').map(rem => (
+                       <div key={rem.id} className={cn("bg-black/60 p-8 rounded-[2.5rem] border flex items-center justify-between shadow-xl transition-all", editingRemId === rem.id ? "border-primary shadow-glow" : "border-white/10")}>
+                          <div className="flex items-center gap-6">
+                            <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center text-primary"><Bell className="w-7 h-7" /></div>
+                            <div className="flex flex-col"><span className="text-2xl font-black text-white">{rem.label}</span><span className="text-[10px] font-bold text-white/20 uppercase">تنشيط: {rem.startType}</span></div>
+                          </div>
+                          <div className="flex gap-2">
+                             <Button onClick={() => { setEditingRemId(rem.id); setRemForm(rem); }} variant="ghost" className="w-12 h-12 rounded-full text-emerald-400 hover:bg-emerald-400/10 focusable"><Edit2 className="w-6 h-6" /></Button>
+                             <Button onClick={() => removeReminder(rem.id)} variant="ghost" className="w-12 h-12 rounded-full text-red-500 hover:bg-red-500/10 focusable"><Trash2 className="w-6 h-6" /></Button>
+                          </div>
+                       </div>
+                    ))}
+                 </TabsContent>
+
+                 <TabsContent value="play" className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {reminders.filter(r => r.iconType === 'play').map(rem => (
+                       <div key={rem.id} className={cn("bg-black/60 p-8 rounded-[2.5rem] border flex items-center justify-between shadow-xl transition-all", editingRemId === rem.id ? "border-primary shadow-glow" : "border-white/10")}>
+                          <div className="flex items-center gap-6">
+                            <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center text-emerald-400"><Play className="w-7 h-7 fill-current" /></div>
+                            <div className="flex flex-col"><span className="text-2xl font-black text-white">{rem.label}</span><span className="text-[10px] font-bold text-white/20 uppercase">تنشيط: {rem.startType}</span></div>
+                          </div>
+                          <div className="flex gap-2">
+                             <Button onClick={() => { setEditingRemId(rem.id); setRemForm(rem); }} variant="ghost" className="w-12 h-12 rounded-full text-emerald-400 hover:bg-emerald-400/10 focusable"><Edit2 className="w-6 h-6" /></Button>
+                             <Button onClick={() => removeReminder(rem.id)} variant="ghost" className="w-12 h-12 rounded-full text-red-500 hover:bg-red-500/10 focusable"><Trash2 className="w-6 h-6" /></Button>
+                          </div>
+                       </div>
+                    ))}
+                 </TabsContent>
+
                  <TabsContent value="match" className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     {sortedMatchReminders.map(rem => (
-                       <div key={rem.id} className={cn("bg-black/60 p-6 rounded-[2.5rem] border flex flex-col gap-4 shadow-xl transition-all", editingRemId === rem.id ? "border-primary shadow-glow" : "border-white/10")}>
+                       <div key={rem.id} className={cn("bg-black/60 p-6 rounded-[2.5rem] border flex flex-col gap-4 shadow-xl transition-all relative overflow-hidden", editingRemId === rem.id ? "border-primary shadow-glow" : "border-white/10")}>
                           <div className="flex items-center justify-between gap-4 py-2">
                              <div className="flex flex-col items-center flex-1 gap-2">
-                                <div className="w-16 h-16 rounded-2xl bg-white/5 p-2 flex items-center justify-center border border-white/5">{rem.homeLogo ? <img src={rem.homeLogo} className="w-full h-full object-contain" alt="" /> : <Trophy className="w-8 h-8 text-white/10" />}</div>
+                                <div className="w-16 h-16 rounded-2xl bg-white/5 p-2 flex items-center justify-center border border-white/5 shadow-inner">
+                                   {rem.homeLogo ? <img src={rem.homeLogo} className="w-full h-full object-contain" alt="" /> : <Trophy className="w-8 h-8 text-white/10" />}
+                                </div>
                                 <span className="text-[10px] font-black text-white/80 uppercase truncate w-full text-center">{rem.homeName || "HOME"}</span>
                              </div>
                              <div className="flex flex-col items-center justify-center min-w-[100px] gap-1">
@@ -620,15 +793,24 @@ export function SettingsView() {
                                 <div className="px-3 py-1 rounded-full bg-primary/20 border border-primary/40 text-[9px] font-black text-primary uppercase">{rem.label || "مباراة"}</div>
                              </div>
                              <div className="flex flex-col items-center flex-1 gap-2">
-                                <div className="w-16 h-16 rounded-2xl bg-white/5 p-2 flex items-center justify-center border border-white/5">{rem.awayLogo ? <img src={rem.awayLogo} className="w-full h-full object-contain" alt="" /> : <Trophy className="w-8 h-8 text-white/10" />}</div>
+                                <div className="w-16 h-16 rounded-2xl bg-white/5 p-2 flex items-center justify-center border border-white/5 shadow-inner">
+                                   {rem.awayLogo ? <img src={rem.awayLogo} className="w-full h-full object-contain" alt="" /> : <Trophy className="w-8 h-8 text-white/10" />}
+                                </div>
                                 <span className="text-[10px] font-black text-white/80 uppercase truncate w-full text-center">{rem.awayName || "AWAY"}</span>
                              </div>
                           </div>
+                          
                           <div className="flex items-center justify-between pt-4 border-t border-white/5">
-                             <div className="flex items-center gap-2"><Calendar className="w-4 h-4 text-emerald-400" /><span className="text-sm font-black text-white">{rem.matchDate}</span></div>
+                             <div className="flex flex-col items-start gap-1">
+                                <div className="flex items-center gap-2">
+                                   <Calendar className="w-4 h-4 text-emerald-400" />
+                                   <span className="text-sm font-black text-white tracking-tighter">{rem.matchDate}</span>
+                                </div>
+                                <span className="text-[10px] font-bold text-white/40 uppercase mr-6">{getDayName(rem.matchDate)}</span>
+                             </div>
                              <div className="flex gap-2">
                                 <Button onClick={() => skipMatch(rem.id)} variant="ghost" size="icon" className={cn("w-10 h-10 rounded-full", skippedMatchIds.includes(rem.id) ? "text-red-500" : "text-emerald-400")}><Eye className="w-5 h-5" /></Button>
-                                <Button onClick={() => { setEditingRemId(rem.id); setRemForm(rem); }} variant="ghost" size="icon" className="w-10 h-10 rounded-full text-emerald-400"><Edit2 className="w-5 h-5" /></Button>
+                                <Button onClick={() => { setEditingRemId(rem.id); setRemForm(rem); if(rem.homeName) setHomeSearch(rem.homeName); if(rem.awayName) setAwaySearch(rem.awayName); }} variant="ghost" size="icon" className="w-10 h-10 rounded-full text-emerald-400"><Edit2 className="w-5 h-5" /></Button>
                                 <Button onClick={() => removeReminder(rem.id)} variant="ghost" size="icon" className="w-10 h-10 rounded-full text-red-500"><Trash2 className="w-5 h-5" /></Button>
                              </div>
                           </div>
@@ -639,76 +821,332 @@ export function SettingsView() {
            </Card>
         </TabsContent>
 
-        <TabsContent value="iptv" className="space-y-8 animate-in fade-in duration-0">
+        <TabsContent value="azkar" className="space-y-8 animate-in fade-in duration-0">
            <Card className="bg-white/5 border-white/10 p-10 rounded-[3.5rem] shadow-2xl relative">
               <div className="flex justify-between items-center mb-12">
-                 <CardTitle className="text-4xl font-black text-white flex items-center gap-6"><Tv className="w-12 h-12 text-emerald-500" /> إدارة قنوات IPTV السيادية</CardTitle>
-                 <Button onClick={() => setIsAddingIptv(true)} className="h-14 px-8 bg-emerald-600 text-white rounded-full font-black shadow-glow focusable"><Plus className="w-5 h-5 ml-2" /> إضافة قناة جديدة</Button>
+                 <CardTitle className="text-4xl font-black text-white flex items-center gap-6"><Bookmark className="w-12 h-12 text-emerald-400" /> إدارة الأذكار السيادية</CardTitle>
+                 <Button onClick={() => handleDirectFetch(JSONBIN_MASTER_BIN_ID, "الأذكار")} variant="outline" className="w-14 h-14 rounded-full bg-white/5 border-white/10 flex items-center justify-center text-white/40 focusable"><CloudDownload className="w-6 h-6" /></Button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {favoriteIptvChannels.map((ch, idx) => (
-                  <div key={idx} className="bg-black/60 p-6 rounded-[2.5rem] border border-white/10 flex flex-col gap-4 shadow-xl hover:border-emerald-500/40 transition-all group">
-                    <div className="flex items-center gap-4">
-                      <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 overflow-hidden flex items-center justify-center shrink-0">
-                        {ch.stream_icon ? <img src={ch.stream_icon} className="w-full h-full object-cover" alt="" /> : <Tv className="w-6 h-6 text-white/20" />}
+              <div className="bg-black/40 p-10 rounded-[3rem] border border-white/5 flex gap-6 mb-12 shadow-2xl">
+                 <Input placeholder="أدخل نص الذكر السيادي الجديد..." value={zikrInput} onChange={(e) => setZikrInput(e.target.value)} className="h-16 bg-white/5 border-none rounded-xl text-2xl font-black text-white px-8 focusable flex-1" />
+                 <Button onClick={handleAddGeneralZikr} className="h-16 px-12 bg-emerald-600 text-white text-xl font-black rounded-xl shadow-glow focusable">
+                    {editingZikrId ? <Edit2 className="w-6 h-6 ml-3" /> : <Plus className="w-6 h-6 ml-3" />}
+                    {editingZikrId ? "تحديث" : "إضافة"}
+                 </Button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                 {generalAzkar.map(zikr => (
+                   <div key={zikr.id} className={cn("bg-black/60 p-8 rounded-[2.5rem] border flex flex-col justify-between shadow-xl min-h-[160px] group transition-all", editingZikrId === zikr.id ? "border-emerald-500 shadow-glow" : "border-white/10 hover:border-emerald-500/20")}>
+                      <p className="text-2xl font-black text-white leading-relaxed line-clamp-3">{zikr.label}</p>
+                      <div className="flex items-center justify-between pt-4 border-t border-white/5 mt-4">
+                         <div className="flex gap-2">
+                            <button onClick={() => { setEditingZikrId(zikr.id); setZikrInput(zikr.label); }} className="w-10 h-10 rounded-full bg-emerald-600/20 text-emerald-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity focusable"><Edit2 className="w-5 h-5" /></button>
+                            <button onClick={() => removeAzkar(zikr.id)} className="w-10 h-10 rounded-full bg-red-600/20 text-red-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity focusable"><Trash2 className="w-5 h-5" /></button>
+                         </div>
+                         <span className="text-[10px] font-black text-white/20 uppercase tracking-widest">محفوظ سحابياً</span>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="text-lg font-black text-white truncate">{ch.name}</h4>
-                        <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">تنسيق: {ch.type}</span>
-                      </div>
-                      <button onClick={() => { setEditingIptvId(ch.stream_id); setIptvEditForm(ch); }} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/40 hover:text-white transition-all focusable"><Edit2 className="w-4 h-4" /></button>
-                      <button onClick={() => toggleFavoriteIptvChannel(ch)} className="w-10 h-10 rounded-full bg-red-600/20 text-red-500 flex items-center justify-center focusable"><Trash2 className="w-4 h-4" /></button>
+                   </div>
+                 ))}
+              </div>
+           </Card>
+        </TabsContent>
+
+        <TabsContent value="reciters" className="space-y-8 animate-in fade-in duration-0">
+           <Card className="bg-white/5 border-white/10 p-10 rounded-[3.5rem] shadow-2xl relative">
+              <div className="flex justify-between items-center mb-12">
+                 <CardTitle className="text-4xl font-black text-white flex items-center gap-6"><Mic className="w-12 h-12 text-emerald-500" /> إدارة القراء</CardTitle>
+                 <Button onClick={() => handleDirectFetch(JSONBIN_POPULAR_RECITERS_BIN_ID, "القراء")} variant="outline" className="w-14 h-14 rounded-full bg-white/5 border-white/10 flex items-center justify-center text-white/40 focusable"><CloudDownload className="w-6 h-6" /></Button>
+              </div>
+
+              <div className="bg-black/40 p-10 rounded-[3rem] border border-white/5 flex flex-col gap-6 mb-12 shadow-2xl">
+                 <div className="flex gap-6">
+                    <Input placeholder="...ابحث عن قارئ لإضافته من يوتيوب" value={reciterSearch} onChange={(e) => setReciterSearch(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && performReciterSearch()} className="h-16 bg-white/5 border-white/10 rounded-2xl text-xl font-black text-white px-8 focusable flex-1" />
+                    <Input type="number" placeholder="عدد الضغطات يدوياً..." value={reciterClickInput} onChange={(e) => setReciterClickInput(e.target.value)} className="h-16 w-48 bg-white/5 border-white/10 rounded-2xl text-center font-black text-white focusable" />
+                    <Button onClick={performReciterSearch} className="h-16 px-12 bg-primary text-white text-xl font-black rounded-2xl shadow-glow focusable"><Search className="w-6 h-6 ml-3" /> ابحث</Button>
+                 </div>
+                 
+                 {reciterResults.length > 0 && (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6 animate-in slide-in-from-top-4">
+                       {reciterResults.map(res => (
+                          <div key={res.channelid} onClick={() => handleAddReciterWithClicks(res)} className="flex items-center gap-4 p-4 bg-white/5 rounded-2xl hover:bg-white/10 cursor-pointer border border-white/5 focusable transition-all" tabIndex={0}>
+                             <img src={res.image} className="w-12 h-12 rounded-full" alt="" />
+                             <span className="font-black text-sm truncate">{res.name}</span>
+                             <Plus className="w-4 h-4 mr-auto text-primary" />
+                          </div>
+                       ))}
                     </div>
+                 )}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                {favoriteReciters.map(r => (
+                  <div key={r.channelid} className="bg-black/60 p-8 rounded-[3rem] border border-white/10 flex flex-col items-center text-center group shadow-xl relative transition-all hover:border-primary/20">
+                     <div className="relative mb-6">
+                        <img src={r.image} className="w-32 h-32 rounded-full border-4 border-emerald-500/40 shadow-2xl" alt="" />
+                        <div className="absolute -bottom-2 right-0 bg-emerald-500 text-black font-black text-[12px] px-3 py-1 rounded-full shadow-glow">{r.clickschannel || 0}</div>
+                     </div>
+                     
+                     {editingReciterId === r.channelid ? (
+                        <div className="flex gap-2 w-full mb-6 animate-in zoom-in-95">
+                           <Input value={reciterNameInput} onChange={(e) => setReciterNameInput(e.target.value)} className="h-10 bg-white/5 border-white/10 rounded-xl font-black text-white" />
+                           <button onClick={() => handleSaveReciterName(r.channelid)} className="w-10 h-10 rounded-xl bg-emerald-500 text-black flex items-center justify-center"><Check className="w-5 h-5" /></button>
+                        </div>
+                     ) : (
+                        <h3 className="text-xl font-black text-white mb-6 truncate w-full">{r.name}</h3>
+                     )}
+
+                     <div className="flex gap-2 w-full">
+                        <Button onClick={() => { setEditingReciterId(r.channelid); setReciterNameInput(r.name); }} className="flex-1 bg-emerald-600/10 text-emerald-400 border border-emerald-500/20 rounded-2xl h-12 focusable"><Edit2 className="w-4 h-4 ml-2" /> تعديل</Button>
+                        <Button onClick={() => removeReciter(r.channelid)} className="w-12 h-12 bg-red-600/10 text-red-500 border border-red-500/20 rounded-2xl h-12 focusable"><Trash2 className="w-4 h-4" /></Button>
+                     </div>
                   </div>
                 ))}
               </div>
            </Card>
         </TabsContent>
 
-        <TabsContent value="reciters" className="space-y-8 animate-in fade-in duration-0">
-           <Card className="bg-white/5 border-white/10 p-10 rounded-[3.5rem] shadow-2xl">
+        <TabsContent value="subscriptions" className="space-y-8 animate-in fade-in duration-0">
+           <Card className="bg-white/5 border-white/10 p-10 rounded-[3.5rem] shadow-2xl relative">
               <div className="flex justify-between items-center mb-12">
-                 <CardTitle className="text-4xl font-black text-white flex items-center gap-6"><Mic className="w-12 h-12 text-primary" /> مجمع القراء السيادي</CardTitle>
-                 <div className="flex gap-4">
-                   <div className="relative flex items-center bg-white/5 rounded-full px-6 h-14 border border-white/10 w-96">
-                     <Search className="w-5 h-5 text-white/20 absolute right-6" />
-                     <Input 
-                       value={reciterSearch} 
-                       onChange={(e) => setReciterSearch(e.target.value)} 
-                       onKeyDown={(e) => e.key === 'Enter' && performReciterSearch()} 
-                       className="bg-transparent border-none text-lg font-black text-white pr-10 focus-visible:ring-0" 
-                       placeholder="ابحث عن قارئ في يوتيوب..." 
-                     />
-                   </div>
-                   <Button onClick={performReciterSearch} disabled={isSearchingReciters} className="h-14 px-8 bg-primary text-white rounded-full font-black shadow-glow focusable">
-                     {isSearchingReciters ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5 ml-2" />} إضافة
-                   </Button>
-                 </div>
+                 <CardTitle className="text-4xl font-black text-white flex items-center gap-6"><Youtube className="w-12 h-12 text-red-600" /> البحث وإضافة الاشتراكات</CardTitle>
+                 <Button onClick={() => handleDirectFetch(JSONBIN_CHANNELS_BIN_ID, "الاشتراكات")} variant="outline" className="w-14 h-14 rounded-full bg-white/5 border-white/10 flex items-center justify-center text-white/40 focusable"><CloudDownload className="w-6 h-6" /></Button>
               </div>
 
-              {reciterResults.length > 0 && (
-                <div className="bg-black/60 p-8 rounded-[3rem] border border-white/10 mb-12 grid grid-cols-2 md:grid-cols-4 gap-6 animate-in slide-in-from-top-4 duration-500 shadow-2xl">
-                  {reciterResults.map((r, i) => (
-                    <div key={i} className="flex flex-col items-center gap-4 p-6 rounded-[2rem] bg-white/5 hover:bg-white/10 transition-all border border-transparent hover:border-primary/40 group">
-                      <img src={r.image} className="w-24 h-24 rounded-full border-4 border-white/10 shadow-xl group-hover:scale-105 transition-transform" alt="" />
-                      <span className="text-sm font-black text-white text-center line-clamp-1">{r.name}</span>
-                      <Button onClick={() => handleAddReciterWithClicks(r)} size="sm" className="bg-primary text-white rounded-xl h-10 w-full font-black focusable">تثبيت القارئ</Button>
-                    </div>
-                  ))}
-                  <button onClick={() => setReciterResults([])} className="col-span-full h-10 text-[10px] font-black text-white/20 uppercase tracking-widest hover:text-white transition-colors">إغلاق نتائج البحث</button>
+              <div className="bg-black/40 p-10 rounded-[3rem] border border-white/5 flex gap-6 mb-12 shadow-2xl">
+                 <Input placeholder="...ابحث عن قناة يوتيوب لإضافتها" value={channelSearch} onChange={(e) => setChannelSearch(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && performChannelSearch()} className="h-16 bg-white/5 border-white/10 rounded-2xl text-xl font-black text-white px-8 focusable flex-1" />
+                 <Button onClick={performChannelSearch} className="h-16 px-12 bg-red-600 text-white text-xl font-black rounded-2xl shadow-glow focusable"><Search className="w-6 h-6 ml-3" /> ابحث</Button>
+              </div>
+
+              {channelResults.length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12 animate-in slide-in-from-top-4">
+                   {channelResults.map(res => (
+                      <div key={res.channelid} onClick={() => { addChannel(res); toast({ title: "تم الإضافة" }); }} className="flex flex-col items-center gap-4 p-6 bg-white/5 rounded-[2.5rem] border border-white/10 hover:bg-white/10 cursor-pointer focusable transition-all" tabIndex={0}>
+                         <img src={res.image} className="w-20 h-20 rounded-full" alt="" />
+                         <span className="font-black text-xs text-center line-clamp-1">{res.name}</span>
+                         <Plus className="w-6 h-6 text-primary" />
+                      </div>
+                   ))}
                 </div>
               )}
 
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-8">
-                 {favoriteReciters.map((r, idx) => (
-                   <div key={idx} className="bg-black/40 p-6 rounded-[2.5rem] border border-white/5 flex flex-col items-center gap-4 shadow-xl hover:border-primary/20 transition-all relative group">
-                      <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-primary/20 shadow-2xl"><img src={r.image} className="w-full h-full object-cover" alt="" /></div>
-                      <div className="text-center space-y-1">
-                        <span className="text-sm font-black text-white line-clamp-1">{r.name}</span>
-                        <div className="flex items-center justify-center gap-2 text-[8px] font-black text-primary uppercase tracking-widest"><Magnet className="w-3 h-3" /> {r.clickschannel || 0} نقرة</div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                {favoriteChannels.map(c => (
+                  <div key={c.channelid} className="bg-black/60 p-8 rounded-[3rem] border border-white/10 flex flex-col items-center text-center group shadow-xl relative">
+                     <button onClick={() => toggleStarChannel(c.channelid)} className={cn("absolute top-6 right-6 w-10 h-10 rounded-full flex items-center justify-center transition-all", c.starred ? "bg-yellow-500 text-black shadow-glow" : "bg-white/5 text-white/40")}><Star className={cn("w-5 h-5", c.starred && "fill-current")} /></button>
+                     <img src={c.image} className="w-32 h-32 rounded-full mb-6 border-4 border-primary/20" alt="" />
+                     
+                     {editingChannelId === c.channelid ? (
+                        <div className="flex gap-2 w-full mb-6 animate-in zoom-in-95">
+                           <Input value={channelNameInput} onChange={(e) => setChannelNameInput(e.target.value)} className="h-10 bg-white/5 border-white/10 rounded-xl font-black text-white" />
+                           <button onClick={() => { setEditingChannelId(null); toast({ title: "تم التحديث" }); }} className="w-10 h-10 rounded-xl bg-emerald-500 text-black flex items-center justify-center"><Check className="w-5 h-5" /></button>
+                        </div>
+                     ) : (
+                        <h3 className="text-xl font-black text-white mb-6 truncate w-full">{c.name}</h3>
+                     )}
+
+                     <div className="flex gap-2 w-full">
+                        <Button onClick={() => { setEditingChannelId(c.channelid); setChannelNameInput(c.name); }} className="flex-1 bg-emerald-600/10 text-emerald-400 border border-emerald-500/20 rounded-2xl h-12 focusable"><Edit2 className="w-4 h-4 ml-2" /> تحرير</Button>
+                        <Button onClick={() => removeChannel(c.channelid)} className="w-12 h-12 bg-red-600/10 text-red-500 border border-red-500/20 rounded-2xl h-12 focusable"><Trash2 className="w-4 h-4" /></Button>
+                     </div>
+                  </div>
+                ))}
+              </div>
+           </Card>
+        </TabsContent>
+
+        <TabsContent value="playlists" className="space-y-8 animate-in fade-in duration-0">
+           <Card className="bg-white/5 border-white/10 p-10 rounded-[3.5rem] shadow-2xl relative">
+              <div className="flex justify-between items-center mb-12">
+                 <CardTitle className="text-4xl font-black text-white flex items-center gap-6"><Library className="w-12 h-12 text-indigo-400" /> إدارة المجلدات السيادية</CardTitle>
+                 <div className="flex gap-4">
+                    <Button onClick={() => handleDirectFetch(JSONBIN_MASTER_BIN_ID, "المجلدات")} variant="outline" className="w-14 h-14 rounded-full bg-white/5 border-white/10 flex items-center justify-center text-white/40 focusable shadow-glow"><CloudDownload className="w-6 h-6" /></Button>
+                    <Button onClick={() => setIsAddingPlaylist(true)} className="h-14 px-8 bg-indigo-600 text-white rounded-full font-black shadow-glow focusable"><Plus className="w-5 h-5 ml-2" /> إنشاء مجلد جديد</Button>
+                 </div>
+              </div>
+
+              {isAddingPlaylist && (
+                <div className="bg-black/40 p-10 rounded-[3rem] border border-white/5 flex gap-4 mb-12 shadow-2xl animate-in zoom-in-95">
+                   <Input placeholder="أدخل اسم المجلد أو رابط قائمة تشغيل يوتيوب..." value={playlistInput} onChange={(e) => setPlaylistInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleAddPlaylistFromInput()} className="h-16 bg-white/5 border-white/10 rounded-2xl text-xl font-black focusable flex-1" />
+                   <Button onClick={handleAddPlaylistFromInput} className="h-16 px-10 bg-indigo-600 text-white rounded-2xl font-black shadow-glow focusable"><Send className="w-6 h-6" /></Button>
+                   <Button onClick={() => setIsAddingPlaylist(false)} className="h-16 px-6 bg-white/5 text-white rounded-2xl font-black focusable">إلغاء</Button>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {playlists.map(p => (
+                  <div key={p.id} className="bg-black/60 p-8 rounded-[3rem] border border-white/10 flex items-center justify-between group shadow-xl transition-all hover:border-indigo-500/20">
+                    <div className="flex items-center gap-6">
+                       <div className="w-14 h-14 rounded-2xl bg-indigo-600/20 flex items-center justify-center border-2 border-indigo-500/40 shadow-glow"><Library className="w-7 h-7 text-indigo-400" /></div>
+                       <div className="flex flex-col">
+                          <span className="text-2xl font-black text-white">{p.name}</span>
+                          <span className="text-[10px] font-bold text-white/20 uppercase tracking-widest">{p.videos.length} تلاوة</span>
+                       </div>
+                    </div>
+                    <Button onClick={() => removePlaylist(p.id)} variant="ghost" className="w-12 h-12 rounded-full text-red-500 hover:bg-red-500/10 focusable"><Trash2 className="w-6 h-6" /></Button>
+                  </div>
+                ))}
+              </div>
+           </Card>
+        </TabsContent>
+
+        <TabsContent value="iptv" className="space-y-8 animate-in fade-in duration-0">
+           <Card className="bg-white/5 border-white/10 p-10 rounded-[3.5rem] shadow-2xl relative">
+              <div className="flex justify-between items-center mb-12">
+                 <CardTitle className="text-4xl font-black text-white flex items-center gap-6"><Tv className="w-12 h-12 text-emerald-500" /> إدارة قنوات IPTV السيادية</CardTitle>
+                 <div className="flex gap-4">
+                    <Button onClick={() => handleDirectFetch(JSONBIN_IPTV_FAVS_BIN_ID, "القنوات")} variant="outline" className="w-14 h-14 rounded-full bg-white/5 border-white/10 flex items-center justify-center text-white/40 focusable shadow-glow"><CloudDownload className="w-6 h-6" /></Button>
+                    <Button onClick={() => { setIsAddingIptv(true); setIptvEditForm({ name: "", url: "", stream_icon: "" }); }} className="h-14 px-8 bg-emerald-600 text-white rounded-full font-black shadow-glow focusable"><Plus className="w-5 h-5 ml-2" /> إضافة قناة جديدة</Button>
+                 </div>
+              </div>
+
+              {(isAddingIptv || editingIptvId) && (
+                <div className="bg-black/40 p-10 rounded-[3rem] border border-white/10 space-y-8 mb-12 shadow-2xl animate-in zoom-in-95">
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      <div className="space-y-3"><Label className="mr-4 font-black opacity-40">اسم القناة</Label><Input value={iptvEditForm.name} onChange={(e) => setIptvEditForm({...iptvEditForm, name: e.target.value})} className="h-16 bg-white/5 border-white/10 rounded-2xl text-xl font-black focusable" /></div>
+                      <div className="space-y-3"><Label className="mr-4 font-black opacity-40">أيقونة القناة (URL)</Label><Input value={iptvEditForm.stream_icon} onChange={(e) => setIptvEditForm({...iptvEditForm, stream_icon: e.target.value})} className="h-16 bg-white/5 border-white/10 rounded-2xl text-xl font-black focusable" /></div>
+                   </div>
+                   <div className="space-y-3"><Label className="mr-4 font-black opacity-40">رابط البث (M3U8 / URL)</Label><Input value={iptvEditForm.url} onChange={(e) => setIptvEditForm({...iptvEditForm, url: e.target.value})} className="h-16 bg-white/5 border-white/10 rounded-2xl text-xl font-black focusable" /></div>
+                   <div className="flex gap-4">
+                      <Button onClick={async () => {
+                         if (isAddingIptv) addIptvChannel({ ...iptvEditForm, stream_id: "custom-"+Date.now(), category_id: "direct", type: 'web' });
+                         else updateIptvChannel(editingIptvId!, iptvEditForm);
+                         setIsAddingIptv(false); setEditingIptvId(null); toast({ title: "تم الحفظ سحابياً" });
+                      }} className="flex-1 h-16 bg-primary text-white rounded-2xl font-black text-xl shadow-glow focusable">حفظ القناة</Button>
+                      <Button onClick={() => { setIsAddingIptv(false); setEditingIptvId(null); }} className="h-16 px-10 bg-white/5 text-white rounded-2xl font-black focusable">إلغاء</Button>
+                   </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                 {favoriteIptvChannels.map(ch => (
+                   <div key={ch.stream_id} className="bg-black/60 p-8 rounded-[3rem] border border-white/10 flex items-center justify-between group shadow-xl">
+                      <div className="flex items-center gap-6">
+                        <img src={ch.stream_icon} className="w-16 h-16 rounded-2xl object-cover border border-white/10 shadow-glow" alt="" />
+                        <div className="flex flex-col">
+                           <span className="text-xl font-black text-white">{ch.name}</span>
+                           <span className="text-[10px] font-bold text-white/20 uppercase tracking-widest truncate max-w-[150px]">{ch.url}</span>
+                        </div>
                       </div>
-                      <button onClick={() => removeReciter(r.channelid)} className="absolute top-4 left-4 w-10 h-10 rounded-full bg-red-600/20 text-red-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity focusable shadow-glow"><Trash2 className="w-5 h-5" /></button>
+                      <div className="flex gap-2">
+                         <Button onClick={() => { setEditingIptvId(ch.stream_id); setIptvEditForm({ name: ch.name, url: ch.url, stream_icon: ch.stream_icon }); }} variant="ghost" className="w-10 h-10 rounded-full text-emerald-400 hover:bg-emerald-400/10 focusable"><Edit2 className="w-5 h-5" /></Button>
+                         <Button onClick={() => toggleFavoriteIptvChannel(ch)} variant="ghost" className="w-10 h-10 rounded-full text-red-500 hover:bg-red-500/10 focusable"><Trash2 className="w-5 h-5" /></Button>
+                      </div>
+                   </div>
+                 ))}
+              </div>
+           </Card>
+        </TabsContent>
+
+        <TabsContent value="backgrounds" className="space-y-8 animate-in fade-in duration-0">
+           <Card className="bg-white/5 border-white/10 p-10 rounded-[3.5rem] shadow-2xl relative">
+              <div className="flex justify-between items-center mb-12">
+                 <CardTitle className="text-4xl font-black text-white flex items-center gap-6"><Palette className="w-12 h-12 text-pink-500" /> إدارة الخلفيات والبيئة البصرية</CardTitle>
+                 <div className="flex gap-4">
+                    <Button onClick={() => handleDirectFetch(JSONBIN_BACKGROUNDS_BIN_ID, "الخلفيات")} variant="outline" className="w-14 h-14 rounded-full bg-white/5 border-white/10 flex items-center justify-center text-white/40 focusable"><CloudDownload className="w-6 h-6" /></Button>
+                    <button onClick={() => document.getElementById('bg-upload-input')?.click()} className="h-14 px-8 bg-pink-600 text-white rounded-full font-black shadow-glow focusable"><Upload className="w-5 h-5 ml-2" /> رفع خلفية جديدة</button>
+                    <input id="bg-upload-input" type="file" className="hidden" accept="image/*" onChange={(e) => {
+                       const file = e.target.files?.[0]; if (!file) return;
+                       const reader = new FileReader();
+                       reader.onload = (res) => { addCustomWallBackground(res.target?.result as string); toast({ title: "تم الرفع سحابياً" }); };
+                       reader.readAsDataURL(file);
+                    }} />
+                 </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                 {customWallBackgrounds.map((url, idx) => (
+                    <div key={idx} className="relative aspect-video rounded-[2.5rem] overflow-hidden border-4 border-white/5 group shadow-2xl transition-all hover:border-pink-500/20">
+                       <img src={url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="" />
+                       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
+                          <Button onClick={async () => { updateMapSettings({ manuscriptBgUrl: url }); await syncMasterBin(); toast({ title: "تم تعيين الخلفية سحابياً" }); }} className="bg-white text-black font-black rounded-xl focusable">تطبيق كخلفية</Button>
+                          <Button onClick={() => removeCustomWallBackground(url)} variant="ghost" className="w-12 h-12 rounded-full bg-red-600 text-white"><Trash2 className="w-6 h-6" /></Button>
+                       </div>
+                    </div>
+                 ))}
+              </div>
+           </Card>
+        </TabsContent>
+
+        <TabsContent value="buttonmap" className="space-y-8 animate-in fade-in duration-0">
+           <Card className="bg-white/5 border-white/10 p-10 rounded-[3.5rem] shadow-2xl relative">
+              <div className="flex justify-between items-center mb-12">
+                 <CardTitle className="text-4xl font-black text-white flex items-center gap-6"><Gamepad2 className="w-12 h-12 text-primary" /> معايرة التحكم السيادية v3100.0</CardTitle>
+                 <div className="flex gap-4">
+                    <Button onClick={() => handleDirectFetch(JSONBIN_MASTER_BIN_ID, "الأزرار")} variant="outline" className="w-14 h-14 rounded-full bg-white/5 border-white/10 flex items-center justify-center text-white/40 focusable shadow-glow"><CloudDownload className="w-6 h-6" /></Button>
+                    <Button onClick={async () => { setIsSyncing(true); await syncMasterBin(); setIsSyncing(false); toast({ title: "تم الحفظ سحابياً" }); }} className="w-14 h-14 rounded-full bg-primary text-white flex items-center justify-center shadow-glow focusable">{isSyncing ? <Loader2 className="w-6 h-6 animate-spin" /> : <Zap className="w-6 h-6" />}</Button>
+                 </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16">
+                 <div className="p-8 bg-emerald-600/5 rounded-[3rem] border-2 border-emerald-500/20 space-y-6 shadow-xl">
+                    <h3 className="text-xl font-black text-emerald-400 mb-4 flex items-center gap-3"><Magnet className="w-6 h-6" /> المعايرة الذكية للشاشات الصغيرة</h3>
+                    <div className="flex items-center justify-between bg-black/40 p-6 rounded-2xl border border-white/5 shadow-2xl"><Label className="text-xl font-black text-white">تدوير الملاحة 90 درجة</Label><Switch checked={mapSettings.autoRotateNav90 ?? true} onCheckedChange={(v) => updateMapSettings({ autoRotateNav90: v })} /></div>
+                    <div className="flex items-center justify-between bg-black/40 p-6 rounded-2xl border border-white/5 shadow-2xl"><Label className="text-xl font-black text-white">عكس الاتجاه الرأسي (Y)</Label><Switch checked={mapSettings.invertJoystickY ?? true} onCheckedChange={(v) => updateMapSettings({ invertJoystickY: v })} /></div>
+                    <div className="flex items-center justify-between bg-black/40 p-6 rounded-2xl border border-white/5 shadow-2xl"><Label className="text-xl font-black text-white">عكس الاتجاه الأفقي (X)</Label><Switch checked={mapSettings.invertJoystickX ?? true} onCheckedChange={(v) => updateMapSettings({ invertJoystickX: v })} /></div>
+                    <p className="text-[10px] text-white/20 font-bold uppercase tracking-widest px-4 text-center">* تعمل هذه المعايرة آلياً ومفعلة بشكل تلقائي للشاشات الصغيرة</p>
+                 </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                 {Object.entries(keyMappings).map(([ctx, actions]) => (
+                   <div key={ctx} className="p-8 bg-black/40 rounded-[3rem] border border-white/10 shadow-xl transition-none">
+                      <h3 className="text-2xl font-black text-primary mb-6 uppercase tracking-widest flex items-center gap-3"><Keyboard className="w-6 h-6" /> {ctx}</h3>
+                      <div className="space-y-4">
+                         {Object.entries(actions).map(([act, keys]) => (
+                           <div key={act} className="flex items-center justify-between p-5 bg-white/5 rounded-2xl border border-white/5 transition-none group hover:bg-white/10">
+                              <span className="text-sm font-bold text-white/60 uppercase">{act}</span>
+                              <div className="flex gap-2">
+                                {(Array.isArray(keys) ? keys : []).map(k => (
+                                  <div key={k} className="px-3 py-1.5 bg-zinc-800 rounded-xl border border-zinc-600 flex items-center gap-3 shadow-glow"><span className="text-xs font-black text-white">{k}</span><button onClick={() => removeSpecificKeyMapping(ctx as any, act as any, k)} className="text-red-500 focusable transition-colors hover:text-red-400"><X className="w-3.5 h-3.5" /></button></div>
+                                ))}
+                                
+                                <Dialog open={isRecordingKey && recordingAction?.ctx === ctx && recordingAction?.act === act} onOpenChange={(v) => { if(!v) { setIsRecordingKey(false); setRecordingAction(null); } }}>
+                                   <DialogTrigger asChild>
+                                      <button onClick={() => startRecording(ctx as any, act as any)} className="text-accent text-[10px] font-black focusable animate-pulse px-3 py-1.5 rounded-xl border border-accent/20 hover:bg-accent/10">سجل</button>
+                                   </DialogTrigger>
+                                   <DialogContent className="max-w-none w-screen h-screen bg-black/95 backdrop-blur-3xl border-none p-20 flex flex-col items-center justify-center">
+                                      <div className="absolute top-10 right-10 z-[200]">
+                                         <button onClick={() => { setIsRecordingKey(false); setRecordingAction(null); }} className="w-20 h-20 rounded-full bg-red-600/20 text-red-500 border-2 border-red-500/40 flex items-center justify-center shadow-glow focusable active:scale-90 transition-all"><X className="w-10 h-10" /></button>
+                                      </div>
+                                      <DialogHeader className="mb-20 text-center">
+                                         <DialogTitle className="text-6xl font-black text-white tracking-widest uppercase mb-4">برمجة المفتاح السيادي</DialogTitle>
+                                         <p className="text-primary font-bold uppercase tracking-[0.5em]">الإجراء: {act} | السياق: {ctx}</p>
+                                      </DialogHeader>
+
+                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-20 w-full max-w-6xl">
+                                         <div className="bg-white/5 p-12 rounded-[4rem] border-2 border-white/10 flex flex-col items-center justify-center gap-8 shadow-2xl">
+                                            <div className="w-24 h-24 rounded-full bg-primary/20 flex items-center justify-center border-4 border-primary/40 animate-pulse shadow-glow">
+                                               <Mic className="w-12 h-12 text-primary" />
+                                            </div>
+                                            <h3 className="text-3xl font-black text-white">التسجيل بالضغط المباشر</h3>
+                                            <p className="text-white/40 text-center font-bold">اضغط على أي زر في الريموت أو لوحة المفاتيح الآن للتسجيل الآلي</p>
+                                         </div>
+
+                                         <div className="bg-white/5 p-12 rounded-[4rem] border-2 border-white/10 flex flex-col gap-8 shadow-2xl">
+                                            <h3 className="text-3xl font-black text-white text-center">الاختيار من مكتبة المفاتيح</h3>
+                                            <ScrollArea className="h-[400px] pr-4">
+                                               <div className="grid grid-cols-3 gap-4">
+                                                  {COMMAND_KEYS.map((ck) => (
+                                                     <button 
+                                                        key={ck.key} 
+                                                        onClick={() => { setKeyMapping(ctx as any, act as any, ck.key); toast({ title: "تم البرمجة", description: `تم ربط المفتاح ${ck.key}` }); }}
+                                                        className={cn("p-6 rounded-2xl flex flex-col items-center justify-center gap-3 transition-all hover:scale-105 active:scale-95 border border-white/5", ck.color)}
+                                                     >
+                                                        {ck.icon ? <ck.icon className="w-6 h-6 text-white" /> : <span className="text-xs font-black text-white">{ck.key}</span>}
+                                                        <span className="text-[8px] font-bold text-white/60 uppercase">{ck.label}</span>
+                                                     </button>
+                                                  ))}
+                                               </div>
+                                            </ScrollArea>
+                                         </div>
+                                      </div>
+                                   </DialogContent>
+                                </Dialog>
+                              </div>
+                           </div>
+                         ))}
+                      </div>
                    </div>
                  ))}
               </div>
@@ -718,4 +1156,3 @@ export function SettingsView() {
     </div>
   );
 }
-

@@ -8,7 +8,8 @@ export function cn(...inputs: ClassValue[]) {
 
 /**
  * Normalizes keyboard event keys to support special remote control buttons
- * including Vidaa OS, Smart TVs, and standard keyboard layouts.
+ * including Smart TVs, Joysticks, and standard keyboard layouts.
+ * Calibrated v3200 for Sovereign Joystick Protocol.
  */
 export function normalizeKey(e: KeyboardEvent): string {
   const codeMap: Record<number, string> = {
@@ -17,6 +18,12 @@ export function normalizeKey(e: KeyboardEvent): string {
     461: 'Back', 10009: 'Back', 10182: 'Exit', 460: 'Sub',
     10252: 'MediaPlayPause', 19: 'Pause', 415: 'Play', 413: 'Stop',
     417: 'NextTrack', 412: 'PrevTrack', 33: 'PageUp', 34: 'PageDown',
+    
+    // Joystick / Gamepad Buttons (Calibrated v3200)
+    99: 'BUTTON_X',  // Top (Up)
+    100: 'BUTTON_Y', // Right
+    97: 'BUTTON_B',  // Bottom (Down)
+    96: 'BUTTON_A',  // Left
     
     // Directional and Navigation
     37: 'ArrowLeft', 38: 'ArrowUp', 39: 'ArrowRight', 40: 'ArrowDown',
@@ -29,7 +36,7 @@ export function normalizeKey(e: KeyboardEvent): string {
     457: 'Info', 458: 'Text', 459: 'Settings'
   };
 
-  // 1. High-priority mapping for Smart TV Hardware Keys
+  // 1. High-priority mapping for Smart TV & Joystick Hardware Keys
   if (codeMap[e.keyCode]) return codeMap[e.keyCode];
 
   // 2. Use e.key if standard and descriptive
