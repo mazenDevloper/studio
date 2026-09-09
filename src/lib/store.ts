@@ -221,17 +221,7 @@ export const useMediaStore = create<MediaState>()(
   persist(
     (set, get) => ({
       favoriteChannels: [], savedVideos: [], videoProgress: {}, favoriteTeams: [], favoriteLeagueIds: [307, 39, 2, 140, 135], belledMatchIds: [], skippedMatchIds: [], skippedReminderIds: [], favoriteIptvChannels: [], favoriteReciters: [], iptvPlaylist: [], iptvPlaylistIndex: 0, prayerTimes: prayerTimesData, prayerSettings: DEFAULT_PRAYER_SETTINGS, reminders: [], generalAzkar: [], customManuscripts: [], manuscriptScales: {}, customFonts: [], customWallBackgrounds: [], playlists: [], isLooping: true,
-      mapSettings: { 
-        zoom: 20.0, tilt: 65, carScale: 1.02, backgroundIndex: 0, showManuscriptBg: true, 
-        manuscriptBgUrl: "https://www.image2url.com/r2/default/images/1782382707952-d99447c6-bc60-475d-9406-5fd2ef320bd5.png", 
-        fontScale: 1.0, manuscriptColor: '#ffffff', showManuscriptOnMoon: true, moonManuIdx: 0, 
-        hue: 0, saturation: 100, brightness: 100, winwinUrl: "https://psee.io/9f4ngl", 
-        beinUrl: "https://idebsports.ly/matches", 
-        omanUrl: "https://player.mangomolo.com/v1/live?id=MTY8&channelid=MTYx&countries=Q0M%3D&filter=DENY&signature=3fd1e8dd84138a41bf33d93afd4a7f09&language=en&app_id=&fullscreen=yes&player_profile=&base_url=aHR0cHM6Ly9heW4ub20vbGl2ZS8xNjEvJUQ5JTgyJUQ5JTg2JUQ4JUE3JUQ4JUE5LSVEOCVCOSVEOSU4NSVEOCVBNyVEOSU4Ni0lRDklODUlRDglQTglRDglQTclRDglQjQlRDglQjE%3D&autoplay=false&vast=true", 
-        bein1Url: "https://online.aflam4you.net/zremb472.php/?vid=68&aflam_s=1&aflam_w=360&aflam_w=360&aflam_h=250&aflam_k=18311111", 
-        mbc1Url: "https://online.aflam4you.net/zremb472.php?vid=5&aflam_s=1&aflam_w=360&h=250&aflam_k=18311111", 
-        invertJoystickX: true, invertJoystickY: true, autoRotateNav90: true 
-      },
+      mapSettings: { zoom: 20.0, tilt: 65, carScale: 1.02, backgroundIndex: 0, showManuscriptBg: true, manuscriptBgUrl: "https://www.image2url.com/r2/default/images/1782382707952-d99447c6-bc60-475d-9406-5fd2ef320bd5.png", fontScale: 1.0, manuscriptColor: '#ffffff', showManuscriptOnMoon: true, moonManuIdx: 0, hue: 0, saturation: 100, brightness: 100, winwinUrl: "https://psee.io/9f4ngl", beinUrl: "https://idebsports.ly/matches", omanUrl: "https://player.mangomolo.com/v1/live?id=MTY8&channelid=MTYx&countries=Q0M%3D&filter=DENY&signature=3fd1e8dd84138a41bf33d93afd4a7f09&language=en&app_id=&fullscreen=yes&player_profile=&base_url=aHR0cHM6Ly9heW4ub20vbGl2ZS8xNjEvJUQ5JTgyJUQ5JTg2JUQ4JUE3JUQ4JUE5LSVEOCVCOSVEOSU4NSVEOCVBNyVEOSU4Ni0lRDklODUlRDglQTglRDglQTclRDglQjQlRDglQjE%3D&autoplay=false&vast=true", bein1Url: "https://online.aflam4you.net/zremb472.php/?vid=68&aflam_s=1&aflam_w=360&aflam_w=360&aflam_h=250&aflam_k=18311111", mbc1Url: "https://online.aflam4you.net/zremb472.php?vid=5&aflam_s=1&aflam_w=360&h=250&aflam_k=18311111", invertJoystickX: true, invertJoystickY: true, autoRotateNav90: true },
       displayScale: 1.0, dockScale: 1.0, keyMappings: DEFAULT_CONTEXT_MAPPINGS, activeVideo: null, lastPlayedVideo: null, activeIptv: null, activeQuranUrl: "https://quran.com/ar/radio?autoplay=1", playlist: [], playlistIndex: 0, isPlaying: false, isMinimized: false, isFullScreen: false, isPlayerControlsExpanded: false, isPlayerPlaylistOpen: false, gridMode: 'hidden', dockSide: 'left', showIslands: true, autoHideIsland: true, isSidebarShrinked: false, wallPlateType: null, wallPlateData: null, isReorderMode: false, isRecordingKey: false, recordingAction: null, isInitialLoading: true, aiSuggestions: [], pickedUpId: null,
       
       setPickedUpId: (id) => set({ pickedUpId: id }), setIsRecordingKey: (v) => set({ isRecordingKey: v }), setRecordingAction: (v) => set({ recordingAction: v }), setDockScale: (v) => set({ dockScale: v }), setDisplayScale: (v) => set({ displayScale: v }), setIsSidebarShrinked: (v) => set({ isSidebarShrinked: v }), setGridMode: (mode: 'hidden' | 'partial' | 'full') => set({ gridMode: mode }), setIsPlayerControlsExpanded: (v) => set({ isPlayerControlsExpanded: v }), setIsPlayerPlaylistOpen: (v) => set({ isPlayerPlaylistOpen: v }),
@@ -239,13 +229,7 @@ export const useMediaStore = create<MediaState>()(
 
       fetchSpecificBin: async (binId) => {
         try {
-          const r = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest?v=${Date.now()}`, { 
-            headers: { 
-              'X-Master-Key': JSONBIN_MASTER_KEY,
-              'X-Bin-Meta': 'false'
-            }, 
-            cache: 'no-store' 
-          });
+          const r = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest?v=${Date.now()}`, { headers: { 'X-Master-Key': JSONBIN_MASTER_KEY, 'X-Bin-Meta': 'false' }, cache: 'no-store' });
           if (!r.ok) return;
           const data = await r.json();
           if (binId === JSONBIN_CHANNELS_BIN_ID) set({ favoriteChannels: data.channels || data || [] });
@@ -264,8 +248,7 @@ export const useMediaStore = create<MediaState>()(
             savedVideos: data.savedVideos || get().savedVideos, 
             manuscriptScales: data.manuscriptScales || get().manuscriptScales, 
             lastPlayedVideo: data.lastPlayedVideo || get().lastPlayedVideo, 
-            playlists: data.playlists || get().playlists || [],
-            skippedMatchIds: data.skippedMatchIds || []
+            playlists: data.playlists || get().playlists || []
           });
         } catch (e) {}
       },
@@ -324,29 +307,15 @@ export const useMediaStore = create<MediaState>()(
       addReminder: (r) => set((s) => { const n = [...s.reminders, r]; setTimeout(() => get().syncMasterBin(), 100); return { reminders: n }; }),
       updateReminder: (id, u) => set((s) => { const n = s.reminders.map(r => r.id === id ? { ...r, ...u } : r); setTimeout(() => get().syncMasterBin(), 100); return { reminders: n }; }),
       removeReminder: (id) => set((s) => { const n = s.reminders.filter(r => r.id !== id); setTimeout(() => get().syncMasterBin(), 100); return { reminders: n }; }),
-      toggleReminder: (id) => set((s) => {
-        const n = s.reminders.map(r => r.id === id ? { ...r, completed: !r.completed } : r);
-        setTimeout(() => get().syncMasterBin(), 100);
-        return { reminders: n };
-      }),
+      toggleReminder: (id) => set((s) => ({ reminders: s.reminders.map(r => r.id === id ? { ...r, completed: !r.completed } : r) })),
       skipReminder: (id) => set((s) => ({ skippedReminderIds: [...s.skippedReminderIds, id] })),
-      skipMatch: (id) => set((s) => {
-        const isSkipped = s.skippedMatchIds.includes(id);
-        const n = isSkipped ? s.skippedMatchIds.filter(i => i !== id) : [...s.skippedMatchIds, id];
-        setTimeout(() => get().syncMasterBin(), 100);
-        return { skippedMatchIds: n };
-      }),
+      skipMatch: (id) => set((s) => ({ skippedMatchIds: [...s.skippedMatchIds, id] })),
       addAzkar: (a) => set((s) => { const n = [...s.generalAzkar, a]; setTimeout(() => get().syncMasterBin(), 100); return { generalAzkar: n }; }),
       updateAzkar: (id, u) => set((s) => { const n = s.generalAzkar.map(a => a.id === id ? { ...a, ...u } : a); setTimeout(() => get().syncMasterBin(), 100); return { generalAzkar: n }; }),
       removeAzkar: (id) => set((s) => { const n = s.generalAzkar.filter(a => a.id !== id); setTimeout(() => get().syncMasterBin(), 100); return { generalAzkar: n }; }),
       toggleFavoriteTeam: (t) => set((s) => ({ favoriteTeams: s.favoriteTeams.some(i => i.id === t.id) ? s.favoriteTeams.filter(i => i.id !== t.id) : [...s.favoriteTeams, t] })),
       toggleBelledMatch: (matchId) => set((s) => ({ belledMatchIds: s.belledMatchIds.includes(matchId) ? s.belledMatchIds.filter(i => i !== matchId) : [...s.belledMatchIds, matchId] })),
-      updateMapSettings: (s) => set((st) => { 
-        const n = { ...st.mapSettings, ...s }; 
-        if (s.manuscriptBgUrl || s.winwinUrl || s.beinUrl || s.omanUrl || s.bein1Url || s.mbc1Url || s.autoRotateNav90 !== undefined || s.invertJoystickX !== undefined || s.invertJoystickY !== undefined) 
-          setTimeout(() => get().syncMasterBin(), 100); 
-        return { mapSettings: n }; 
-      }),
+      updateMapSettings: (s) => set((st) => { const n = { ...st.mapSettings, ...s }; if (s.manuscriptBgUrl || s.winwinUrl || s.beinUrl || s.omanUrl || s.bein1Url || s.mbc1Url) setTimeout(() => get().syncMasterBin(), 100); return { mapSettings: n }; }),
       setKeyMapping: (ctx, act, key) => set((s) => { const m = { ...s.keyMappings }; if (!m[ctx]) m[ctx] = {}; let k = Array.isArray(m[ctx][act]) ? [...m[ctx][act]] : []; if (k.includes(key)) return s; k.push(key); m[ctx][act] = k.slice(-3); return { keyMappings: m }; }),
       removeSpecificKeyMapping: (ctx, act, key) => set((s) => { const m = { ...s.keyMappings }; if (m[ctx] && m[ctx][act]) { m[ctx][act] = m[ctx][act].filter(v => v !== key); return { keyMappings: m }; } return s; }),
       setActiveVideo: (v, ctx) => set({ playlist: ctx || (v ? [v] : []), playlistIndex: ctx ? ctx.findIndex(i => i.id === v?.id) : 0, activeVideo: v, lastPlayedVideo: v || get().lastPlayedVideo, activeIptv: null, isPlaying: !!v, isMinimized: false, isFullScreen: !!v, isPlayerPlaylistOpen: false }),
