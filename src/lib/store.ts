@@ -17,6 +17,13 @@ import {
   prayerTimesData
 } from "./constants";
 
+export interface AudioTrack {
+  id: string;
+  title: string;
+  thumbnail: string;
+  channelTitle?: string;
+}
+
 export interface Reminder {
   id: string; 
   label: string; 
@@ -97,6 +104,7 @@ interface MediaState {
   playlists: Playlist[]; isLooping: boolean;
   displayScale: number; dockScale: number; keyMappings: Record<string, Record<string, string[]>>; 
   activeVideo: YouTubeVideo | null; lastPlayedVideo: YouTubeVideo | null; activeIptv: IptvChannel | null;
+  activeAudio: AudioTrack | null;
   activeQuranUrl: string | null; playlist: YouTubeVideo[]; playlistIndex: number; isPlaying: boolean;
   isMinimized: boolean; isFullScreen: boolean; isPlayerControlsExpanded: boolean; isPlayerPlaylistOpen: boolean;
   gridMode: 'hidden' | 'partial' | 'full'; dockSide: 'left' | 'right'; showIslands: boolean;
@@ -132,6 +140,7 @@ interface MediaState {
   reorderIptvChannelTo: (fromId: string, toId: string) => void; updateMapSettings: (settings: Partial<MapSettings>) => void;
   setActiveVideo: (video: YouTubeVideo | null, context?: YouTubeVideo[]) => void;
   setActiveIptv: (channel: IptvChannel | null, context?: IptvChannel[]) => void;
+  setActiveAudio: (audio: AudioTrack | null) => void;
   setActiveQuranUrl: (url: string | null) => void; setPlaylist: (videos: YouTubeVideo[]) => void;
   nextTrack: () => void; prevTrack: () => void; nextIptvChannel: () => void; updateVideoProgress: (videoId: string, progress: number) => void;
   setIsPlaying: (playing: boolean) => void; setIsMinimized: (minimized: boolean) => void;
@@ -222,7 +231,7 @@ export const useMediaStore = create<MediaState>()(
     (set, get) => ({
       favoriteChannels: [], savedVideos: [], videoProgress: {}, favoriteTeams: [], favoriteLeagueIds: [307, 39, 2, 140, 135], belledMatchIds: [], skippedMatchIds: [], skippedReminderIds: [], favoriteIptvChannels: [], favoriteReciters: [], iptvPlaylist: [], iptvPlaylistIndex: 0, prayerTimes: prayerTimesData, prayerSettings: DEFAULT_PRAYER_SETTINGS, reminders: [], generalAzkar: [], customManuscripts: [], manuscriptScales: {}, customFonts: [], customWallBackgrounds: [], playlists: [], isLooping: true,
       mapSettings: { zoom: 20.0, tilt: 65, carScale: 1.02, backgroundIndex: 0, showManuscriptBg: true, manuscriptBgUrl: "https://www.image2url.com/r2/default/images/1782382707952-d99447c6-bc60-475d-9406-5fd2ef320bd5.png", fontScale: 1.0, manuscriptColor: '#ffffff', showManuscriptOnMoon: true, moonManuIdx: 0, hue: 0, saturation: 100, brightness: 100, winwinUrl: "https://psee.io/9f4ngl", beinUrl: "https://idebsports.ly/matches", omanUrl: "https://player.mangomolo.com/v1/live?id=MTY8&channelid=MTYx&countries=Q0M%3D&filter=DENY&signature=3fd1e8dd84138a41bf33d93afd4a7f09&language=en&app_id=&fullscreen=yes&player_profile=&base_url=aHR0cHM6Ly9heW4ub20vbGl2ZS8xNjEvJUQ5JTgyJUQ5JTg2JUQ4JUE3JUQ4JUE5LSVEOCVCOSVEOSU4NSVEOCVBNyVEOSU4Ni0lRDklODUlRDglQTglRDglQTclRDglQjQlRDglQjE%3D&autoplay=false&vast=true", bein1Url: "https://online.aflam4you.net/zremb472.php/?vid=68&aflam_s=1&aflam_w=360&aflam_w=360&aflam_h=250&aflam_k=18311111", mbc1Url: "https://online.aflam4you.net/zremb472.php?vid=5&aflam_s=1&aflam_w=360&h=250&aflam_k=18311111", invertJoystickX: true, invertJoystickY: true, autoRotateNav90: true },
-      displayScale: 1.0, dockScale: 1.0, keyMappings: DEFAULT_CONTEXT_MAPPINGS, activeVideo: null, lastPlayedVideo: null, activeIptv: null, activeQuranUrl: "https://quran.com/ar/radio?autoplay=1", playlist: [], playlistIndex: 0, isPlaying: false, isMinimized: false, isFullScreen: false, isPlayerControlsExpanded: false, isPlayerPlaylistOpen: false, gridMode: 'hidden', dockSide: 'left', showIslands: true, autoHideIsland: true, isSidebarShrinked: false, wallPlateType: null, wallPlateData: null, isReorderMode: false, isRecordingKey: false, recordingAction: null, isInitialLoading: true, aiSuggestions: [], pickedUpId: null,
+      displayScale: 1.0, dockScale: 1.0, keyMappings: DEFAULT_CONTEXT_MAPPINGS, activeVideo: null, lastPlayedVideo: null, activeIptv: null, activeAudio: null, activeQuranUrl: "https://quran.com/ar/radio?autoplay=1", playlist: [], playlistIndex: 0, isPlaying: false, isMinimized: false, isFullScreen: false, isPlayerControlsExpanded: false, isPlayerPlaylistOpen: false, gridMode: 'hidden', dockSide: 'left', showIslands: true, autoHideIsland: true, isSidebarShrinked: false, wallPlateType: null, wallPlateData: null, isReorderMode: false, isRecordingKey: false, recordingAction: null, isInitialLoading: true, aiSuggestions: [], pickedUpId: null,
       
       setPickedUpId: (id) => set({ pickedUpId: id }), setIsRecordingKey: (v) => set({ isRecordingKey: v }), setRecordingAction: (v) => set({ recordingAction: v }), setDockScale: (v) => set({ dockScale: v }), setDisplayScale: (v) => set({ displayScale: v }), setIsSidebarShrinked: (v) => set({ isSidebarShrinked: v }), setGridMode: (mode: 'hidden' | 'partial' | 'full') => set({ gridMode: mode }), setIsPlayerControlsExpanded: (v) => set({ isPlayerControlsExpanded: v }), setIsPlayerPlaylistOpen: (v) => set({ isPlayerPlaylistOpen: v }),
       selectedChannel: null, channelVideos: [], videoResults: [], setSelectedChannel: (v) => set({ selectedChannel: v }), setChannelVideos: (v) => set({ channelVideos: v }),
@@ -318,8 +327,9 @@ export const useMediaStore = create<MediaState>()(
       updateMapSettings: (s) => set((st) => { const n = { ...st.mapSettings, ...s }; if (s.manuscriptBgUrl || s.winwinUrl || s.beinUrl || s.omanUrl || s.bein1Url || s.mbc1Url) setTimeout(() => get().syncMasterBin(), 100); return { mapSettings: n }; }),
       setKeyMapping: (ctx, act, key) => set((s) => { const m = { ...s.keyMappings }; if (!m[ctx]) m[ctx] = {}; let k = Array.isArray(m[ctx][act]) ? [...m[ctx][act]] : []; if (k.includes(key)) return s; k.push(key); m[ctx][act] = k.slice(-3); return { keyMappings: m }; }),
       removeSpecificKeyMapping: (ctx, act, key) => set((s) => { const m = { ...s.keyMappings }; if (m[ctx] && m[ctx][act]) { m[ctx][act] = m[ctx][act].filter(v => v !== key); return { keyMappings: m }; } return s; }),
-      setActiveVideo: (v, ctx) => set({ playlist: ctx || (v ? [v] : []), playlistIndex: ctx ? ctx.findIndex(i => i.id === v?.id) : 0, activeVideo: v, lastPlayedVideo: v || get().lastPlayedVideo, activeIptv: null, isPlaying: !!v, isMinimized: false, isFullScreen: !!v, isPlayerPlaylistOpen: false }),
-      setActiveIptv: (ch, ctx) => set({ iptvPlaylist: ctx || (ch ? [ch] : []), iptvPlaylistIndex: ctx ? ctx.findIndex(c => c.stream_id === ch?.stream_id) : 0, activeIptv: ch, activeVideo: null, isPlaying: !!ch, isMinimized: false, isFullScreen: !!ch, isPlayerPlaylistOpen: false }),
+      setActiveVideo: (v, ctx) => set({ playlist: ctx || (v ? [v] : []), playlistIndex: ctx ? ctx.findIndex(i => i.id === v?.id) : 0, activeVideo: v, lastPlayedVideo: v || get().lastPlayedVideo, activeIptv: null, activeAudio: null, isPlaying: !!v, isMinimized: false, isFullScreen: !!v, isPlayerPlaylistOpen: false }),
+      setActiveIptv: (ch, ctx) => set({ iptvPlaylist: ctx || (ch ? [ch] : []), iptvPlaylistIndex: ctx ? ctx.findIndex(c => c.stream_id === ch?.stream_id) : 0, activeIptv: ch, activeVideo: null, activeAudio: null, isPlaying: !!ch, isMinimized: false, isFullScreen: !!ch, isPlayerPlaylistOpen: false }),
+      setActiveAudio: (audio) => set({ activeAudio: audio, activeVideo: null, activeIptv: null, isPlaying: !!audio, isFullScreen: false }),
       setActiveQuranUrl: (v) => set({ activeQuranUrl: v }),
       setPlaylist: (videos) => set({ playlist: videos }),
       nextTrack: () => { const s = get(); if (!s.playlist.length) return; let nIdx = (s.playlistIndex + 1); if (nIdx >= s.playlist.length) nIdx = s.isLooping ? 0 : s.playlist.length - 1; set({ playlistIndex: nIdx, activeVideo: s.playlist[nIdx] }); },

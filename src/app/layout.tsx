@@ -5,6 +5,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { GlobalVideoPlayer } from "@/components/media/global-player";
 import { GlobalQuranPlayer } from "@/components/quran/global-quran-player";
+import { AudioPlayer } from "@/components/media/audio-player";
 import { FirebaseClientProvider } from "@/firebase";
 import { LiveMatchIsland } from "@/components/football/live-match-island";
 import { RemotePointer } from "@/components/layout/remote-pointer";
@@ -20,7 +21,7 @@ import { Loader2, Zap } from 'lucide-react';
  * Features: Always-On WakeLock & Media Session Integration.
  */
 function RootLayoutWrapper({ children }: { children: React.ReactNode }) {
-  const { customFonts, fetchPriorityData, isInitialLoading, activeVideo, activeIptv, isPlaying } = useMediaStore();
+  const { customFonts, fetchPriorityData, isInitialLoading, activeVideo, activeIptv, activeAudio, isPlaying } = useMediaStore();
   const [mounted, setMounted] = useState(false);
   const wakeLockRef = useRef<any>(null);
 
@@ -46,13 +47,13 @@ function RootLayoutWrapper({ children }: { children: React.ReactNode }) {
 
   // 2. Media Session: Control from lock screen and background
   useEffect(() => {
-    if ('mediaSession' in navigator && (activeVideo || activeIptv)) {
+    if ('mediaSession' in navigator && (activeVideo || activeIptv || activeAudio)) {
       navigator.mediaSession.metadata = new MediaMetadata({
-        title: activeVideo?.title || activeIptv?.name || 'DriveCast Stream',
-        artist: activeVideo?.channelTitle || 'Sovereign Hub',
+        title: activeVideo?.title || activeIptv?.name || activeAudio?.title || 'DriveCast Stream',
+        artist: activeVideo?.channelTitle || activeAudio?.channelTitle || 'Sovereign Hub',
         album: 'DriveCast Media',
         artwork: [
-          { src: activeVideo?.thumbnail || activeIptv?.stream_icon || '', sizes: '512x512', type: 'image/jpeg' }
+          { src: activeVideo?.thumbnail || activeIptv?.stream_icon || activeAudio?.thumbnail || '', sizes: '512x512', type: 'image/jpeg' }
         ]
       });
 
@@ -61,7 +62,7 @@ function RootLayoutWrapper({ children }: { children: React.ReactNode }) {
       navigator.mediaSession.setActionHandler('previoustrack', () => useMediaStore.getState().prevTrack());
       navigator.mediaSession.setActionHandler('nexttrack', () => useMediaStore.getState().nextTrack());
     }
-  }, [activeVideo, activeIptv]);
+  }, [activeVideo, activeIptv, activeAudio]);
 
   useEffect(() => {
     setMounted(true);
@@ -130,6 +131,7 @@ export default function RootLayout({
             </MainLayoutShell>
             <GlobalVideoPlayer />
             <GlobalQuranPlayer />
+            <AudioPlayer />
             <Toaster />
           </RootLayoutWrapper>
         </FirebaseClientProvider>
