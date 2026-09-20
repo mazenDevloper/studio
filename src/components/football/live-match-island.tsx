@@ -28,8 +28,8 @@ interface AlertItem {
 }
 
 /**
- * LiveMatchIsland v1590.0 - Ultra-Small Desktop Scale Protocol
- * Features: Reduced scale (0.80) on large screens for minimal visual footprint.
+ * LiveMatchIsland v1600.0 - Adaptive Mobile Scaling Protocol
+ * Features: Reduced scale (0.70) on mobile screens for non-intrusive monitoring.
  */
 export function LiveMatchIsland() {
   const { 
@@ -61,7 +61,7 @@ export function LiveMatchIsland() {
     } catch (e) {}
   }, []);
 
-  useEffect(() => { fetchMatches(true); }, []);
+  useEffect(() => { fetchMatches(true); }, [fetchMatches]);
   useEffect(() => { const interval = setInterval(() => fetchMatches(), 60000); return () => clearInterval(interval); }, [fetchMatches]);
 
   const tToM = (t: string) => { if (!t) return 0; const [h, m] = t.split(':').map(Number); return h * 60 + m; };
@@ -156,11 +156,8 @@ export function LiveMatchIsland() {
   }, [now, prayerTimes, prayerSettings, reminders, skippedReminderIds, skippedMatchIds]);
 
   const handleAction = async (id: string, type: 'match' | 'reminder') => {
-    if (type === 'match') {
-      skipMatch(id);
-    } else {
-      toggleReminder(id);
-    }
+    if (type === 'match') skipMatch(id);
+    else toggleReminder(id);
     await syncMasterBin();
   };
 
@@ -186,7 +183,7 @@ export function LiveMatchIsland() {
   if (autoHideIsland && !activeAlerts.length) return null;
 
   return (
-    <div className={cn("fixed top-6 left-1/2 -translate-x-1/2 z-[10001] flex flex-col items-center gap-3 pointer-events-none scale-90 min-[968px]:scale-[0.80] dir-rtl transition-all duration-700", (showIslands || activeAlerts.length) ? "translate-y-0 opacity-100" : "-translate-y-20 opacity-0")}>
+    <div className={cn("fixed top-6 left-1/2 -translate-x-1/2 z-[10001] flex flex-col items-center gap-3 pointer-events-none scale-[0.7] min-[968px]:scale-[0.80] dir-rtl transition-all duration-700", (showIslands || activeAlerts.length) ? "translate-y-0 opacity-100" : "-translate-y-20 opacity-0")}>
       <div className="flex items-start gap-3">
         <div onClick={toggleShowIslands} className="pointer-events-auto shadow-2xl w-12 h-12 rounded-full flex items-center justify-center premium-glass cursor-pointer border border-white/10 active:scale-90 transition-all">{showIslands ? <Eye className="w-5 h-5 text-accent" /> : <EyeOff className="w-5 h-5 text-white/20" />}</div>
         {showIslands && (
@@ -194,73 +191,19 @@ export function LiveMatchIsland() {
             {activeAlerts.map((alert) => {
                if (alert.type === 'match') {
                  return (
-                   <div 
-                     key={alert.id} 
-                     onClick={() => setIsMatchCollapsed(!isMatchCollapsed)}
-                     className={cn(
-                       "pointer-events-auto premium-glass rounded-full flex items-center animate-in slide-in-from-top-2 border transition-all relative group shadow-2xl cursor-pointer",
-                       alert.completed ? "bg-emerald-600/60 border-emerald-400" : "border-white/10",
-                       isMatchCollapsed ? "min-w-[8.5rem] h-[3.8rem] gap-0 px-1" : "min-w-[16rem] h-[6.5rem] gap-0 px-2"
-                     )}
-                   >
+                   <div key={alert.id} onClick={() => setIsMatchCollapsed(!isMatchCollapsed)} className={cn("pointer-events-auto premium-glass rounded-full flex items-center animate-in slide-in-from-top-2 border transition-all relative group shadow-2xl cursor-pointer", alert.completed ? "bg-emerald-600/60 border-emerald-400" : "border-white/10", isMatchCollapsed ? "min-w-[8.5rem] h-[3.8rem] gap-0 px-1" : "min-w-[16rem] h-[6.5rem] gap-0 px-2")}>
                      <button onClick={(e) => { e.stopPropagation(); handleAction(alert.id, 'match'); }} className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-black/60 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center pointer-events-auto transition-opacity z-50 border border-white/10 shadow-glow"><X className="w-3.5 h-3.5" /></button>
-                     
-                     <div className={cn(
-                       "rounded-full bg-white/5 flex items-center justify-center border border-white/10 overflow-hidden shrink-0 shadow-lg relative",
-                       isMatchCollapsed ? "w-10 h-10" : "w-16 h-16"
-                     )}>
-                        {alert.homeLogo ? <img src={alert.homeLogo} className={cn("object-contain drop-shadow-md", isMatchCollapsed ? "w-8 h-8" : "w-13 h-13")} alt="" /> : <Trophy className={cn("text-white/10", isMatchCollapsed ? "w-4 h-4" : "w-6 h-6")} />}
-                        {!isMatchCollapsed && <span className="absolute bottom-0 left-0 right-0 bg-black/60 text-[6px] font-black text-white text-center truncate px-1">{alert.homeName || "HOME"}</span>}
-                     </div>
-
-                     <div className={cn(
-                       "flex-1 flex flex-col items-center justify-center p-0 m-0",
-                       isMatchCollapsed ? "min-w-[5rem]" : "min-w-[10rem]"
-                     )}>
-                        <div className={cn("w-full p-0 m-0 flex items-center justify-center", isMatchCollapsed ? "h-12" : "h-20")}>
-                           <GlassNumber 
-                             text={alert.matchTimeStr || "--:--"} 
-                             id={`match-${alert.id}`} 
-                             size={isMatchCollapsed ? "3.2rem" : "5.5rem"} 
-                             colorClass={alert.isExpired ? "text-emerald-400 animate-pulse" : "text-white"} 
-                           />
-                        </div>
-                     </div>
-
-                     <div className={cn(
-                       "rounded-full bg-white/5 flex items-center justify-center border border-white/10 overflow-hidden shrink-0 shadow-lg relative",
-                       isMatchCollapsed ? "w-10 h-10" : "w-16 h-16"
-                     )}>
-                        {alert.awayLogo ? <img src={alert.awayLogo} className={cn("object-contain drop-shadow-md", isMatchCollapsed ? "w-8 h-8" : "w-13 h-13")} alt="" /> : <Trophy className={cn("text-white/10", isMatchCollapsed ? "w-4 h-4" : "w-6 h-6")} />}
-                        {!isMatchCollapsed && <span className="absolute bottom-0 left-0 right-0 bg-black/60 text-[6px] font-black text-white text-center truncate px-1">{alert.awayName || "AWAY"}</span>}
-                     </div>
+                     <div className={cn("rounded-full bg-white/5 flex items-center justify-center border border-white/10 overflow-hidden shrink-0 shadow-lg relative", isMatchCollapsed ? "w-10 h-10" : "w-16 h-16")}>{alert.homeLogo ? <img src={alert.homeLogo} className={cn("object-contain drop-shadow-md", isMatchCollapsed ? "w-8 h-8" : "w-13 h-13")} alt="" /> : <Trophy className={cn("text-white/10", isMatchCollapsed ? "w-4 h-4" : "w-6 h-6")} />}{!isMatchCollapsed && <span className="absolute bottom-0 left-0 right-0 bg-black/60 text-[6px] font-black text-white text-center truncate px-1">{alert.homeName || "HOME"}</span>}</div>
+                     <div className={cn("flex-1 flex flex-col items-center justify-center p-0 m-0", isMatchCollapsed ? "min-w-[5rem]" : "min-w-[10rem]")}><div className={cn("w-full p-0 m-0 flex items-center justify-center", isMatchCollapsed ? "h-12" : "h-20")}><GlassNumber text={alert.matchTimeStr || "--:--"} id={`match-${alert.id}`} size={isMatchCollapsed ? "3.2rem" : "5.5rem"} colorClass={alert.isExpired ? "text-emerald-400 animate-pulse" : "text-white"} /></div></div>
+                     <div className={cn("rounded-full bg-white/5 flex items-center justify-center border border-white/10 overflow-hidden shrink-0 shadow-lg relative", isMatchCollapsed ? "w-10 h-10" : "w-16 h-16")}>{alert.awayLogo ? <img src={alert.awayLogo} className={cn("object-contain drop-shadow-md", isMatchCollapsed ? "w-8 h-8" : "w-13 h-13")} alt="" /> : <Trophy className={cn("text-white/10", isMatchCollapsed ? "w-4 h-4" : "w-6 h-6")} />}{!isMatchCollapsed && <span className="absolute bottom-0 left-0 right-0 bg-black/60 text-[6px] font-black text-white text-center truncate px-1">{alert.awayName || "AWAY"}</span>}</div>
                    </div>
                  );
                }
                return (
-                  <div key={alert.id} className={cn(
-                    "pointer-events-auto premium-glass min-w-[10.5rem] h-[4rem] rounded-[2rem] flex items-center px-4 gap-3 animate-in slide-in-from-top-2 border transition-all relative group shadow-xl",
-                    alert.completed ? "bg-emerald-600/60 border-emerald-400 shadow-[0_0_40px_rgba(16,185,129,0.4)]" : "border-white/10"
-                  )}>
+                  <div key={alert.id} className={cn("pointer-events-auto premium-glass min-w-[10.5rem] h-[4rem] rounded-[2rem] flex items-center px-4 gap-3 animate-in slide-in-from-top-2 border transition-all relative group shadow-xl", alert.completed ? "bg-emerald-600/60 border-emerald-400 shadow-[0_0_40px_rgba(16,185,129,0.4)]" : "border-white/10")}>
                     <button onClick={() => handleAction(alert.id, 'reminder')} className="absolute -top-1 -right-1 w-7 h-7 rounded-full bg-black/60 text-emerald-400 opacity-0 group-hover:opacity-100 flex items-center justify-center pointer-events-auto transition-opacity z-50 border border-white/10 shadow-glow"><Check className="w-4 h-4" /></button>
-                    <div className={cn(
-                      "w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-colors shadow-inner", 
-                      alert.completed ? "bg-white/20" : alert.type === 'azan' ? "bg-accent/20" : alert.type === 'iqamah' ? "bg-emerald-400/20" : "bg-primary/20"
-                    )}>
-                      {alert.completed ? <Check className="w-4 h-4 text-white" /> : 
-                       alert.type === 'azan' ? <Clock className="w-4 h-4 text-accent" /> : 
-                       alert.type === 'iqamah' ? <Timer className="w-4 h-4 text-emerald-400" /> : 
-                       alert.iconType === 'play' ? <Play className="w-4 h-4 fill-current text-primary" /> :
-                       <Bell className="w-4 h-4 text-primary" />}
-                    </div>
-                    <div className="flex-1 flex flex-col items-center justify-center">
-                      <span className={cn("text-[0.75rem] font-black uppercase truncate max-w-[80px] leading-none mb-1", alert.completed ? "text-white" : "text-white/80")}>
-                        {alert.name}
-                      </span>
-                      <div className="h-8 w-full">
-                        <GlassNumber text={alert.completed ? "منجز" : alert.isExpired ? "الآن" : `${alert.diff >= 0 ? "-" : "+"}${formatCountdown(alert.diff)}`} id={`alert-${alert.id}`} size="2.2rem" colorClass={alert.completed ? "text-white" : alert.color} />
-                      </div>
-                    </div>
+                    <div className={cn("w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-colors shadow-inner", alert.completed ? "bg-white/20" : alert.type === 'azan' ? "bg-accent/20" : alert.type === 'iqamah' ? "bg-emerald-400/20" : "bg-primary/20")}>{alert.completed ? <Check className="w-4 h-4 text-white" /> : alert.type === 'azan' ? <Clock className="w-4 h-4 text-accent" /> : alert.type === 'iqamah' ? <Timer className="w-4 h-4 text-emerald-400" /> : alert.iconType === 'play' ? <Play className="w-4 h-4 fill-current text-primary" /> : <Bell className="w-4 h-4 text-primary" />}</div>
+                    <div className="flex-1 flex flex-col items-center justify-center"><span className={cn("text-[0.75rem] font-black uppercase truncate max-w-[80px] leading-none mb-1", alert.completed ? "text-white" : "text-white/80")}>{alert.name}</span><div className="h-8 w-full"><GlassNumber text={alert.completed ? "منجز" : alert.isExpired ? "الآن" : `${alert.diff >= 0 ? "-" : "+"}${formatCountdown(alert.diff)}`} id={`alert-${alert.id}`} size="2.2rem" colorClass={alert.completed ? "text-white" : alert.color} /></div></div>
                   </div>
                );
             })}

@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -17,8 +16,8 @@ import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 /**
- * DashboardView v260.0 - Adaptive Wall Plate Navigation
- * Features: Inline cycling between moon and manuscripts with full responsive coverage.
+ * DashboardView v270.0 - Mobile Compact Grid
+ * Features: Reduced card heights for mobile optimization.
  */
 export function DashboardView() {
   const { 
@@ -120,9 +119,9 @@ export function DashboardView() {
 
       {/* Zero-Barrier Grid: Optimized for all screens */}
       <div className="grid grid-cols-12 gap-6 min-h-[480px] mobile-grid-optimized" data-row-id="main-widgets-row">
-        <div className="col-span-12 md:col-span-4 rounded-[3rem] overflow-hidden relative shadow-2xl h-[380px] md:h-[480px] bg-black"><ActiveAzkarWidget /></div>
-        <div className="col-span-12 md:col-span-4 rounded-[3rem] relative flex items-center justify-center h-[380px] md:h-[480px] shadow-2xl bg-black"><ReminderSummaryWidget /></div>
-        <div className="col-span-12 md:col-span-4 flex flex-col gap-4 h-[480px] relative">
+        <div className="col-span-12 md:col-span-4 rounded-[3rem] overflow-hidden relative shadow-2xl h-[240px] md:h-[480px] bg-black"><ActiveAzkarWidget /></div>
+        <div className="col-span-12 md:col-span-4 rounded-[3rem] relative flex items-center justify-center h-[240px] md:h-[480px] shadow-2xl bg-black"><ReminderSummaryWidget /></div>
+        <div className="col-span-12 md:col-span-4 flex flex-col gap-4 h-[480px] md:h-[480px] relative">
           <div className="flex-1 relative overflow-hidden bg-black rounded-[3rem] shadow-2xl">
             <Carousel opts={{ loop: true }} className="w-full h-full">
               <CarouselContent className="h-full ml-0 overflow-hidden no-scrollbar transition-none">
@@ -131,7 +130,7 @@ export function DashboardView() {
               </CarouselContent>
             </Carousel>
           </div>
-          <div className="flex-[0.35] rounded-[3rem] relative overflow-hidden shadow-2xl bg-black"><DateAndClockWidget /></div>
+          <div className="flex-[0.35] md:flex-[0.35] min-h-[120px] rounded-[3rem] relative overflow-hidden shadow-2xl bg-black"><DateAndClockWidget /></div>
         </div>
       </div>
 

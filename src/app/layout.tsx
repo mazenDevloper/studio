@@ -19,23 +19,29 @@ import { Loader2, Zap } from 'lucide-react';
 /**
  * RootLayoutWrapper component - Global container
  * Features: Always-On WakeLock & Media Session Integration.
+ * Optimized for Android Car Screens (Prodo/Samsung Browser).
  */
 function RootLayoutWrapper({ children }: { children: React.ReactNode }) {
   const { customFonts, fetchPriorityData, isInitialLoading, activeVideo, activeIptv, activeAudio, isPlaying } = useMediaStore();
   const [mounted, setMounted] = useState(false);
   const wakeLockRef = useRef<any>(null);
 
-  // 1. Sovereign WakeLock: Prevent screen sleep and app suspension
+  // 1. Sovereign WakeLock: Prevent screen sleep and app suspension in car OS
   useEffect(() => {
     const requestWakeLock = async () => {
       try {
         if ('wakeLock' in navigator) {
           wakeLockRef.current = await (navigator as any).wakeLock.request('screen');
+          console.log("[Sovereign Protocol] WakeLock Activated");
         }
-      } catch (err) {}
+      } catch (err) {
+        console.warn("[Sovereign Protocol] WakeLock Refused:", err);
+      }
     };
 
     requestWakeLock();
+
+    // Re-request wake lock when page becomes visible again
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         requestWakeLock();
@@ -45,24 +51,34 @@ function RootLayoutWrapper({ children }: { children: React.ReactNode }) {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, []);
 
-  // 2. Media Session: Control from lock screen and background
+  // 2. Advanced Media Session: Force Android to keep the process alive
   useEffect(() => {
-    if ('mediaSession' in navigator && (activeVideo || activeIptv || activeAudio)) {
-      navigator.mediaSession.metadata = new MediaMetadata({
-        title: activeVideo?.title || activeIptv?.name || activeAudio?.title || 'DriveCast Stream',
-        artist: activeVideo?.channelTitle || activeAudio?.channelTitle || 'Sovereign Hub',
-        album: 'DriveCast Media',
+    if ('mediaSession' in navigator) {
+      const metadata = new MediaMetadata({
+        title: activeVideo?.title || activeIptv?.name || activeAudio?.title || 'بث سيادي نشط',
+        artist: activeVideo?.channelTitle || activeAudio?.channelTitle || 'DriveCast Sovereign Hub',
+        album: 'نظام البث المركزي',
         artwork: [
-          { src: activeVideo?.thumbnail || activeIptv?.stream_icon || activeAudio?.thumbnail || '', sizes: '512x512', type: 'image/jpeg' }
+          { 
+            src: activeVideo?.thumbnail || activeIptv?.stream_icon || activeAudio?.thumbnail || 'https://www.image2url.com/r2/default/images/1782382707952-d99447c6-bc60-475d-9406-5fd2ef320bd5.png', 
+            sizes: '512x512', 
+            type: 'image/jpeg' 
+          }
         ]
       });
 
+      navigator.mediaSession.metadata = metadata;
+
+      // Handle lock screen / car steering wheel controls
       navigator.mediaSession.setActionHandler('play', () => useMediaStore.getState().setIsPlaying(true));
       navigator.mediaSession.setActionHandler('pause', () => useMediaStore.getState().setIsPlaying(false));
       navigator.mediaSession.setActionHandler('previoustrack', () => useMediaStore.getState().prevTrack());
       navigator.mediaSession.setActionHandler('nexttrack', () => useMediaStore.getState().nextTrack());
+      
+      // Update playback state to ensure Android doesn't kill the "idle" tab
+      navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
     }
-  }, [activeVideo, activeIptv, activeAudio]);
+  }, [activeVideo, activeIptv, activeAudio, isPlaying]);
 
   useEffect(() => {
     setMounted(true);
@@ -83,7 +99,7 @@ function RootLayoutWrapper({ children }: { children: React.ReactNode }) {
            </div>
            <div className="text-center space-y-2">
               <h1 className="text-4xl font-black text-white tracking-[0.3em] uppercase">DriveCast</h1>
-              <p className="text-primary font-black text-[10px] uppercase tracking-[0.8em] animate-pulse">Always-On Protocol Active</p>
+              <p className="text-primary font-black text-[10px] uppercase tracking-[0.8em] animate-pulse">Anti-Destroy Protocol Active</p>
            </div>
            <div className="absolute bottom-20 flex flex-col items-center gap-4">
               <Loader2 className="w-8 h-8 animate-spin text-white/20" />

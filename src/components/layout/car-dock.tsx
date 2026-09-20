@@ -23,8 +23,7 @@ const FootballBallIcon = ({ className }: { className?: string }) => (
 function getPriorityKey(keys: string[]): string | null {
   if (!keys || keys.length === 0) return null;
   const hardwarePriority = ['Red', 'Green', 'Yellow', 'Blue', 'Sub', 'Back', 'Exit', '1', '3', '7', '9', '0', '2', '4', '5', '6', '8', 'Info'];
-  const found = hardwarePriority.find(hw => keys.some(k => k.toLowerCase() === hw.toLowerCase()));
-  return found || keys[0];
+  return hardwarePriority.find(hw => keys.some(k => k.toLowerCase() === hw.toLowerCase())) || keys[0];
 }
 
 export function ShortcutBadge({ action, className, context = 'default' }: { action: AppAction, className?: string, context?: 'dock' | 'player' | 'default' }) {
@@ -56,7 +55,17 @@ export function ShortcutBadge({ action, className, context = 'default' }: { acti
   const scale = context === 'dock' ? 1.45 : context === 'player' ? 1.15 : 1.0;
   
   return (
-    <div className={cn("absolute z-[200] flex items-center justify-center transition-all duration-0 -bottom-4 -left-4", isColor ? "rounded-[0.6rem]" : "rounded-full", displayKey === 'Red' && "bg-red-600 shadow-[0_0_15px_rgba(220,38,38,0.8)]", displayKey === 'Green' && "bg-green-600 shadow-[0_0_15px_rgba(22,163,74,0.8)]", displayKey === 'Yellow' && "bg-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.8)]", displayKey === 'Blue' && "bg-blue-600 shadow-[0_0_15px_rgba(37,99,235,0.8)]", (isNumber || isHardware) && "bg-zinc-800 border-2 border-zinc-600 shadow-2xl", isWhiteButton && "bg-white text-black shadow-glow", className)} style={{ width: isColor ? `${36 * scale}px` : `${30 * scale}px`, height: isColor ? `${26 * scale}px` : `${30 * scale}px` }}>
+    <div className={cn(
+      "absolute z-[200] hidden min-[968px]:flex items-center justify-center transition-all duration-0 -bottom-4 -left-4", 
+      isColor ? "rounded-[0.6rem]" : "rounded-full", 
+      displayKey === 'Red' && "bg-red-600 shadow-[0_0_15px_rgba(220,38,38,0.8)]", 
+      displayKey === 'Green' && "bg-green-600 shadow-[0_0_15px_rgba(22,163,74,0.8)]", 
+      displayKey === 'Yellow' && "bg-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.8)]", 
+      displayKey === 'Blue' && "bg-blue-600 shadow-[0_0_15px_rgba(37,99,235,0.8)]", 
+      (isNumber || isHardware) && "bg-zinc-800 border-2 border-zinc-600 shadow-2xl", 
+      isWhiteButton && "bg-white text-black shadow-glow", 
+      className
+    )} style={{ width: isColor ? `${36 * scale}px` : `${30 * scale}px`, height: isColor ? `${26 * scale}px` : `${30 * scale}px` }}>
       <div className="flex flex-col items-center leading-none" style={{ transform: `scale(${scale * 0.85})` }}>
         <span className={cn("font-black uppercase tracking-tighter mb-0.5", (displayKey === 'Yellow' || isWhiteButton) ? "text-black" : "text-white")} style={{ fontSize: '7.5px' }}>زر</span>
         <span className={cn("font-black tracking-tight", (displayKey === 'Yellow' || isWhiteButton) ? "text-black" : "text-white")} style={{ fontSize: '10px' }}>{shortKey}</span>
@@ -73,10 +82,8 @@ export function CarDock() {
 
   useEffect(() => { setMounted(true); }, []);
 
-  // SOVEREIGN DOCK FOCUS STRATEGY
   useEffect(() => {
     if (!mounted) return;
-    
     if (pathname === '/quran') {
       const quranIcon = document.querySelector('[data-nav-id="dock-Quran"]') as HTMLElement;
       quranIcon?.focus();
@@ -101,14 +108,8 @@ export function CarDock() {
 
   const handleNavigate = (href: string) => {
     if (pathname === href && href === '/media') resetMediaView();
-    
-    // SOVEREIGN AUTO-REFRESH: Automatically trigger local fetch for Media and Settings
-    if (href === '/media' || href === '/settings') {
-      fetchPriorityData('all');
-    }
-    
+    if (href === '/media' || href === '/settings') fetchPriorityData('all');
     router.push(href);
-    
     setTimeout(() => {
       const firstTarget = document.querySelector('[data-nav-zone="content"] .focusable') as HTMLElement;
       firstTarget?.focus();
@@ -118,18 +119,13 @@ export function CarDock() {
   const handleScroll = useCallback((dir: 'up' | 'down') => {
     const zone = document.querySelector('[data-nav-zone="content"]') as HTMLElement;
     if (!zone) return;
-
     if (zone.scrollHeight > zone.clientHeight) {
       zone.scrollBy({ top: dir === 'up' ? -400 : 400, behavior: 'smooth' });
       return;
     }
-
     const parent = zone.closest('.overflow-auto, .overflow-y-auto') as HTMLElement;
-    if (parent) {
-      parent.scrollBy({ top: dir === 'up' ? -400 : 400, behavior: 'smooth' });
-    } else {
-      window.scrollBy({ top: dir === 'up' ? -400 : 400, behavior: 'smooth' });
-    }
+    if (parent) parent.scrollBy({ top: dir === 'up' ? -400 : 400, behavior: 'smooth' });
+    else window.scrollBy({ top: dir === 'up' ? -400 : 400, behavior: 'smooth' });
   }, []);
 
   if (!mounted) return null;

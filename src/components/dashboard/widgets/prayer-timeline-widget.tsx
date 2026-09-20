@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useMemo, useEffect, useState } from "react";
@@ -8,8 +7,8 @@ import { Timer, BellRing, Sun, Sunrise, Sunset, Moon, Sparkles, CloudSun, Edit3,
 import { useMediaStore } from "@/lib/store";
 
 /**
- * PrayerTimelineWidget v250.0 - Interactive Iqamah Hub
- * Features: Inline Iqamah Editing with Pencil Icon + Sovereign Centering focus.
+ * PrayerTimelineWidget v260.0 - Compact Mobile Mode
+ * Features: Removed icons on mobile, keeping only name and time for extreme clarity.
  */
 export function PrayerTimelineWidget() {
   const [now, setNow] = useState<Date | null>(null);
@@ -97,7 +96,7 @@ export function PrayerTimelineWidget() {
             <div 
               key={prayer.id} 
               className={cn(
-                "flex-1 min-w-[210px] flex items-center gap-4 transition-all duration-300 relative rounded-[2.2rem] p-4 border-2 focusable group outline-none",
+                "flex-1 min-w-[210px] md:min-w-[210px] flex items-center gap-4 transition-all duration-300 relative rounded-[2.2rem] p-4 border-2 focusable group outline-none",
                 isActive 
                   ? "bg-white/15 border-white/30 scale-105 z-10 shadow-[0_0_60px_rgba(0,136,255,0.3)]" 
                   : "bg-white/5 border-white/5"
@@ -107,13 +106,13 @@ export function PrayerTimelineWidget() {
             >
               {isActive && <div className={cn("absolute inset-0 blur-3xl opacity-20 rounded-full", isCurrentIqamah ? "bg-emerald-500" : "bg-primary")} />}
               
-              <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center relative overflow-hidden shrink-0", isActive ? "bg-black/60 border border-white/20 shadow-glow" : "bg-white/5")}>
+              <div className={cn("w-14 h-14 rounded-2xl md:flex hidden items-center justify-center relative overflow-hidden shrink-0", isActive ? "bg-black/60 border border-white/20 shadow-glow" : "bg-white/5")}>
                 <Icon className={cn("w-7 h-7", isActive ? prayer.color : "text-white/40")} />
               </div>
 
               <div className="flex flex-col flex-1 min-w-0 text-right">
                 <div className="flex items-center justify-between mb-0.5">
-                   <span className="text-[13px] font-black uppercase tracking-[0.15em] truncate text-white">{prayer.name}</span>
+                   <span className="text-[13px] md:text-[13px] font-black uppercase tracking-[0.15em] truncate text-white">{prayer.name}</span>
                    <button 
                      onClick={(e) => { e.stopPropagation(); setEditingId(isEditing ? null : prayer.id); }}
                      className="opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity p-1 text-white/40 hover:text-emerald-400"
@@ -123,7 +122,7 @@ export function PrayerTimelineWidget() {
                 </div>
 
                 <div className="flex items-baseline gap-2">
-                  <span className="text-3xl font-black tabular-nums tracking-tighter drop-shadow-[0_10px_20px_rgba(0,0,0,0.8)] text-white">{convertTo12Hour(prayer.time)}</span>
+                  <span className="text-3xl md:text-3xl font-black tabular-nums tracking-tighter drop-shadow-[0_10px_20px_rgba(0,0,0,0.8)] text-white">{convertTo12Hour(prayer.time)}</span>
                 </div>
 
                 {isEditing ? (

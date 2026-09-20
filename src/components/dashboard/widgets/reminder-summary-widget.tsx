@@ -20,22 +20,30 @@ interface ReminderItem {
   endTimeStr?: string;
   window: number;
   isNearingEnd?: boolean;
+  type?: string;
 }
 
 /**
- * ReminderSummaryWidget v260.0 - Bell & Prayer Protocol
- * Features: Filters strictly for Azan and 'bell' type reminders.
+ * ReminderSummaryWidget v270.0 - Mobile-Optimized One-Item Prayer Display
+ * Features: Filters for prayers only and limits to 1 item on mobile.
  */
 export function ReminderSummaryWidget() {
   const { prayerTimes, reminders, prayerSettings } = useMediaStore();
   const [mounted, setMounted] = useState(false);
   const [now, setNow] = useState<Date | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
     setMounted(true);
     setNow(new Date());
+    setIsMobile(window.innerWidth < 768);
     const timer = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(timer);
+    const resizeHandler = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', resizeHandler);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('resize', resizeHandler);
+    };
   }, []);
 
   const processedReminders = useMemo(() => {
@@ -63,7 +71,6 @@ export function ReminderSummaryWidget() {
         let diff = targetSecs - totalCurrentSecs;
         if (diff < -43200) diff += 86400;
         
-        // Show if upcoming or active within window
         if (diff > -600) {
           list.push({ 
             id: `azan-${setting.id}`, 
@@ -73,59 +80,64 @@ export function ReminderSummaryWidget() {
             icon: Clock, 
             color: "text-accent", 
             targetTimeStr: formatTargetTime(targetSecs), 
-            window: setting.countdownWindow * 60
+            window: setting.countdownWindow * 60,
+            type: 'azan'
           });
         }
       }
 
-      // 2. Custom Reminders - ONLY 'bell' type classified for the Dashboard Summary
-      for (const rem of reminders) {
-        if (rem.completed || rem.iconType !== 'bell') continue;
-        
-        let startSecs = 0, endSecs = 0;
-        if (rem.startType === 'manual' && rem.manualStartTime) startSecs = tToM(rem.manualStartTime) * 60;
-        else if (rem.startReference && pData[rem.startReference]) {
-          const pSet = prayerSettings.find(s => s.id === rem.startReference);
-          let baseMins = tToM(pData[rem.startReference]);
-          if (rem.startType === 'iqamah') baseMins += (pSet?.iqamahDuration || 0);
-          startSecs = (baseMins + rem.startOffset) * 60;
-        }
-
-        if (startSecs > 0) {
-          if (rem.endType === 'manual' && rem.manualEndTime) endSecs = tToM(rem.manualEndTime) * 60;
-          else if (rem.endType === 'duration') endSecs = startSecs + (rem.durationMinutes || 30) * 60;
-          else if ((rem.endType === 'azan' || rem.endType === 'iqamah' || rem.endType === 'prayer') && rem.endReference && pData[rem.endReference]) {
-            const expSetting = prayerSettings.find(s => s.id === rem.endReference);
-            let expMins = tToM(pData[rem.endReference]);
-            if (rem.endType === 'iqamah') expMins += (expSetting?.iqamahDuration || 0);
-            endSecs = (expMins + (rem.endOffset || 0)) * 60;
+      // 2. Custom Reminders - EXCLUDE on mobile as per request
+      if (!isMobile) {
+        for (const rem of reminders) {
+          if (rem.completed || rem.iconType !== 'bell') continue;
+          
+          let startSecs = 0, endSecs = 0;
+          if (rem.startType === 'manual' && rem.manualStartTime) startSecs = tToM(rem.manualStartTime) * 60;
+          else if (rem.startReference && pData[rem.startReference]) {
+            const pSet = prayerSettings.find(s => s.id === rem.startReference);
+            let baseMins = tToM(pData[rem.startReference]);
+            if (rem.startType === 'iqamah') baseMins += (pSet?.iqamahDuration || 0);
+            startSecs = (baseMins + rem.startOffset) * 60;
           }
 
-          let sDiff = startSecs - totalCurrentSecs;
-          if (sDiff < -43200) sDiff += 86400;
-          let eDiff = endSecs - totalCurrentSecs;
-          if (eDiff < -43200) eDiff += 86400;
+          if (startSecs > 0) {
+            if (rem.endType === 'manual' && rem.manualEndTime) endSecs = tToM(rem.manualEndTime) * 60;
+            else if (rem.endType === 'duration') endSecs = startSecs + (rem.durationMinutes || 30) * 60;
+            else if ((rem.endType === 'azan' || rem.endType === 'iqamah' || rem.endType === 'prayer') && rem.endReference && pData[rem.endReference]) {
+              const expSetting = prayerSettings.find(s => s.id === rem.endReference);
+              let expMins = tToM(pData[rem.endReference]);
+              if (rem.endType === 'iqamah') expMins += (expSetting?.iqamahDuration || 0);
+              endSecs = (expMins + (rem.endOffset || 0)) * 60;
+            }
 
-          if (eDiff > 0) {
-            const windowSecs = (rem.countdownWindow || 15) * 60;
-            const isActive = (sDiff <= 0 && eDiff > 0) || (sDiff > 0 && sDiff < windowSecs);
-            if (isActive) {
-              list.push({ 
-                id: rem.id, name: rem.label, label: "تذكير", diff: sDiff, expDiff: eDiff,
-                icon: Bell, color: rem.color, 
-                targetTimeStr: formatTargetTime(startSecs), 
-                endTimeStr: formatTargetTime(endSecs),
-                window: windowSecs,
-                isNearingEnd: eDiff > 0 && eDiff <= 600
-              });
+            let sDiff = startSecs - totalCurrentSecs;
+            if (sDiff < -43200) sDiff += 86400;
+            let eDiff = endSecs - totalCurrentSecs;
+            if (eDiff < -43200) eDiff += 86400;
+
+            if (eDiff > 0) {
+              const windowSecs = (rem.countdownWindow || 15) * 60;
+              const isActive = (sDiff <= 0 && eDiff > 0) || (sDiff > 0 && sDiff < windowSecs);
+              if (isActive) {
+                list.push({ 
+                  id: rem.id, name: rem.label, label: "تذكير", diff: sDiff, expDiff: eDiff,
+                  icon: Bell, color: rem.color, 
+                  targetTimeStr: formatTargetTime(startSecs), 
+                  endTimeStr: formatTargetTime(endSecs),
+                  window: windowSecs,
+                  isNearingEnd: eDiff > 0 && eDiff <= 600,
+                  type: 'reminder'
+                });
+              }
             }
           }
         }
       }
     }
-    // Strictly sort by nearest and limit to 3 items
-    return list.sort((a, b) => Math.abs(a.diff) - Math.abs(b.diff)).slice(0, 3);
-  }, [now, prayerTimes, reminders, prayerSettings]);
+
+    const baseList = list.sort((a, b) => Math.abs(a.diff) - Math.abs(b.diff));
+    return isMobile ? baseList.slice(0, 1) : baseList.slice(0, 3);
+  }, [now, prayerTimes, reminders, prayerSettings, isMobile]);
 
   const formatCountdown = (diffSeconds: number) => { 
     const absSecs = Math.abs(diffSeconds); 

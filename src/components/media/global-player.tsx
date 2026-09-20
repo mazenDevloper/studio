@@ -2,7 +2,7 @@
 "use client";
 
 import { useMediaStore, YouTubeVideo } from "@/lib/store";
-import { X, Monitor, ChevronRight, ChevronLeft, Maximize2, BookmarkCheck, Volume2, ListPlus, LayoutList, RotateCcw, Play, MousePointer2 } from "lucide-react";
+import { X, Monitor, ChevronRight, ChevronLeft, Maximize2, BookmarkCheck, Volume2, ListPlus, LayoutList, RotateCcw, Play, MousePointer2, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { SovereignIframe } from "@/components/ui/sovereign-iframe";
@@ -13,7 +13,8 @@ import { useToast } from "@/hooks/use-toast";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
 /**
- * GlobalVideoPlayer v1270.0 - Invisible Activation Protocol
+ * GlobalVideoPlayer v1280.0 - External Popup Protocol
+ * Features: Picture-in-Picture window for background system play.
  */
 export function GlobalVideoPlayer() {
   const { 
@@ -48,6 +49,28 @@ export function GlobalVideoPlayer() {
   };
 
   const totalDuration = useMemo(() => activeVideo ? parseDurationToSeconds(activeVideo.duration || "") : 0, [activeVideo]);
+
+  const handleSystemPopup = () => {
+    if (!isActive) return;
+    const url = activeVideo 
+      ? `https://www.youtube.com/embed/${activeVideo.id}?autoplay=1&enablejsapi=1` 
+      : activeIptv?.url;
+    
+    if (url) {
+      const w = 640;
+      const h = 360;
+      const left = (window.screen.width / 2) - (w / 2);
+      const top = (window.screen.height / 2) - (h / 2);
+      
+      // Sovereign External Popup - Works outside browser tab boundaries
+      window.open(
+        url, 
+        'DriveCastSystemPopup', 
+        `width=${w},height=${h},top=${top},left=${left},menubar=no,toolbar=no,location=no,status=no,resizable=yes`
+      );
+      toast({ title: "النافذة المنبثقة نشطة", description: "البث يعمل الآن في نافذة مستقلة خارج المتصفح" });
+    }
+  };
 
   useEffect(() => {
     const unlockAudio = () => {
@@ -342,6 +365,13 @@ export function GlobalVideoPlayer() {
                      </div>
                   </PopoverContent>
                 </Popover>
+
+                <div className="relative group">
+                  <button onClick={handleSystemPopup} className={cn(ctrlBtnClass, "bg-white/5 text-white/60")} title="نافذة منبثقة خارج المتصفح">
+                    <ExternalLink className="w-6 h-6" />
+                  </button>
+                  <ShortcutBadge action="player_mode" className="-bottom-4 left-1/2 -translate-x-1/2 scale-75" />
+                </div>
 
                 <div className="relative group">
                   <button onClick={cyclePlayerMode} className={cn(ctrlBtnClass, "bg-white/5 text-white/60")}>

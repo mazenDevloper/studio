@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -63,7 +62,7 @@
 
 .no-scrollbar::-webkit-scrollbar { display: none; }
 
-/* --- SOVEREIGN MOBILE TRANSFORMATION PROTOCOL (v1100.0) --- */
+/* --- SOVEREIGN MOBILE TRANSFORMATION PROTOCOL (v1200.0) --- */
 @media (max-width: 768px) {
   body {
     overflow-y: auto !important;
@@ -101,7 +100,7 @@
   }
 
   [data-row-id="main-widgets-row"] > div {
-    @apply col-span-1 h-auto min-h-[340px] !important;
+    @apply col-span-1 h-auto min-h-[200px] !important;
   }
 
   [data-row-id="row-shortcuts"] {
@@ -129,11 +128,17 @@
   }
 
   [data-row-id="row-prayer-bar"] .flex-nowrap {
-    @apply flex-col gap-3 p-2 !important;
+    @apply grid grid-cols-2 gap-2 p-1 !important;
+    flex-wrap: wrap !important;
   }
 
   [data-row-id="row-prayer-bar"] .flex-1 {
-    @apply w-full min-w-0 h-24 p-3 !important;
+    @apply w-full min-w-0 h-auto p-3 !important;
+    border-radius: 1.5rem !important;
+  }
+  
+  [data-row-id="row-prayer-bar"] .flex-1:last-child {
+    @apply col-span-2 !important;
   }
 
   [data-row-id="row-saved-videos"] {

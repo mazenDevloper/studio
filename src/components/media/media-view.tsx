@@ -25,8 +25,8 @@ const HIJRI_MONTHS = [
 const JUZ_COLORS = [
   "shadow-[0_0_2px_rgba(255,0,0,0.05)] border-red-500/10", "shadow-[0_0_2px_rgba(255,127,0,0.05)] border-orange-500/10",
   "shadow-[0_0_2px_rgba(255,255,0,0.05)] border-yellow-500/10", "shadow-[0_0_2px_rgba(0,255,0,0.05)] border-green-500/10",
-  "shadow-[0_0_2px_rgba(0,0,255,0.05)] border-blue-500/10", "shadow-[0_0_2px_rgba(75,0,130,0.05)] border-indigo-500/10",
-  "shadow-[0_0_2px_rgba(148,0,211,0.05)] border-violet-500/10", "shadow-[0_0_2px_rgba(255,20,147,0.05)] border-pink-500/10",
+  "shadow-[0_0_2px_rgba(0,0,255,0.05)] border-blue-500/10", "shadow-[0_0_75,0,130,0.05)] border-indigo-500/10",
+  "shadow-[0_0_148,0,211,0.05)] border-violet-500/10", "shadow-[0_0_255,20,147,0.05)] border-pink-500/10",
   "shadow-[0_0_2px_rgba(0,255,255,0.05)] border-cyan-500/10", "shadow-[0_0_173,255,47,0.05)] border-lime-500/10",
   "shadow-[0_0_2px_rgba(255,69,0,0.05)] border-orangered-500/10", "shadow-[0_0_30,144,255,0.05)] border-dodgerblue-500/10",
   "shadow-[0_0_218,112,214,0.05)] border-orchid-500/10", "shadow-[0_0_50,205,50,0.05)] border-limegreen-500/10",
@@ -88,10 +88,6 @@ export function MediaView() {
   const [newPlaylistName, setNewPlaylistName] = useState("");
   const [isFetchingPlaylists, setIsFetchingPlaylists] = useState(false);
   
-  const [isEditingOmanUrl, setIsEditingOmanUrl] = useState(false);
-  const [omanUrlInput, setOmanUrlInput] = useState(mapSettings.omanUrl || "");
-  const [showHijriSim, setShowHijriSim] = useState(false);
-  
   const initialHijri = useMemo(() => getCurrentHijriDate(), []);
   const [hDay, setHDay] = useState(initialHijri.day.toString());
   const [hMonth, setHMonth] = useState(initialHijri.monthName);
@@ -104,7 +100,26 @@ export function MediaView() {
 
   const isDockLeft = dockSide === 'left';
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const playlistInputRef = useRef<HTMLInputElement>(null);
+
+  const autoFocusResults = useCallback(() => {
+    setTimeout(() => {
+      const firstVid = document.querySelector('[data-nav-id="playlist-results-item-0"]') as HTMLElement || 
+                      document.querySelector('[data-nav-id="search-results-item-0"]') as HTMLElement ||
+                      document.querySelector('[data-nav-id="channel-results-item-0"]') as HTMLElement;
+      if (firstVid) {
+        firstVid.focus();
+        firstVid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 850);
+  }, []);
+
+  const handlePlaylistEntry = (id: string) => {
+    setSelectedPlaylist(id);
+    setSelectedChannel(null);
+    setSearchResults([]);
+    setIsSidebarShrinked(true);
+    autoFocusResults();
+  };
 
   useEffect(() => {
     const handleFocusIn = () => {
@@ -133,14 +148,13 @@ export function MediaView() {
           }, 800);
         } catch (error) {
           console.error("Subscription Videos Error:", error);
-          toast({ variant: "destructive", title: "خطأ", description: "فشل جلب فيديوهات القناة" });
         } finally {
           setLoading(false);
         }
       }
     }
     fetchVideos();
-  }, [selectedChannel, setChannelVideos, toast]);
+  }, [selectedChannel, setChannelVideos]);
 
   const occasionSuggestions = useMemo(() => {
     const list: OccasionSuggestion[] = [];
@@ -149,13 +163,10 @@ export function MediaView() {
       list.push({ label: firstIptv.name, query: firstIptv.url || "", isIptv: true, icon: firstIptv.stream_icon, iptvChannel: firstIptv });
     }
     list.push({ label: `${hDay} ${hMonth} 🕌`, query: `${hDay} ${hMonth} ${hYear} القارئ الحرم`, isDate: true });
-    const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
-    const dayName = yesterday.toLocaleDateString('ar-EG', { weekday: 'long' });
-    list.push({ label: `أهداف مباريات اليوم ${dayName} ⚽`, query: `أهداف مباريات اليوم ${dayName} `, isSport: true });
     const contextOccasions = getIslamicOccasions(initialHijri);
     contextOccasions.forEach(occ => { if (!occ.label.includes("عمان")) list.push(occ); });
     return list.slice(0, 15);
-  }, [initialHijri, mapSettings.omanUrl, favoriteIptvChannels, hDay, hMonth, hYear]);
+  }, [initialHijri, favoriteIptvChannels, hDay, hMonth, hYear]);
 
   useEffect(() => {
     async function fetchHomeContent() {
@@ -181,8 +192,6 @@ export function MediaView() {
 
   const performSearch = async (query?: string) => {
     const q = query || search; if (!q.trim()) return;
-    
-    // ATOMIC PLAYLIST FETCHER
     const listMatch = q.match(/[?&]list=([^&]+)/) || q.match(/playlist list=([^&]+)/);
     if (listMatch) {
       setLoading(true); setSelectedChannel(null); setSelectedPlaylist(null);
@@ -191,34 +200,26 @@ export function MediaView() {
         setSearchResults(data.videos);
         setSearch(data.title);
         toast({ title: "تم استكشاف المجلد", description: data.title });
-        setTimeout(() => { (document.querySelector('[data-nav-id="search-results-item-0"]') as HTMLElement)?.focus(); }, 500);
+        autoFocusResults();
       } catch (e) {
         toast({ variant: "destructive", title: "خطأ", description: "فشل جلب محتويات المجلد" });
       } finally { setLoading(false); }
       return;
     }
-
     if (q.startsWith('http') || q.includes('youtube.com') || q.includes('youtu.be') || q.includes('.m3u8')) {
       const ytIdMatch = q.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
       if (ytIdMatch) {
-        setActiveVideo({ 
-          id: ytIdMatch[1], title: "فيديو من الرابط المباشر", thumbnail: `https://i.ytimg.com/vi/${ytIdMatch[1]}/hqdefault.jpg`,
-          description: "تشغيل سيادي فوري عبر الرابط", publishedAt: new Date().toISOString(), channelTitle: "رابط يوتيوب"
-        });
+        setActiveVideo({ id: ytIdMatch[1], title: "فيديو من الرابط المباشر", thumbnail: `https://i.ytimg.com/vi/${ytIdMatch[1]}/hqdefault.jpg`, description: "تشغيل سيادي فوري عبر الرابط", publishedAt: new Date().toISOString(), channelTitle: "رابط يوتيوب" });
         return;
       }
-      setActiveIptv({
-        stream_id: "injected-" + Date.now(), name: "رابط مباشر خارجي", stream_icon: "https://www.google.com/s2/favicons?sz=64&domain=" + q,
-        category_id: "direct", url: q, type: 'web'
-      });
+      setActiveIptv({ stream_id: "injected-" + Date.now(), name: "رابط مباشر خارجي", stream_icon: "https://www.google.com/s2/favicons?sz=64&domain=" + q, category_id: "direct", url: q, type: 'web' });
       return;
     }
-
     setSearch(q); setLoading(true); setSelectedChannel(null); setSelectedPlaylist(null);
     try { 
       const rawRes = await searchYouTubeVideos(q, 40); 
       setSearchResults(rawRes || []); 
-      setTimeout(() => { (document.querySelector('[data-nav-id="search-results-item-0"]') as HTMLElement)?.focus(); }, 500);
+      autoFocusResults();
     } finally { setLoading(false); }
   };
 
@@ -232,7 +233,7 @@ export function MediaView() {
   };
 
   const handlePlaylistInputKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (isPlaylistInputLocked) { if (e.key === 'Enter' || e.key === '5') { process.nextTick(() => { setIsPlaylistInputLocked(false); setTimeout(() => playlistInputRef.current?.focus(), 50); }); } return; }
+    if (isPlaylistInputLocked) { if (e.key === 'Enter' || e.key === '5') { process.nextTick(() => { setIsPlaylistInputLocked(false); setTimeout(() => searchInputRef.current?.focus(), 50); }); } return; }
     if (e.key === 'Enter') { 
       const input = newPlaylistName.trim(); if (!input) return;
       const listMatch = input.match(/[?&]list=([^&]+)/);
@@ -251,9 +252,7 @@ export function MediaView() {
   const handleReciterClick = (r: YouTubeChannel) => { setSelectedReciter(r.name); setSearch(r.name); incrementReciterClick(r.channelid); setTimeout(() => { (document.querySelector('[data-nav-id="juz-item-0"]') as HTMLElement)?.focus(); }, 200); };
   const handleJuzClick = (juzNum: number) => { setSelectedJuz(juzNum); const surahIds = JUZ_SURAH_MAP[juzNum] || []; const filtered = allSurahs.filter(s => surahIds.includes(s.id)); setSurahs(filtered); setSearch(selectedReciter ? `${selectedReciter} الجزء ${juzNum}` : `الجزء ${juzNum}`); setTimeout(() => { (document.querySelector('[data-nav-id="surah-0"]') as HTMLElement)?.focus(); }, 200); };
   const handleSurahClick = (surahName: string) => { setSelectedSurah(surahName); const query = selectedReciter ? `${selectedReciter} سورة ${surahName}` : `سورة ${surahName}`; setSearch(query); performSearch(query); };
-  const handleApplyHijriDate = () => { const query = `${selectedReciter ? selectedReciter + ' ' : ''}${hDay} ${hMonth} ${hYear} القارئ الحرم`; setSearch(query); performSearch(query); setShowHijriSim(false); };
   const handleDirectPlaylistFetch = async () => { setIsFetchingPlaylists(true); try { await fetchSpecificBin(JSONBIN_MASTER_BIN_ID); } finally { setIsFetchingPlaylists(false); } };
-  const handleSaveOmanUrl = async () => { updateMapSettings({ omanUrl: omanUrlInput }); await syncMasterBin(); setIsEditingOmanUrl(false); toast({ title: "تم الحفظ" }); };
 
   const handleSavePlaylistFromSearch = async (video: YouTubeVideo) => {
     if (!video.isPlaylist) return;
@@ -281,55 +280,14 @@ export function MediaView() {
           <div className="aspect-video relative overflow-hidden">
             <img src={video.thumbnail} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="" />
             {video.duration && <div className="absolute bottom-2 right-2 bg-black text-white text-[12px] px-2 py-1 rounded font-black z-10">{video.duration}</div>}
-            
             <div className="absolute top-4 right-4 z-[60] opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-2">
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (!video.isPlaylist) {
-                    setActiveAudio({ id: video.id, title: video.title, thumbnail: video.thumbnail, channelTitle: video.channelTitle });
-                    toast({ title: "الوضع الصوتي السيادي", description: `جاري تشغيل: ${video.title}` });
-                  }
-                }}
-                className="w-10 h-10 rounded-full bg-primary text-white backdrop-blur-xl border border-primary/40 flex items-center justify-center hover:bg-primary/80 transition-all shadow-glow active:scale-90"
-              >
-                <Music className="w-5 h-5" />
-              </button>
-              
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  window.open(`https://www.youtube.com/watch?v=${video.id}${video.isPlaylist ? '&list='+video.id : ''}`, '_blank');
-                }}
-                className="w-10 h-10 rounded-full bg-black/60 backdrop-blur-xl border border-white/20 flex items-center justify-center text-white hover:bg-red-600 transition-all shadow-glow active:scale-90"
-              >
-                <Youtube className="w-5 h-5" />
-              </button>
-
-              {video.isPlaylist && (
-                <button 
-                  onClick={(e) => { e.stopPropagation(); handleSavePlaylistFromSearch(video); }}
-                  className="w-10 h-10 rounded-full bg-indigo-600 text-white backdrop-blur-xl border border-indigo-400/40 flex items-center justify-center hover:bg-indigo-500 transition-all shadow-glow active:scale-90"
-                  title="حفظ المجلد في مكتبتك"
-                >
-                  <Plus className="w-5 h-5" />
-                </button>
-              )}
+              <button onClick={(e) => { e.stopPropagation(); if (!video.isPlaylist) { setActiveAudio({ id: video.id, title: video.title, thumbnail: video.thumbnail, channelTitle: video.channelTitle }); toast({ title: "الوضع الصوتي السيادي", description: `جاري تشغيل: ${video.title}` }); } }} className="w-10 h-10 rounded-full bg-primary text-white backdrop-blur-xl border border-primary/40 flex items-center justify-center hover:bg-primary/80 transition-all shadow-glow active:scale-90"><Music className="w-5 h-5" /></button>
+              <button onClick={(e) => { e.stopPropagation(); window.open(`https://www.youtube.com/watch?v=${video.id}${video.isPlaylist ? '&list='+video.id : ''}`, '_blank'); }} className="w-10 h-10 rounded-full bg-black/60 backdrop-blur-xl border border-white/20 flex items-center justify-center text-white hover:bg-red-600 transition-all shadow-glow active:scale-90"><Youtube className="w-5 h-5" /></button>
+              {video.isPlaylist && <button onClick={(e) => { e.stopPropagation(); handleSavePlaylistFromSearch(video); }} className="w-10 h-10 rounded-full bg-indigo-600 text-white backdrop-blur-xl border border-indigo-400/40 flex items-center justify-center hover:bg-indigo-500 transition-all shadow-glow active:scale-90" title="حفظ المجلد في مكتبتك"><Plus className="w-5 h-5" /></button>}
             </div>
-
-            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-              <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center border-2 border-primary/40 shadow-glow">
-                {video.isPlaylist ? <Library className="w-8 h-8 text-white" /> : <Youtube className="w-8 h-8 text-white fill-white" />}
-              </div>
-            </div>
+            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"><div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center border-2 border-primary/40 shadow-glow">{video.isPlaylist ? <Library className="w-8 h-8 text-white" /> : <Youtube className="w-8 h-8 text-white fill-white" />}</div></div>
           </div>
-          <div className="p-5 space-y-2">
-            <h3 className="text-sm font-black text-white line-clamp-2 leading-tight">{video.title}</h3>
-            <div className="flex items-center gap-3 text-[10px] font-bold text-white/40 uppercase tracking-widest">
-              <span>{video.channelTitle}</span>
-              {video.isPlaylist && <span className="px-2 py-0.5 bg-indigo-600/20 text-indigo-400 rounded-md">مجلد</span>}
-            </div>
-          </div>
+          <div className="p-5 space-y-2"><h3 className="text-sm font-black text-white line-clamp-2 leading-tight">{video.title}</h3><div className="flex items-center gap-3 text-[10px] font-bold text-white/40 uppercase tracking-widest"><span>{video.channelTitle}</span>{video.isPlaylist && <span className="px-2 py-0.5 bg-indigo-600/20 text-indigo-400 rounded-md">مجلد</span>}</div></div>
         </div>
       ))}
     </div>
@@ -344,17 +302,9 @@ export function MediaView() {
           {!isSidebarShrinked && (
             <div className="px-4 py-4 space-y-3" data-row-id="sidebar-playlists">
                 <h4 className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] px-2">مجلداتك السيادية</h4>
-                
-                <div 
-                  onClick={() => { setSelectedPlaylist('favorites'); setSelectedChannel(null); setSearchResults([]); setIsSidebarShrinked(true); }} 
-                  className={cn( "flex items-center justify-between p-1.5 px-3 rounded-xl cursor-pointer transition-all focusable group border", selectedPlaylist === 'favorites' ? "bg-amber-600 border-amber-400 text-white shadow-glow" : "bg-amber-900/10 border-white/5 text-white/80" )} 
-                  tabIndex={0} data-nav-id="sidebar-playlist-favorites"
-                >
-                  <div className="flex items-center gap-3"><div className={cn("w-7 h-7 rounded-lg flex items-center justify-center shadow-lg", selectedPlaylist === 'favorites' ? "bg-white/20" : "bg-amber-600")}><Star className="w-3.5 h-3.5 text-white" /></div><div className="flex flex-col min-w-0"><span className="text-[11px] font-black truncate max-w-[90px] tracking-tighter">المفضلات ⭐</span><span className="text-[7px] font-black opacity-60 uppercase">{savedVideos.length} فيديو</span></div></div>
-                </div>
-
+                <div onClick={() => handlePlaylistEntry('favorites')} className={cn( "flex items-center justify-between p-1.5 px-3 rounded-xl cursor-pointer transition-all focusable group border", selectedPlaylist === 'favorites' ? "bg-amber-600 border-amber-400 text-white shadow-glow" : "bg-amber-900/10 border-white/5 text-white/80" )} tabIndex={0} data-nav-id="sidebar-playlist-favorites"><div className="flex items-center gap-3"><div className={cn("w-7 h-7 rounded-lg flex items-center justify-center shadow-lg", selectedPlaylist === 'favorites' ? "bg-white/20" : "bg-amber-600")}><Star className="w-3.5 h-3.5 text-white" /></div><div className="flex flex-col min-w-0"><span className="text-[11px] font-black truncate max-w-[90px] tracking-tighter">المفضلات ⭐</span><span className="text-[7px] font-black opacity-60 uppercase">{savedVideos.length} فيديو</span></div></div></div>
                 {playlists.map((p, idx) => (
-                  <div key={p.id} onClick={() => { setSelectedPlaylist(p.id); setSelectedChannel(null); setSearchResults([]); setIsSidebarShrinked(true); }} className={cn("flex items-center justify-between p-1.5 px-3 rounded-xl cursor-pointer transition-all focusable group border", selectedPlaylist === p.id ? "bg-indigo-600 border-indigo-400 text-white shadow-glow" : "bg-indigo-900/10 border-white/5 text-white/80")} tabIndex={0} data-nav-id={`sidebar-playlist-${idx}`}><div className="flex items-center gap-3"><div className={cn("w-7 h-7 rounded-lg flex items-center justify-center shadow-lg", selectedPlaylist === p.id ? "bg-white/20" : "bg-indigo-600")}><Library className="w-3.5 h-3.5 text-white" /></div><div className="flex flex-col min-w-0"><span className="text-[11px] font-black truncate max-w-[90px] tracking-tighter">{p.name}</span><span className="text-[7px] font-black opacity-60 uppercase">{p.videos.length} تلاوة</span></div></div><button onClick={(e) => { e.stopPropagation(); removePlaylist(p.id); }} className="w-7 h-7 rounded-full bg-red-600/20 text-red-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity focusable shrink-0 ml-2"><Trash2 className="w-4 h-4" /></button></div>
+                  <div key={p.id} onClick={() => handlePlaylistEntry(p.id)} className={cn("flex items-center justify-between p-1.5 px-3 rounded-xl cursor-pointer transition-all focusable group border", selectedPlaylist === p.id ? "bg-indigo-600 border-indigo-400 text-white shadow-glow" : "bg-indigo-900/10 border-white/5 text-white/80")} tabIndex={0} data-nav-id={`sidebar-playlist-${idx}`}><div className="flex items-center gap-3"><div className={cn("w-7 h-7 rounded-lg flex items-center justify-center shadow-lg", selectedPlaylist === p.id ? "bg-white/20" : "bg-indigo-600")}><Library className="w-3.5 h-3.5 text-white" /></div><div className="flex flex-col min-w-0"><span className="text-[11px] font-black truncate max-w-[90px] tracking-tighter">{p.name}</span><span className="text-[7px] font-black opacity-60 uppercase">{p.videos.length} تلاوة</span></div></div><button onClick={(e) => { e.stopPropagation(); removePlaylist(p.id); }} className="w-7 h-7 rounded-full bg-red-600/20 text-red-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity focusable shrink-0 ml-2"><Trash2 className="w-4 h-4" /></button></div>
                 ))}
                 <div className="flex gap-2 pt-1 px-2 items-center" data-row-id="sidebar-new-playlist"><Input value={newPlaylistName} onChange={(e) => setNewPlaylistName(e.target.value)} onKeyDown={handlePlaylistInputKeyDown} onDoubleClick={() => setIsPlaylistInputLocked(false)} readOnly={isPlaylistInputLocked} placeholder={isPlaylistInputLocked ? "5 للكتابة..." : "رابط مجلد أو اسم..."} className={cn("h-10 border-none text-xs rounded-xl focusable transition-all flex-1", isPlaylistInputLocked ? "bg-white/5 text-white/30" : "bg-white/10 text-white")} data-nav-id="sidebar-playlist-input-0" />{!isPlaylistInputLocked && <button onClick={() => { if(newPlaylistName.trim()) performSearch(newPlaylistName); setNewPlaylistName(""); setIsPlaylistInputLocked(true); }} className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-glow animate-in zoom-in duration-300"><Send className="w-5 h-5" /></button>}</div>
             </div>
@@ -367,22 +317,16 @@ export function MediaView() {
         </div>
       </aside>
 
-      <main data-nav-zone="content" className="flex-1 overflow-y-auto relative pt-24 pb-40 px-10 no-scrollbar" style={{ direction: isDockLeft ? 'ltr' : 'rtl' }}>
-        <section data-row-id="row-search" className="py-4 space-y-6">
+      <main data-nav-zone="content" className="flex-1 overflow-y-auto relative pt-52 min-[968px]:pt-32 pb-40 px-10 no-scrollbar" style={{ direction: isDockLeft ? 'ltr' : 'rtl' }}>
+        <section data-row-id="row-search" className="py-4 space-y-6 pt-20 md:pt-6">
           <div className="flex gap-3">
-            <div className="relative flex-1"><Input ref={searchInputRef} placeholder={isSearchLocked ? "اضغط 5 للكتابة أو الصق رابطاً..." : "ابحث عن تلاوة أو الصق رابط يوتيوب/فيديو..."} value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={handleSearchKeyDown} onDoubleClick={() => setIsSearchLocked(false)} readOnly={isSearchLocked} className={cn("h-16 border-none rounded-[2rem] pr-10 text-xl font-bold focusable", isSearchLocked ? "bg-white/5 text-white/30" : "bg-white/10 text-white")} data-nav-id="content-search-input-0" /></div>
-            <button onClick={() => performSearch()} className="h-16 px-10 rounded-[2rem] bg-red-600 text-white font-black text-lg focusable flex items-center" data-nav-id="content-search-btn-0"><Youtube className="w-6 h-6 ml-3" /> استكشاف</button>
+            <div className="relative flex-1"><Input placeholder={isSearchLocked ? "اضغط 5 للكتابة أو الصق رابطاً..." : "ابحث عن تلاوة أو الصق رابط يوتيوب/فيديو..."} value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={handleSearchKeyDown} onDoubleClick={() => setIsSearchLocked(false)} readOnly={isSearchLocked} className={cn("h-16 border-none rounded-[2rem] pr-10 text-xl font-bold focusable", isSearchLocked ? "bg-white/5 text-white/30" : "bg-white/10 text-white")} data-nav-id="content-search-input-0" /></div>
+            <button onClick={() => performSearch()} className={cn("h-14 bg-red-600 text-white font-black text-base focusable flex items-center justify-center transition-all px-6 rounded-full md:px-8 md:rounded-[2rem]")} data-nav-id="content-search-btn-0">
+              <Youtube className="w-6 h-6 ml-3 hidden md:block" /> 
+              <span className="hidden md:inline">استكشاف</span>
+              <span className="md:hidden">بحث</span>
+            </button>
             <Button onClick={handleDirectPlaylistFetch} variant="outline" size="icon" className="w-16 h-16 rounded-[2rem] bg-indigo-600/20 text-indigo-400 border-indigo-500/30 ml-4 shadow-glow focusable" data-nav-id="content-cloud-fetch-0"><CloudDownload className={cn("w-6 h-6", isFetchingPlaylists && "animate-spin")} /></Button>
-          </div>
-        </section>
-
-        <section data-row-id="row-occasions" className="py-2">
-          <div className={horizontalListClass}>
-            {occasionSuggestions.map((occ, i) => (
-              <div key={i} className="relative group shrink-0">
-                <button onClick={() => { if (occ.isIptv && occ.iptvChannel) { setActiveIptv(occ.iptvChannel); } else if (occ.isOman) { if (isEditingOmanUrl) return; setActiveIptv({ stream_id: "oman-live-direct", name: "عُمان مباشر", stream_icon: "https://gallery-images.me/pics/arabicfta/oman.png", category_id: "direct", url: mapSettings.omanUrl || DEFAULT_OMAN_URL, type: 'web' }); } else if (occ.isDate) { setShowHijriSim(!showHijriSim); } else { performSearch(occ.query); } }} className={cn("px-6 py-4 rounded-full font-black text-sm focusable border-2 shrink-0 transition-all", occ.isDate ? "bg-white text-black border-white shadow-glow text-lg" : occ.isOman || occ.isIptv ? "bg-[#ed2b5c] text-white border-white/40 shadow-glow animate-pulse" : occ.isSport ? "bg-red-600/20 text-red-500 border-red-600/40" : occ.isSpecial ? "bg-emerald-600/20 text-emerald-400 border-emerald-500/30" : "bg-indigo-600 text-white border-indigo-400/50 shadow-glow")} data-nav-id={`occ-item-${i}`}><div className="flex items-center gap-3">{occ.isIptv ? <img src={occ.icon} className="w-8 h-8 rounded-full border border-white/20 ml-1" alt="" /> : occ.isDate ? <CalendarDays className="w-6 h-6 ml-2" /> : occ.isOman ? <img src="https://gallery-images.me/pics/arabicfta/oman.png" className="w-8 h-8 rounded-full border border-white/20" alt="" /> : occ.isSport ? <Trophy className="w-5 h-5 ml-2" /> : <Sparkles className="w-5 h-5 ml-2" />}{occ.label}</div></button>
-              </div>
-            ))}
           </div>
         </section>
 
@@ -393,19 +337,53 @@ export function MediaView() {
               <h2 className="text-2xl font-black text-white uppercase tracking-widest">المجلدات والترددات المجرسة</h2>
             </div>
             <div className={horizontalListClass}>
-              <div onClick={() => { setSelectedPlaylist('favorites'); setIsSidebarShrinked(true); }} className="w-80 h-48 group relative overflow-hidden bg-zinc-900 border-2 border-amber-500/20 rounded-[2.5rem] focusable cursor-pointer shrink-0 flex flex-col justify-end p-6 shadow-2xl transition-all outline-none" tabIndex={0} data-nav-id="all-playlist-favorites">
+              <div onClick={() => handlePlaylistEntry('favorites')} className="w-80 h-48 group relative overflow-hidden bg-zinc-900 border-2 border-amber-500/20 rounded-[2.5rem] focusable cursor-pointer shrink-0 flex flex-col justify-end p-6 shadow-2xl transition-all outline-none" tabIndex={0} data-nav-id="all-playlist-favorites">
                 {savedVideos.length > 0 && (<div className="absolute inset-0 z-0"><img src={savedVideos[0].thumbnail} className="w-full h-full object-cover opacity-60 group-hover:scale-110 transition-transform duration-700" alt="" /><div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" /></div>)}
                 <div className="relative z-10 text-right"><span className="text-2xl font-black text-white tracking-tighter drop-shadow-[0_4px_10px_rgba(0,0,0,0.8)] leading-tight">المفضلات العامة ⭐</span><div className="mt-2 flex items-center gap-2"><div className="px-3 py-1 bg-amber-600/40 backdrop-blur-md rounded-full border border-amber-400/30"><span className="text-[9px] font-black text-white uppercase tracking-widest">{savedVideos.length} فيديو</span></div></div></div>
               </div>
               {playlists.map((p, pIdx) => (
-                <div key={p.id} onClick={() => { setSelectedPlaylist(p.id); setIsSidebarShrinked(true); }} className="w-80 h-48 group relative overflow-hidden bg-zinc-900 border-2 border-white/10 rounded-[2.5rem] focusable cursor-pointer shrink-0 flex flex-col justify-end p-6 shadow-2xl transition-all outline-none" tabIndex={0} data-nav-id={`all-playlist-${pIdx}`}>{p.videos.length > 0 && (<div className="absolute inset-0 z-0"><img src={p.videos[0].thumbnail} className="w-full h-full object-cover opacity-60 group-hover:scale-110 transition-transform duration-700" alt="" /><div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" /></div>)}<div className="relative z-10 text-right"><span className="text-2xl font-black text-white tracking-tighter drop-shadow-[0_4px_10px_rgba(0,0,0,0.8)] leading-tight">{p.name}</span><div className="mt-2 flex items-center gap-2"><div className="px-3 py-1 bg-white/20 backdrop-blur-md rounded-full border border-white/20"><span className="text-[9px] font-black text-white uppercase tracking-widest">{p.videos.length} تلاوة</span></div></div></div></div>
+                <div key={p.id} onClick={() => handlePlaylistEntry(p.id)} className="w-80 h-48 group relative overflow-hidden bg-zinc-900 border-2 border-white/10 rounded-[2.5rem] focusable cursor-pointer shrink-0 flex flex-col justify-end p-6 shadow-2xl transition-all outline-none" tabIndex={0} data-nav-id={`all-playlist-${pIdx}`}>{p.videos.length > 0 && (<div className="absolute inset-0 z-0"><img src={p.videos[0].thumbnail} className="w-full h-full object-cover opacity-60 group-hover:scale-110 transition-transform duration-700" alt="" /><div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" /></div>)}<div className="relative z-10 text-right"><span className="text-2xl font-black text-white tracking-tighter drop-shadow-[0_4px_10px_rgba(0,0,0,0.8)] text-xl leading-tight">{p.name}</span><div className="mt-2 flex items-center gap-2"><div className="px-3 py-1 bg-white/20 backdrop-blur-md rounded-full border border-white/20"><span className="text-[9px] font-black text-white uppercase tracking-widest">{p.videos.length} تلاوة</span></div></div></div></div>
               ))}
               {topVideos.map((video, vIdx) => (<div key={video.id + vIdx} className="w-80 h-48 group relative overflow-hidden bg-zinc-900 border-2 border-white/10 rounded-[2.5rem] focusable cursor-pointer shrink-0 flex flex-col justify-end p-6 shadow-2xl transition-all outline-none" onClick={() => setActiveVideo(video, topVideos)} tabIndex={0} data-nav-id={`top-video-week-${vIdx}`}><div className="absolute inset-0 z-0"><img src={video.thumbnail} className="w-full h-full object-cover opacity-60 group-hover:scale-110 transition-transform duration-700" alt="" /><div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" /></div><div className="relative z-10 text-right"><span className="text-[12px] font-black text-white line-clamp-2 leading-tight drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] mb-2">{video.title}</span><div className="flex items-center gap-2"><img src={video.channelAvatar} className="w-6 h-6 rounded-full border border-white/20" alt="" /><span className="text-[10px] font-black text-white/60 truncate max-w-[120px]">{video.channelTitle}</span><div className="ml-auto px-2 py-0.5 bg-yellow-500/20 text-yellow-500 rounded-md border border-yellow-500/40 text-[7px] font-black uppercase">رائج الأسبوع</div></div></div></div>))}
             </div>
           </section>
         )}
         
+        {/* NEW: Mobile Subscriptions Row - Circle Style */}
+        <section data-row-id="row-subscriptions-mobile" className="py-2 block md:hidden">
+          <div className={cn(horizontalListClass, "gap-4")}>
+            {favoriteChannels.map((ch, i) => (
+              <button 
+                key={i} 
+                className={cn(
+                  "flex flex-col items-center gap-2 px-2 py-2 rounded-full focusable border-2 shrink-0 transition-all",
+                  selectedChannel?.channelid === ch.channelid ? "border-primary bg-primary/10" : "border-transparent hover:bg-white/5"
+                )}
+                onClick={() => { setSelectedChannel(ch); setSelectedPlaylist(null); setSearchResults([]); setIsSidebarShrinked(true); }}
+                tabIndex={0}
+                data-nav-id={`mobile-sub-item-${i}`}
+              >
+                <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-white/10 shadow-lg">
+                  <img src={ch.image} className="w-full h-full object-cover" alt="" />
+                </div>
+                <span className="text-[8px] font-black text-white/60 truncate w-16 text-center">{ch.name}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+
         <section data-row-id="row-reciters" className="py-2"><div className={cn(horizontalListClass, "gap-8")}>{favoriteReciters.map((r, i) => (<button key={i} className={cn("flex flex-col items-center gap-4 px-4 py-4 rounded-[2.5rem] focusable border-2 shrink-0 transition-all", selectedReciter === r.name ? "border-emerald-500 bg-emerald-500/10 shadow-glow" : "border-transparent hover:bg-emerald-600/10")} onClick={() => handleReciterClick(r)} tabIndex={0} data-nav-id={`reciter-item-${i}`}><div className="w-24 h-24 rounded-full overflow-hidden border-4 border-emerald-500/30 shadow-2xl"><img src={r.image} className="w-full h-full object-cover" alt="" /></div><span className="text-[10px] font-black text-white">{r.name}</span></button>))}</div></section>
+
+        <section data-row-id="row-occasions" className="py-4">
+          <div className={cn(horizontalListClass, "gap-3")}>
+            {occasionSuggestions.map((occ, i) => (
+              <div key={i} className="relative group shrink-0">
+                <button onClick={() => { if (occ.isIptv && occ.iptvChannel) { setActiveIptv(occ.iptvChannel); } else { performSearch(occ.query); } }} className={cn("px-4 py-2 text-[10px] min-[968px]:text-[12px] min-[968px]:px-5 min-[968px]:py-3 rounded-full font-black focusable border-2 shrink-0 transition-all shadow-lg", occ.isDate ? "bg-white text-black border-white" : occ.isOman || occ.isIptv ? "bg-primary text-white border-primary/40 animate-pulse" : "bg-white/5 text-white/60 border-white/10")} data-nav-id={`occ-item-${i}`}><div className="flex items-center gap-2">{occ.isIptv ? <img src={occ.icon} className="w-4 h-4 min-[968px]:w-5 min-[968px]:h-5 rounded-full border border-white/20" alt="" /> : <Sparkles className="w-3 h-3 min-[968px]:w-4 min-[968px]:h-4" />}{occ.label}</div></button>
+              </div>
+            ))}
+          </div>
+        </section>
+
         <section data-row-id="row-juz" className="py-2"><div className={horizontalListClass}>{[...Array(30).keys()].map(i => (<button key={i} onClick={() => handleJuzClick(i+1)} className={cn("px-8 py-3 rounded-full text-white font-black text-sm focusable border-2 shrink-0 transition-all", selectedJuz === i+1 ? "bg-white text-black border-white shadow-glow" : JUZ_COLORS[i].split('shadow-')[0])} tabIndex={0} data-nav-id={`juz-item-${i}`}>الجزء {i+1}</button>))}</div></section>
         <section data-row-id="row-surahs" className="py-2"><div className={horizontalListClass}>{surahs.map((s, i) => (<button key={i} onClick={() => handleSurahClick(s.name_arabic)} className={cn("px-10 py-4 rounded-full border-2 text-white font-black text-sm focusable shrink-0 transition-all", selectedSurah === s.name_arabic ? "bg-blue-600 border-blue-400 shadow-glow" : "bg-white/5 border-white/10")} tabIndex={0} data-nav-id={`surah-${i}`}>سورة {s.name_arabic}</button>))}</div></section>
 
@@ -432,8 +410,8 @@ export function MediaView() {
                     <div className="aspect-video relative overflow-hidden">
                       <img src={video.thumbnail} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="" />
                       <div className="absolute top-4 right-4 z-[60] opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-2">
-                        <button onClick={(e) => { e.stopPropagation(); setActiveAudio({ id: video.id, title: video.title, thumbnail: video.thumbnail, channelTitle: video.channelTitle }); toast({ title: "الوضع الصوتي السيادي", description: `جاري تشغيل: ${video.title}` }); }} className="w-10 h-10 rounded-full bg-primary text-white border border-primary/40 flex items-center justify-center hover:bg-primary/80 shadow-glow active:scale-90"><Music className="w-5 h-5" /></button>
-                        <button onClick={(e) => { e.stopPropagation(); window.open(`https://www.youtube.com/watch?v=${video.id}`, '_blank'); }} className="w-10 h-10 rounded-full bg-black/60 border border-white/20 flex items-center justify-center text-white hover:bg-red-600 transition-all shadow-glow"><Youtube className="w-5 h-5" /></button>
+                        <button onClick={(e) => { e.stopPropagation(); if (!video.isPlaylist) { setActiveAudio({ id: video.id, title: video.title, thumbnail: video.thumbnail, channelTitle: video.channelTitle }); toast({ title: "الوضع الصوتي السيادي", description: `جاري تشغيل: ${video.title}` }); } }} className="w-10 h-10 rounded-full bg-primary text-white border border-primary/40 flex items-center justify-center hover:bg-primary/80 shadow-glow active:scale-90"><Music className="w-5 h-5" /></button>
+                        <button onClick={(e) => { e.stopPropagation(); window.open(`https://www.youtube.com/watch?v=${video.id}`, '_blank'); }} className="w-10 h-10 rounded-full bg-black/60 backdrop-blur-xl border border-white/20 flex items-center justify-center text-white hover:bg-red-600 transition-all shadow-glow active:scale-90"><Youtube className="w-5 h-5" /></button>
                       </div>
                     </div>
                     <div className="p-4 space-y-2"><h3 className="text-xs font-black text-white line-clamp-2 leading-tight">{video.title}</h3></div>
