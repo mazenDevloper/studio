@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useMemo, useEffect, useState } from "react";
@@ -7,8 +8,7 @@ import { Timer, BellRing, Sun, Sunrise, Sunset, Moon, Sparkles, CloudSun, Edit3,
 import { useMediaStore } from "@/lib/store";
 
 /**
- * PrayerTimelineWidget v260.0 - Compact Mobile Mode
- * Features: Removed icons on mobile, keeping only name and time for extreme clarity.
+ * PrayerTimelineWidget v301.0 - Thmanyah Optimized Mobile Sizing
  */
 export function PrayerTimelineWidget() {
   const [now, setNow] = useState<Date | null>(null);
@@ -55,9 +55,7 @@ export function PrayerTimelineWidget() {
 
     if (currentMinutes >= prevAzanMins && currentMinutes < iqamahTimeMins) {
       finalIndex = prevIdx;
-      const remaining = iqamahTimeMins - currentMinutes - 1;
-      const secs = 59 - now.getSeconds();
-      status = { type: 'iqamah', remaining: `${remaining.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}` };
+      status = { type: 'iqamah' };
     }
 
     const processed = list.map((p) => {
@@ -66,7 +64,12 @@ export function PrayerTimelineWidget() {
       const dur = pSetting?.iqamahDuration || 0;
       const iqamahH = Math.floor((azanMins + dur) / 60);
       const iqamahM = (azanMins + dur) % 60;
-      return { ...p, iqamahDuration: dur, iqamahTime: `${iqamahH % 24}:${iqamahM.toString().padStart(2, '0')}` };
+      return { 
+        ...p, 
+        iqamahDuration: dur, 
+        iqamahTime: `${iqamahH % 24}:${iqamahM.toString().padStart(2, '0')}`,
+        passed: currentMinutes >= azanMins && currentMinutes < iqamahTimeMins
+      };
     });
 
     return { prayers: processed, activeIndex: finalIndex, currentStatus: status };
@@ -77,20 +80,15 @@ export function PrayerTimelineWidget() {
     updatePrayerSetting(id, { iqamahDuration: Math.max(0, current + delta) });
   };
 
-  if (!now || prayers.length === 0) return (
-    <div className="w-full h-32 flex items-center justify-center bg-black/40 rounded-[2.5rem] border border-white/5 animate-pulse">
-      <Sparkles className="w-8 h-8 text-primary/20" />
-    </div>
-  );
+  if (!now || prayers.length === 0) return null;
 
   return (
-    <div className="w-full bg-black/40 backdrop-blur-3xl rounded-[2.5rem] border border-white/10 p-2 overflow-hidden shadow-2xl relative transition-none min-h-[160px]">
+    <div className="w-full bg-black/40 backdrop-blur-3xl rounded-[2.5rem] border border-white/10 p-2 overflow-hidden shadow-2xl relative transition-none h-auto">
       <div className="flex flex-nowrap items-center justify-between gap-4 p-2 h-full overflow-x-auto no-scrollbar">
         {prayers.map((prayer, idx) => {
           const isActive = idx === activeIndex;
-          const isCurrentIqamah = isActive && currentStatus?.type === 'iqamah';
+          const isCurrentIqamah = prayer.passed;
           const isEditing = editingId === prayer.id;
-          const Icon = prayer.icon;
           
           return (
             <div 
@@ -106,34 +104,36 @@ export function PrayerTimelineWidget() {
             >
               {isActive && <div className={cn("absolute inset-0 blur-3xl opacity-20 rounded-full", isCurrentIqamah ? "bg-emerald-500" : "bg-primary")} />}
               
-              <div className={cn("w-14 h-14 rounded-2xl md:flex hidden items-center justify-center relative overflow-hidden shrink-0", isActive ? "bg-black/60 border border-white/20 shadow-glow" : "bg-white/5")}>
-                <Icon className={cn("w-7 h-7", isActive ? prayer.color : "text-white/40")} />
-              </div>
-
               <div className="flex flex-col flex-1 min-w-0 text-right">
                 <div className="flex items-center justify-between mb-0.5">
-                   <span className="text-[13px] md:text-[13px] font-black uppercase tracking-[0.15em] truncate text-white">{prayer.name}</span>
+                   <span className="thmanyah-prayer-name font-black uppercase tracking-[0.15em] truncate text-white">
+                      {prayer.name}
+                   </span>
                    <button 
                      onClick={(e) => { e.stopPropagation(); setEditingId(isEditing ? null : prayer.id); }}
-                     className="opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity p-1 text-white/40 hover:text-emerald-400"
+                     className="opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity p-1 text-white/40"
                    >
                      {isEditing ? <Check className="w-4 h-4" /> : <Edit3 className="w-4 h-4" />}
                    </button>
                 </div>
 
                 <div className="flex items-baseline gap-2">
-                  <span className="text-3xl md:text-3xl font-black tabular-nums tracking-tighter drop-shadow-[0_10px_20px_rgba(0,0,0,0.8)] text-white">{convertTo12Hour(prayer.time)}</span>
+                  <span className={cn(
+                    "text-[2rem] md:text-4xl font-black tabular-nums tracking-tighter drop-shadow-[0_10px_20px_rgba(0,0,0,0.8)] transition-colors",
+                    isCurrentIqamah ? "text-emerald-400" : "text-white"
+                  )} style={{ fontFamily: 'thmanyahsans_Medium' }}>
+                    {isCurrentIqamah ? convertTo12Hour(prayer.iqamahTime) : convertTo12Hour(prayer.time)}
+                  </span>
+                  {isCurrentIqamah && (
+                    <span className="text-emerald-400 font-black text-xs md:text-sm animate-pulse">(الإقامة)</span>
+                  )}
                 </div>
 
-                {isEditing ? (
+                {isEditing && (
                   <div className="mt-1.5 flex items-center gap-2 bg-black/40 rounded-full p-1 border border-white/10 animate-in zoom-in-95 duration-200">
                     <button onClick={() => handleAdjustIqamah(prayer.id, 1)} className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-white"><Plus className="w-3 h-3" /></button>
                     <span className="text-[10px] font-black text-emerald-400 w-8 text-center">{prayer.iqamahDuration}د</span>
                     <button onClick={() => handleAdjustIqamah(prayer.id, -1)} className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-white"><Minus className="w-3 h-3" /></button>
-                  </div>
-                ) : (
-                  <div className={cn("mt-1.5 flex items-center gap-2 px-3 py-1 rounded-full border text-[8px] font-black uppercase tracking-widest w-fit", isCurrentIqamah ? "bg-emerald-500/30 border-emerald-400/50 text-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.3)]" : "bg-white/10 border-white/10 text-white/50")}>
-                    {isCurrentIqamah ? <><BellRing className="w-3.5 h-3.5 animate-pulse" />الإقامة {currentStatus.remaining}</> : <><Timer className="w-3.5 h-3.5" />الإقامة {convertTo12Hour(prayer.iqamahTime)}</>}
                   </div>
                 )}
               </div>

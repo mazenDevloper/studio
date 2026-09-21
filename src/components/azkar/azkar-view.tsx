@@ -1,9 +1,9 @@
 
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Moon, RotateCcw, Sun, CheckCircle2, Bookmark, Plus, Trash2, Sparkles, Bell } from "lucide-react";
+import { Moon, RotateCcw, Sun, CheckCircle2, Bookmark, Plus, Trash2, Sparkles, Bell, Volume2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useMediaStore, Reminder } from "@/lib/store";
@@ -44,17 +44,40 @@ export function AzkarView() {
   const [activeTab, setActiveTab] = useState("morning");
   const [newReminderText, setNewReminderText] = useState("");
 
+  const filteredAzkar = useMemo(() => {
+    return AZKAR_DATA.filter(item => item.category === activeTab);
+  }, [activeTab]);
+
+  const speak = useCallback((text: string) => {
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.cancel(); // إلغاء أي صوت حالي
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'ar-SA';
+      const voices = window.speechSynthesis.getVoices();
+      const arabicVoice = voices.find(v => v.lang.startsWith('ar'));
+      if (arabicVoice) utterance.voice = arabicVoice;
+      window.speechSynthesis.speak(utterance);
+    }
+  }, []);
+
   const handleIncrement = (id: string, max: number, idx: number) => {
     setCounters(prev => {
       const current = prev[id] || 0;
       if (current >= max) return prev;
       const nextCount = current + 1;
       
-      // AUTO-NEXT LOGIC: Focus next item when completed
+      // منطق الانتقال التلقائي والقراءة الصوتية عند الاكتمال
       if (nextCount === max) {
          setTimeout(() => {
             const nextEl = document.querySelector(`[data-nav-id="zikr-item-${idx + 1}"]`) as HTMLElement;
-            if (nextEl) nextEl.focus();
+            if (nextEl) {
+              nextEl.focus();
+              // قراءة الذكر القادم صوتياً لمرة واحدة
+              const nextZikr = filteredAzkar[idx + 1];
+              if (nextZikr && (nextZikr.text || nextZikr.label)) {
+                speak(nextZikr.text || nextZikr.label);
+              }
+            }
          }, 400);
       }
       
@@ -62,11 +85,10 @@ export function AzkarView() {
     });
   };
 
-  const resetAll = () => setCounters({});
-
-  const filteredAzkar = useMemo(() => {
-    return AZKAR_DATA.filter(item => item.category === activeTab);
-  }, [activeTab]);
+  const resetAll = () => {
+    setCounters({});
+    if (typeof window !== 'undefined' && window.speechSynthesis) window.speechSynthesis.cancel();
+  };
 
   const handleAddGeneralAzkar = async () => {
     if (!newReminderText.trim()) return;
@@ -140,9 +162,14 @@ export function AzkarView() {
                       <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
                          <Bell className="w-6 h-6 text-emerald-400" />
                       </div>
-                      <button onClick={async () => { removeAzkar(rem.id); await syncMasterBin(); }} className="w-10 h-10 rounded-full bg-red-600/20 text-red-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity focusable">
-                         <Trash2 className="w-5 h-5" />
-                      </button>
+                      <div className="flex gap-2">
+                        <button onClick={() => speak(rem.label)} className="w-10 h-10 rounded-full bg-primary/20 text-primary flex items-center justify-center border border-primary/10 focusable transition-all active:scale-90" title="تشغيل الصوت">
+                           <Volume2 className="w-5 h-5" />
+                        </button>
+                        <button onClick={async () => { removeAzkar(rem.id); await syncMasterBin(); }} className="w-10 h-10 rounded-full bg-red-600/20 text-red-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity focusable">
+                           <Trash2 className="w-5 h-5" />
+                        </button>
+                      </div>
                    </div>
                    <p className="text-2xl font-black text-white leading-relaxed line-clamp-3">{rem.label}</p>
                    <div className="flex items-center gap-2 pt-4 border-t border-white/5">
@@ -181,7 +208,16 @@ export function AzkarView() {
                 <CardContent className="p-0 space-y-8">
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <h3 className="text-2xl font-black text-white leading-none">{rem.label}</h3>
+                      <div className="flex items-center gap-4">
+                        <h3 className="text-2xl font-black text-white leading-none">{rem.label}</h3>
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); speak(rem.text || rem.label); }} 
+                          className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/40 hover:text-white transition-all focusable border border-white/10 active:scale-90"
+                          title="تشغيل الصوت"
+                        >
+                          <Volume2 className="w-5 h-5" />
+                        </button>
+                      </div>
                       {isCompleted && <CheckCircle2 className="w-8 h-8 text-emerald-500 animate-in zoom-in" />}
                     </div>
                     {rem.text && <p className="text-2xl text-white/90 font-bold leading-[1.8] text-right">{rem.text}</p>}

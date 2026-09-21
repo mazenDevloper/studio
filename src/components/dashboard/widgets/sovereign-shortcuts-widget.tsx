@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { JSONBIN_MANUSCRIPTS_BIN_ID, JSONBIN_PRAYER_TIMES_BIN_ID } from "@/lib/constants";
 
 /**
- * SovereignShortcutsWidget v1600.0 - Quran Radio Sync
+ * SovereignShortcutsWidget v3100.0 - Icon-First Protocol
  */
 export function SovereignShortcutsWidget() {
   const router = useRouter();
@@ -33,7 +33,7 @@ export function SovereignShortcutsWidget() {
   const QURAN_CHANNEL_AVATAR = "https://yt3.ggpht.com/ytc/AIdro_mesiGG76gww2WnpFVUFbMz-s2d4IjJJVhDqJuCVscKLY=s88-c-k-c0xffffffff-no-rj-mo";
   const OMAN_TV_AVATAR = "https://gallery-images.me/pics/arabicfta/oman.png";
   
-  const DEFAULT_OMAN_URL = "https://player.mangomolo.com/v1/live?id=MTY4&channelid=MTYx&countries=Q0M%3D&filter=DENY&signature=3fd1e8dd84138a41bf33d93afd4a7f09&language=en&app_id=&fullscreen=yes&player_profile=&base_url=aHR0cHM6Ly9heW4ub20vbGl2ZS8xNjEvJUQ5JTgyJUQ5JTg2JUQ4JUE3JUQ4JUE5LSVEOCVCOSVEOSU4NSVEOCVBNyVEOSU4Ni0lRDklODUlRDglQTglRDglQTclRDglQjQlRDglQjE%3D&autoplay=false&vast=true";
+  const DEFAULT_OMAN_URL = "https://player.mangomolo.com/v1/live?id=MTY8&channelid=MTYx&countries=Q0M%3D&filter=DENY&signature=3fd1e8dd84138a41bf33d93afd4a7f09&language=en&app_id=&fullscreen=yes&player_profile=&base_url=aHR0cHM6Ly9heW4ub20vbGl2ZS8xNjEvJUQ5JTgyJUQ5JTg2JUQ4JUE3JUQ4JUE5LSVEOCVCOSVEOSU4NSVEOCVBNyVEOSU4Ni0lRDklODUlRDglQTglRDglQTclRDglQjQlRDglQjE%3D&autoplay=false&vast=true";
 
   const executeSpiritualPulse = useCallback(async () => {
     if (isQuranProcessing) return;
@@ -73,9 +73,9 @@ export function SovereignShortcutsWidget() {
   const handleSaveEdit = async () => { if (!editingId) return; const updates: any = {}; if (editingId === 'oman-live') updates.omanUrl = tempUrl; updateMapSettings(updates); setEditingId(null); toast({ title: "تم الحفظ" }); };
 
   const commands = useMemo(() => [
-    { id: "spiritual-pulse", label: "النبض الروحي", sublabel: isQuranProcessing ? "جاري الاستدعاء..." : "بث مباشر مكة", icon: BookOpen, avatar: QURAN_CHANNEL_AVATAR, gradient: "from-emerald-600/20 to-emerald-950/60", action: executeSpiritualPulse, isLoading: isQuranProcessing },
+    { id: "spiritual-pulse", label: "النبض الروحي", sublabel: isQuranProcessing ? "جاري الاستدعاء..." : "بث مباشر مكة", icon: BookOpen, gradient: "from-emerald-600/20 to-emerald-950/60", action: executeSpiritualPulse, isLoading: isQuranProcessing },
     { id: "oman-live", label: "عمان مباشر", sublabel: isOmanProcessing ? "جاري الاتصال..." : "البث الرسمي الحكومي", icon: MonitorPlay, avatar: OMAN_TV_AVATAR, gradient: "from-blue-600/20 to-blue-950/60", action: executeOmanLive, isLoading: isOmanProcessing, editable: true, url: mapSettings.omanUrl || DEFAULT_OMAN_URL },
-    { id: "quran-radio", label: "راديو القرآن", sublabel: "التلاوات الأكثر شيوعاً", icon: Radio, avatar: QURAN_CHANNEL_AVATAR, gradient: "from-indigo-600/20 to-indigo-950/60", action: () => { setActiveQuranUrl("https://quran.com/ar/radio?autoplay=1"); router.push("/quran"); } },
+    { id: "quran-radio", label: "راديو القرآن", sublabel: "التلاوات الأكثر شيوعاً", icon: Radio, gradient: "from-indigo-600/20 to-indigo-950/60", action: () => { setActiveQuranUrl("https://quran.com/ar/radio?autoplay=1"); router.push("/quran"); } },
     { id: "atomic-resume", label: "الاستكمال الذري", sublabel: lastPlayedVideo ? `استئناف: ${lastPlayedVideo.title}` : "سجل المشاهدة", icon: Activity, avatar: lastPlayedVideo?.thumbnail, gradient: "from-orange-600/20 to-orange-950/60", action: () => lastPlayedVideo && setActiveVideo(lastPlayedVideo), disabled: !lastPlayedVideo },
     { id: "football-radar", label: "نبض الملاعب", sublabel: "رصد حي للمباريات", icon: Trophy, gradient: "from-rose-600/20 to-rose-950/60", action: () => router.push('/hihi2') },
     { id: "system-optimizer", label: "محسن النظام", sublabel: "معايرة شاملة", icon: RefreshCw, gradient: "from-blue-600/20 to-blue-950/60", action: executeSystemOptimizer, isLoading: isSystemRefreshing }

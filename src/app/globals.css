@@ -1,3 +1,6 @@
+
+@import "@dawod/thmanyah-font-web";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -38,8 +41,22 @@
   }
   
   body {
-    @apply bg-background text-foreground font-body w-full h-screen overflow-hidden;
+    @apply bg-background text-foreground w-full h-screen overflow-hidden;
     background: radial-gradient(circle at 50% 50%, #0a0a1a 0%, #000000 100%);
+    font-family: 'Thmanyah Sans', 'Inter', sans-serif !important;
+    font-feature-settings: 
+      "liga" 1, 
+      "rlig" 1, 
+      "calt" 1, 
+      "locl" 1, 
+      "ccmp" 1, 
+      "mark" 1, 
+      "mkmk" 1, 
+      "ss01" 1, 
+      "ss02" 1, 
+      "ss03" 1, 
+      "zero" 1;
+    font-variant-ligatures: normal;
   }
 }
 
@@ -62,11 +79,32 @@
 
 .no-scrollbar::-webkit-scrollbar { display: none; }
 
-/* --- SOVEREIGN MOBILE TRANSFORMATION PROTOCOL (v1200.0) --- */
+/* --- SOVEREIGN THMANYAH TYPOGRAPHY ENGINE --- */
+span.text-\[18cqw\].font-black.text-white.leading-none.tracking-tight.block {
+    font-family: 'Thmanyah Sans' !important;
+    font-feature-settings: "liga" 1, "rlig" 1, "calt" 1, "locl" 1, "ccmp" 1, "mark" 1, "mkmk" 1, "ss01" 0, "ss02" 1, "ss03" 1, "zero" 1 !important;
+}
+
+.flex.items-center.justify-between.mb-0\.5>span {
+    font-family: 'Thmanyah Sans', Inter, sans-serif !important;
+    font-feature-settings: "liga" 1, "rlig" 1, "calt" 1, "locl" 1, "ccmp" 1, "mark" 1, "mkmk" 1, "ss01" 0, "ss02" 1, "ss03" 1, "zero" 1 !important;
+    font-size: 1rem !important;
+}
+
+/* --- SOVEREIGN MOBILE TRANSFORMATION PROTOCOL (v6000.0) --- */
 @media (max-width: 768px) {
   body {
     overflow-y: auto !important;
     height: auto !important;
+  }
+
+  /* Force Mobile Font Sizes and Hidden Elements */
+  .flex.items-baseline.gap-2 > span.text-7xl {
+     font-size: 2rem !important;
+  }
+
+  [data-row-id="row-shortcuts"] {
+    display: none !important;
   }
 
   [data-nav-zone="dock"] {
@@ -101,26 +139,6 @@
 
   [data-row-id="main-widgets-row"] > div {
     @apply col-span-1 h-auto min-h-[200px] !important;
-  }
-
-  [data-row-id="row-shortcuts"] {
-    @apply mx-4 mt-2 rounded-[2rem] min-h-0 !important;
-  }
-
-  [data-row-id="row-shortcuts"] .grid-cols-6 {
-    @apply grid-cols-2 p-4 gap-3 !important;
-  }
-
-  [data-row-id="row-shortcuts"] .h-48 {
-    @apply h-32 p-4 rounded-[2rem] !important;
-  }
-
-  [data-row-id="row-shortcuts"] .w-16.h-16 {
-    @apply w-10 h-10 rounded-xl !important;
-  }
-
-  [data-row-id="row-shortcuts"] .text-xl {
-    @apply text-base !important;
   }
 
   [data-row-id="row-prayer-bar"] {
