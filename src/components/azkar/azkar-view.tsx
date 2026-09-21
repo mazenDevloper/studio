@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
@@ -48,9 +47,13 @@ export function AzkarView() {
     return AZKAR_DATA.filter(item => item.category === activeTab);
   }, [activeTab]);
 
+  const toArabicNums = (n: number | string) => {
+    return n.toString().replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[parseInt(d)]);
+  };
+
   const speak = useCallback((text: string) => {
     if (typeof window !== 'undefined' && window.speechSynthesis) {
-      window.speechSynthesis.cancel(); // إلغاء أي صوت حالي
+      window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = 'ar-SA';
       const voices = window.speechSynthesis.getVoices();
@@ -66,17 +69,12 @@ export function AzkarView() {
       if (current >= max) return prev;
       const nextCount = current + 1;
       
-      // منطق الانتقال التلقائي والقراءة الصوتية عند الاكتمال
+      // منطق الانتقال التلقائي (تم إلغاء القراءة التلقائية)
       if (nextCount === max) {
          setTimeout(() => {
             const nextEl = document.querySelector(`[data-nav-id="zikr-item-${idx + 1}"]`) as HTMLElement;
             if (nextEl) {
               nextEl.focus();
-              // قراءة الذكر القادم صوتياً لمرة واحدة
-              const nextZikr = filteredAzkar[idx + 1];
-              if (nextZikr && (nextZikr.text || nextZikr.label)) {
-                speak(nextZikr.text || nextZikr.label);
-              }
             }
          }, 400);
       }
@@ -226,7 +224,7 @@ export function AzkarView() {
                   <div className="flex items-center justify-between pt-6 border-t border-white/5">
                      <div className="flex flex-col gap-3 flex-1">
                         <div className="flex items-center gap-3 text-[12px] font-black text-white/20 uppercase tracking-widest">
-                           <span>المحرز: {currentCount} / {rem.count}</span>
+                           <span>المحرز: {toArabicNums(currentCount)} / {toArabicNums(rem.count)}</span>
                         </div>
                         <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
                            <div className={cn("h-full transition-all duration-500", isCompleted ? "bg-emerald-500" : "bg-primary")} style={{ width: `${(currentCount / rem.count) * 100}%` }} />
@@ -236,7 +234,7 @@ export function AzkarView() {
                      <div className="mr-10 flex flex-col items-center gap-1">
                         <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">المتبقي</span>
                         <div className={cn("w-16 h-16 rounded-[1.5rem] bg-white/5 flex items-center justify-center border border-white/10 shadow-glow transition-all", isCompleted && "bg-emerald-500 text-black border-emerald-400 shadow-[0_0_25px_rgba(16,185,129,0.5)]")}>
-                           <span className="text-3xl font-black">{remaining}</span>
+                           <span className="text-3xl font-black">{toArabicNums(remaining)}</span>
                         </div>
                      </div>
                   </div>
