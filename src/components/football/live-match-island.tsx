@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
@@ -5,7 +6,7 @@ import { Match } from "@/lib/football-data";
 import { fetchFootballData } from "@/lib/football-api";
 import { useMediaStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { X, Eye, EyeOff, Bell, Clock, Timer, Check, Trophy, Play, ChevronDown, ChevronUp } from "lucide-react";
+import { X, Eye, EyeOff, Bell, Clock, Timer, Check, Trophy, Play, ChevronDown, ChevronUp, Zap, Cloud, Bookmark } from "lucide-react";
 import { convertTo12Hour } from "@/lib/constants";
 
 interface AlertItem {
@@ -13,8 +14,8 @@ interface AlertItem {
   name: string;
   diff: number;
   expDiff?: number;
-  type: 'azan' | 'iqamah' | 'reminder' | 'match';
-  iconType?: 'play' | 'bell' | 'circle' | 'match';
+  type: 'azan' | 'iqamah' | 'reminder' | 'match' | 'sync' | 'azkar';
+  iconType?: 'play' | 'bell' | 'circle' | 'match' | 'sync';
   color: string;
   isExpired?: boolean;
   isEnding?: boolean;
@@ -27,27 +28,30 @@ interface AlertItem {
 }
 
 /**
- * LiveMatchIsland v1700.0 - Sovereign Precision Engine
- * Features: 5.6rem Fixed Font (40% Boost) | Adaptive Scaled Containers.
+ * LiveMatchIsland v1702.0 - Sovereign Precision Engine
+ * Features: Fixed Local Date Sync | General Azkar Support | Robust Manual Visibility.
  */
 export function LiveMatchIsland() {
   const { 
-    favoriteTeams, prayerTimes, prayerSettings, reminders, belledMatchIds, 
+    favoriteTeams, prayerTimes, prayerSettings, reminders, generalAzkar, belledMatchIds, 
     showIslands, toggleShowIslands, skippedMatchIds, skipMatch, autoHideIsland,
-    skippedReminderIds, skipReminder, toggleReminder, syncMasterBin
+    skippedReminderIds, skipReminder, toggleReminder, syncMasterBin, isInitialLoading
   } = useMediaStore();
 
   const [mounted, setMounted] = useState(false);
   const [topMatches, setTopMatches] = useState<Match[]>([]);
   const [now, setNow] = useState<Date | null>(null);
   const [isMatchCollapsed, setIsMatchCollapsed] = useState(true);
+  const [showSyncIsland, setShowSyncIsland] = useState(true);
   const lastFetchRef = useRef<number>(0);
 
   useEffect(() => {
     setMounted(true);
     setNow(new Date());
     const timer = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(timer);
+    // Hide sync island after 10 seconds to confirm everything is loaded
+    const syncTimer = setTimeout(() => setShowSyncIsland(false), 10000);
+    return () => { clearInterval(timer); clearTimeout(syncTimer); };
   }, []);
 
   const fetchMatches = useCallback(async (force = false) => {
@@ -69,9 +73,20 @@ export function LiveMatchIsland() {
     if (!now || !prayerTimes?.length) return [];
     const list: AlertItem[] = [];
     const totalCurrentSecs = (now.getHours() * 3600) + (now.getMinutes() * 60) + now.getSeconds();
-    const dateStr = now.toISOString().split('T')[0];
+    
+    // SOVEREIGN FIX: Use Precise Local Date for JSON synchronization
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+    
     const pData = prayerTimes.find(p => p.date === dateStr) || prayerTimes[0];
     
+    // Add Sync Island if in first 10 seconds
+    if (showSyncIsland || isInitialLoading) {
+      list.push({ id: 'sync-pulse', name: 'جاري المزامنة', diff: 0, type: 'sync', iconType: 'sync', color: 'text-primary' });
+    }
+
     if (pData) {
       for (const setting of prayerSettings) {
         let refTime = pData[setting.id as keyof typeof pData];
@@ -96,21 +111,22 @@ export function LiveMatchIsland() {
         if (skippedReminderIds.includes(rem.id) || skippedMatchIds.includes(rem.id)) continue;
         if (rem.iconType === 'match' && rem.matchDate && rem.matchDate !== dateStr) continue;
 
-        let startSecs = 0;
-        if (rem.startType === 'manual' && rem.manualStartTime) startSecs = tToM(rem.manualStartTime) * 60;
-        else if (rem.startReference && pData[rem.startReference]) {
+        let startSecs = -1;
+        if (rem.startType === 'manual' && rem.manualStartTime) {
+          startSecs = tToM(rem.manualStartTime) * 60;
+        } else if (rem.startReference && pData[rem.startReference]) {
           const pSetting = prayerSettings.find(s => s.id === rem.startReference);
           let baseMins = tToM(pData[rem.startReference]);
           if (rem.startType === 'iqamah') baseMins += (pSetting?.iqamahDuration || 0);
           startSecs = (baseMins + rem.startOffset) * 60;
         }
 
-        if (startSecs > 0) {
+        if (startSecs >= 0) {
           let sDiff = startSecs - totalCurrentSecs;
           if (sDiff < -43200) sDiff += 86400;
           if (sDiff > 43200) sDiff -= 86400;
 
-          let endSecs = 0;
+          let endSecs = -1;
           if (rem.endType === 'manual' && rem.manualEndTime) endSecs = tToM(rem.manualEndTime) * 60;
           else if (rem.endType === 'duration') endSecs = startSecs + (rem.durationMinutes || 30) * 60;
           else if ((rem.endType === 'azan' || rem.endType === 'iqamah' || rem.endType === 'prayer') && rem.endReference && pData[rem.endReference]) {
@@ -120,7 +136,7 @@ export function LiveMatchIsland() {
             endSecs = (expMins + (rem.endOffset || 0)) * 60;
           }
 
-          let eDiff = endSecs - totalCurrentSecs;
+          let eDiff = endSecs >= 0 ? endSecs - totalCurrentSecs : 3600;
           if (eDiff < -43200) eDiff += 86400;
           if (eDiff > 43200) eDiff -= 86400;
 
@@ -150,12 +166,31 @@ export function LiveMatchIsland() {
           }
         }
       }
+
+      // Add General Azkar to Island
+      if (generalAzkar && generalAzkar.length > 0) {
+        generalAzkar.forEach(az => {
+          if (!az.completed) {
+            list.push({ 
+              id: az.id, 
+              name: az.label, 
+              diff: 0, 
+              type: 'azkar', 
+              iconType: 'circle', 
+              color: 'text-emerald-400', 
+              completed: false 
+            });
+          }
+        });
+      }
     }
     return list.sort((a, b) => Math.abs(a.diff) - Math.abs(b.diff));
-  }, [now, prayerTimes, prayerSettings, reminders, skippedReminderIds, skippedMatchIds]);
+  }, [now, prayerTimes, prayerSettings, reminders, generalAzkar, skippedReminderIds, skippedMatchIds, showSyncIsland, isInitialLoading]);
 
-  const handleAction = async (id: string, type: 'match' | 'reminder') => {
+  const handleAction = async (id: string, type: 'match' | 'reminder' | 'sync' | 'azkar') => {
     if (type === 'match') skipMatch(id);
+    else if (type === 'sync') setShowSyncIsland(false);
+    else if (type === 'azkar') toggleReminder(id);
     else toggleReminder(id);
     await syncMasterBin();
   };
@@ -193,16 +228,31 @@ export function LiveMatchIsland() {
                    <div key={alert.id} onClick={() => setIsMatchCollapsed(!isMatchCollapsed)} className={cn("pointer-events-auto premium-glass rounded-full flex items-center animate-in slide-in-from-top-2 border transition-all relative group shadow-2xl cursor-pointer", alert.completed ? "bg-emerald-600/60 border-emerald-400" : "border-white/10", isMatchCollapsed ? "min-w-[10rem] h-[4.5rem] gap-0 px-1" : "min-w-[18rem] h-[7.5rem] gap-0 px-2")}>
                      <button onClick={(e) => { e.stopPropagation(); handleAction(alert.id, 'match'); }} className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-black/60 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center pointer-events-auto transition-opacity z-50 border border-white/10 shadow-glow"><X className="w-3.5 h-3.5" /></button>
                      <div className={cn("rounded-full bg-white/5 flex items-center justify-center border border-white/10 overflow-hidden shrink-0 shadow-lg relative", isMatchCollapsed ? "w-12 h-12" : "w-20 h-20")}>{alert.homeLogo ? <img src={alert.homeLogo} className={cn("object-contain drop-shadow-md", isMatchCollapsed ? "w-10 h-10" : "w-16 h-16")} alt="" /> : <Trophy className={cn("text-white/10", isMatchCollapsed ? "w-5 h-5" : "w-8 h-8")} />}{!isMatchCollapsed && <span className="absolute bottom-0 left-0 right-0 bg-black/60 text-[6px] font-black text-white text-center truncate px-1">{alert.homeName || "HOME"}</span>}</div>
-                     <div className={cn("flex-1 flex flex-col items-center justify-center p-0 m-0", isMatchCollapsed ? "min-w-[6rem]" : "min-w-[12rem]")}><div className={cn("w-full p-0 m-0 flex items-center justify-center", isMatchCollapsed ? "h-14" : "h-24")}><GlassNumber text={alert.matchTimeStr || "--:--"} id={`match-${alert.id}`} size={isMatchCollapsed ? "4.5rem" : "7.7rem"} colorClass={alert.isExpired ? "text-emerald-400 animate-pulse" : "text-white"} /></div></div>
+                     <div className={cn("flex-1 flex flex-col items-center justify-center p-0 m-0", isMatchCollapsed ? "min-w-[6rem]" : "min-w-[12rem]")}><div className={cn("w-full p-0 m-0 flex items-center justify-center", isMatchCollapsed ? "h-14" : "h-24")}><GlassNumber text={alert.matchTimeStr || "--:--"} id={`match-${alert.id}`} size={isMatchCollapsed ? "4.5rem" : "5.6rem"} colorClass={alert.isExpired ? "text-emerald-400 animate-pulse" : "text-white"} /></div></div>
                      <div className={cn("rounded-full bg-white/5 flex items-center justify-center border border-white/10 overflow-hidden shrink-0 shadow-lg relative", isMatchCollapsed ? "w-12 h-12" : "w-20 h-20")}>{alert.awayLogo ? <img src={alert.awayLogo} className={cn("object-contain drop-shadow-md", isMatchCollapsed ? "w-10 h-10" : "w-16 h-16")} alt="" /> : <Trophy className={cn("text-white/10", isMatchCollapsed ? "w-5 h-5" : "w-8 h-8")} />}{!isMatchCollapsed && <span className="absolute bottom-0 left-0 right-0 bg-black/60 text-[6px] font-black text-white text-center truncate px-1">{alert.awayName || "AWAY"}</span>}</div>
                    </div>
                  );
                }
+
+               if (alert.type === 'sync') {
+                 return (
+                   <div key={alert.id} className="pointer-events-auto premium-glass min-w-[10rem] h-[4.5rem] rounded-full flex items-center px-6 gap-3 animate-in slide-in-from-top-2 border border-primary/20 shadow-xl bg-primary/5">
+                      <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0 shadow-inner">
+                         <Zap className="w-4 h-4 text-primary animate-pulse" />
+                      </div>
+                      <div className="flex flex-col items-center">
+                         <span className="text-[0.7rem] font-black uppercase text-white/60 tracking-widest leading-none mb-1">{alert.name}</span>
+                         <span className="text-[0.8rem] font-black text-primary animate-pulse uppercase tracking-[0.3em]">Online</span>
+                      </div>
+                   </div>
+                 );
+               }
+
                return (
                   <div key={alert.id} className={cn("pointer-events-auto premium-glass min-w-[12rem] h-[5rem] rounded-[2.5rem] flex items-center px-6 gap-3 animate-in slide-in-from-top-2 border transition-all relative group shadow-xl", alert.completed ? "bg-emerald-600/60 border-emerald-400 shadow-[0_0_40px_rgba(16,185,129,0.4)]" : "border-white/10")}>
-                    <button onClick={() => handleAction(alert.id, 'reminder')} className="absolute -top-1 -right-1 w-7 h-7 rounded-full bg-black/60 text-emerald-400 opacity-0 group-hover:opacity-100 flex items-center justify-center pointer-events-auto transition-opacity z-50 border border-white/10 shadow-glow"><Check className="w-4 h-4" /></button>
-                    <div className={cn("w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 transition-colors shadow-inner", alert.completed ? "bg-white/20" : alert.type === 'azan' ? "bg-accent/20" : alert.type === 'iqamah' ? "bg-emerald-400/20" : "bg-primary/20")}>{alert.completed ? <Check className="w-5 h-5 text-white" /> : alert.type === 'azan' ? <Clock className="w-5 h-5 text-accent" /> : alert.type === 'iqamah' ? <Timer className="w-5 h-5 text-emerald-400" /> : alert.iconType === 'play' ? <Play className="w-5 h-5 fill-current text-primary" /> : <Bell className="w-5 h-5 text-primary" />}</div>
-                    <div className="flex-1 flex flex-col items-center justify-center"><span className={cn("text-[0.85rem] font-black uppercase truncate max-w-[100px] leading-none mb-1", alert.completed ? "text-white" : "text-white/80")}>{alert.name}</span><div className="h-10 w-full"><GlassNumber text={alert.completed ? "منجز" : alert.isExpired ? "الآن" : `${alert.diff >= 0 ? "-" : "+"}${formatCountdown(alert.diff)}`} id={`alert-${alert.id}`} size="5.6rem" colorClass={alert.completed ? "text-white" : alert.color} /></div></div>
+                    <button onClick={() => handleAction(alert.id, alert.type as any)} className="absolute -top-1 -right-1 w-7 h-7 rounded-full bg-black/60 text-emerald-400 opacity-0 group-hover:opacity-100 flex items-center justify-center pointer-events-auto transition-opacity focusable z-50 border border-white/10 shadow-glow"><Check className="w-4 h-4" /></button>
+                    <div className={cn("w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 transition-colors shadow-inner", alert.completed ? "bg-white/20" : alert.type === 'azan' ? "bg-accent/20" : (alert.type === 'iqamah' || alert.type === 'azkar') ? "bg-emerald-400/20" : "bg-primary/20")}>{alert.completed ? <Check className="w-5 h-5 text-white" /> : alert.type === 'azan' ? <Clock className="w-5 h-5 text-accent" /> : alert.type === 'iqamah' ? <Timer className="w-5 h-5 text-emerald-400" /> : alert.type === 'azkar' ? <Bookmark className="w-5 h-5 text-emerald-400" /> : alert.iconType === 'play' ? <Play className="w-5 h-5 fill-current text-primary" /> : <Bell className="w-5 h-5 text-primary" />}</div>
+                    <div className="flex-1 flex flex-col items-center justify-center"><span className={cn("text-[0.85rem] font-black uppercase truncate max-w-[100px] leading-none mb-1", alert.completed ? "text-white" : "text-white/80")}>{alert.name}</span><div className="h-10 w-full"><GlassNumber text={alert.completed ? "منجز" : (alert.isExpired || alert.type === 'azkar') ? "الآن" : `${alert.diff >= 0 ? "-" : "+"}${formatCountdown(alert.diff)}`} id={`alert-${alert.id}`} size="5.6rem" colorClass={alert.completed ? "text-white" : alert.color} /></div></div>
                   </div>
                );
             })}

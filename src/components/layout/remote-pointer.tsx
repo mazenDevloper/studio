@@ -9,7 +9,7 @@ import { init } from "@noriginmedia/norigin-spatial-navigation";
 import { useToast } from "@/hooks/use-toast";
 
 /**
- * RemotePointer v1460.0 - Sovereign Precision Engine
+ * RemotePointer v1461.0 - Sovereign Precision Engine
  * Features: Screen-Aware Selective Joystick Inversion + Advanced Input Isolation.
  */
 export function RemotePointer() {
@@ -241,6 +241,7 @@ export function RemotePointer() {
     if (isAction(finalKey, 'goto_iptv')) { e?.preventDefault(); router.push('/iptv'); return; }
     if (isAction(finalKey, 'goto_football')) { e?.preventDefault(); router.push('/football'); return; }
     if (isAction(finalKey, 'goto_settings')) { e?.preventDefault(); router.push('/settings'); return; }
+    if (isAction(finalKey, 'goto_car_dashboard')) { e?.preventDefault(); router.push('/car-dashboard'); return; }
   }, [navigate, isAction, wallPlateType, router, isRecordingKey, recordingAction, setIsRecordingKey, setRecordingAction, setKeyMapping, toast, activeVideo, activeIptv, isFullScreen, isMinimized, nextTrack, prevTrack]);
 
   useEffect(() => {

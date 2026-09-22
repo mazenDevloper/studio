@@ -17,7 +17,7 @@ import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 /**
- * DashboardView v280.0 - Thmanyah Optimized
+ * DashboardView v281.0 - Thmanyah Optimized & Horizontal Scroll Fix
  */
 export function DashboardView() {
   const { 
@@ -47,7 +47,7 @@ export function DashboardView() {
   };
 
   return (
-    <div data-nav-zone="content" className="h-full w-full pt-0 px-6 flex flex-col gap-8 relative overflow-y-auto pb-64 no-scrollbar bg-black transition-none">
+    <div data-nav-zone="content" className="h-full w-full max-w-full overflow-x-hidden pt-0 px-6 flex flex-col gap-8 relative overflow-y-auto pb-64 no-scrollbar bg-black transition-none">
       {wallPlateType && (
         <div className="fixed inset-0 z-[20000] bg-black flex items-center justify-center overflow-hidden animate-in fade-in duration-300">
           {/* Wall Plate UI */}

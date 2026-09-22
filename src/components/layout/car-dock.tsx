@@ -1,7 +1,7 @@
 
 "use client";
 
-import { LayoutDashboard, Radio, Settings, ArrowLeft, Trophy, ArrowRightLeft, Tv, BookOpen, Sparkles, ChevronUp, ChevronDown } from "lucide-react";
+import { LayoutDashboard, Radio, Settings, ArrowLeft, Trophy, ArrowRightLeft, Tv, BookOpen, Sparkles, ChevronUp, ChevronDown, Layout } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useMediaStore, AppAction, MappingContext } from "@/lib/store";
@@ -99,9 +99,28 @@ export function CarDock() {
   const apps = [
     { name: "Media", href: "/media", icon: Radio, action: "goto_media" as AppAction },
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard, action: "goto_home" as AppAction },
+    { 
+      name: "CarPanel", 
+      href: "/car-dashboard", 
+      icon: Layout, 
+      action: "goto_car_dashboard" as AppAction,
+      className: "hidden min-[501px]:max-[968px]:flex" 
+    },
     { name: "Quran", href: "/quran", icon: BookOpen, action: "goto_quran" as AppAction },
-    { name: "الرياضة", href: "/hihi2", icon: FootballBallIcon, action: "goto_hihi2" as AppAction },
-    { name: "IPTV", href: "/iptv", icon: Tv, action: "goto_iptv" as AppAction },
+    { 
+      name: "الرياضة", 
+      href: "/hihi2", 
+      icon: FootballBallIcon, 
+      action: "goto_hihi2" as AppAction,
+      className: "hidden md:flex" 
+    },
+    { 
+      name: "IPTV", 
+      href: "/iptv", 
+      icon: Tv, 
+      action: "goto_iptv" as AppAction,
+      className: "hidden md:flex" 
+    },
     { name: "Azkar", href: "/football", icon: Sparkles, action: "goto_football" as AppAction },
     { name: "Settings", href: "/settings", icon: Settings, action: "goto_settings" as AppAction },
   ];
@@ -147,7 +166,8 @@ export function CarDock() {
                 data-nav-id={`dock-${app.name}`} 
                 className={cn(
                   "w-12 h-12 min-[980px]:w-14 min-[980px]:h-14 rounded-[1.5rem] flex items-center justify-center transition-all duration-0 relative focusable outline-none mb-3", 
-                  isActive ? "bg-blue-600/10 shadow-[0_0_30px_rgba(37,99,235,0.2)] border border-blue-500/20 z-50 scale-110" : "bg-transparent"
+                  isActive ? "bg-blue-600/10 shadow-[0_0_30px_rgba(37,99,235,0.2)] border border-blue-500/20 z-50 scale-110" : "bg-transparent",
+                  app.className
                 )}
               >
                 <ShortcutBadge action={app.action} context="dock" />

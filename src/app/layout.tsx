@@ -15,16 +15,17 @@ import Script from 'next/script';
 import { useMediaStore } from '@/lib/store';
 import { useEffect, useState, useRef } from 'react';
 import { Loader2, Zap } from 'lucide-react';
+import { usePathname } from 'next/navigation';
 
 /**
  * RootLayoutWrapper component - Global container
- * Features: Always-On WakeLock & Media Session Integration.
- * Optimized for Android Car Screens (Prodo/Samsung Browser).
+ * Features: Always-On WakeLock & Sovereign Auto-Click Sync Protocol (v7600 - Optimized).
  */
 function RootLayoutWrapper({ children }: { children: React.ReactNode }) {
   const { customFonts, fetchPriorityData, isInitialLoading, activeVideo, activeIptv, activeAudio, isPlaying } = useMediaStore();
   const [mounted, setMounted] = useState(false);
   const wakeLockRef = useRef<any>(null);
+  const pathname = usePathname();
 
   // 1. Sovereign WakeLock: Prevent screen sleep and app suspension in car OS
   useEffect(() => {
@@ -41,7 +42,6 @@ function RootLayoutWrapper({ children }: { children: React.ReactNode }) {
 
     requestWakeLock();
 
-    // Re-request wake lock when page becomes visible again
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         requestWakeLock();
@@ -51,7 +51,44 @@ function RootLayoutWrapper({ children }: { children: React.ReactNode }) {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, []);
 
-  // 2. Advanced Media Session: Force Android to keep the process alive
+  // 2. Sovereign Auto-Click Sync Protocol v7600
+  // Updated Timing: Fetch (2s) -> Optimizer Pulse 1 (6s) -> Optimizer Pulse 2 (11s)
+  useEffect(() => {
+    // 2.1 Content Cloud Fetch (Standard Sync)
+    const timerFetch = setTimeout(() => {
+      const btn = document.querySelector('[data-nav-id="content-cloud-fetch-0"]') as HTMLElement;
+      if (btn) {
+        btn.click();
+        console.log("[Sovereign Sync] Content Cloud Fetch Executed @ 2s");
+      }
+    }, 2000);
+
+    // 2.2 System Optimizer - Pulse 1 @ 6s
+    const timerOpt1 = setTimeout(() => {
+      const btn = document.querySelector('[data-nav-id="shortcut-item-5"]') as HTMLElement;
+      if (btn) {
+        btn.click();
+        console.log("[Sovereign Sync] System Optimizer Pulse 1 Executed @ 6s");
+      }
+    }, 6000);
+
+    // 2.3 System Optimizer - Pulse 2 @ 11s
+    const timerOpt2 = setTimeout(() => {
+      const btn = document.querySelector('[data-nav-id="shortcut-item-5"]') as HTMLElement;
+      if (btn) {
+        btn.click();
+        console.log("[Sovereign Sync] System Optimizer Pulse 2 Executed @ 11s");
+      }
+    }, 11000);
+
+    return () => {
+      clearTimeout(timerFetch);
+      clearTimeout(timerOpt1);
+      clearTimeout(timerOpt2);
+    };
+  }, [pathname]);
+
+  // 3. Advanced Media Session: Force Android to keep the process alive
   useEffect(() => {
     if ('mediaSession' in navigator) {
       const metadata = new MediaMetadata({
@@ -69,13 +106,11 @@ function RootLayoutWrapper({ children }: { children: React.ReactNode }) {
 
       navigator.mediaSession.metadata = metadata;
 
-      // Handle lock screen / car steering wheel controls
       navigator.mediaSession.setActionHandler('play', () => useMediaStore.getState().setIsPlaying(true));
       navigator.mediaSession.setActionHandler('pause', () => useMediaStore.getState().setIsPlaying(false));
       navigator.mediaSession.setActionHandler('previoustrack', () => useMediaStore.getState().prevTrack());
       navigator.mediaSession.setActionHandler('nexttrack', () => useMediaStore.getState().nextTrack());
       
-      // Update playback state to ensure Android doesn't kill the "idle" tab
       navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
     }
   }, [activeVideo, activeIptv, activeAudio, isPlaying]);

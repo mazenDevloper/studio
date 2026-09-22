@@ -109,9 +109,10 @@ export function ReminderSummaryWidget() {
     }
 
     // Add general reminders if on desktop
+    // FILTER: Exclude Matches and Sports
     if (!isMobile) {
       for (const rem of reminders) {
-        if (rem.completed) continue;
+        if (rem.completed || rem.iconType === 'match') continue;
         let startSecs = 0;
         if (rem.startType === 'manual' && rem.manualStartTime) startSecs = tToM(rem.manualStartTime) * 60;
         else if (rem.startReference && pData[rem.startReference]) {
