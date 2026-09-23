@@ -19,7 +19,7 @@ import { usePathname } from 'next/navigation';
 
 /**
  * RootLayoutWrapper component - Global container
- * Features: Always-On WakeLock & Sovereign Auto-Click Sync Protocol (v7600 - Optimized).
+ * Features: Always-On WakeLock & Sovereign Auto-Click Sync Protocol (v12000 - Optimized).
  */
 function RootLayoutWrapper({ children }: { children: React.ReactNode }) {
   const { customFonts, fetchPriorityData, isInitialLoading, activeVideo, activeIptv, activeAudio, isPlaying } = useMediaStore();
@@ -27,41 +27,28 @@ function RootLayoutWrapper({ children }: { children: React.ReactNode }) {
   const wakeLockRef = useRef<any>(null);
   const pathname = usePathname();
 
-  // 1. Sovereign WakeLock: Prevent screen sleep and app suspension in car OS
+  // 1. Sovereign WakeLock
   useEffect(() => {
     const requestWakeLock = async () => {
       try {
         if ('wakeLock' in navigator) {
           wakeLockRef.current = await (navigator as any).wakeLock.request('screen');
-          console.log("[Sovereign Protocol] WakeLock Activated");
         }
-      } catch (err) {
-        console.warn("[Sovereign Protocol] WakeLock Refused:", err);
-      }
+      } catch (err) {}
     };
-
     requestWakeLock();
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        requestWakeLock();
-      }
-    };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, []);
 
-  // 2. Sovereign Auto-Click Sync Protocol v7600
-  // Updated Timing: Fetch (2s) -> Optimizer Pulse 1 (6s) -> Optimizer Pulse 2 (11s)
+  // 2. Sovereign Auto-Click Sync Protocol v12000
   useEffect(() => {
-    // 2.1 Content Cloud Fetch (Standard Sync)
+    // 2.1 Content Cloud Fetch - 3s (Targeted to Media and general sync)
     const timerFetch = setTimeout(() => {
       const btn = document.querySelector('[data-nav-id="content-cloud-fetch-0"]') as HTMLElement;
       if (btn) {
         btn.click();
-        console.log("[Sovereign Sync] Content Cloud Fetch Executed @ 2s");
+        console.log("[Sovereign Sync] Content Cloud Fetch Executed @ 3s");
       }
-    }, 2000);
+    }, 3000);
 
     // 2.2 System Optimizer - Pulse 1 @ 6s
     const timerOpt1 = setTimeout(() => {
@@ -88,29 +75,14 @@ function RootLayoutWrapper({ children }: { children: React.ReactNode }) {
     };
   }, [pathname]);
 
-  // 3. Advanced Media Session: Force Android to keep the process alive
   useEffect(() => {
     if ('mediaSession' in navigator) {
       const metadata = new MediaMetadata({
         title: activeVideo?.title || activeIptv?.name || activeAudio?.title || 'بث سيادي نشط',
         artist: activeVideo?.channelTitle || activeAudio?.channelTitle || 'DriveCast Sovereign Hub',
-        album: 'نظام البث المركزي',
-        artwork: [
-          { 
-            src: activeVideo?.thumbnail || activeIptv?.stream_icon || activeAudio?.thumbnail || 'https://www.image2url.com/r2/default/images/1782382707952-d99447c6-bc60-475d-9406-5fd2ef320bd5.png', 
-            sizes: '512x512', 
-            type: 'image/jpeg' 
-          }
-        ]
+        artwork: [{ src: activeVideo?.thumbnail || activeIptv?.stream_icon || activeAudio?.thumbnail || 'https://www.image2url.com/r2/default/images/1782382707952-d99447c6-bc60-475d-9406-5fd2ef320bd5.png', sizes: '512x512', type: 'image/jpeg' }]
       });
-
       navigator.mediaSession.metadata = metadata;
-
-      navigator.mediaSession.setActionHandler('play', () => useMediaStore.getState().setIsPlaying(true));
-      navigator.mediaSession.setActionHandler('pause', () => useMediaStore.getState().setIsPlaying(false));
-      navigator.mediaSession.setActionHandler('previoustrack', () => useMediaStore.getState().prevTrack());
-      navigator.mediaSession.setActionHandler('nexttrack', () => useMediaStore.getState().nextTrack());
-      
       navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
     }
   }, [activeVideo, activeIptv, activeAudio, isPlaying]);
@@ -130,15 +102,10 @@ function RootLayoutWrapper({ children }: { children: React.ReactNode }) {
               <div className="w-32 h-32 rounded-[2.5rem] bg-primary/20 border-2 border-primary/40 flex items-center justify-center shadow-[0_0_80px_rgba(var(--primary),0.3)] animate-pulse">
                  <Zap className="w-16 h-16 text-primary" />
               </div>
-              <div className="absolute inset-0 bg-primary/20 blur-[100px] rounded-full animate-pulse" />
            </div>
            <div className="text-center space-y-2">
               <h1 className="text-4xl font-black text-white tracking-[0.3em] uppercase">DriveCast</h1>
-              <p className="text-primary font-black text-[10px] uppercase tracking-[0.8em] animate-pulse">Anti-Destroy Protocol Active</p>
-           </div>
-           <div className="absolute bottom-20 flex flex-col items-center gap-4">
-              <Loader2 className="w-8 h-8 animate-spin text-white/20" />
-              <span className="text-white/10 font-bold text-[8px] uppercase tracking-widest">Sovereign Core Synced</span>
+              <p className="text-primary font-black text-[10px] uppercase tracking-[0.8em] animate-pulse">Sovereign OS Active</p>
            </div>
         </div>
       )}
@@ -165,6 +132,9 @@ export default function RootLayout({
   return (
     <html lang="ar" dir="rtl" className="dark" suppressHydrationWarning>
       <head>
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&family=Amiri:wght@400;700&family=Aref+Ruqaa:wght@400;700&family=Reem+Kufi:wght@400;700&family=Alkalami&family=Gulzar&display=swap" rel="stylesheet" />
