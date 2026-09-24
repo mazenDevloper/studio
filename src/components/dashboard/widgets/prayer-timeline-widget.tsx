@@ -8,7 +8,8 @@ import { Timer, BellRing, Sun, Sunrise, Sunset, Moon, Sparkles, CloudSun, Edit3,
 import { useMediaStore } from "@/lib/store";
 
 /**
- * PrayerTimelineWidget v301.0 - Thmanyah Optimized Mobile Sizing
+ * PrayerTimelineWidget v305.0 - Dynamic Iqamah Time Swap Protocol
+ * Features: Automatically switches to display Iqamah Time when Azan has passed.
  */
 export function PrayerTimelineWidget() {
   const [now, setNow] = useState<Date | null>(null);
@@ -68,7 +69,7 @@ export function PrayerTimelineWidget() {
         ...p, 
         iqamahDuration: dur, 
         iqamahTime: `${iqamahH % 24}:${iqamahM.toString().padStart(2, '0')}`,
-        passed: currentMinutes >= azanMins && currentMinutes < iqamahTimeMins
+        passed: currentMinutes >= azanMins && currentMinutes < (azanMins + dur)
       };
     });
 

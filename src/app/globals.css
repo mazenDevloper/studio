@@ -1,4 +1,3 @@
-
 @import "@dawod/thmanyah-font-web";
 
 @tailwind base;
@@ -76,8 +75,159 @@ span.text-\[18cqw\].font-black.text-white.leading-none.tracking-tight.block {
     font-feature-settings: "liga" 1, "rlig" 1, "calt" 1, "locl" 1, "ccmp" 1, "mark" 1, "mkmk" 1, "ss01" 0, "ss02" 1, "ss03" 1, "zero" 1 !important;
 }
 
-/* --- MOBILE TRANSFORMATION --- */
-@media (max-width: 768px) {
+/* Desktop Avatars > 968px */
+@media (min-width: 969px) {
+  aside [data-nav-id^="sidebar-channel-"] {
+    padding: 1rem !important;
+  }
+  aside [data-nav-id^="sidebar-channel-"] img {
+    width: 5rem !important;
+    height: 5rem !important;
+    min-width: 5rem !important;
+  }
+}
+
+/* --- SOVEREIGN RESPONSIVE ARCHITECTURE --- */
+@media (max-width: 968px) {
+  /* Move Dock to bottom on mobile */
+  [data-nav-id^="dock-"] {
+    margin-bottom: 0 !important;
+  }
+
+  [data-nav-zone="dock"] {
+    top: auto !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    height: 80px !important;
+    flex-direction: row !important;
+    padding: 0 20px !important;
+    border-top: 1px solid rgba(255,255,255,0.1) !important;
+    border-right: none !important;
+    border-left: none !important;
+  }
+  
+  [data-nav-zone="dock"] > div {
+    flex-direction: row !important;
+    justify-content: space-around !important;
+    width: 100% !important;
+    gap: 0 !important;
+  }
+
+  [data-nav-zone="dock"] .mt-auto {
+    display: none !important;
+  }
+
+  /* --- Tablet Range: 551px to 968px --- */
+  @media (min-width: 551px) {
+    aside.md\:flex {
+      display: flex !important;
+      width: 6rem !important; /* Increased for 4rem avatars */
+      flex-shrink: 0 !important;
+      transition: none !important;
+    }
+    /* Collapsed Sidebar: Hide all text, labels and secondary rows */
+    aside [data-row-id="sidebar-playlists"],
+    aside [data-row-id="sidebar-new-playlist"],
+    aside [data-nav-id="sidebar-add-btn"],
+    aside span,
+    aside h4 {
+      display: none !important;
+    }
+    /* Tablet Avatars: 4rem x 4rem centered */
+    aside [data-nav-id^="sidebar-channel-"] {
+      width: 6rem !important;
+      padding: 0.5rem !important;
+      justify-content: center !important;
+      gap: 0 !important;
+    }
+    aside [data-nav-id^="sidebar-channel-"] img {
+      width: 4rem !important;
+      height: 4rem !important;
+      min-width: 4rem !important;
+      margin: 0 !important;
+    }
+    /* Display control buttons in tablet range */
+    .fixed.bottom-8.z-\[10002\].flex.flex-col.gap-4.items-center {
+      display: flex !important;
+      bottom: 100px !important;
+    }
+  }
+
+  /* --- Mobile Range: Below 550px --- */
+  @media (max-width: 550px) {
+    aside.md\:flex {
+      display: none !important;
+    }
+    /* Hide floating scroll/toggle controls */
+    .fixed.bottom-8.z-\[10002\] {
+      display: none !important;
+    }
+    /* Show subscriptions under reciters in main content */
+    .show-subs-under-reciters {
+      display: block !important;
+    }
+
+    /* General Heading Font Reduction */
+    h1, .text-6xl, .text-5xl, .text-4xl { font-size: 1.5rem !important; line-height: 1.2 !important; }
+    h2, .text-3xl { font-size: 1.25rem !important; }
+
+    /* Modal (Surahs/Juz) Responsive Scaling */
+    [role="dialog"] { padding: 1.25rem !important; }
+    [role="dialog"] .h-16 { height: 3rem !important; }
+    [role="dialog"] .h-14 { height: 2.5rem !important; }
+    
+    /* Surah Grid Items */
+    [data-nav-id^="modal-surah-"] {
+      height: 2.2rem !important;
+      padding: 0 0.5rem !important;
+      font-size: 9px !important;
+      border-radius: 9999px !important;
+    }
+    [data-nav-id^="modal-surah-"] span.ml-2 {
+      font-size: 7px !important;
+      padding: 0.05rem 0.3rem !important;
+      margin-left: 0.2rem !important;
+    }
+
+    /* Juz Grid Items */
+    [data-nav-id^="modal-juz-"] {
+      height: 2.8rem !important;
+      font-size: 11px !important;
+      border-radius: 0.8rem !important;
+    }
+    [data-nav-id^="modal-juz-"] span {
+      font-size: 14px !important;
+    }
+
+    /* Juz Tab Content Height Fix */
+    [id*="content-juz"] {
+      height: 100% !important;
+      max-height: none !important;
+    }
+  }
+
+  /* Adjust main layout to give space to bottom dock */
+  .pl-16, .pl-20, .pr-16, .pr-20 {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    padding-bottom: 80px !important;
+  }
+
   body { overflow-y: auto !important; height: auto !important; }
   .focusable:focus { transform: scale(1.02) !important; box-shadow: 0 0 40px rgba(0, 136, 255, 0.6); }
+
+  /* Final Mobile Sidebar Force Hide */
+  aside.md\:flex.h-full.z-\[110\].premium-glass.flex.flex-col.shrink-0.border-white\/5.bg-black\/60.transition-all.duration-300.w-\[28\%\].border-l {
+      display: none !important;
+  }
+  .fixed.bottom-8.z-\[10002\].flex.flex-col.gap-4.items-center.right-8 {
+      display: none;
+  }
+}
+
+/* Hidden by default, enabled via media query below 550px */
+.show-subs-under-reciters {
+  display: none;
 }
