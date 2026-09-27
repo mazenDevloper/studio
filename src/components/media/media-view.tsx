@@ -346,7 +346,7 @@ export function MediaView() {
     return playlists.find(p => p.id === selectedPlaylist);
   }, [playlists, selectedPlaylist, savedVideos]);
 
-  const horizontalListClass = "w-full flex gap-4 px-8 py-0 overflow-x-auto no-scrollbar scroll-smooth justify-start items-center";
+  const horizontalListClass = "w-full flex gap-4 px-8 py-0 overflow-x-auto no-scrollbar scroll-smooth justify-start items-center relative z-50";
 
   const handleAddPodcastClick = () => {
     setSearch("بودكاست ");
@@ -456,38 +456,37 @@ export function MediaView() {
 
         {!selectedChannel && !selectedPlaylist && searchResults.length === 0 && (
           <div className="space-y-12">
-            {/* 1. Folders & Podcasts ALWAYS AT TOP */}
             <section data-row-id="row-all-playlists" className="py-4">
               <div className="px-10 mb-6 flex items-center gap-4">
                 <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center shadow-glow"><Library className="w-6 h-6 text-white" /></div>
                 <h2 className="text-2xl font-black text-white uppercase tracking-widest">المجلدات والترددات المجرسة</h2>
               </div>
               <div className={horizontalListClass}>
-                <div onClick={() => handlePlaylistEntry('favorites')} className="w-80 h-48 group relative overflow-hidden bg-zinc-900 border-2 border-amber-500/20 rounded-[2.5rem] focusable cursor-pointer shrink-0 flex flex-col justify-end p-6 shadow-2xl transition-all outline-none" tabIndex={0} data-nav-id="all-playlist-favorites">
+                <div onClick={() => handlePlaylistEntry('favorites')} className="w-64 h-40 group relative overflow-hidden bg-zinc-900 border-2 border-amber-500/20 rounded-[2.5rem] focusable cursor-pointer shrink-0 flex flex-col justify-end p-6 shadow-2xl transition-all outline-none" tabIndex={0} data-nav-id="all-playlist-favorites">
                   {savedVideos.length > 0 && (<div className="absolute inset-0 z-0"><img src={savedVideos[0].thumbnail} className="w-full h-full object-cover opacity-60 group-hover:scale-110 transition-transform duration-700" alt="" /><div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" /></div>)}
-                  <div className="relative z-10 text-right"><span className="text-2xl font-black text-white tracking-tighter drop-shadow-[0_4px_10px_rgba(0,0,0,0.8)] leading-tight">المفضلات العامة ⭐</span><div className="mt-2 flex items-center gap-2"><div className="px-3 py-1 bg-amber-600/40 backdrop-blur-md rounded-full border border-amber-400/30"><span className="text-[9px] font-black text-white uppercase tracking-widest">{savedVideos.length} فيديو</span></div></div></div>
+                  <div className="relative z-10 text-right"><span className="text-xl font-black text-white tracking-tighter drop-shadow-[0_4px_10px_rgba(0,0,0,0.8)] leading-tight">المفضلات العامة ⭐</span><div className="mt-2 flex items-center gap-2"><div className="px-3 py-1 bg-amber-600/40 backdrop-blur-md rounded-full border border-amber-400/30"><span className="text-[9px] font-black text-white uppercase tracking-widest">{savedVideos.length} فيديو</span></div></div></div>
                 </div>
 
                 {playlists.map((p, pIdx) => (
-                  <div key={p.id} onClick={() => handlePlaylistEntry(p.id)} className="w-80 h-48 group relative overflow-hidden bg-zinc-900 border-2 border-white/10 rounded-[2.5rem] focusable cursor-pointer shrink-0 flex flex-col justify-end p-6 shadow-2xl transition-all outline-none" tabIndex={0} data-nav-id={`all-playlist-${pIdx}`}>{p.videos.length > 0 && (<div className="absolute inset-0 z-0"><img src={p.videos[0].thumbnail} className="w-full h-full object-cover opacity-60 group-hover:scale-110 transition-transform duration-700" alt="" /><div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" /></div>)}<div className="relative z-10 text-right"><span className="text-2xl font-black text-white tracking-tighter drop-shadow-[0_4px_10px_rgba(0,0,0,0.8)] text-xl leading-tight">{p.name}</span><div className="mt-2 flex items-center gap-2"><div className="px-3 py-1 bg-white/20 backdrop-blur-md rounded-full border border-white/20"><span className="text-[9px] font-black text-white uppercase tracking-widest">{p.videos.length} تلاوة</span></div></div></div></div>
+                  <div key={p.id} onClick={() => handlePlaylistEntry(p.id)} className="w-64 h-40 group relative overflow-hidden bg-zinc-900 border-2 border-white/10 rounded-[2.5rem] focusable cursor-pointer shrink-0 flex flex-col justify-end p-6 shadow-2xl transition-all outline-none" tabIndex={0} data-nav-id={`all-playlist-${pIdx}`}>{p.videos.length > 0 && (<div className="absolute inset-0 z-0"><img src={p.videos[0].thumbnail} className="w-full h-full object-cover opacity-60 group-hover:scale-110 transition-transform duration-700" alt="" /><div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" /></div>)}<div className="relative z-10 text-right"><span className="text-xl font-black text-white tracking-tighter drop-shadow-[0_4px_10px_rgba(0,0,0,0.8)] leading-tight">{p.name}</span><div className="mt-2 flex items-center gap-2"><div className="px-3 py-1 bg-white/20 backdrop-blur-md rounded-full border border-white/20"><span className="text-[9px] font-black text-white uppercase tracking-widest">{p.videos.length} تلاوة</span></div></div></div></div>
                 ))}
 
                 {favoritePodcasts.map((pod, i) => (
                   <button 
                     key={`fav-pod-${i}`} 
                     onClick={() => performSearch(pod.name)}
-                    className="flex flex-col items-center gap-4 px-6 py-4 rounded-[3rem] focusable bg-white/5 border border-white/10 shrink-0 transition-all hover:bg-emerald-600/10 hover:border-emerald-500/40 shadow-xl group relative"
+                    className="flex flex-col items-center gap-3 px-6 py-4 rounded-[2.5rem] focusable bg-white/5 border border-white/10 shrink-0 transition-all hover:bg-emerald-600/10 hover:border-emerald-500/40 shadow-xl group relative h-40 justify-center"
                     tabIndex={0}
                     data-nav-id={`fav-podcast-item-${i}`}
                   >
                      <button onClick={(event) => { event.stopPropagation(); removePodcast(pod.channelid); toast({ title: "تم الحذف سحابياً" }); }} className="absolute -top-1 -right-1 w-7 h-7 rounded-full bg-red-600 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity focusable z-30 shadow-glow"><Trash2 className="w-4 h-4" /></button>
-                     <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-emerald-500/20 shadow-2xl group-hover:scale-110 transition-transform duration-500">
+                     <div className="w-20 h-20 rounded-full overflow-hidden border-4 border-emerald-500/20 shadow-2xl group-hover:scale-110 transition-transform duration-500">
                         <img src={pod.image} className="w-full h-full object-cover" alt={pod.name} />
                      </div>
                      <div className="flex flex-col items-center">
-                        <span className="text-[12px] font-black text-white">{pod.name}</span>
+                        <span className="text-[10px] font-black text-white">{pod.name}</span>
                         <div className="mt-1 px-2 py-0.5 bg-emerald-600/20 rounded-full border border-emerald-500/20">
-                           <span className="text-[7px] font-black text-emerald-400 uppercase tracking-widest">بودكاست محفوظ</span>
+                           <span className="text-[6px] font-black text-emerald-400 uppercase tracking-widest">بودكاست</span>
                         </div>
                      </div>
                   </button>
@@ -497,17 +496,17 @@ export function MediaView() {
                   <button 
                     key={i} 
                     onClick={() => performSearch(pod.query)}
-                    className="flex flex-col items-center gap-4 px-6 py-4 rounded-[3rem] focusable bg-white/5 border border-white/10 shrink-0 transition-all hover:bg-emerald-600/10 hover:border-emerald-500/40 shadow-xl group"
+                    className="flex flex-col items-center gap-3 px-6 py-4 rounded-[2.5rem] focusable bg-white/5 border border-white/10 shrink-0 transition-all hover:bg-emerald-600/10 hover:border-emerald-500/40 shadow-xl group h-40 justify-center"
                     tabIndex={0}
                     data-nav-id={`podcast-item-${i}`}
                   >
-                     <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-emerald-500/20 shadow-2xl group-hover:scale-110 transition-transform duration-500">
+                     <div className="w-20 h-20 rounded-full overflow-hidden border-4 border-emerald-500/20 shadow-2xl group-hover:scale-110 transition-transform duration-500">
                         <img src={pod.image} className="w-full h-full object-cover" alt={pod.name} />
                      </div>
                      <div className="flex flex-col items-center">
-                        <span className="text-[12px] font-black text-white">{pod.name}</span>
+                        <span className="text-[10px] font-black text-white">{pod.name}</span>
                         <div className="mt-1 px-2 py-0.5 bg-emerald-600/20 rounded-full border border-emerald-500/20">
-                           <span className="text-[7px] font-black text-emerald-400 uppercase tracking-widest">اقتراح</span>
+                           <span className="text-[6px] font-black text-emerald-400 uppercase tracking-widest">اقتراح</span>
                         </div>
                      </div>
                   </button>
@@ -515,16 +514,15 @@ export function MediaView() {
 
                 <button 
                   onClick={handleAddPodcastClick}
-                  className="w-32 h-32 rounded-full border-2 border-dashed border-white/20 flex flex-col items-center justify-center gap-2 text-white/20 hover:border-emerald-500 hover:text-emerald-500 transition-all focusable shrink-0 ml-10"
+                  className="w-24 h-24 rounded-full border-2 border-dashed border-white/20 flex flex-col items-center justify-center gap-1 text-white/20 hover:border-emerald-500 hover:text-emerald-500 transition-all focusable shrink-0 ml-10"
                   data-nav-id="add-podcast-btn"
                 >
-                  <Plus className="w-10 h-10" />
-                  <span className="text-[8px] font-black uppercase tracking-widest">إضافة بودكاست</span>
+                  <Plus className="w-8 h-8" />
+                  <span className="text-[7px] font-black uppercase tracking-widest">إضافة بودكاست</span>
                 </button>
               </div>
             </section>
 
-            {/* 2. Reciters Section */}
             <section data-row-id="row-reciters" className="py-2">
               <div className="px-10 mb-4 flex items-center gap-4">
                 <div className="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center shadow-glow"><Mic className="w-6 h-6 text-white" /></div>
@@ -540,13 +538,12 @@ export function MediaView() {
               </div>
             </section>
 
-            {/* 3. Subscriptions (Shown Below Reciters ONLY in Mobile Range < 550px) */}
             <section data-row-id="row-subscriptions-mobile" className="py-2 show-subs-under-reciters">
               <div className="px-10 mb-4 flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg bg-red-600 flex items-center justify-center"><Youtube className="w-5 h-5 text-white" /></div>
                 <h2 className="text-lg font-black text-white/60">الاشتراكات السيادية</h2>
               </div>
-              <div className={cn(horizontalListClass, "gap-3")}>
+              <div className={cn(horizontalListClass, "gap-3 py-2")}>
                   {favoriteChannels.map((ch, idx) => (
                     <button 
                       key={idx} 
@@ -712,8 +709,8 @@ export function MediaView() {
                  </div>
               </TabsContent>
 
-              <TabsContent value="juz" className="animate-in fade-in duration-300">
-                 <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] md:grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-4 max-h-[50vh] overflow-y-auto pr-4 no-scrollbar" data-nav-id="modal-juz-grid">
+              <TabsContent value="juz" className="animate-in fade-in duration-300 h-full">
+                 <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] md:grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-4 max-h-[50vh] overflow-y-auto pr-4 no-scrollbar h-full" data-nav-id="modal-juz-grid">
                     {[...Array(30).keys()].map(i => (
                        <button 
                           key={i} 

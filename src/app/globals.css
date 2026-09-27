@@ -69,6 +69,15 @@
 
 .no-scrollbar::-webkit-scrollbar { display: none; }
 
+/* --- HYPER-SMOOTH TOUCH SCROLLING --- */
+[data-nav-zone="content"] .overflow-x-auto,
+[data-nav-zone="sidebar"] .overflow-y-auto {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-x;
+    pointer-events: auto !important;
+}
+
 /* --- SOVEREIGN THMANYAH TYPOGRAPHY ENGINE --- */
 span.text-\[18cqw\].font-black.text-white.leading-none.tracking-tight.block {
     font-family: 'Thmanyah Sans' !important;
@@ -78,13 +87,22 @@ span.text-\[18cqw\].font-black.text-white.leading-none.tracking-tight.block {
 /* Desktop Avatars > 968px */
 @media (min-width: 969px) {
   aside [data-nav-id^="sidebar-channel-"] {
-    padding: 1rem !important;
+    padding: 0.5rem !important;
   }
-  aside [data-nav-id^="sidebar-channel-"] img {
-    width: 5rem !important;
-    height: 5rem !important;
-    min-width: 5rem !important;
-  }
+  
+/* Expanded State (w-[28%]) -> 2.5rem */
+aside.w-\[28\%\] [data-nav-id^="sidebar-channel-"] img {
+  width: 2.5rem !important;
+  height: 2.5rem !important;
+  min-width: 2.5rem !important;
+}
+/* Collapsed State (w-[80px]) -> 3rem */
+aside.w-\[80px\] [data-nav-id^="sidebar-channel-"] img {
+  width: 3rem !important;
+  height: 3rem !important;
+  min-width: 3rem !important;
+}
+
 }
 
 /* --- SOVEREIGN RESPONSIVE ARCHITECTURE --- */
@@ -123,7 +141,7 @@ span.text-\[18cqw\].font-black.text-white.leading-none.tracking-tight.block {
   @media (min-width: 551px) {
     aside.md\:flex {
       display: flex !important;
-      width: 6rem !important; /* Increased for 4rem avatars */
+      width: 5rem !important;
       flex-shrink: 0 !important;
       transition: none !important;
     }
@@ -135,17 +153,17 @@ span.text-\[18cqw\].font-black.text-white.leading-none.tracking-tight.block {
     aside h4 {
       display: none !important;
     }
-    /* Tablet Avatars: 4rem x 4rem centered */
+    /* Tablet Avatars: 3rem x 3rem centered */
     aside [data-nav-id^="sidebar-channel-"] {
-      width: 6rem !important;
+      width: 5rem !important;
       padding: 0.5rem !important;
       justify-content: center !important;
       gap: 0 !important;
     }
     aside [data-nav-id^="sidebar-channel-"] img {
-      width: 4rem !important;
-      height: 4rem !important;
-      min-width: 4rem !important;
+      width: 3rem !important;
+      height: 3rem !important;
+      min-width: 3rem !important;
       margin: 0 !important;
     }
     /* Display control buttons in tablet range */
