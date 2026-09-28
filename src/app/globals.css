@@ -71,7 +71,8 @@
 
 /* --- HYPER-SMOOTH TOUCH SCROLLING --- */
 [data-nav-zone="content"] .overflow-x-auto,
-[data-nav-zone="sidebar"] .overflow-y-auto {
+[data-nav-zone="sidebar"] .overflow-y-auto,
+.overflow-x-auto {
     scroll-behavior: smooth;
     -webkit-overflow-scrolling: touch;
     touch-action: pan-x;
@@ -90,24 +91,23 @@ span.text-\[18cqw\].font-black.text-white.leading-none.tracking-tight.block {
     padding: 0.5rem !important;
   }
   
-/* Expanded State (w-[28%]) -> 2.5rem */
-aside.w-\[28\%\] [data-nav-id^="sidebar-channel-"] img {
-  width: 2.5rem !important;
-  height: 2.5rem !important;
-  min-width: 2.5rem !important;
-}
-/* Collapsed State (w-[80px]) -> 3rem */
-aside.w-\[80px\] [data-nav-id^="sidebar-channel-"] img {
-  width: 3rem !important;
-  height: 3rem !important;
-  min-width: 3rem !important;
-}
-
+  /* Expanded State (w-[28%]) -> 2.5rem */
+  aside.w-\[28\%\] [data-nav-id^="sidebar-channel-"] img {
+    width: 2.5rem !important;
+    height: 2.5rem !important;
+    min-width: 2.5rem !important;
+  }
+  /* Collapsed State (w-[80px]) -> 3rem */
+  aside.w-\[80px\] [data-nav-id^="sidebar-channel-"] img {
+    width: 3rem !important;
+    height: 3rem !important;
+    min-width: 3rem !important;
+  }
 }
 
 /* --- SOVEREIGN RESPONSIVE ARCHITECTURE --- */
 @media (max-width: 968px) {
-  /* Move Dock to bottom on mobile */
+  /* Move Dock to bottom on mobile/tablet */
   [data-nav-id^="dock-"] {
     margin-bottom: 0 !important;
   }
@@ -137,57 +137,33 @@ aside.w-\[80px\] [data-nav-id^="sidebar-channel-"] img {
     display: none !important;
   }
 
-  /* --- Tablet Range: 551px to 968px --- */
-  @media (min-width: 551px) {
-    aside.md\:flex {
-      display: flex !important;
-      width: 5rem !important;
-      flex-shrink: 0 !important;
-      transition: none !important;
-    }
-    /* Collapsed Sidebar: Hide all text, labels and secondary rows */
-    aside [data-row-id="sidebar-playlists"],
-    aside [data-row-id="sidebar-new-playlist"],
-    aside [data-nav-id="sidebar-add-btn"],
-    aside span,
-    aside h4 {
-      display: none !important;
-    }
-    /* Tablet Avatars: 3rem x 3rem centered */
-    aside [data-nav-id^="sidebar-channel-"] {
-      width: 5rem !important;
-      padding: 0.5rem !important;
-      justify-content: center !important;
-      gap: 0 !important;
-    }
-    aside [data-nav-id^="sidebar-channel-"] img {
-      width: 3rem !important;
-      height: 3rem !important;
-      min-width: 3rem !important;
-      margin: 0 !important;
-    }
-    /* Display control buttons in tablet range */
-    .fixed.bottom-8.z-\[10002\].flex.flex-col.gap-4.items-center {
-      display: flex !important;
-      bottom: 100px !important;
-    }
+  /* SIDEBAR DISAPPEARANCE PROTOCOL (Starting 968px) */
+  aside.md\:flex {
+    display: none !important;
   }
 
-  /* --- Mobile Range: Below 550px --- */
-  @media (max-width: 550px) {
-    aside.md\:flex {
-      display: none !important;
-    }
-    /* Hide floating scroll/toggle controls */
-    .fixed.bottom-8.z-\[10002\] {
-      display: none !important;
-    }
-    /* Show subscriptions under reciters in main content */
-    .show-subs-under-reciters {
-      display: block !important;
-    }
+  /* SHOW SUBSCRIPTIONS UNDER RECITERS (Starting 968px) */
+  .show-subs-under-reciters {
+    display: block !important;
+  }
 
-    /* General Heading Font Reduction */
+  /* Hide floating scroll/toggle controls for Tablet/Mobile */
+  .fixed.bottom-8.z-\[10002\] {
+    display: none !important;
+  }
+
+  /* Adjust main layout to give space to bottom dock */
+  .pl-16, .pl-20, .pr-16, .pr-20 {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    padding-bottom: 80px !important;
+  }
+
+  body { overflow-y: auto !important; height: auto !important; }
+  .focusable:focus { transform: scale(1.02) !important; box-shadow: 0 0 40px rgba(0, 136, 255, 0.6); }
+
+  /* --- Tablet & Mobile Range Scaling --- */
+  @media (max-width: 550px) {
     h1, .text-6xl, .text-5xl, .text-4xl { font-size: 1.5rem !important; line-height: 1.2 !important; }
     h2, .text-3xl { font-size: 1.25rem !important; }
 
@@ -225,27 +201,9 @@ aside.w-\[80px\] [data-nav-id^="sidebar-channel-"] img {
       max-height: none !important;
     }
   }
-
-  /* Adjust main layout to give space to bottom dock */
-  .pl-16, .pl-20, .pr-16, .pr-20 {
-    padding-left: 0 !important;
-    padding-right: 0 !important;
-    padding-bottom: 80px !important;
-  }
-
-  body { overflow-y: auto !important; height: auto !important; }
-  .focusable:focus { transform: scale(1.02) !important; box-shadow: 0 0 40px rgba(0, 136, 255, 0.6); }
-
-  /* Final Mobile Sidebar Force Hide */
-  aside.md\:flex.h-full.z-\[110\].premium-glass.flex.flex-col.shrink-0.border-white\/5.bg-black\/60.transition-all.duration-300.w-\[28\%\].border-l {
-      display: none !important;
-  }
-  .fixed.bottom-8.z-\[10002\].flex.flex-col.gap-4.items-center.right-8 {
-      display: none;
-  }
 }
 
-/* Hidden by default, enabled via media query below 550px */
+/* Hidden by default, enabled via media query below 968px */
 .show-subs-under-reciters {
   display: none;
 }
