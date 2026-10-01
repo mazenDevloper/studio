@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { decodeHtml, scanHtml } from "@/lib/html-scan";
+import { decodeHtml, scanHtml, type ScannedForm } from "@/lib/html-scan";
+import { SALALAH, fillCalendarForm } from "@/lib/prayer-form";
 import { omanDate } from "@/lib/oman-time";
 
 export const dynamic = "force-dynamic";
@@ -31,16 +32,38 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Only mara.gov.om URLs are allowed" }, { status: 400 });
   }
 
-  const [ministry, aladhan] = await Promise.all([fetchMinistry(url, method, body), fetchAladhan()]);
-  return NextResponse.json({ request: { url: url.toString(), method, body }, ministry, aladhan });
+  const [first, aladhan] = await Promise.all([fetchMinistry(url, method, body), fetchAladhan()]);
+
+  // The calendar is a POST form back to the same page (city / month / year selects). If the first load has no
+  // prayer rows, submit that form automatically with Salalah + the current Oman month and year.
+  let ministry: any = first;
+  let auto: any = null;
+  if (p.get("auto") !== "0" && method === "GET" && "forms" in first && !first.prayerRows?.length) {
+    const form = (first.forms as ScannedForm[]).find(f => f.fields.some(fl => fl.options?.some(o => SALALAH.test(o.text))));
+    if (form) {
+      const fields = fillCalendarForm(form);
+      const action = new URL(form.action || first.finalUrl || url.toString(), first.finalUrl || url.toString());
+      const qs = new URLSearchParams(fields).toString();
+      const second = form.method === "post"
+        ? await fetchMinistry(action, "POST", qs, first.cookie)
+        : await fetchMinistry(new URL(`${action.origin}${action.pathname}?${qs}`), "GET", "", first.cookie);
+      auto = { method: form.method.toUpperCase(), url: action.toString(), fields };
+      ministry = second;
+    }
+  }
+  return NextResponse.json({ request: { url: url.toString(), method, body }, auto, ministry, aladhan });
 }
 
-async function fetchMinistry(url: URL, method: string, body: string) {
+async function fetchMinistry(url: URL, method: string, body: string, cookie?: string) {
   const t0 = Date.now();
   try {
     const res = await fetch(url, {
       method,
-      headers: method === "POST" ? { ...BROWSER, "Content-Type": "application/x-www-form-urlencoded", Origin: url.origin, Referer: url.toString() } : BROWSER,
+      headers: {
+        ...BROWSER,
+        ...(cookie ? { Cookie: cookie } : {}), // keep the classic-ASP session from the first load
+        ...(method === "POST" ? { "Content-Type": "application/x-www-form-urlencoded", Origin: url.origin, Referer: url.toString() } : {}),
+      },
       body: method === "POST" ? body : undefined,
       redirect: "follow",
       cache: "no-store",
@@ -48,7 +71,8 @@ async function fetchMinistry(url: URL, method: string, body: string) {
     });
     const buf = await res.arrayBuffer();
     const { html, charset } = decodeHtml(buf, res.headers.get("content-type"));
-    return { ok: res.ok, status: res.status, ms: Date.now() - t0, finalUrl: res.url, bytes: buf.byteLength, ...scanHtml(html, charset) };
+    const setCookie = res.headers.getSetCookie?.().map((c: string) => c.split(";")[0]).join("; ") || undefined;
+    return { ok: res.ok, status: res.status, ms: Date.now() - t0, finalUrl: res.url, bytes: buf.byteLength, cookie: setCookie, ...scanHtml(html, charset) };
   } catch (e: any) {
     return { ok: false, status: 0, ms: Date.now() - t0, error: e?.cause?.code || e?.cause?.message || e?.message || "network error" };
   }

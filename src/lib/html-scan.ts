@@ -10,6 +10,7 @@ export interface HtmlScan {
   forms: ScannedForm[];
   links: { href: string; text: string }[];
   rows: string[][];
+  headings: string[];
   prayerHeader: string[] | null;
   prayerRows: string[][];
   text: string;
@@ -80,6 +81,7 @@ export function scanHtml(html: string, charset: string): HtmlScan {
     charset,
     title: textOf(clean.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] ?? ""),
     forms, links, rows: rows.slice(0, 200), prayerHeader, prayerRows,
+    headings: [...clean.matchAll(/<h[1-4]\b[^>]*>([\s\S]*?)<\/h[1-4]>/gi)].map(h => textOf(h[1])).filter(Boolean).slice(0, 10),
     text: textOf(clean.match(/<body[^>]*>([\s\S]*)<\/body>/i)?.[1] ?? clean).slice(0, 2000),
   };
 }

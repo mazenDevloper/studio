@@ -67,7 +67,19 @@ export function GoalCelebration() {
     if (root && typeof root.animate === "function") {
       const q = (sel: string) => Array.from(root.querySelectorAll<HTMLElement>(sel));
       const ease = "cubic-bezier(.2,.8,.2,1)";
-      anims.push(root.animate([{ opacity: 1 }, { opacity: 1, offset: 0.88 }, { opacity: 0 }], { duration: SHOW_MS, fill: "forwards" }));
+      // Grow out of the floating island (top-centre pill), hold, then shrink back into it — like a Dynamic Island.
+      const pill = "inset(22px calc(50% - 120px) calc(100% - 86px) calc(50% - 120px) round 32px)";
+      const full = "inset(0px 0px 0px 0px round 0px)";
+      anims.push(root.animate(
+        [
+          { clipPath: pill, opacity: 0 },
+          { clipPath: pill, opacity: 1, offset: 0.04 },
+          { clipPath: full, opacity: 1, offset: 0.13 },
+          { clipPath: full, opacity: 1, offset: 0.86 },
+          { clipPath: pill, opacity: 1, offset: 0.95 },
+          { clipPath: pill, opacity: 0 },
+        ],
+        { duration: SHOW_MS, easing: "cubic-bezier(.3,.7,.2,1)", fill: "forwards" }));
       q(".goal-sweep").forEach((el, i) => anims.push(el.animate(
         [{ transform: "skewY(-12deg) translateX(-110%)" }, { transform: "skewY(-12deg) translateX(0)", offset: 0.6 }, { transform: "skewY(-12deg) translateX(8%)", opacity: 0.55 }],
         { duration: 1100, delay: 50 + i * 150, easing: ease, fill: "both" })));

@@ -82,7 +82,9 @@ export default function PrayerTestPage() {
             {mn.bytes !== undefined && <Chip ok text={`${mn.bytes} bytes`} />}
             {mn.error && <Chip ok={false} text={mn.error} />}
           </div>
+          {res?.auto && <p className="text-xs text-emerald-300" dir="ltr">auto-submitted {res.auto.method} {res.auto.url} · {new URLSearchParams(res.auto.fields).toString()}</p>}
           {mn.title && <p className="text-sm text-white/70">العنوان: {mn.title}</p>}
+          {mn.headings?.length > 0 && <p className="text-sm font-bold text-white">{mn.headings.join(" · ")}</p>}
 
           <div className="rounded-3xl border border-emerald-500/30 bg-emerald-500/5 p-4 space-y-2">
             <h2 className="font-black">صفوف تشبه مواقيت الصلاة: {mn.prayerRows?.length ?? 0}</h2>
