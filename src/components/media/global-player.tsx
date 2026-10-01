@@ -11,10 +11,8 @@ import { ShortcutBadge } from "@/components/layout/car-dock";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { usePathname } from "next/navigation";
 import { HlsVideo } from "@/components/iptv/hls-video";
 import { isStreamUrl } from "@/lib/m3u";
-import { useIsWide } from "@/hooks/use-is-wide";
 
 /**
  * GlobalVideoPlayer v1280.0 - External Popup Protocol
@@ -36,8 +34,7 @@ export function GlobalVideoPlayer() {
   const [iframeKey, setIframeKey] = useState(0);
   const [urlInput, setUrlInput] = useState("");
   const [streamError, setStreamError] = useState("");
-  const pathname = usePathname();
-  const isWide = useIsWide();
+  const [iptvListSearch, setIptvListSearch] = useState("");
   
   const [isEnded, setIsEnded] = useState(false);
   const [postEndTimer, setPostEndTimer] = useState(0);
@@ -163,8 +160,6 @@ export function GlobalVideoPlayer() {
 
   const isIptvFav = activeIptv ? favoriteIptvChannels.some(c => c.stream_id === activeIptv.stream_id) : false;
   const isStream = isStreamUrl(activeIptv?.url);
-  // On the IPTV screen the player docks beside the channel list instead of floating over it.
-  const isDocked = !!activeIptv && !isFullScreen && !isMinimized && isWide && pathname === "/iptv";
   const hasIptvList = !!activeIptv && iptvPlaylist.length > 1;
 
   const isSaved = activeVideo ? savedVideos.some(v => v.id === activeVideo.id) : false;
@@ -198,7 +193,9 @@ export function GlobalVideoPlayer() {
   };
 
   if (!mounted || !isActive) return null;
-  const popupSideClass = isDocked ? (dockSide === 'left' ? "left-24" : "right-24") : (dockSide === 'left' ? "right-12" : "left-12");
+  const popupSideClass = dockSide === 'left' ? "right-12" : "left-12";
+  // Side lists sit next to the car dock
+  const dockSideEdgeClass = dockSide === 'left' ? "left-0 border-r" : "right-0 border-l";
   const ctrlBtnClass = "rounded-full flex items-center justify-center focusable transition-all shadow-glow active:scale-90 w-12 h-12 min-[968px]:w-14 min-[968px]:h-14 max-[968px]:w-16 max-[968px]:h-16";
 
   const effectiveCountdown = isEnded ? 5 - postEndTimer : null;
@@ -213,7 +210,6 @@ export function GlobalVideoPlayer() {
         "fixed z-[99999] shadow-[0_0_120px_rgba(0,0,0,0.9)] transition-all duration-500 overflow-hidden pointer-events-auto", 
         isMinimized ? "bottom-8 left-1/2 -translate-x-1/2 w-[520px] h-24 rounded-[2.5rem] premium-glass bg-black/80 border border-white/20" : 
         isFullScreen ? "inset-0 w-full h-full bg-black flex flex-col" : 
-        isDocked ? `top-6 bottom-28 ${popupSideClass} w-[42vw] premium-glass rounded-[2.5rem] bg-black/95 border-2 border-white/10 flex` :
         `bottom-12 ${popupSideClass} w-[35vw] h-[40vh] premium-glass rounded-[3.5rem] bg-black/95 border-2 border-white/10 flex`
       )}>
         <div className={cn("relative flex-1 transition-opacity duration-500 flex flex-col", isMinimized ? "opacity-0 pointer-events-none absolute -top-[9999px]" : "opacity-100")}>
@@ -267,18 +263,26 @@ export function GlobalVideoPlayer() {
            </div>
 
            {isPlayerPlaylistOpen && activeIptv && (
-             <div className="absolute bottom-4 left-4 right-4 h-[240px] bg-black/80 backdrop-blur-3xl border border-white/10 rounded-[2rem] animate-in slide-in-from-bottom-full duration-500 z-[200] flex flex-col shadow-2xl" dir="rtl">
-               <div className="px-6 py-3 flex items-center justify-between border-b border-white/5">
+             <div className={cn("absolute top-0 bottom-0 w-[min(360px,80%)] bg-black/85 backdrop-blur-3xl border-white/10 animate-in fade-in duration-300 z-[200] flex flex-col shadow-2xl", dockSideEdgeClass)} dir="rtl" data-nav-zone="sidebar">
+               <div className="px-5 py-3 flex items-center justify-between border-b border-white/5">
                  <h3 className="text-sm font-black text-white">قنوات القائمة <span className="text-white/40 text-[10px] mr-2">{iptvPlaylist.length}</span></h3>
-                 <button onClick={() => setIsPlayerPlaylistOpen(false)} className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/40 hover:text-white focusable"><X className="w-4 h-4" /></button>
+                 <button onClick={() => setIsPlayerPlaylistOpen(false)} data-nav-id="player-iptv-list-close" className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/40 hover:text-white focusable"><X className="w-4 h-4" /></button>
                </div>
-               <div className="flex-1 overflow-y-auto p-3 grid grid-cols-2 md:grid-cols-3 gap-2">
-                 {iptvPlaylist.slice(0, 300).map((c, i) => (
-                   <button key={c.stream_id + i} onClick={() => setActiveIptv(c, iptvPlaylist, true)}
-                     className={cn("flex items-center gap-2 p-2 rounded-xl border text-right focusable", i === iptvPlaylistIndex ? "bg-emerald-500/20 border-emerald-400" : "bg-white/5 border-transparent hover:bg-white/10")}>
-                     {c.stream_icon ? <img src={c.stream_icon} alt="" loading="lazy" className="w-8 h-8 rounded object-cover" onError={e => (e.currentTarget.style.display = "none")} /> : <Tv className="w-5 h-5 text-white/30" />}
-                     <span className="text-xs font-bold text-white truncate">{c.name}</span>
-                   </button>
+               <div className="p-3 border-b border-white/5">
+                 <Input value={iptvListSearch} onChange={(e) => setIptvListSearch(e.target.value)} placeholder="بحث..." className="h-10 bg-white/5 border-white/10 rounded-full text-white focusable" data-nav-id="player-iptv-list-search" />
+               </div>
+               <div className="flex-1 overflow-y-auto no-scrollbar p-3 space-y-2">
+                 {iptvPlaylist
+                   .map((c, i) => ({ c, i }))
+                   .filter(({ c }) => !iptvListSearch || c.name.toLowerCase().includes(iptvListSearch.toLowerCase()))
+                   .slice(0, 300)
+                   .map(({ c, i }) => (
+                     <button key={c.stream_id + i} onClick={() => setActiveIptv(c, iptvPlaylist, true)} data-nav-id={`player-iptv-list-${i}`}
+                       className={cn("w-full flex items-center gap-3 p-2.5 rounded-xl border text-right focusable", i === iptvPlaylistIndex ? "bg-emerald-500/20 border-emerald-400" : "bg-white/5 border-transparent hover:bg-white/10")}>
+                       {c.stream_icon ? <img src={c.stream_icon} alt="" loading="lazy" className="w-9 h-9 rounded-lg object-cover bg-zinc-900" onError={e => (e.currentTarget.style.display = "none")} /> : <Tv className="w-6 h-6 text-white/30" />}
+                       <span className="flex-1 text-xs font-bold text-white truncate">{c.name}</span>
+                       <Star onClick={(e) => { e.stopPropagation(); toggleFavoriteIptvChannel(c); }} className={cn("w-4 h-4 shrink-0", favoriteIptvChannels.some(f => f.stream_id === c.stream_id) ? "fill-yellow-400 text-yellow-400" : "text-white/30")} />
+                     </button>
                  ))}
                </div>
              </div>

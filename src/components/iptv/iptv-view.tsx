@@ -13,11 +13,11 @@ import { M3uPlayerPopup } from "@/components/iptv/m3u-player-popup";
 import { IptvSource, LoadResult, loadSource } from "@/lib/m3u-loader";
 import { DEFAULT_IPTV_SOURCE } from "@/lib/iptv-defaults";
 import { M3uChannel } from "@/lib/m3u";
-import { useIsWide } from "@/hooks/use-is-wide";
 import { useToast } from "@/hooks/use-toast";
 
 const SOURCE_KEY = "iptv_source_v1";
 const PAGE_SIZE = 120;
+const GROUPS_PREVIEW = 12;
 
 const toIptvChannel = (c: M3uChannel): IptvChannel => ({
   name: c.name, stream_id: `m3u:${c.url}`, stream_icon: c.logo || "", category_id: "source", url: c.url, type: "live", group: c.group,
@@ -30,10 +30,8 @@ const toIptvChannel = (c: M3uChannel): IptvChannel => ({
 export function IptvView() {
   const { 
     setActiveIptv, favoriteIptvChannels, toggleFavoriteIptvChannel, dockSide, pickedUpId, setPickedUpId,
-    isReorderMode, reorderIptvChannelTo, toggleReorderMode, setIsFullScreen,
-    activeIptv, isFullScreen, isMinimized
+    isReorderMode, reorderIptvChannelTo, toggleReorderMode, activeIptv
   } = useMediaStore();
-  const isWide = useIsWide();
   const { toast } = useToast();
   
   const [categories, setCategories] = useState<any[]>([]);
@@ -46,12 +44,8 @@ export function IptvView() {
   const [linkOpen, setLinkOpen] = useState(false);
   const [sourceChannels, setSourceChannels] = useState<IptvChannel[]>([]);
   const [group, setGroup] = useState("all");
+  const [groupsExpanded, setGroupsExpanded] = useState(false);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
-
-  // The global player docks beside this list while a channel plays (wide screens only).
-  const isDocked = !!activeIptv && !isFullScreen && !isMinimized && isWide;
-  // The player sits on the dock side of the screen, the categories panel on the opposite side.
-  const dockedPaddingStyle = isDocked ? (dockSide === 'left' ? { paddingLeft: "calc(42vw + 1.5rem)" } : { paddingRight: "calc(42vw + 1.5rem)" }) : undefined;
 
   const isDockLeft = dockSide === 'left';
 
@@ -97,9 +91,8 @@ export function IptvView() {
   };
 
   const playChannel = (ch: IptvChannel, list: IptvChannel[]) => {
-    // Wide screens: keep the player docked next to the list. Narrow screens: full-screen as before.
-    setActiveIptv(ch, list, isWide);
-    if (isWide) setIsFullScreen(false);
+    // Cinema mode: the global player opens full-screen (like the media screen), with the channel list as a side panel.
+    setActiveIptv(ch, list);
   };
 
   useEffect(() => { 
@@ -179,11 +172,51 @@ export function IptvView() {
 
   useEffect(() => { setVisibleCount(PAGE_SIZE); }, [search, group, selectedCat]);
 
-  const cols = isDocked ? "grid-cols-2 xl:grid-cols-3" : "grid-cols-2 md:grid-cols-3 xl:grid-cols-5";
+  const cols = "grid-cols-2 md:grid-cols-3 xl:grid-cols-5";
 
   return (
     <div dir="ltr" className={cn("h-screen flex overflow-hidden relative", isDockLeft ? "flex-row" : "flex-row-reverse")}>
-      <main data-nav-zone="content" style={dockedPaddingStyle} className="flex-1 min-w-0 overflow-y-auto no-scrollbar p-6 pb-40 space-y-6 transition-[padding] duration-300" dir="rtl">
+      {/* Categories: full-height side panel next to the car dock */}
+      <aside data-nav-zone="sidebar" dir="rtl" className={cn("flex h-full z-[110] premium-glass flex-col shrink-0 bg-black/60 border-white/5 w-[34%] md:w-[22%] min-w-[180px]", isDockLeft ? "border-r" : "border-l")}>
+        <div className="p-4 flex items-center gap-3 border-b border-white/5">
+          <div className="w-9 h-9 rounded-xl bg-emerald-600 flex items-center justify-center shadow-glow"><List className="w-5 h-5 text-white" /></div>
+          <h2 className="text-lg font-black text-white tracking-tight">التصنيفات</h2>
+        </div>
+        <div className="flex-1 overflow-y-auto no-scrollbar p-3 pb-40 space-y-2">
+          {allCategories.map((cat, idx) => (
+            <div key={String(cat.category_id) + idx} data-row-id={`iptv-cat-row-${idx}`} className="space-y-1.5">
+              <button
+                onClick={() => fetchChannels(String(cat.category_id))}
+                data-nav-id={`iptv-cat-${idx}`}
+                className={cn("w-full flex items-center justify-between gap-2 p-3 rounded-2xl border text-right focusable transition-all outline-none",
+                  String(selectedCat) === String(cat.category_id) ? "bg-emerald-600 border-emerald-400 text-white shadow-glow" : "bg-white/5 border-white/5 text-white/80 hover:bg-white/10")}
+              >
+                <span className="font-black text-sm truncate">{cat.category_name}</span>
+                <ChevronRight className="w-4 h-4 shrink-0 opacity-50 rotate-180" />
+              </button>
+              {cat.category_id === "source" && sourceGroups.length > 0 && (
+                <div className="mr-3 pr-2 border-r border-white/10 space-y-1" data-row-id="iptv-groups">
+                  {["all", ...(groupsExpanded ? sourceGroups : sourceGroups.slice(0, GROUPS_PREVIEW))].map((g, i) => (
+                    <button key={g} onClick={() => { setSelectedCat("source"); setChannels(sourceChannels); setGroup(g); }} data-nav-id={`iptv-group-${i}`}
+                      className={cn("w-full text-right px-3 h-9 rounded-xl text-xs font-black truncate focusable outline-none transition-all",
+                        selectedCat === "source" && group === g ? "bg-emerald-500 text-black" : "bg-white/5 text-white/70 hover:bg-white/10")}>
+                      {g === "all" ? "الكل" : g}
+                    </button>
+                  ))}
+                  {sourceGroups.length > GROUPS_PREVIEW && (
+                    <button onClick={() => setGroupsExpanded(v => !v)} data-nav-id="iptv-groups-more"
+                      className="w-full text-center h-9 rounded-xl text-xs font-black text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 focusable outline-none">
+                      {groupsExpanded ? "أقل" : `المزيد (${sourceGroups.length - GROUPS_PREVIEW})`}
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </aside>
+
+      <main data-nav-zone="content" className="flex-1 min-w-0 overflow-y-auto no-scrollbar p-6 pb-40 space-y-6" dir="rtl">
         <header className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-col gap-1">
             <h1 className="text-3xl font-black font-headline text-white tracking-tighter flex items-center gap-4">
@@ -208,17 +241,6 @@ export function IptvView() {
         </header>
 
         <Input placeholder="ابحث عن قناة..." value={search} onChange={(e) => setSearch(e.target.value)} className="bg-white/5 border-white/10 h-14 rounded-[2rem] px-6 text-lg text-white shadow-2xl focusable outline-none" data-nav-id="iptv-search-input" />
-
-        {selectedCat === 'source' && sourceGroups.length > 0 && (
-          <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1" data-row-id="iptv-groups">
-            {["all", ...sourceGroups].map((g, i) => (
-              <button key={g} onClick={() => setGroup(g)} data-nav-id={`iptv-group-${i}`}
-                className={cn("shrink-0 h-10 px-5 rounded-full text-sm font-black border focusable", group === g ? "bg-emerald-500 text-black border-emerald-500" : "bg-white/5 text-white/70 border-white/10")}>
-                {g === "all" ? "الكل" : g}
-              </button>
-            ))}
-          </div>
-        )}
 
         {(loading || (selectedCat === 'source' && sourceStatus === 'loading')) ? (
           <div className="py-32 flex flex-col items-center gap-4 text-white/40"><Loader2 className="w-12 h-12 animate-spin text-emerald-500" /><span className="text-sm font-bold">جاري تحميل القنوات...</span></div>
@@ -275,29 +297,6 @@ export function IptvView() {
           </div>
         )}
       </main>
-
-      {/* Categories: full-height panel on the side opposite the dock (like the media screen's sidebar) */}
-      <aside data-nav-zone="sidebar" dir="rtl" className={cn("flex h-full z-[110] premium-glass flex-col shrink-0 bg-black/60 border-white/5 w-[34%] md:w-[22%] min-w-[180px]", isDockLeft ? "border-l" : "border-r")}>
-        <div className="p-4 flex items-center gap-3 border-b border-white/5">
-          <div className="w-9 h-9 rounded-xl bg-emerald-600 flex items-center justify-center shadow-glow"><List className="w-5 h-5 text-white" /></div>
-          <h2 className="text-lg font-black text-white tracking-tight">التصنيفات</h2>
-        </div>
-        <div className="flex-1 overflow-y-auto no-scrollbar p-3 pb-40 space-y-2">
-          {allCategories.map((cat, idx) => (
-            <div key={String(cat.category_id) + idx} data-row-id={`iptv-cat-row-${idx}`}>
-              <button
-                onClick={() => fetchChannels(String(cat.category_id))}
-                data-nav-id={`iptv-cat-${idx}`}
-                className={cn("w-full flex items-center justify-between gap-2 p-3 rounded-2xl border text-right focusable transition-all outline-none",
-                  String(selectedCat) === String(cat.category_id) ? "bg-emerald-600 border-emerald-400 text-white shadow-glow" : "bg-white/5 border-white/5 text-white/80 hover:bg-white/10")}
-              >
-                <span className="font-black text-sm truncate">{cat.category_name}</span>
-                <ChevronRight className="w-4 h-4 shrink-0 opacity-50 rotate-180" />
-              </button>
-            </div>
-          ))}
-        </div>
-      </aside>
 
       <M3uPlayerPopup open={linkOpen} onOpenChange={setLinkOpen} initialUrl={activeSource.kind === "url" ? activeSource.url : undefined} onLoad={handleSourceLoaded} />
     </div>
