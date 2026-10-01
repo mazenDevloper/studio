@@ -135,7 +135,7 @@ export function M3uPlayerPopup({ open, onOpenChange, initialUrl }: M3uPlayerPopu
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl w-[95vw] bg-black/95 border-white/10 text-white p-4 sm:p-6 gap-3">
+      <DialogContent className="max-w-5xl w-[95vw] max-h-[92vh] overflow-y-auto bg-black/95 border-white/10 text-white p-4 sm:p-6 gap-3">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2"><Tv className="w-5 h-5 text-emerald-500" /> M3U / HLS / Xtream Player</DialogTitle>
           <DialogDescription className="text-white/50">m3u8 stream · m3u playlist · Xtream Codes</DialogDescription>
