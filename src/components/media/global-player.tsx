@@ -198,7 +198,7 @@ export function GlobalVideoPlayer() {
   };
 
   if (!mounted || !isActive) return null;
-  const popupSideClass = isDocked ? (dockSide === 'left' ? "right-4" : "left-4") : (dockSide === 'left' ? "right-12" : "left-12");
+  const popupSideClass = isDocked ? (dockSide === 'left' ? "left-24" : "right-24") : (dockSide === 'left' ? "right-12" : "left-12");
   const ctrlBtnClass = "rounded-full flex items-center justify-center focusable transition-all shadow-glow active:scale-90 w-12 h-12 min-[968px]:w-14 min-[968px]:h-14 max-[968px]:w-16 max-[968px]:h-16";
 
   const effectiveCountdown = isEnded ? 5 - postEndTimer : null;
