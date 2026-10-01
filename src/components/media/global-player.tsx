@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { HlsVideo } from "@/components/iptv/hls-video";
 import { isStreamUrl } from "@/lib/m3u";
+import { getYoutubeTime } from "@/components/media/youtube-background-bridge";
 
 /**
  * GlobalVideoPlayer v1280.0 - External Popup Protocol
@@ -26,7 +27,8 @@ export function GlobalVideoPlayer() {
     isPlayerControlsExpanded, setIsPlayerControlsExpanded, cyclePlayerMode,
     isPlayerPlaylistOpen, setIsPlayerPlaylistOpen,
     videoProgress, dockSide, playlists, addVideoToPlaylist, isPlaying, setIsPlaying,
-    favoriteIptvChannels, toggleFavoriteIptvChannel, nextIptvChannel, prevIptvChannel, iptvPlaylist, iptvPlaylistIndex
+    favoriteIptvChannels, toggleFavoriteIptvChannel, nextIptvChannel, prevIptvChannel, iptvPlaylist, iptvPlaylistIndex,
+    continueWatching, saveForContinue
   } = useMediaStore();
   
   const { toast } = useToast();
@@ -162,6 +164,7 @@ export function GlobalVideoPlayer() {
   const isStream = isStreamUrl(activeIptv?.url);
   const hasIptvList = !!activeIptv && iptvPlaylist.length > 1;
 
+  const isInContinue = activeVideo ? continueWatching.some(c => c.video.id === activeVideo.id) : false;
   const isSaved = activeVideo ? savedVideos.some(v => v.id === activeVideo.id) : false;
   const isWebType = activeIptv?.type === 'web' || !!activeIptv;
 
@@ -434,6 +437,19 @@ export function GlobalVideoPlayer() {
                         <button onClick={() => activeVideo && toggleSaveVideo(activeVideo)} className="w-full text-right p-5 rounded-3xl hover:bg-white/10 flex items-center justify-between text-white text-lg font-black transition-all">
                            <span>المفضلات العامة ⭐</span>
                            {isSaved && <BookmarkCheck className="w-6 h-6 text-accent" />}
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (!activeVideo) return;
+                            const t = getYoutubeTime(activeVideo.id) || localElapsed || videoProgress[activeVideo.id] || 0;
+                            saveForContinue(activeVideo, t);
+                            const mm = Math.floor(t / 60), ss = Math.floor(t % 60).toString().padStart(2, "0");
+                            toast({ title: "تم الحفظ للاستكمال", description: `سيكمل من ${mm}:${ss}` });
+                          }}
+                          className="w-full text-right p-5 rounded-3xl hover:bg-white/10 flex items-center justify-between text-white text-lg font-black transition-all"
+                        >
+                           <span>حفظ للاستكمال ⏯</span>
+                           {isInContinue && <BookmarkCheck className="w-6 h-6 text-emerald-400" />}
                         </button>
                         {playlists.map(p => (
                           <button key={p.id} onClick={() => { if(activeVideo) { addVideoToPlaylist(p.id, activeVideo); toast({ title: "تم الحفظ", description: `تمت الإضافة إلى قائمة ${p.name}` }); } }} className="w-full text-right p-5 rounded-3xl hover:bg-indigo-600 flex items-center gap-5 text-white text-lg font-black transition-all group/item"><div className="w-10 h-10 rounded-2xl bg-white/5 flex items-center justify-center group-hover/item:bg-white/20"><ListPlus className="w-6 h-6" /></div><span className="truncate">{p.name}</span></button>

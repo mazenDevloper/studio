@@ -77,7 +77,7 @@ export function ShortcutBadge({ action, className, context = 'default' }: { acti
 export function CarDock() {
   const pathname = usePathname();
   const router = useRouter();
-  const { dockSide, toggleDockSide, resetMediaView, dockScale, fetchPriorityData } = useMediaStore();
+  const { dockSide, toggleDockSide, resetMediaView, dockScale, fetchPriorityData, ensureScreenData } = useMediaStore();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
@@ -128,7 +128,11 @@ export function CarDock() {
 
   const handleNavigate = (href: string) => {
     if (pathname === href && href === '/media') resetMediaView();
-    if (href === '/media' || href === '/settings') fetchPriorityData('all');
+    // Load whatever the target screen shows if it is still empty; pressing the icon of the screen you are on
+    // forces a fresh cloud fetch. A second check a few seconds later covers a first fetch that failed.
+    ensureScreenData(href, pathname === href);
+    setTimeout(() => ensureScreenData(href), 3500);
+    if (href === '/matches') import('@/lib/live-matches').then(m => m.useLiveMatchesStore.getState().refresh());
     router.push(href);
     setTimeout(() => {
       const firstTarget = document.querySelector('[data-nav-zone="content"] .focusable') as HTMLElement;

@@ -278,7 +278,8 @@ export function IptvView() {
           </div>
         )}
 
-        {(loading || (selectedCat === 'source' && sourceStatus === 'loading')) ? (
+        {/* the legacy server's category list may be slow: never hide favourites / my list behind its spinner */}
+        {((loading && selectedCat !== 'direct' && selectedCat !== 'source') || (selectedCat === 'source' && sourceStatus === 'loading')) ? (
           <div className="py-32 flex flex-col items-center gap-4 text-white/40"><Loader2 className="w-12 h-12 animate-spin text-emerald-500" /><span className="text-sm font-bold">جاري تحميل القنوات...</span></div>
         ) : filteredChannels.length === 0 ? (
           <div className="py-32 text-center text-white/30 font-bold">لا توجد قنوات</div>

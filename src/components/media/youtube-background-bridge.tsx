@@ -3,6 +3,12 @@
 import { useEffect, useRef } from "react";
 import { useMediaStore } from "@/lib/store";
 
+/** Last position reported by the YouTube player, readable from anywhere (e.g. "save to continue"). */
+let lastYoutubeTime = { id: "", t: 0 };
+export function getYoutubeTime(videoId: string): number {
+  return lastYoutubeTime.id === videoId ? lastYoutubeTime.t : 0;
+}
+
 const SILENT = "data:audio/wav;base64,UklGRigAAABXQVZFRm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA==";
 
 /**
@@ -44,7 +50,7 @@ export function YoutubeBackgroundBridge() {
         if (!/youtube(-nocookie)?\.com$/.test(new URL(e.origin).hostname)) return;
         const d = typeof e.data === "string" ? JSON.parse(e.data) : e.data;
         const t = d?.info?.currentTime;
-        if (typeof t === "number" && !bridgingRef.current) timeRef.current = t;
+        if (typeof t === "number" && !bridgingRef.current) { timeRef.current = t; if (videoId) lastYoutubeTime = { id: videoId, t }; }
       } catch {}
     };
     window.addEventListener("message", onMsg);
@@ -81,6 +87,7 @@ export function YoutubeBackgroundBridge() {
         }).catch(() => {});
       } else if (bridgingRef.current) {
         const t = a.currentTime;
+        if (videoId) lastYoutubeTime = { id: videoId, t };
         a.pause();
         bridgingRef.current = false;
         timeRef.current = t;
