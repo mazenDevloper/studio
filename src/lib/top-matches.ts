@@ -189,8 +189,8 @@ async function from365(date: string): Promise<TopMatch[]> {
 
 export const SOURCES: { name: string; kind?: string; run: (date: string) => Promise<TopMatch[]> }[] = [
   { name: "espn", run: fromEspn },
-  { name: "sofascore", run: fromSofascore },
   { name: "365scores", run: from365 },
+  { name: "sofascore", run: fromSofascore },
   { name: "thesportsdb", run: fromSportsDb },
   ...EXTRA_SOURCES,
 ];
@@ -242,7 +242,13 @@ export async function getTopMatchesToday(limit = 10, only?: string, includeAll =
       runOne(src, priority).then(r => {
         finished.push(r);
         pending--;
-        if (r.attempt.ok && r.top.length >= limit && !grace) grace = setTimeout(resolve, GRACE_MS);
+        // decide early once the preferred source (365Scores) has answered with matches, or - if it is out of the
+        // race (not chosen / already failed) - once any source has filled the list
+        const pref = finished.find(f => f.attempt.source === "365scores");
+        const prefOut = !chosen.some(c => c.name === "365scores") || (pref && !(pref.attempt.ok && pref.top.length > 0));
+        const ready = (r.attempt.source === "365scores" && r.attempt.ok && r.top.length > 0)
+          || (prefOut && finished.some(f => f.attempt.ok && f.top.length >= limit));
+        if (ready && !grace) grace = setTimeout(resolve, GRACE_MS);
         if (pending === 0) { if (grace) clearTimeout(grace); resolve(); }
       });
     });
@@ -259,7 +265,10 @@ export async function getTopMatchesToday(limit = 10, only?: string, includeAll =
   }
   // Best = highest total importance of its top matches, then most matches overall, then the preferred source order.
   const quality = (r: Run) => r.top.reduce((n, m) => n + m.importance, 0);
-  const best = [...working].sort((a, b) => quality(b) - quality(a) || b.total - a.total || a.priority - b.priority)[0];
+  // 365Scores is preferred whenever it answered with matches (live scores, channels, Arabic-region coverage);
+  // otherwise the source with the most important matches wins.
+  const preferred = working.find(r => r.attempt.source === "365scores" && r.top.length > 0);
+  const best = preferred ?? [...working].sort((a, b) => quality(b) - quality(a) || b.total - a.total || a.priority - b.priority)[0];
   const value: TopMatchesResult = {
     date,
     timezone: "Asia/Muscat",

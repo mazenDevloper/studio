@@ -155,7 +155,9 @@ export function CarDock() {
       <div data-nav-zone="dock" className={cn(
         "fixed top-0 bottom-0 z-[150] transition-all duration-300 bg-black/80 backdrop-blur-3xl flex flex-col py-6 border-white/5", 
         "w-16 min-[980px]:w-20", 
-        dockSide === 'left' ? "left-0 border-r" : "right-0 border-l"
+        dockSide === 'left' ? "left-0 border-r" : "right-0 border-l",
+        // below 968px the dock is a bottom bar: switching direction also reverses the order of its buttons
+        dockSide === 'right' && "dock-reversed"
       )} style={{ zoom: dockScale || 1.0, willChange: 'transform' }}>
         <div className="flex flex-col items-center flex-1 justify-start gap-2">
           {apps.map((app) => {
@@ -176,6 +178,15 @@ export function CarDock() {
               </button>
             );
           })}
+          {/* the floating direction button is hidden below 968px, so the bottom bar gets its own */}
+          <button
+            onClick={toggleDockSide}
+            data-nav-id="dock-direction"
+            title="تغيير الاتجاه / عكس ترتيب الأزرار"
+            className="min-[969px]:hidden w-12 h-12 rounded-[1.5rem] flex items-center justify-center focusable outline-none bg-primary/15 border border-primary/30 text-primary"
+          >
+            <ArrowRightLeft className="w-6 h-6" />
+          </button>
         </div>
         <div className="flex mt-auto flex-col items-center gap-3">
           <button onClick={() => router.back()} className="w-10 h-10 min-[980px]:w-12 min-[980px]:h-12 rounded-full bg-white/5 border border-white/10 text-white focusable flex items-center justify-center relative"><ArrowLeft className="w-5 h-5 min-[980px]:w-6 min-[980px]:h-6" /></button>

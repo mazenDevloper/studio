@@ -227,3 +227,8 @@ span.text-\[18cqw\].font-black.text-white.leading-none.tracking-tight.block {
 /* Bold-first typography: lighter Tailwind weights are lifted to bold */
 .font-thin, .font-extralight, .font-light, .font-normal, .font-medium { font-weight: 700 !important; }
 input, textarea, select, button { font-weight: 700; }
+
+/* Bottom car dock (<968px): reversed button order when the direction is switched */
+@media (max-width: 968px) {
+  [data-nav-zone="dock"].dock-reversed > div { flex-direction: row-reverse !important; }
+}

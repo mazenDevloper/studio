@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { spawn } from "child_process";
+import { getYtDlp } from "@/lib/yt-dlp";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -13,8 +14,9 @@ export async function GET(req: NextRequest) {
   const id = req.nextUrl.searchParams.get("id") || "";
   if (!/^[\w-]{11}$/.test(id)) return NextResponse.json({ error: "bad id" }, { status: 400 });
   try {
+    const bin = await getYtDlp(); // installs yt-dlp on first use if it isn't available
     const url = await new Promise<string>((resolve, reject) => {
-      const p = spawn("yt-dlp", ["--no-playlist", "--no-warnings", "-f", "bestaudio[ext=m4a]/bestaudio", "-g", `https://www.youtube.com/watch?v=${id}`]);
+      const p = spawn(bin, ["--no-playlist", "--no-warnings", "-f", "bestaudio[ext=m4a]/bestaudio", "-g", `https://www.youtube.com/watch?v=${id}`]);
       let out = "", err = "";
       const kill = setTimeout(() => { p.kill("SIGKILL"); reject(new Error("yt-dlp timeout")); }, 25000);
       p.stdout.on("data", d => (out += d));

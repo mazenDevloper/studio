@@ -1,6 +1,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { spawn } from 'child_process';
+import { getYtDlp } from '@/lib/yt-dlp';
 
 /**
  * Sovereign Audio Proxy v1.3 - WebM/Opus Resiliency Edition
@@ -19,11 +20,12 @@ export async function GET(req: NextRequest) {
   const userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 
   try {
+    const ytBin = await getYtDlp(); // installs yt-dlp on first use if it isn't available
     const stream = new ReadableStream({
       start(controller) {
         // yt-dlp optimized for direct binary audio piping with browser spoofing
         // Forced to webm/opus for maximum decoder stability in browsers
-        const ytProcess = spawn('yt-dlp', [
+        const ytProcess = spawn(ytBin, [
           '--user-agent', userAgent,
           '--no-check-certificates',
           '--quiet',

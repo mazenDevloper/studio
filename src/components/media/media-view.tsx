@@ -543,17 +543,17 @@ export function MediaView() {
                 <div className="w-8 h-8 rounded-lg bg-red-600 flex items-center justify-center"><Youtube className="w-5 h-5 text-white" /></div>
                 <h2 className="text-lg font-black text-white/60">الاشتراكات السيادية</h2>
               </div>
-              <div className={cn(horizontalListClass, "gap-3 py-2")}>
+              <div className={cn(horizontalListClass, "gap-1 py-2")}>
                   {favoriteChannels.map((ch, idx) => (
                     <button 
                       key={idx} 
                       onClick={() => { setSelectedChannel(ch); setSelectedPlaylist(null); setSearchResults([]); setIsSidebarShrinked(true); }}
-                      className="flex flex-col items-center gap-2 px-2 py-2 rounded-2xl focusable shrink-0 transition-all active:scale-95"
+                      className="flex flex-col items-center gap-2 px-1 py-2 rounded-2xl focusable shrink-0 transition-all active:scale-95"
                       tabIndex={0}
                       data-nav-id={`mobile-sub-avatar-${idx}`}
                     >
-                      <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-primary/20 shadow-lg"><img src={ch.image} className="w-full h-full object-cover" alt="" /></div>
-                      <span className="text-[7px] font-black text-white/40 truncate w-14 text-center uppercase tracking-tighter">{ch.name}</span>
+                      <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-primary/30 shadow-2xl"><img src={ch.image} className="w-full h-full object-cover" alt="" /></div>
+                      <span className="text-[10px] font-black text-white/70 truncate w-24 text-center">{ch.name}</span>
                     </button>
                   ))}
               </div>

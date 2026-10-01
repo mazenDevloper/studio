@@ -1,4 +1,3 @@
-
 {
   "name": "nextn",
   "version": "0.1.0",
@@ -10,7 +9,8 @@
     "build": "NODE_ENV=production next build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "yt-dlp:install": "node -e \"fetch('https://github.com/yt-dlp/yt-dlp/releases/latest/download/'+(process.platform==='win32'?'yt-dlp.exe':process.platform==='darwin'?'yt-dlp_macos':'yt-dlp_linux')).then(r=>r.arrayBuffer()).then(b=>{const fs=require('fs');fs.mkdirSync('.yt-dlp',{recursive:true});const f='.yt-dlp/'+(process.platform==='win32'?'yt-dlp.exe':process.platform==='darwin'?'yt-dlp_macos':'yt-dlp_linux');fs.writeFileSync(f,Buffer.from(b));if(process.platform!=='win32')fs.chmodSync(f,0o755);console.log('yt-dlp installed: '+f)})\""
   },
   "dependencies": {
     "@dawod/thmanyah-font-web": "^1.0.3",
