@@ -72,7 +72,7 @@ export interface MapSettings {
 
 export interface IptvChannel {
   name: string; stream_id: string; stream_icon: string; category_id: string; starred?: boolean;
-  url?: string; type?: 'iptv' | 'web' | 'live'; stream_type?: string; displayNumber?: number;
+  url?: string; type?: 'iptv' | 'web' | 'live'; stream_type?: string; displayNumber?: number; group?: string;
 }
 
 export interface FavoriteTeam { id: number; name: string; logo: string; }
@@ -142,10 +142,10 @@ interface MediaState {
   addIptvChannel: (channel: IptvChannel) => void;
   reorderIptvChannelTo: (fromId: string, toId: string) => void; updateMapSettings: (settings: Partial<MapSettings>) => void;
   setActiveVideo: (video: YouTubeVideo | null, context?: YouTubeVideo[]) => void;
-  setActiveIptv: (channel: IptvChannel | null, context?: IptvChannel[]) => void;
+  setActiveIptv: (channel: IptvChannel | null, context?: IptvChannel[], keepWindow?: boolean) => void;
   setActiveAudio: (audio: AudioTrack | null) => void;
   setActiveQuranUrl: (url: string | null) => void; setPlaylist: (videos: YouTubeVideo[]) => void;
-  nextTrack: () => void; prevTrack: () => void; nextIptvChannel: () => void; updateVideoProgress: (videoId: string, progress: number) => void;
+  nextTrack: () => void; prevTrack: () => void; nextIptvChannel: () => void; prevIptvChannel: () => void; updateVideoProgress: (videoId: string, progress: number) => void;
   setIsPlaying: (playing: boolean) => void; setIsMinimized: (minimized: boolean) => void;
   setIsFullScreen: (fullScreen: boolean) => void; cyclePlayerMode: () => void;
   setWallPlate: (type: 'moon' | 'manuscript' | null, data?: any) => void;
@@ -342,13 +342,14 @@ export const useMediaStore = create<MediaState>()(
       setKeyMapping: (ctx, act, key) => set((s) => { const m = { ...s.keyMappings }; if (!m[ctx]) m[ctx] = {}; let k = Array.isArray(m[ctx][act]) ? [...m[ctx][act]] : []; if (k.includes(key)) return s; k.push(key); m[ctx][act] = k.slice(-3); return { keyMappings: m }; }),
       removeSpecificKeyMapping: (ctx, act, key) => set((s) => { const m = { ...s.keyMappings }; if (m[ctx] && m[ctx][act]) { m[ctx][act] = m[ctx][act].filter(v => v !== key); return { keyMappings: m }; } return s; }),
       setActiveVideo: (v, ctx) => set({ playlist: ctx || (v ? [v] : []), playlistIndex: ctx ? ctx.findIndex(i => i.id === v?.id) : 0, activeVideo: v, lastPlayedVideo: v || get().lastPlayedVideo, activeIptv: null, activeAudio: null, isPlaying: !!v, isMinimized: false, isFullScreen: !!v, isPlayerPlaylistOpen: false }),
-      setActiveIptv: (ch, ctx) => set({ iptvPlaylist: ctx || (ch ? [ch] : []), iptvPlaylistIndex: ctx ? ctx.findIndex(c => c.stream_id === ch?.stream_id) : 0, activeIptv: ch, activeVideo: null, activeAudio: null, isPlaying: !!ch, isMinimized: false, isFullScreen: !!ch, isPlayerPlaylistOpen: false }),
+      setActiveIptv: (ch, ctx, keepWindow) => set((s) => ({ iptvPlaylist: ctx || (ch ? [ch] : []), iptvPlaylistIndex: ctx ? ctx.findIndex(c => c.stream_id === ch?.stream_id) : 0, activeIptv: ch, activeVideo: null, activeAudio: null, isPlaying: !!ch, isMinimized: false, isFullScreen: keepWindow ? s.isFullScreen : !!ch, isPlayerPlaylistOpen: keepWindow ? s.isPlayerPlaylistOpen : false })),
       setActiveAudio: (audio) => set({ activeAudio: audio, activeVideo: null, activeIptv: null, isPlaying: !!audio, isFullScreen: false }),
       setActiveQuranUrl: (v) => set({ activeQuranUrl: v }),
       setPlaylist: (videos) => set({ playlist: videos }),
-      nextTrack: () => { const s = get(); if (!s.playlist.length) return; let nIdx = (s.playlistIndex + 1); if (nIdx >= s.playlist.length) nIdx = s.isLooping ? 0 : s.playlist.length - 1; set({ playlistIndex: nIdx, activeVideo: s.playlist[nIdx] }); },
-      prevTrack: () => { const s = get(); if (!s.playlist.length) return; const pIdx = (s.playlistIndex - 1 + s.playlist.length) % s.playlist.length; set({ playlistIndex: pIdx, activeVideo: s.playlist[pIdx] }); },
+      nextTrack: () => { const s = get(); if (s.activeIptv) { s.nextIptvChannel(); return; } if (!s.playlist.length) return; let nIdx = (s.playlistIndex + 1); if (nIdx >= s.playlist.length) nIdx = s.isLooping ? 0 : s.playlist.length - 1; set({ playlistIndex: nIdx, activeVideo: s.playlist[nIdx] }); },
+      prevTrack: () => { const s = get(); if (s.activeIptv) { s.prevIptvChannel(); return; } if (!s.playlist.length) return; const pIdx = (s.playlistIndex - 1 + s.playlist.length) % s.playlist.length; set({ playlistIndex: pIdx, activeVideo: s.playlist[pIdx] }); },
       nextIptvChannel: () => { const s = get(); if (!s.iptvPlaylist.length) return; const nIdx = (s.iptvPlaylistIndex + 1) % s.iptvPlaylist.length, ch = s.iptvPlaylist[nIdx]; set({ iptvPlaylistIndex: nIdx, activeIptv: ch }); },
+      prevIptvChannel: () => { const s = get(); if (!s.iptvPlaylist.length) return; const pIdx = (s.iptvPlaylistIndex - 1 + s.iptvPlaylist.length) % s.iptvPlaylist.length; set({ iptvPlaylistIndex: pIdx, activeIptv: s.iptvPlaylist[pIdx] }); },
       updateVideoProgress: (id, progress) => set((s) => ({ videoProgress: { ...s.videoProgress, [id]: progress } })),
       setIsPlaying: (v) => set({ isPlaying: v }), setIsMinimized: (v) => set({ isMinimized: v, isFullScreen: false }), setIsFullScreen: (v) => set({ isFullScreen: v, isMinimized: false }),
       cyclePlayerMode: () => { const s = get(); if (s.isFullScreen) set({ isFullScreen: false, isMinimized: true }); else if (s.isMinimized) set({ isMinimized: false, isFullScreen: false }); else set({ isFullScreen: true, isMinimized: false }); },

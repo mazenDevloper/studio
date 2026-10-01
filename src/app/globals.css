@@ -101,18 +101,6 @@ span.text-\[18cqw\].font-black.text-white.leading-none.tracking-tight.block {
     width: 3rem !important;
     height: 3rem !important;
     min-width: 3rem !important;
-  
-  /* Expanded State (w-[28%]) -> 2.5rem */
-  aside.w-\[28\%\] [data-nav-id^="sidebar-channel-"] img {
-    width: 2.5rem !important;
-    height: 2.5rem !important;
-    min-width: 2.5rem !important;
-  }
-  /* Collapsed State (w-[80px]) -> 3rem */
-  aside.w-\[80px\] [data-nav-id^="sidebar-channel-"] img {
-    width: 3rem !important;
-    height: 3rem !important;
-    min-width: 3rem !important;
   }
 }
 

@@ -2,7 +2,7 @@
 "use client";
 
 import { useMediaStore, YouTubeVideo } from "@/lib/store";
-import { X, Monitor, ChevronRight, ChevronLeft, Maximize2, BookmarkCheck, Volume2, ListPlus, LayoutList, RotateCcw, Play, MousePointer2, ExternalLink } from "lucide-react";
+import { X, Monitor, ChevronRight, ChevronLeft, Maximize2, BookmarkCheck, Volume2, ListPlus, LayoutList, RotateCcw, Play, MousePointer2, ExternalLink, Star, Tv } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { SovereignIframe } from "@/components/ui/sovereign-iframe";
@@ -11,6 +11,8 @@ import { ShortcutBadge } from "@/components/layout/car-dock";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { HlsVideo } from "@/components/iptv/hls-video";
+import { isStreamUrl } from "@/lib/m3u";
 
 /**
  * GlobalVideoPlayer v1280.0 - External Popup Protocol
@@ -23,13 +25,16 @@ export function GlobalVideoPlayer() {
     toggleSaveVideo, savedVideos, setGridMode, playlist, playlistIndex,
     isPlayerControlsExpanded, setIsPlayerControlsExpanded, cyclePlayerMode,
     isPlayerPlaylistOpen, setIsPlayerPlaylistOpen,
-    videoProgress, dockSide, playlists, addVideoToPlaylist, isPlaying, setIsPlaying
+    videoProgress, dockSide, playlists, addVideoToPlaylist, isPlaying, setIsPlaying,
+    favoriteIptvChannels, toggleFavoriteIptvChannel, nextIptvChannel, prevIptvChannel, iptvPlaylist, iptvPlaylistIndex
   } = useMediaStore();
   
   const { toast } = useToast();
   const [mounted, setMounted] = useState(false);
   const [iframeKey, setIframeKey] = useState(0);
   const [urlInput, setUrlInput] = useState("");
+  const [streamError, setStreamError] = useState("");
+  const [iptvListSearch, setIptvListSearch] = useState("");
   
   const [isEnded, setIsEnded] = useState(false);
   const [postEndTimer, setPostEndTimer] = useState(0);
@@ -151,6 +156,12 @@ export function GlobalVideoPlayer() {
     }
   }, [activeVideo?.id, activeIptv?.stream_id, isMinimized, isActive]);
 
+  useEffect(() => { setStreamError(""); }, [activeIptv?.stream_id, activeIptv?.url, iframeKey]);
+
+  const isIptvFav = activeIptv ? favoriteIptvChannels.some(c => c.stream_id === activeIptv.stream_id) : false;
+  const isStream = isStreamUrl(activeIptv?.url);
+  const hasIptvList = !!activeIptv && iptvPlaylist.length > 1;
+
   const isSaved = activeVideo ? savedVideos.some(v => v.id === activeVideo.id) : false;
   const isWebType = activeIptv?.type === 'web' || !!activeIptv;
 
@@ -183,6 +194,8 @@ export function GlobalVideoPlayer() {
 
   if (!mounted || !isActive) return null;
   const popupSideClass = dockSide === 'left' ? "right-12" : "left-12";
+  // Side lists sit next to the car dock
+  const dockSideEdgeClass = dockSide === 'left' ? "left-0 border-r" : "right-0 border-l";
   const ctrlBtnClass = "rounded-full flex items-center justify-center focusable transition-all shadow-glow active:scale-90 w-12 h-12 min-[968px]:w-14 min-[968px]:h-14 max-[968px]:w-16 max-[968px]:h-16";
 
   const effectiveCountdown = isEnded ? 5 - postEndTimer : null;
@@ -204,7 +217,25 @@ export function GlobalVideoPlayer() {
               {activeVideo ? (
                 <SovereignIframe key={`yt-${activeVideo.id}-${iframeKey}`} src={youtubeUrl} title={activeVideo.title} />
               ) : (
-                activeIptv?.url && <SovereignIframe key={`web-${activeIptv.stream_id}-${iframeKey}`} src={activeIptv.url} title={activeIptv.name} />
+                activeIptv?.url && (isStream
+                  ? <HlsVideo key={`hls-${activeIptv.stream_id}-${activeIptv.url}-${iframeKey}`} src={activeIptv.url} onError={setStreamError} />
+                  : <SovereignIframe key={`web-${activeIptv.stream_id}-${iframeKey}`} src={activeIptv.url} title={activeIptv.name} />)
+              )}
+
+              {activeIptv && (
+                <div className="absolute top-0 inset-x-0 z-[90] flex items-center gap-3 px-5 py-3 bg-gradient-to-b from-black/80 to-transparent pointer-events-none" dir="rtl">
+                  {activeIptv.stream_icon ? <img src={activeIptv.stream_icon} alt="" className="w-8 h-8 rounded-lg object-cover bg-zinc-900" /> : <Tv className="w-6 h-6 text-white/40" />}
+                  <span className="flex-1 min-w-0 text-white font-black text-sm truncate">{activeIptv.name}</span>
+                  {streamError && <span className="text-[11px] text-red-400 font-bold truncate">{streamError}</span>}
+                  <button
+                    onClick={() => toggleFavoriteIptvChannel(activeIptv)}
+                    data-nav-id="player-iptv-fav"
+                    title="مفضلة"
+                    className={cn("pointer-events-auto w-9 h-9 rounded-full flex items-center justify-center focusable transition-all", isIptvFav ? "bg-yellow-500 text-black" : "bg-black/60 text-white/60 hover:text-white")}
+                  >
+                    <Star className={cn("w-4 h-4", isIptvFav && "fill-current")} />
+                  </button>
+                </div>
               )}
 
               {(effectiveCountdown !== null && effectiveCountdown > 0) && (
@@ -231,7 +262,33 @@ export function GlobalVideoPlayer() {
               )}
            </div>
 
-           {isPlayerPlaylistOpen && (
+           {isPlayerPlaylistOpen && activeIptv && (
+             <div className={cn("absolute top-0 bottom-0 w-[min(360px,80%)] bg-black/85 backdrop-blur-3xl border-white/10 animate-in fade-in duration-300 z-[200] flex flex-col shadow-2xl", dockSideEdgeClass)} dir="rtl" data-nav-zone="sidebar">
+               <div className="px-5 py-3 flex items-center justify-between border-b border-white/5">
+                 <h3 className="text-sm font-black text-white">قنوات القائمة <span className="text-white/40 text-[10px] mr-2">{iptvPlaylist.length}</span></h3>
+                 <button onClick={() => setIsPlayerPlaylistOpen(false)} data-nav-id="player-iptv-list-close" className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/40 hover:text-white focusable"><X className="w-4 h-4" /></button>
+               </div>
+               <div className="p-3 border-b border-white/5">
+                 <Input value={iptvListSearch} onChange={(e) => setIptvListSearch(e.target.value)} placeholder="بحث..." className="h-10 bg-white/5 border-white/10 rounded-full text-white focusable" data-nav-id="player-iptv-list-search" />
+               </div>
+               <div className="flex-1 overflow-y-auto no-scrollbar p-3 space-y-2">
+                 {iptvPlaylist
+                   .map((c, i) => ({ c, i }))
+                   .filter(({ c }) => !iptvListSearch || c.name.toLowerCase().includes(iptvListSearch.toLowerCase()))
+                   .slice(0, 300)
+                   .map(({ c, i }) => (
+                     <button key={c.stream_id + i} onClick={() => setActiveIptv(c, iptvPlaylist, true)} data-nav-id={`player-iptv-list-${i}`}
+                       className={cn("w-full flex items-center gap-3 p-2.5 rounded-xl border text-right focusable", i === iptvPlaylistIndex ? "bg-emerald-500/20 border-emerald-400" : "bg-white/5 border-transparent hover:bg-white/10")}>
+                       {c.stream_icon ? <img src={c.stream_icon} alt="" loading="lazy" className="w-9 h-9 rounded-lg object-cover bg-zinc-900" onError={e => (e.currentTarget.style.display = "none")} /> : <Tv className="w-6 h-6 text-white/30" />}
+                       <span className="flex-1 text-xs font-bold text-white truncate">{c.name}</span>
+                       <Star onClick={(e) => { e.stopPropagation(); toggleFavoriteIptvChannel(c); }} className={cn("w-4 h-4 shrink-0", favoriteIptvChannels.some(f => f.stream_id === c.stream_id) ? "fill-yellow-400 text-yellow-400" : "text-white/30")} />
+                     </button>
+                 ))}
+               </div>
+             </div>
+           )}
+
+           {isPlayerPlaylistOpen && !activeIptv && (
              <div className="absolute bottom-32 left-8 right-8 h-[240px] bg-black/80 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] animate-in slide-in-from-bottom-full duration-500 z-[200] flex flex-col shadow-2xl" dir="rtl">
                <div className="px-8 py-3 flex items-center justify-between border-b border-white/5">
                  <div className="flex items-center gap-4">
@@ -319,6 +376,25 @@ export function GlobalVideoPlayer() {
                   </button>
                 )}
                 
+                {hasIptvList && (
+                  <>
+                    <div className="relative group">
+                      <button onClick={prevIptvChannel} className={cn(ctrlBtnClass, "bg-white/5 text-white")}><ChevronRight className="w-6 h-6" /></button>
+                      <ShortcutBadge action="player_prev" className="-bottom-4 left-1/2 -translate-x-1/2 scale-75" />
+                    </div>
+                    <div className="relative group">
+                      <button onClick={nextIptvChannel} className={cn(ctrlBtnClass, "bg-white/5 text-white")}><ChevronLeft className="w-6 h-6" /></button>
+                      <ShortcutBadge action="player_next" className="-bottom-4 left-1/2 -translate-x-1/2 scale-75" />
+                    </div>
+                  </>
+                )}
+
+                {activeIptv && (
+                  <button onClick={() => toggleFavoriteIptvChannel(activeIptv)} title="مفضلة" className={cn(ctrlBtnClass, isIptvFav ? "bg-yellow-500 text-black" : "bg-white/5 text-white/60")}>
+                    <Star className={cn("w-6 h-6", isIptvFav && "fill-current")} />
+                  </button>
+                )}
+
                 {!isWebType && (
                   <>
                     <div className="relative group">
@@ -343,7 +419,7 @@ export function GlobalVideoPlayer() {
                   <ShortcutBadge action="player_playlist" className="-bottom-4 left-1/2 -translate-x-1/2 scale-75" />
                 </div>
                 
-                <Popover>
+                {!activeIptv && <Popover>
                   <PopoverTrigger asChild>
                     <div className="relative group">
                       <button className={cn(ctrlBtnClass, isSaved ? "bg-accent/40 text-accent" : "bg-white/5 text-white/60")}>
@@ -364,7 +440,7 @@ export function GlobalVideoPlayer() {
                         ))}
                      </div>
                   </PopoverContent>
-                </Popover>
+                </Popover>}
 
                 <div className="relative group">
                   <button onClick={handleSystemPopup} className={cn(ctrlBtnClass, "bg-white/5 text-white/60")} title="نافذة منبثقة خارج المتصفح">
