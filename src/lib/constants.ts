@@ -1,3 +1,4 @@
+import { SALALAH_PRAYER_TIMES_2026_10 } from "./prayer-times-data";
 export const AI_ASSISTANT_API_KEY = 'AIzaSyBMmtON9ww4dJxMHrl1wKyWTvI0ipJXJws'; 
 export const WEATHER_API_KEY = '7acefc26deee4904a2393917252207'; 
 export const GOOGLE_MAPS_API_KEY = 'AIzaSyBRqAHJ2elbE_Z7NXXYC50XZpqi6HbG6Rk';
@@ -49,7 +50,8 @@ export const JSONBIN_POPULAR_RECITERS_BIN_ID = '6909c1cd43b1c97be997b522';
 export const JSONBIN_TEAM_LOGOS_BIN_ID = '699d8c2aae596e708f452936';
 
 export const prayerTimesData = [
-    {"date":"2026-03-05","day":"الخميس","fajr":"05:27","sunrise":"06:39","dhuhr":"12:40","asr":"16:02","maghrib":"18:36","isha":"19:43"}
+    {"date":"2026-03-05","day":"الخميس","fajr":"05:27","sunrise":"06:39","dhuhr":"12:40","asr":"16:02","maghrib":"18:36","isha":"19:43"},
+    ...SALALAH_PRAYER_TIMES_2026_10,
 ];
 
 export function convertTo12Hour(time24h: string | undefined): string {

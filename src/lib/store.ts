@@ -262,7 +262,17 @@ export const useMediaStore = create<MediaState>()(
           else if (binId === JSONBIN_MANUSCRIPTS_BIN_ID) set({ customManuscripts: data.manuscripts || data || [] });
           else if (binId === JSONBIN_FONTS_BIN_ID) set({ customFonts: data.fonts || data || [] });
           else if (binId === JSONBIN_BACKGROUNDS_BIN_ID) set({ customWallBackgrounds: data.backgrounds || data || [] });
-          else if (binId === JSONBIN_PRAYER_TIMES_BIN_ID) set({ prayerTimes: data.prayers || data || prayerTimesData });
+          else if (binId === JSONBIN_PRAYER_TIMES_BIN_ID) {
+            // Merge the cloud days with the bundled ones (cloud wins for a date it has); if the bundle adds dates the
+            // cloud doesn't have yet (e.g. a new month), push the merged list back so every device gets it.
+            const cloud: any[] = Array.isArray(data) ? data : Array.isArray(data?.prayers) ? data.prayers : [];
+            const byDate = new Map<string, any>();
+            for (const d of prayerTimesData) byDate.set(d.date, d);
+            for (const d of cloud) if (d?.date) byDate.set(d.date, d);
+            const merged = Array.from(byDate.values()).sort((a, b) => String(a.date).localeCompare(String(b.date)));
+            set({ prayerTimes: merged });
+            if (merged.length > cloud.length) updateBin(JSONBIN_PRAYER_TIMES_BIN_ID, Array.isArray(data) ? merged : { ...data, prayers: merged });
+          }
           else if (binId === JSONBIN_MASTER_BIN_ID) set({ 
             // favourite teams + pinned matches follow the user to every device
             favoriteTeams: Array.isArray(data.favoriteTeams) ? data.favoriteTeams : get().favoriteTeams,
