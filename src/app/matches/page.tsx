@@ -28,7 +28,7 @@ export default function MatchesTestPage() {
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-black flex items-center gap-3">أهم مباريات اليوم <Trophy className="w-8 h-8 text-yellow-400" /></h1>
-          <p className="text-white/50 text-sm mt-1">{omanDateLabel()} · التوقيت: عُمان (GMT+4)</p>
+          <p className="text-white/50 text-sm mt-1">{omanDateLabel(new Date(Date.now() - 5 * 3600_000))} · التوقيت: عُمان (GMT+4) · اليوم الكروي حتى 5 فجراً</p>
         </div>
         <div className="flex items-center gap-3">
           {ago !== null && <span className="text-xs text-white/40">تحديث تلقائي · منذ {ago} ث</span>}

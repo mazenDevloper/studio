@@ -1,4 +1,4 @@
-import { omanDate, omanTime } from "@/lib/oman-time";
+import { footballDay, omanTime } from "@/lib/oman-time";
 
 /** Shared types and helpers for the match sources. */
 
@@ -154,9 +154,11 @@ export function pickTop(matches: TopMatch[], omanYmd: string, limit: number): { 
   const today = matches.filter(m => {
     if (seen.has(m.id)) return false;
     seen.add(m.id);
-    return omanDate(new Date(m.timestamp * 1000)) === omanYmd;
+    return footballDay(new Date(m.timestamp * 1000)) === omanYmd; // kick-offs until 05:00 count for the previous day
   });
-  const top = [...today].sort((a, b) => b.importance - a.importance || a.timestamp - b.timestamp).slice(0, limit);
+  // live matches first (they stay at the top while playing), then importance, then kick-off time
+  const live = (m: TopMatch) => (m.status === "live" ? 1 : 0);
+  const top = [...today].sort((a, b) => live(b) - live(a) || b.importance - a.importance || a.timestamp - b.timestamp).slice(0, limit);
   return { total: today.length, top, day: today };
 }
 
@@ -215,4 +217,9 @@ export function zonedToUnix(ymd: string, hm: string, tz: string): number {
   let utc = guess - offsetAt(guess);
   utc = guess - offsetAt(utc); // second pass settles DST edges
   return Math.floor(utc / 1000);
+}
+
+/** Stable id for "hide this match" that survives switching between providers (ids differ per source). */
+export function matchHideKey(m: { timestamp: number; home: { name: string }; away: { name: string } }): string {
+  return `match:${footballDay(new Date(m.timestamp * 1000))}:${teamKey(m.home.name)}:${teamKey(m.away.name)}`;
 }

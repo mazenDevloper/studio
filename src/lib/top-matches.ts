@@ -1,4 +1,4 @@
-import { omanDate } from "@/lib/oman-time";
+import { footballDay } from "@/lib/oman-time";
 import { EXTRA_SOURCES } from "@/lib/match-sources-extra";
 import {
   BROWSER_HEADERS, build, getJson, importanceOf, leagueWeightByName, num, pickTop, sameTeam, shiftedDash, shiftedYmd,
@@ -182,7 +182,9 @@ export function map365Game(g: any): TopMatch | null {
 async function from365(date: string): Promise<TopMatch[]> {
   const [y, m, d] = date.split("-");
   const dmy = `${d}/${m}/${y}`; // 365Scores wants DD/MM/YYYY
-  const url = `https://webws.365scores.com/web/games/allscores/?appTypeId=5&langId=1&timezoneName=Asia/Muscat&userCountryId=1&startDate=${dmy}&endDate=${dmy}&sports=1&showOdds=false`;
+  const next = shiftedYmd(date, 1); // the football day runs until 05:00 the next morning
+  const dmyNext = `${next.slice(6)}/${next.slice(4, 6)}/${next.slice(0, 4)}`;
+  const url = `https://webws.365scores.com/web/games/allscores/?appTypeId=5&langId=1&timezoneName=Asia/Muscat&userCountryId=1&startDate=${dmy}&endDate=${dmyNext}&sports=1&showOdds=false`;
   const json = await getJson(url, BROWSER_HEADERS("https://www.365scores.com"));
   return ((json?.games ?? []) as any[]).map(map365Game).filter(Boolean) as TopMatch[];
 }
@@ -213,7 +215,7 @@ const cache = new Map<string, { at: number; value: TopMatchesResult }>();
  * @param teams team names whose matches today must be included even if they aren't "important" (favourite teams)
  */
 export async function getTopMatchesToday(limit = 10, only?: string, includeAll = false, teams: string[] = []): Promise<TopMatchesResult> {
-  const date = omanDate();
+  const date = footballDay(); // until 05:00 Oman time this is still yesterday's football day
   const key = `${date}|${limit}|${only ?? ""}|${includeAll}|${teams.join(",")}`;
   const hit = cache.get(key);
   if (hit && Date.now() - hit.at < (hit.value.matches.some(m => m.status === "live") ? LIVE_CACHE_TTL_MS : CACHE_TTL_MS)) return hit.value;
@@ -277,7 +279,7 @@ export async function getTopMatchesToday(limit = 10, only?: string, includeAll =
     // Favourite teams' matches are always included, then sorted with the rest by importance and kick-off.
     matches: [...best.top, ...best.day.filter(m => !best.top.some(t => t.id === m.id) && teams.some(t => sameTeam(t, m.home.name) || sameTeam(t, m.away.name)))]
       .map(m => teams.some(t => sameTeam(t, m.home.name) || sameTeam(t, m.away.name)) ? { ...m, favorite: true } : m)
-      .sort((a, b) => b.importance - a.importance || a.timestamp - b.timestamp),
+      .sort((a, b) => (b.status === "live" ? 1 : 0) - (a.status === "live" ? 1 : 0) || b.importance - a.importance || a.timestamp - b.timestamp),
     attempts,
     fetchedAt: new Date().toISOString(),
   };

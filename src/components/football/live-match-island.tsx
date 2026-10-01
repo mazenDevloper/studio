@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useLiveMatches } from "@/lib/live-matches";
-import { sameTeam } from "@/lib/match-core";
+import { sameTeam, matchHideKey } from "@/lib/match-core";
 import { useMediaStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { X, Eye, EyeOff, Bell, Clock, Timer, Check, Trophy, Play, ChevronDown, ChevronUp, Zap, Cloud, Bookmark } from "lucide-react";
@@ -185,7 +185,9 @@ export function LiveMatchIsland() {
       seenLive.add(m.id);
       // a pin made from another source has a different id: match it by the two team names as well
       const isPinned = pinned.some(p => p.id === m.id || (sameTeam(p.home, m.home.name) && sameTeam(p.away, m.away.name)));
-      if ((!m.favorite && !isPinned) || (!isPinned && skippedMatchIds.includes(id))) continue;
+      // hiding works by a key built from the football day + both teams, so it survives a change of data source
+      // and (being in skippedMatchIds, synced with the master bin) applies on every device
+      if ((!m.favorite && !isPinned) || (!isPinned && (skippedMatchIds.includes(matchHideKey(m)) || skippedMatchIds.includes(id)))) continue;
       if (m.status === "finished" && nowSecs - m.timestamp > 3.5 * 3600) continue; // drop long-finished games
       const started = m.status !== "upcoming";
       // never show the same fixture twice: a live island replaces an older reminder-based match island
@@ -217,7 +219,7 @@ export function LiveMatchIsland() {
       const live = id.startsWith('live-') ? liveFeed?.matches.find(m => `live-${m.id}` === id) : undefined;
       const pin = live ? pinned.find(p => p.id === live.id || (sameTeam(p.home, live.home.name) && sameTeam(p.away, live.away.name))) : undefined;
       if (pin) { togglePin(pin); return; }
-      skipMatch(id);
+      skipMatch(live ? matchHideKey(live) : id);
     }
     else if (type === 'sync') setShowSyncIsland(false);
     else if (type === 'azkar') toggleReminder(id);
