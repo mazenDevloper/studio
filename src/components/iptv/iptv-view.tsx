@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useMemo, useDeferredValue } from "react";
+import { useState, useEffect, useMemo, useDeferredValue, useRef } from "react";
 import { useMediaStore, IptvChannel } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Tv, List, ChevronRight, Loader2, Star, ArrowRightLeft, Link2, RotateCcw } from "lucide-react";
@@ -36,11 +36,15 @@ export function IptvView() {
   
   const [categories, setCategories] = useState<any[]>([]);
   const [channels, setChannels] = useState<IptvChannel[]>([]);
-  const [selectedCat, setSelectedCat] = useState<string | null>("source");
+  // Favourites are open by default; "my list" (the loaded playlist) is one click away.
+  const [selectedCat, setSelectedCat] = useState<string | null>("direct");
   const [sourceStatus, setSourceStatus] = useState<"loading" | "ready" | "error">("loading");
   const [activeSource, setActiveSource] = useState<IptvSource>(DEFAULT_IPTV_SOURCE);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
+  const [isSearchLocked, setIsSearchLocked] = useState(true);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const unlockSearch = () => { setIsSearchLocked(false); setTimeout(() => searchRef.current?.focus(), 30); };
   // Keep typing instant even with thousands of channels: the grid re-filters at low priority.
   const deferredSearch = useDeferredValue(search);
   const [linkOpen, setLinkOpen] = useState(false);
@@ -173,7 +177,7 @@ export function IptvView() {
   const allCategories = useMemo(() => {
     const [direct, ...rest] = categories.length ? categories : [{ category_id: "direct", category_name: "القنوات المفضلة" }];
     const src = { category_id: "source", category_name: sourceChannels.length ? `قائمتي (${sourceChannels.length})` : "قائمتي" };
-    return [src, direct, ...rest];
+    return [direct, src, ...rest];
   }, [categories, sourceChannels.length]);
 
   useEffect(() => { setVisibleCount(PAGE_SIZE); }, [search, group, selectedCat]);
@@ -183,12 +187,14 @@ export function IptvView() {
   return (
     <div dir="ltr" className={cn("h-screen flex overflow-hidden relative", isDockLeft ? "flex-row" : "flex-row-reverse")}>
       {/* Categories: full-height side panel next to the car dock */}
-      <aside data-nav-zone="sidebar" dir="rtl" className={cn("flex h-full z-[110] premium-glass flex-col shrink-0 bg-black/60 border-white/5 w-[34%] md:w-[22%] min-w-[180px]", isDockLeft ? "border-r" : "border-l")}>
+      <aside data-nav-zone="sidebar" dir="rtl" className={cn("flex h-full min-h-0 overflow-hidden z-[110] premium-glass flex-col shrink-0 bg-black/60 border-white/5 w-[38%] md:w-[26%] min-w-[220px]", isDockLeft ? "border-r" : "border-l")}>
         <div className="p-4 flex items-center gap-3 border-b border-white/5">
           <div className="w-9 h-9 rounded-xl bg-emerald-600 flex items-center justify-center shadow-glow"><List className="w-5 h-5 text-white" /></div>
-          <h2 className="text-lg font-black text-white tracking-tight">التصنيفات</h2>
+          <h2 className="text-xl font-black text-white tracking-tight">التصنيفات</h2>
         </div>
-        <div className="flex-1 overflow-y-auto no-scrollbar p-3 pb-40 space-y-2">
+        {/* min-h-0 lets this flex child shrink below its content height, which is what makes it scrollable */}
+        {/* globals.css sets touch-action: pan-x on sidebar scrollers, which blocks vertical finger scrolling: override it here */}
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-3 pb-40 space-y-2" style={{ touchAction: "pan-y" }}>
           {allCategories.map((cat, idx) => (
             <div key={String(cat.category_id) + idx} data-row-id={`iptv-cat-row-${idx}`} className="space-y-1.5">
               <button
@@ -197,21 +203,21 @@ export function IptvView() {
                 className={cn("w-full flex items-center justify-between gap-2 p-3 rounded-2xl border text-right focusable transition-all outline-none",
                   String(selectedCat) === String(cat.category_id) ? "bg-emerald-600 border-emerald-400 text-white shadow-glow" : "bg-white/5 border-white/5 text-white/80 hover:bg-white/10")}
               >
-                <span className="font-black text-sm truncate">{cat.category_name}</span>
+                <span className="font-black text-base truncate">{cat.category_name}</span>
                 <ChevronRight className="w-4 h-4 shrink-0 opacity-50 rotate-180" />
               </button>
               {cat.category_id === "source" && sourceGroups.length > 0 && (
                 <div className="mr-3 pr-2 border-r border-white/10 space-y-1" data-row-id="iptv-groups">
                   {["all", ...(groupsExpanded ? sourceGroups : sourceGroups.slice(0, GROUPS_PREVIEW))].map((g, i) => (
                     <button key={g} onClick={() => { setSelectedCat("source"); setChannels(sourceChannels); setGroup(g); }} data-nav-id={`iptv-group-${i}`}
-                      className={cn("w-full text-right px-3 h-9 rounded-xl text-xs font-black truncate focusable outline-none transition-all",
+                      className={cn("w-full text-right px-4 h-11 rounded-xl text-sm font-black truncate focusable outline-none transition-all",
                         selectedCat === "source" && group === g ? "bg-emerald-500 text-black" : "bg-white/5 text-white/70 hover:bg-white/10")}>
                       {g === "all" ? "الكل" : g}
                     </button>
                   ))}
                   {sourceGroups.length > GROUPS_PREVIEW && (
                     <button onClick={() => setGroupsExpanded(v => !v)} data-nav-id="iptv-groups-more"
-                      className="w-full text-center h-9 rounded-xl text-xs font-black text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 focusable outline-none">
+                      className="w-full text-center h-11 rounded-xl text-sm font-black text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 focusable outline-none">
                       {groupsExpanded ? "أقل" : `المزيد (${sourceGroups.length - GROUPS_PREVIEW})`}
                     </button>
                   )}
@@ -222,7 +228,7 @@ export function IptvView() {
         </div>
       </aside>
 
-      <main data-nav-zone="content" className="flex-1 min-w-0 overflow-y-auto no-scrollbar p-6 pb-40 space-y-6" dir="rtl">
+      <main data-nav-zone="content" className="flex-1 min-w-0 min-h-0 overflow-y-auto overscroll-contain no-scrollbar p-6 pb-40 space-y-6" dir="rtl">
         <header className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-col gap-1">
             <h1 className="text-3xl font-black font-headline text-white tracking-tighter flex items-center gap-4">
@@ -246,7 +252,22 @@ export function IptvView() {
           </div>
         </header>
 
-        <Input placeholder="ابحث عن قناة..." value={search} onChange={(e) => setSearch(e.target.value)} autoComplete="off" inputMode="search" enterKeyHint="search" className="bg-white/5 border-white/10 h-14 rounded-[2rem] px-6 text-lg text-white shadow-2xl focusable no-focus-scale outline-none" data-nav-id="iptv-search-input" />
+        <Input
+          ref={searchRef}
+          placeholder={isSearchLocked ? "اضغط مرتين أو 5 للبحث عن قناة..." : "ابحث عن قناة..."}
+          value={search}
+          readOnly={isSearchLocked}
+          onChange={(e) => setSearch(e.target.value)}
+          onDoubleClick={unlockSearch}
+          onKeyDown={(e) => {
+            if (isSearchLocked) { if (e.key === "Enter" || e.key === "5") { e.preventDefault(); unlockSearch(); } return; }
+            if (e.key === "Enter" || e.key === "Escape") { setIsSearchLocked(true); (e.target as HTMLInputElement).blur(); }
+          }}
+          onBlur={() => setIsSearchLocked(true)}
+          autoComplete="off" inputMode="search" enterKeyHint="search"
+          className={cn("border-white/10 h-14 rounded-[2rem] px-6 text-lg shadow-2xl focusable no-focus-scale outline-none", isSearchLocked ? "bg-white/5 text-white/40" : "bg-white/10 text-white")}
+          data-nav-id="iptv-search-input"
+        />
 
         {sourceStatus === 'error' && (
           <div className="flex items-center justify-between gap-4 rounded-2xl border border-red-500/30 bg-red-500/10 px-5 py-3">
@@ -257,7 +278,8 @@ export function IptvView() {
           </div>
         )}
 
-        {(loading || (selectedCat === 'source' && sourceStatus === 'loading')) ? (
+        {/* the legacy server's category list may be slow: never hide favourites / my list behind its spinner */}
+        {((loading && selectedCat !== 'direct' && selectedCat !== 'source') || (selectedCat === 'source' && sourceStatus === 'loading')) ? (
           <div className="py-32 flex flex-col items-center gap-4 text-white/40"><Loader2 className="w-12 h-12 animate-spin text-emerald-500" /><span className="text-sm font-bold">جاري تحميل القنوات...</span></div>
         ) : filteredChannels.length === 0 ? (
           <div className="py-32 text-center text-white/30 font-bold">لا توجد قنوات</div>

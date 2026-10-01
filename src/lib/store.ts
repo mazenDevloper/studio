@@ -3,6 +3,8 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { sameTeam } from "@/lib/match-core";
+import { DEFAULT_FAVORITE_TEAMS } from "@/lib/favorite-teams";
 import { YouTubeChannel, YouTubeVideo } from "./youtube";
 import { 
   JSONBIN_MASTER_KEY, 
@@ -76,6 +78,10 @@ export interface IptvChannel {
 }
 
 export interface FavoriteTeam { id: number; name: string; logo: string; }
+/** A video saved to resume later from where it was stopped (synced with the master bin). */
+export interface ContinueItem { video: YouTubeVideo; progress: number; savedAt: number; }
+/** A match pinned as a floating island (synced to the cloud with the master bin). */
+export interface PinnedMatch { id: string; home: string; away: string; }
 
 export interface ManuscriptWord { id: string; text: string; x: number; y: number; scale: number; }
 
@@ -96,7 +102,11 @@ export type AppAction =
 
 interface MediaState {
   favoriteChannels: YouTubeChannel[]; savedVideos: YouTubeVideo[]; videoProgress: Record<string, number>;
-  favoriteTeams: FavoriteTeam[]; favoriteLeagueIds: number[]; belledMatchIds: string[]; skippedMatchIds: string[];
+  continueWatching: ContinueItem[];
+  saveForContinue: (video: YouTubeVideo, progress: number) => void; removeContinue: (videoId: string) => void;
+  /** Make sure the data a screen shows is loaded; fetch its cloud bins again if it is empty (or when forced). */
+  ensureScreenData: (href: string, force?: boolean) => Promise<void>;
+  favoriteTeams: FavoriteTeam[]; pinnedMatches: PinnedMatch[]; seededTeamsV1: boolean; favoriteLeagueIds: number[]; belledMatchIds: string[]; skippedMatchIds: string[];
   skippedReminderIds: string[]; favoriteIptvChannels: IptvChannel[]; favoriteReciters: YouTubeChannel[];
   favoritePodcasts: YouTubeChannel[];
   iptvPlaylist: IptvChannel[]; iptvPlaylistIndex: number; prayerTimes: any[]; prayerSettings: PrayerSetting[];
@@ -130,7 +140,7 @@ interface MediaState {
   toggleSaveVideo: (video: YouTubeVideo) => void;
   removeVideo: (id: string) => void; toggleStarChannel: (channelid: string) => void;
   addReminder: (reminder: Reminder) => void; updateReminder: (id: string, reminder: Partial<Reminder>) => void;
-  removeReminder: (id: string) => void; toggleReminder: (id: string) => void; skipReminder: (id: string) => void; skipMatch: (id: string) => void;
+  removeReminder: (id: string) => void; toggleReminder: (id: string) => void; skipReminder: (id: string) => void; skipMatch: (id: string) => void; unskipMatch: (id: string) => void;
   addAzkar: (azkar: Reminder) => void; updateAzkar: (id: string, azkar: Partial<Reminder>) => void;
   removeAzkar: (id: string) => void;
   addPlaylist: (name: string, videos?: YouTubeVideo[]) => Playlist; removePlaylist: (id: string) => void; addVideoToPlaylist: (playlistId: string, video: YouTubeVideo) => void;
@@ -161,6 +171,7 @@ interface MediaState {
   fetchPriorityData: (context: 'dashboard' | 'media' | 'all') => Promise<void>;
   fetchSpecificBin: (id: string) => Promise<void>;
   syncMasterBin: () => Promise<void>;
+  togglePinnedMatch: (m: PinnedMatch) => void;
   saveIptvReorder: () => Promise<void>;
   saveChannelsReorder: () => Promise<void>;
   saveRecitersAndPodcasts: () => Promise<void>;
@@ -234,7 +245,7 @@ const DEFAULT_PRAYER_SETTINGS: PrayerSetting[] = [
 export const useMediaStore = create<MediaState>()(
   persist(
     (set, get) => ({
-      favoriteChannels: [], savedVideos: [], videoProgress: {}, favoriteTeams: [], favoriteLeagueIds: [307, 39, 2, 140, 135], belledMatchIds: [], skippedMatchIds: [], skippedReminderIds: [], favoriteIptvChannels: [], favoriteReciters: [], favoritePodcasts: [], iptvPlaylist: [], iptvPlaylistIndex: 0, prayerTimes: prayerTimesData, prayerSettings: DEFAULT_PRAYER_SETTINGS, reminders: [], generalAzkar: [], customManuscripts: [], manuscriptScales: {}, customFonts: [], customWallBackgrounds: [], playlists: [], isLooping: true,
+      favoriteChannels: [], savedVideos: [], videoProgress: {}, continueWatching: [], favoriteTeams: [], pinnedMatches: [], seededTeamsV1: false, favoriteLeagueIds: [307, 39, 2, 140, 135], belledMatchIds: [], skippedMatchIds: [], skippedReminderIds: [], favoriteIptvChannels: [], favoriteReciters: [], favoritePodcasts: [], iptvPlaylist: [], iptvPlaylistIndex: 0, prayerTimes: prayerTimesData, prayerSettings: DEFAULT_PRAYER_SETTINGS, reminders: [], generalAzkar: [], customManuscripts: [], manuscriptScales: {}, customFonts: [], customWallBackgrounds: [], playlists: [], isLooping: true,
       mapSettings: { zoom: 20.0, tilt: 65, carScale: 1.02, backgroundIndex: 0, showManuscriptBg: true, manuscriptBgUrl: "https://www.image2url.com/r2/default/images/1782382707952-d99447c6-bc60-475d-9406-5fd2ef320bd5.png", fontScale: 1.0, manuscriptColor: '#ffffff', showManuscriptOnMoon: true, moonManuIdx: 0, hue: 0, saturation: 100, brightness: 100, winwinUrl: "https://psee.io/9f4ngl", beinUrl: "https://idebsports.ly/matches", omanUrl: "https://player.mangomolo.com/v1/live?id=MTY8&channelid=MTYx&countries=Q0M%3D&filter=DENY&signature=3fd1e8dd84138a41bf33d93afd4a7f09&language=en&app_id=&fullscreen=yes&player_profile=&base_url=aHR0cHM6Ly9heW4ub20vbGl2ZS8xNjEvJUQ5JTgyJUQ5JTg2JUQ4JUE3JUQ4JUE5LSVEOCVCOSVEOSU4NSVEOCVBNyVEOSU4Ni0lRDklODUlRDglQTglRDglQTclRDglQjQlRDglQjE%3D&autoplay=false&vast=true", bein1Url: "https://online.aflam4you.net/zremb472.php/?vid=68&aflam_s=1&aflam_w=360&aflam_w=360&aflam_h=250&aflam_k=18311111", mbc1Url: "https://online.aflam4you.net/zremb472.php?vid=5&aflam_s=1&aflam_w=360&h=250&aflam_k=18311111", invertJoystickX: true, invertJoystickY: true, autoRotateNav90: true },
       displayScale: 1.0, dockScale: 1.0, keyMappings: DEFAULT_CONTEXT_MAPPINGS, activeVideo: null, lastPlayedVideo: null, activeIptv: null, activeAudio: null, activeQuranUrl: "https://quran.com/ar/radio?autoplay=1", playlist: [], playlistIndex: 0, isPlaying: false, isMinimized: false, isFullScreen: false, isPlayerControlsExpanded: false, isPlayerPlaylistOpen: false, gridMode: 'hidden', dockSide: 'left', showIslands: true, autoHideIsland: true, isSidebarShrinked: false, wallPlateType: null, wallPlateData: null, isReorderMode: false, isRecordingKey: false, recordingAction: null, isInitialLoading: true, aiSuggestions: [], pickedUpId: null,
       
@@ -257,35 +268,93 @@ export const useMediaStore = create<MediaState>()(
           else if (binId === JSONBIN_MANUSCRIPTS_BIN_ID) set({ customManuscripts: data.manuscripts || data || [] });
           else if (binId === JSONBIN_FONTS_BIN_ID) set({ customFonts: data.fonts || data || [] });
           else if (binId === JSONBIN_BACKGROUNDS_BIN_ID) set({ customWallBackgrounds: data.backgrounds || data || [] });
-          else if (binId === JSONBIN_PRAYER_TIMES_BIN_ID) set({ prayerTimes: data.prayers || data || prayerTimesData });
+          else if (binId === JSONBIN_PRAYER_TIMES_BIN_ID) {
+            // Merge the cloud days with the bundled ones (cloud wins for a date it has); if the bundle adds dates the
+            // cloud doesn't have yet (e.g. a new month), push the merged list back so every device gets it.
+            const cloud: any[] = Array.isArray(data) ? data : Array.isArray(data?.prayers) ? data.prayers : [];
+            const byDate = new Map<string, any>();
+            for (const d of prayerTimesData) byDate.set(d.date, d);
+            for (const d of cloud) if (d?.date) byDate.set(d.date, d);
+            const merged = Array.from(byDate.values()).sort((a, b) => String(a.date).localeCompare(String(b.date)));
+            set({ prayerTimes: merged });
+            if (merged.length > cloud.length) updateBin(JSONBIN_PRAYER_TIMES_BIN_ID, Array.isArray(data) ? merged : { ...data, prayers: merged });
+          }
           else if (binId === JSONBIN_MASTER_BIN_ID) set({ 
+            // favourite teams + pinned matches follow the user to every device
+            favoriteTeams: Array.isArray(data.favoriteTeams) ? data.favoriteTeams : get().favoriteTeams,
+            favoriteLeagueIds: Array.isArray(data.favoriteLeagueIds) ? data.favoriteLeagueIds : get().favoriteLeagueIds,
+            pinnedMatches: Array.isArray(data.pinnedMatches) ? data.pinnedMatches : get().pinnedMatches,
+            seededTeamsV1: !!data.seededTeamsV1 || get().seededTeamsV1,
+            skippedMatchIds: Array.isArray(data.skippedMatchIds) ? data.skippedMatchIds : get().skippedMatchIds,
             reminders: data.reminders || get().reminders, 
             generalAzkar: data.generalAzkar || get().generalAzkar, 
             prayerSettings: data.prayerSettings || DEFAULT_PRAYER_SETTINGS, 
             mapSettings: { ...get().mapSettings, ...data.mapSettings }, 
             keyMappings: data.keyMappings || DEFAULT_CONTEXT_MAPPINGS, 
-            savedVideos: data.savedVideos || get().savedVideos, 
+            savedVideos: data.savedVideos || get().savedVideos,
+            continueWatching: Array.isArray(data.continueWatching) ? data.continueWatching : get().continueWatching, 
             manuscriptScales: data.manuscriptScales || get().manuscriptScales, 
             lastPlayedVideo: data.lastPlayedVideo || get().lastPlayedVideo, 
             playlists: data.playlists || get().playlists || []
           });
+          // One-time: add the user's favourite teams (by name; ids are synthetic) and remember it in the cloud,
+          // so a team removed later is not added back and every device gets the same list.
+          if (binId === JSONBIN_MASTER_BIN_ID && !get().seededTeamsV1) {
+            const current = get().favoriteTeams || [];
+            const missing = DEFAULT_FAVORITE_TEAMS.filter(t => !current.some(c => c?.name && sameTeam(c.name, t.name)));
+            set({ favoriteTeams: [...current, ...missing.map((t, i) => ({ id: -(Date.now() % 1e9) - i, name: t.name, logo: "" }))], seededTeamsV1: true });
+            setTimeout(() => get().syncMasterBin(), 200);
+          }
         } catch (e) {}
       },
 
       fetchPriorityData: async (context) => {
-        await get().fetchSpecificBin(JSONBIN_MASTER_BIN_ID);
-        const others = [
-          JSONBIN_CHANNELS_BIN_ID, JSONBIN_POPULAR_RECITERS_BIN_ID, JSONBIN_IPTV_FAVS_BIN_ID, 
-          JSONBIN_MANUSCRIPTS_BIN_ID, JSONBIN_FONTS_BIN_ID, JSONBIN_BACKGROUNDS_BIN_ID, 
-          JSONBIN_PRAYER_TIMES_BIN_ID
+        // Everything loads in parallel (prayer times first in the queue); nothing waits for the master bin anymore.
+        const all = [
+          JSONBIN_PRAYER_TIMES_BIN_ID, JSONBIN_MASTER_BIN_ID, JSONBIN_IPTV_FAVS_BIN_ID, JSONBIN_CHANNELS_BIN_ID,
+          JSONBIN_POPULAR_RECITERS_BIN_ID, JSONBIN_FONTS_BIN_ID, JSONBIN_MANUSCRIPTS_BIN_ID, JSONBIN_BACKGROUNDS_BIN_ID,
         ];
-        await Promise.allSettled(others.map(id => get().fetchSpecificBin(id)));
+        await Promise.allSettled(all.map(id => get().fetchSpecificBin(id)));
         set({ isInitialLoading: false });
+      },
+
+      saveForContinue: (video, progress) => {
+        const p = Math.max(0, Math.floor(progress));
+        set((s) => ({
+          continueWatching: [{ video, progress: p, savedAt: Date.now() }, ...s.continueWatching.filter(c => c.video.id !== video.id)].slice(0, 30),
+          videoProgress: { ...s.videoProgress, [video.id]: p },
+        }));
+        setTimeout(() => get().syncMasterBin(), 100);
+      },
+      removeContinue: (videoId) => {
+        set((s) => ({ continueWatching: s.continueWatching.filter(c => c.video.id !== videoId) }));
+        setTimeout(() => get().syncMasterBin(), 100);
+      },
+
+      ensureScreenData: async (href, force = false) => {
+        const s = get();
+        const empty = (a: unknown) => !Array.isArray(a) || a.length === 0;
+        const plan: Record<string, [string, boolean][]> = {
+          '/media': [[JSONBIN_CHANNELS_BIN_ID, empty(s.favoriteChannels)], [JSONBIN_POPULAR_RECITERS_BIN_ID, empty(s.favoriteReciters)], [JSONBIN_MASTER_BIN_ID, empty(s.playlists) && empty(s.savedVideos)]],
+          '/iptv': [[JSONBIN_IPTV_FAVS_BIN_ID, empty(s.favoriteIptvChannels)]],
+          '/quran': [[JSONBIN_POPULAR_RECITERS_BIN_ID, empty(s.favoriteReciters)]],
+          '/dashboard': [[JSONBIN_PRAYER_TIMES_BIN_ID, (s.prayerTimes?.length ?? 0) < 2], [JSONBIN_MASTER_BIN_ID, empty(s.reminders)], [JSONBIN_MANUSCRIPTS_BIN_ID, empty(s.customManuscripts)], [JSONBIN_BACKGROUNDS_BIN_ID, empty(s.customWallBackgrounds)]],
+          '/car-dashboard': [[JSONBIN_PRAYER_TIMES_BIN_ID, (s.prayerTimes?.length ?? 0) < 2], [JSONBIN_MASTER_BIN_ID, empty(s.reminders)]],
+          '/settings': [[JSONBIN_MASTER_BIN_ID, true], [JSONBIN_CHANNELS_BIN_ID, true], [JSONBIN_POPULAR_RECITERS_BIN_ID, true], [JSONBIN_IPTV_FAVS_BIN_ID, true], [JSONBIN_FONTS_BIN_ID, true], [JSONBIN_MANUSCRIPTS_BIN_ID, true], [JSONBIN_BACKGROUNDS_BIN_ID, true], [JSONBIN_PRAYER_TIMES_BIN_ID, true]],
+        };
+        const bins = (plan[href] || []).filter(([, isEmpty]) => force || isEmpty).map(([id]) => id);
+        await Promise.allSettled(bins.map(id => get().fetchSpecificBin(id)));
+      },
+
+      togglePinnedMatch: (m) => {
+        const same = (p: PinnedMatch) => p.id === m.id || (sameTeam(p.home, m.home) && sameTeam(p.away, m.away));
+        set((s) => ({ pinnedMatches: s.pinnedMatches.some(same) ? s.pinnedMatches.filter(p => !same(p)) : [...s.pinnedMatches, m] }));
+        setTimeout(() => get().syncMasterBin(), 100);
       },
 
       syncMasterBin: async () => {
         const s = get();
-        await updateBin(JSONBIN_MASTER_BIN_ID, { favoriteTeams: s.favoriteTeams, favoriteLeagueIds: s.favoriteLeagueIds, belledMatchIds: s.belledMatchIds, skippedMatchIds: s.skippedMatchIds, prayerSettings: s.prayerSettings, reminders: s.reminders, generalAzkar: s.generalAzkar, mapSettings: s.mapSettings, keyMappings: s.keyMappings, savedVideos: s.savedVideos, manuscriptScales: s.manuscriptScales, lastPlayedVideo: s.lastPlayedVideo, playlists: s.playlists });
+        await updateBin(JSONBIN_MASTER_BIN_ID, { favoriteTeams: s.favoriteTeams, pinnedMatches: s.pinnedMatches, seededTeamsV1: s.seededTeamsV1, continueWatching: s.continueWatching, favoriteLeagueIds: s.favoriteLeagueIds, belledMatchIds: s.belledMatchIds, skippedMatchIds: s.skippedMatchIds, prayerSettings: s.prayerSettings, reminders: s.reminders, generalAzkar: s.generalAzkar, mapSettings: s.mapSettings, keyMappings: s.keyMappings, savedVideos: s.savedVideos, manuscriptScales: s.manuscriptScales, lastPlayedVideo: s.lastPlayedVideo, playlists: s.playlists });
       },
 
       saveIptvReorder: async () => await updateBin(JSONBIN_IPTV_FAVS_BIN_ID, { iptv: get().favoriteIptvChannels }),
@@ -310,6 +379,7 @@ export const useMediaStore = create<MediaState>()(
       toggleFavoriteIptvChannel: (ch) => set((s) => { const e = s.favoriteIptvChannels.some(c => c.stream_id === ch.stream_id); const n = e ? s.favoriteIptvChannels.filter(c => c.stream_id !== ch.stream_id) : [...s.favoriteIptvChannels, ch]; setTimeout(() => get().saveIptvReorder(), 100); return { favoriteIptvChannels: n }; }),
       updateIptvChannel: (id, updates) => set((s) => { const n = s.favoriteIptvChannels.map(ch => ch.stream_id === id ? { ...ch, ...updates } : ch); setTimeout(() => get().saveIptvReorder(), 100); return { favoriteIptvChannels: n }; }),
       addIptvChannel: (ch) => set((s) => { const n = [...s.favoriteIptvChannels, ch]; setTimeout(() => get().saveIptvReorder(), 100); return { favoriteIptvChannels: n }; }),
+      reorderChannelTo: (f, t) => set((s) => { const l = [...s.favoriteChannels], fI = l.findIndex(i => i.channelid === f), tI = l.findIndex(i => i.channelid === t); if (fI === -1 || tI === -1) return s; const [m] = l.splice(fI, 1); l.splice(tI, 0, m); return { favoriteChannels: l }; }),
       reorderIptvChannelTo: (f, t) => set((s) => { const l = [...s.favoriteIptvChannels], fI = l.findIndex(i => i.stream_id === f), tI = l.findIndex(i => i.stream_id === t); if (fI === -1 || tI === -1) return s; const [m] = l.splice(fI, 1); l.splice(tI, 0, m); return { favoriteIptvChannels: l }; }),
       
       addPlaylist: (name, videos = []) => {
@@ -333,7 +403,8 @@ export const useMediaStore = create<MediaState>()(
       removeReminder: (id) => set((s) => { const n = s.reminders.filter(r => r.id !== id); setTimeout(() => get().syncMasterBin(), 100); return { reminders: n }; }),
       toggleReminder: (id) => set((s) => ({ reminders: s.reminders.map(r => r.id === id ? { ...r, completed: !r.completed } : r) })),
       skipReminder: (id) => set((s) => ({ skippedReminderIds: [...s.skippedReminderIds, id] })),
-      skipMatch: (id) => set((s) => ({ skippedMatchIds: [...s.skippedMatchIds, id] })),
+      skipMatch: (id) => set((s) => ({ skippedMatchIds: [...s.skippedMatchIds.filter(x => x !== id), id].slice(-300) })),
+      unskipMatch: (id) => { set((s) => ({ skippedMatchIds: s.skippedMatchIds.filter(x => x !== id) })); setTimeout(() => get().syncMasterBin(), 100); },
       addAzkar: (a) => set((s) => { const n = [...s.generalAzkar, a]; setTimeout(() => get().syncMasterBin(), 100); return { generalAzkar: n }; }),
       updateAzkar: (id, u) => set((s) => { const n = s.generalAzkar.map(a => a.id === id ? { ...a, ...u } : a); setTimeout(() => get().syncMasterBin(), 100); return { generalAzkar: n }; }),
       removeAzkar: (id) => set((s) => { const n = s.generalAzkar.filter(a => a.id !== id); setTimeout(() => get().syncMasterBin(), 100); return { generalAzkar: n }; }),
@@ -359,14 +430,21 @@ export const useMediaStore = create<MediaState>()(
       setWallPlate: (t, d) => set({ wallPlateType: t, wallPlateData: d }), resetMediaView: () => set({ selectedChannel: null, channelVideos: [] }),
       setAiSuggestions: (s) => set({ aiSuggestions: s }),
       addManuscript: (m) => set((s) => { const n = [...s.customManuscripts, m]; setTimeout(() => get().saveManuscriptsReorder(), 100); return { customManuscripts: n }; }),
-      updateManuscript: (id, u) => set((s) => { const n = s.customManuscripts.map(m => i.id === id ? { ...m, ...u } : m); setTimeout(() => get().saveManuscriptsReorder(), 100); return { customManuscripts: n }; }),
+      updateManuscript: (id, u) => set((s) => { const n = s.customManuscripts.map(m => m.id === id ? { ...m, ...u } : m); setTimeout(() => get().saveManuscriptsReorder(), 100); return { customManuscripts: n }; }),
       removeManuscript: (id) => set((s) => { const n = s.customManuscripts.filter(m => m.id !== id); setTimeout(() => get().saveManuscriptsReorder(), 100); return { customManuscripts: n }; }),
       updateManuscriptScale: (id, scale) => set((s) => { const n = { ...s.manuscriptScales, [id]: (s.manuscriptScales[id] || 1.0) + scale }; setTimeout(() => get().syncMasterBin(), 100); return { manuscriptScales: n }; }),
       updatePrayerSetting: (id, updates) => set((s) => { const n = s.prayerSettings.map(p => p.id === id ? { ...p, ...updates } : p); setTimeout(() => get().syncMasterBin(), 100); return { prayerSettings: n }; }),
     }),
     {
       name: "drivecast-sovereign-v143", 
-      partialize: (s) => ({ dockSide: s.dockSide, displayScale: s.displayScale, dockScale: s.dockScale, isLooping: s.isLooping }),
+      // Last-known cloud data is kept locally so the app shows it instantly on start, then the cloud refresh replaces it.
+      partialize: (s) => ({
+        dockSide: s.dockSide, displayScale: s.displayScale, dockScale: s.dockScale, isLooping: s.isLooping,
+        prayerTimes: s.prayerTimes, prayerSettings: s.prayerSettings, reminders: s.reminders, generalAzkar: s.generalAzkar,
+        favoriteTeams: s.favoriteTeams, pinnedMatches: s.pinnedMatches, favoriteLeagueIds: s.favoriteLeagueIds, seededTeamsV1: s.seededTeamsV1,
+        favoriteIptvChannels: s.favoriteIptvChannels, favoriteChannels: s.favoriteChannels, customFonts: s.customFonts,
+        continueWatching: s.continueWatching, videoProgress: s.videoProgress,
+      }),
     }
   )
 );

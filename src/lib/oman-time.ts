@@ -14,3 +14,11 @@ export function omanTime(unixSeconds: number): string {
 export function omanDateLabel(d: Date = new Date()): string {
   return new Intl.DateTimeFormat("ar", { timeZone: OMAN_TZ, weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(d);
 }
+
+/** Matches up to 05:00 (Oman) still belong to the previous evening's football day. */
+export const DAY_ROLLOVER_HOUR = 5;
+
+/** The "football day" (YYYY-MM-DD) for a moment: Oman date of (time - 5h). */
+export function footballDay(d: Date = new Date()): string {
+  return omanDate(new Date(d.getTime() - DAY_ROLLOVER_HOUR * 3600_000));
+}

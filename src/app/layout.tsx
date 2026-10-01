@@ -4,6 +4,8 @@
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { GlobalVideoPlayer } from "@/components/media/global-player";
+import { GoalCelebration } from "@/components/football/goal-celebration";
+import { YoutubeBackgroundBridge } from "@/components/media/youtube-background-bridge";
 import { GlobalQuranPlayer } from "@/components/quran/global-quran-player";
 import { AudioPlayer } from "@/components/media/audio-player";
 import { FirebaseClientProvider } from "@/firebase";
@@ -42,13 +44,14 @@ function RootLayoutWrapper({ children }: { children: React.ReactNode }) {
   // 2. Sovereign Auto-Click Sync Protocol v12000
   useEffect(() => {
     // 2.1 Content Cloud Fetch - 3s (Targeted to Media and general sync)
-    const timerFetch = setTimeout(() => {
+    let tries = 0;
+    const timerFetch = setInterval(() => {
       const btn = document.querySelector('[data-nav-id="content-cloud-fetch-0"]') as HTMLElement;
-      if (btn) {
-        btn.click();
-        console.log("[Sovereign Sync] Content Cloud Fetch Executed @ 3s");
+      if (btn || ++tries > 30) {
+        clearInterval(timerFetch);
+        btn?.click();
       }
-    }, 3000);
+    }, 100);
 
     // 2.2 System Optimizer - Pulse 1 @ 6s
     const timerOpt1 = setTimeout(() => {
@@ -69,7 +72,7 @@ function RootLayoutWrapper({ children }: { children: React.ReactNode }) {
     }, 11000);
 
     return () => {
-      clearTimeout(timerFetch);
+      clearInterval(timerFetch);
       clearTimeout(timerOpt1);
       clearTimeout(timerOpt2);
     };
@@ -145,12 +148,14 @@ export default function RootLayout({
         <FirebaseClientProvider>
           <RootLayoutWrapper>
             <LiveMatchIsland />
+            <GoalCelebration />
             <RemotePointer />
             <CarDock />
             <MainLayoutShell>
               {children}
             </MainLayoutShell>
             <GlobalVideoPlayer />
+            <YoutubeBackgroundBridge />
             <GlobalQuranPlayer />
             <AudioPlayer />
             <Toaster />

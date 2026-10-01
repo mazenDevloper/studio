@@ -2,8 +2,8 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
-import { Match } from "@/lib/football-data";
-import { fetchFootballData } from "@/lib/football-api";
+import { useLiveMatches } from "@/lib/live-matches";
+import { sameTeam, matchHideKey } from "@/lib/match-core";
 import { useMediaStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { X, Eye, EyeOff, Bell, Clock, Timer, Check, Trophy, Play, ChevronDown, ChevronUp, Zap, Cloud, Bookmark } from "lucide-react";
@@ -25,6 +25,8 @@ interface AlertItem {
   homeName?: string;
   awayName?: string;
   matchTimeStr?: string;
+  /** live minute (or "انتهت") shown under the score */
+  minuteStr?: string;
 }
 
 /**
@@ -39,11 +41,14 @@ export function LiveMatchIsland() {
   } = useMediaStore();
 
   const [mounted, setMounted] = useState(false);
-  const [topMatches, setTopMatches] = useState<Match[]>([]);
   const [now, setNow] = useState<Date | null>(null);
   const [isMatchCollapsed, setIsMatchCollapsed] = useState(true);
   const [showSyncIsland, setShowSyncIsland] = useState(true);
-  const lastFetchRef = useRef<number>(0);
+  // Live scores for today's matches; favourite teams' matches are always included in the feed.
+  const favoriteNames = useMemo(() => (favoriteTeams || []).map(t => t?.name).filter(Boolean) as string[], [favoriteTeams]);
+  const { data: liveFeed, celebrating } = useLiveMatches(favoriteNames);
+  const pinned = useMediaStore(s => s.pinnedMatches) || [];
+  const togglePin = useMediaStore(s => s.togglePinnedMatch);
 
   useEffect(() => {
     setMounted(true);
@@ -53,19 +58,6 @@ export function LiveMatchIsland() {
     const syncTimer = setTimeout(() => setShowSyncIsland(false), 10000);
     return () => { clearInterval(timer); clearTimeout(syncTimer); };
   }, []);
-
-  const fetchMatches = useCallback(async (force = false) => {
-    const timeSinceLast = Date.now() - lastFetchRef.current;
-    if (!force && timeSinceLast < 60000) return;
-    try {
-      const matches = await fetchFootballData('today');
-      lastFetchRef.current = Date.now();
-      setTopMatches(matches || []);
-    } catch (e) {}
-  }, []);
-
-  useEffect(() => { fetchMatches(true); }, [fetchMatches]);
-  useEffect(() => { const interval = setInterval(() => fetchMatches(), 60000); return () => clearInterval(interval); }, [fetchMatches]);
 
   const tToM = (t: string) => { if (!t) return 0; const [h, m] = t.split(':').map(Number); return h * 60 + m; };
 
@@ -184,11 +176,51 @@ export function LiveMatchIsland() {
         });
       }
     }
+    // Today's matches of my favourite teams and the matches I pinned, with live scores
+    const nowSecs = Math.floor(now.getTime() / 1000);
+    const seenLive = new Set<string>();
+    for (const m of liveFeed?.matches ?? []) {
+      const id = `live-${m.id}`;
+      if (seenLive.has(m.id)) continue;
+      seenLive.add(m.id);
+      // a pin made from another source has a different id: match it by the two team names as well
+      const isPinned = pinned.some(p => p.id === m.id || (sameTeam(p.home, m.home.name) && sameTeam(p.away, m.away.name)));
+      // hiding works by a key built from the football day + both teams, so it survives a change of data source
+      // and (being in skippedMatchIds, synced with the master bin) applies on every device
+      if ((!m.favorite && !isPinned) || (!isPinned && (skippedMatchIds.includes(matchHideKey(m)) || skippedMatchIds.includes(id)))) continue;
+      if (m.status === "finished" && nowSecs - m.timestamp > 3.5 * 3600) continue; // drop long-finished games
+      const started = m.status !== "upcoming";
+      // never show the same fixture twice: a live island replaces an older reminder-based match island
+      const dup = list.findIndex(a => a.type === 'match' && a.homeName && a.awayName && sameTeam(a.homeName, m.home.name) && sameTeam(a.awayName, m.away.name));
+      if (dup !== -1) { if (list[dup].id.startsWith('live-')) continue; list.splice(dup, 1); }
+      list.push({
+        id,
+        name: m.league.name,
+        diff: m.timestamp - nowSecs,
+        type: 'match',
+        iconType: 'match',
+        color: 'text-white',
+        isExpired: m.status === "live",
+        homeLogo: m.home.logo,
+        awayLogo: m.away.logo,
+        homeName: m.home.name,
+        awayName: m.away.name,
+        matchTimeStr: started ? `${m.score.home ?? 0}-${m.score.away ?? 0}` : convertTo12Hour(m.omanTime),
+        minuteStr: m.status === "live" ? (m.elapsed ? `${m.elapsed}'` : "مباشر") : m.status === "finished" ? "انتهت" : undefined,
+      });
+    }
+
     return list.sort((a, b) => Math.abs(a.diff) - Math.abs(b.diff));
-  }, [now, prayerTimes, prayerSettings, reminders, generalAzkar, skippedReminderIds, skippedMatchIds, showSyncIsland, isInitialLoading]);
+  }, [now, prayerTimes, prayerSettings, reminders, generalAzkar, skippedReminderIds, skippedMatchIds, showSyncIsland, isInitialLoading, liveFeed, pinned]);
 
   const handleAction = async (id: string, type: 'match' | 'reminder' | 'sync' | 'azkar') => {
-    if (type === 'match') skipMatch(id);
+    if (type === 'match') {
+      // closing a pinned live match unpins it; anything else is skipped for today as before
+      const live = id.startsWith('live-') ? liveFeed?.matches.find(m => `live-${m.id}` === id) : undefined;
+      const pin = live ? pinned.find(p => p.id === live.id || (sameTeam(p.home, live.home.name) && sameTeam(p.away, live.away.name))) : undefined;
+      if (pin) { togglePin(pin); return; }
+      skipMatch(live ? matchHideKey(live) : id);
+    }
     else if (type === 'sync') setShowSyncIsland(false);
     else if (type === 'azkar') toggleReminder(id);
     else toggleReminder(id);
@@ -215,6 +247,7 @@ export function LiveMatchIsland() {
 
   if (!mounted || !now) return null;
   if (autoHideIsland && !activeAlerts.length) return null;
+  if (celebrating) return null; // the goal island takes the stage, then everything comes back as it was
 
   return (
     <div className={cn("fixed top-6 left-1/2 -translate-x-1/2 z-[10001] flex flex-col items-center gap-3 pointer-events-none scale-[0.7] min-[968px]:scale-[0.80] dir-rtl transition-all duration-700", (showIslands || activeAlerts.length) ? "translate-y-0 opacity-100" : "-translate-y-20 opacity-0")}>
@@ -225,10 +258,10 @@ export function LiveMatchIsland() {
             {activeAlerts.map((alert) => {
                if (alert.type === 'match') {
                  return (
-                   <div key={alert.id} onClick={() => setIsMatchCollapsed(!isMatchCollapsed)} className={cn("pointer-events-auto premium-glass rounded-full flex items-center animate-in slide-in-from-top-2 border transition-all relative group shadow-2xl cursor-pointer", alert.completed ? "bg-emerald-600/60 border-emerald-400" : "border-white/10", isMatchCollapsed ? "min-w-[10rem] h-[4.5rem] gap-0 px-1" : "min-w-[18rem] h-[7.5rem] gap-0 px-2")}>
+                   <div key={alert.id} dir="ltr" onClick={() => setIsMatchCollapsed(!isMatchCollapsed)} className={cn("pointer-events-auto premium-glass rounded-full flex items-center animate-in slide-in-from-top-2 border transition-all relative group shadow-2xl cursor-pointer", alert.completed ? "bg-emerald-600/60 border-emerald-400" : "border-white/10", isMatchCollapsed ? "min-w-[10rem] h-[4.5rem] gap-0 px-1" : "min-w-[18rem] h-[7.5rem] gap-0 px-2")}>
                      <button onClick={(e) => { e.stopPropagation(); handleAction(alert.id, 'match'); }} className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-black/60 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center pointer-events-auto transition-opacity z-50 border border-white/10 shadow-glow"><X className="w-3.5 h-3.5" /></button>
                      <div className={cn("rounded-full bg-white/5 flex items-center justify-center border border-white/10 overflow-hidden shrink-0 shadow-lg relative", isMatchCollapsed ? "w-12 h-12" : "w-20 h-20")}>{alert.homeLogo ? <img src={alert.homeLogo} className={cn("object-contain drop-shadow-md", isMatchCollapsed ? "w-10 h-10" : "w-16 h-16")} alt="" /> : <Trophy className={cn("text-white/10", isMatchCollapsed ? "w-5 h-5" : "w-8 h-8")} />}{!isMatchCollapsed && <span className="absolute bottom-0 left-0 right-0 bg-black/60 text-[6px] font-black text-white text-center truncate px-1">{alert.homeName || "HOME"}</span>}</div>
-                     <div className={cn("flex-1 flex flex-col items-center justify-center p-0 m-0", isMatchCollapsed ? "min-w-[6rem]" : "min-w-[12rem]")}><div className={cn("w-full p-0 m-0 flex items-center justify-center", isMatchCollapsed ? "h-14" : "h-24")}><GlassNumber text={alert.matchTimeStr || "--:--"} id={`match-${alert.id}`} size={isMatchCollapsed ? "4.5rem" : "5.6rem"} colorClass={alert.isExpired ? "text-emerald-400 animate-pulse" : "text-white"} /></div></div>
+                     <div className={cn("flex-1 flex flex-col items-center justify-center p-0 m-0", isMatchCollapsed ? "min-w-[6rem]" : "min-w-[12rem]")}><div className={cn("w-full p-0 m-0 flex items-center justify-center", isMatchCollapsed ? "h-14" : "h-24")}><GlassNumber text={alert.matchTimeStr || "--:--"} id={`match-${alert.id}`} size={isMatchCollapsed ? "4.5rem" : "5.6rem"} colorClass={alert.isExpired ? "text-emerald-400 animate-pulse" : "text-white"} /></div>{alert.minuteStr && <span className={cn("font-black leading-none tabular-nums -mt-1", isMatchCollapsed ? "text-[0.65rem]" : "text-[0.9rem]", alert.isExpired ? "text-red-400" : "text-white/50")}>{alert.minuteStr}</span>}</div>
                      <div className={cn("rounded-full bg-white/5 flex items-center justify-center border border-white/10 overflow-hidden shrink-0 shadow-lg relative", isMatchCollapsed ? "w-12 h-12" : "w-20 h-20")}>{alert.awayLogo ? <img src={alert.awayLogo} className={cn("object-contain drop-shadow-md", isMatchCollapsed ? "w-10 h-10" : "w-16 h-16")} alt="" /> : <Trophy className={cn("text-white/10", isMatchCollapsed ? "w-5 h-5" : "w-8 h-8")} />}{!isMatchCollapsed && <span className="absolute bottom-0 left-0 right-0 bg-black/60 text-[6px] font-black text-white text-center truncate px-1">{alert.awayName || "AWAY"}</span>}</div>
                    </div>
                  );

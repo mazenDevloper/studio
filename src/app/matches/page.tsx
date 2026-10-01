@@ -1,47 +1,41 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { Loader2, RefreshCw, Trophy, AlertTriangle } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Loader2, RefreshCw, Trophy, AlertTriangle, Star, PartyPopper, Pin, Eye, EyeOff, Tv } from "lucide-react";
+import { useLiveMatches, useLiveMatchesStore } from "@/lib/live-matches";
+import type { MatchDetails } from "@/lib/match-details";
+import { sameTeam, matchHideKey } from "@/lib/match-core";
+import { useMediaStore } from "@/lib/store";
+import { GOAL_TEST_EVENT } from "@/components/football/goal-celebration";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { omanDateLabel } from "@/lib/oman-time";
-import type { TopMatch, TopMatchesResult } from "@/lib/top-matches";
+import type { TopMatch } from "@/lib/top-matches";
 
-/** Fetch test for /api/matches: today's most important matches, kick-off in Oman time (GMT+4). */
+/** Today's most important matches, kick-off in Oman time (GMT+4). Auto-refreshes every 30s from the shared live feed. */
 export default function MatchesTestPage() {
-  const [data, setData] = useState<TopMatchesResult | null>(null);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [ms, setMs] = useState<number | null>(null);
+  const { favoriteTeams } = useMediaStore();
+  const favoriteNames = useMemo(() => (favoriteTeams || []).map(t => t?.name).filter(Boolean) as string[], [favoriteTeams]);
+  const { data, error, loading, updatedAt, refresh } = useLiveMatches(favoriteNames);
   const [showJson, setShowJson] = useState(false);
-
-  const load = useCallback(async () => {
-    setLoading(true); setError("");
-    const t0 = performance.now();
-    try {
-      const res = await fetch("/api/matches?limit=10", { cache: "no-store" });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
-      setData(json);
-    } catch (e: any) {
-      setError(e?.message || "Failed to fetch");
-    } finally {
-      setMs(Math.round(performance.now() - t0));
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { load(); }, [load]);
+  const [showHidden, setShowHidden] = useState(false);
+  const skipped = useMediaStore(s => s.skippedMatchIds) || [];
+  const isHidden = (m: TopMatch) => skipped.includes(matchHideKey(m));
+  const [, tick] = useState(0);
+  useEffect(() => { const t = setInterval(() => tick(n => n + 1), 5000); return () => clearInterval(t); }, []);
+  const ago = updatedAt ? Math.round((Date.now() - updatedAt) / 1000) : null;
+  const load = refresh;
 
   return (
     <div className="min-h-screen bg-black text-white p-6 md:p-10 space-y-6" dir="rtl">
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-black flex items-center gap-3">أهم مباريات اليوم <Trophy className="w-8 h-8 text-yellow-400" /></h1>
-          <p className="text-white/50 text-sm mt-1">{omanDateLabel()} · التوقيت: عُمان (GMT+4)</p>
+          <p className="text-white/50 text-sm mt-1">{omanDateLabel(new Date(Date.now() - 5 * 3600_000))} · التوقيت: عُمان (GMT+4) · اليوم الكروي حتى 5 فجراً</p>
         </div>
         <div className="flex items-center gap-3">
-          {ms !== null && <span className="text-xs text-white/40" dir="ltr">{ms} ms</span>}
+          {ago !== null && <span className="text-xs text-white/40">تحديث تلقائي · منذ {ago} ث</span>}
+          <Button variant="outline" onClick={() => window.dispatchEvent(new CustomEvent(GOAL_TEST_EVENT))} className="rounded-full bg-white/5 border-white/10"><PartyPopper className="w-4 h-4 ml-2" /> اختبار الهدف</Button>
           <Button variant="outline" onClick={() => setShowJson(v => !v)} className="rounded-full bg-white/5 border-white/10">JSON</Button>
           <Button onClick={load} disabled={loading} className="rounded-full bg-emerald-500 text-black hover:bg-emerald-400">
             <RefreshCw className={cn("w-4 h-4 ml-2", loading && "animate-spin")} /> تحديث
@@ -57,7 +51,7 @@ export default function MatchesTestPage() {
         </div>
       )}
 
-      {data && !error && (
+      {data && (
         <>
           <p className="text-xs text-white/40">{data.matches.length} من أصل {data.total} مباراة · {data.date} · المصدر: {data.source}</p>
           <div className="flex flex-wrap gap-2" dir="ltr">
@@ -70,9 +64,17 @@ export default function MatchesTestPage() {
           {data.matches.length === 0 ? (
             <div className="py-20 text-center text-white/30 font-bold">لا توجد مباريات مهمة اليوم</div>
           ) : (
-            <div className="grid gap-3 md:grid-cols-2">
-              {data.matches.map(m => <MatchCard key={m.id} m={m} />)}
-            </div>
+            <>
+              {data.matches.some(isHidden) && (
+                <button onClick={() => setShowHidden(v => !v)} className="text-xs font-bold text-white/50 hover:text-white flex items-center gap-2 focusable">
+                  {showHidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {showHidden ? "إخفاء المباريات المخفية" : `إظهار المباريات المخفية (${data.matches.filter(isHidden).length})`}
+                </button>
+              )}
+              <div className="grid gap-3 md:grid-cols-2">
+                {data.matches.filter(m => showHidden || !isHidden(m)).map(m => <MatchCard key={m.id} m={m} hidden={isHidden(m)} />)}
+              </div>
+            </>
           )}
         </>
       )}
@@ -82,21 +84,80 @@ export default function MatchesTestPage() {
   );
 }
 
-function MatchCard({ m }: { m: TopMatch }) {
+/** Channels looked up once per match (the list feed doesn't always carry them). */
+const channelCache = new Map<string, Promise<string[]>>();
+function lookupChannels(m: TopMatch): Promise<string[]> {
+  if (!channelCache.has(m.id)) {
+    const q = new URLSearchParams({ id: m.id, league: m.league.id, homeId: m.home.id });
+    channelCache.set(m.id, fetch(`/api/matches/details?${q}`).then(r => (r.ok ? r.json() : null)).then(j => j?.channels ?? []).catch(() => []));
+  }
+  return channelCache.get(m.id)!;
+}
+
+function MatchCard({ m, hidden = false }: { m: TopMatch; hidden?: boolean }) {
+  const skipMatch = useMediaStore(s => s.skipMatch);
+  const unskipMatch = useMediaStore(s => s.unskipMatch);
+  const syncMasterBin = useMediaStore(s => s.syncMasterBin);
+  const [lookedUp, setLookedUp] = useState<string[] | null>(null);
+  useEffect(() => {
+    if (m.channels.length) return;
+    let alive = true;
+    lookupChannels(m).then(c => { if (alive) setLookedUp(c); });
+    return () => { alive = false; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [m.id, m.channels.length]);
+  const toggleHidden = () => {
+    // same key as the floating island, synced through the master bin
+    if (hidden) unskipMatch(matchHideKey(m));
+    else { skipMatch(matchHideKey(m)); setTimeout(() => syncMasterBin(), 100); }
+  };
   const live = m.status === "live";
   const started = m.status !== "upcoming";
+  const pinned = useMediaStore(s => s.pinnedMatches) || [];
+  const togglePin = useMediaStore(s => s.togglePinnedMatch);
+  const isPinned = pinned.some(p => p.id === m.id || (sameTeam(p.home, m.home.name) && sameTeam(p.away, m.away.name)));
+  const [open, setOpen] = useState(false);
+  const [details, setDetails] = useState<MatchDetails | null>(null);
+  const [detailsError, setDetailsError] = useState("");
+  const [loadingDetails, setLoadingDetails] = useState(false);
+
+  const loadDetails = async () => {
+    setLoadingDetails(true); setDetailsError("");
+    try {
+      const q = new URLSearchParams({ id: m.id, league: m.league.id, homeId: m.home.id });
+      const r = await fetch(`/api/matches/details?${q}`, { cache: "no-store" });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`);
+      setDetails(j);
+    } catch (e: any) { setDetailsError(e?.message || "failed"); } finally { setLoadingDetails(false); }
+  };
+  // refresh scorers while the card is open and the score changes
+  useEffect(() => { if (open) loadDetails(); // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, m.score.home, m.score.away]);
+
+  const channels = Array.from(new Set([...m.channels, ...(details?.channels ?? []), ...(lookedUp ?? [])]));
+  const scorers = (side: "home" | "away") => (details?.scorers ?? []).filter(s => s.side === side);
+
   return (
-    <div className={cn("rounded-3xl border p-4 bg-white/5", live ? "border-red-500/50" : "border-white/10")}>
+    <div className={cn("rounded-3xl border p-4 bg-white/5 relative", hidden && "opacity-50", live ? "border-red-500/50" : isPinned ? "border-emerald-400/60" : m.favorite ? "border-yellow-400/50" : "border-white/10")}>
+
       <div className="flex items-center justify-between text-[11px] text-white/50 mb-3">
         <span className="flex items-center gap-2 min-w-0">
           {m.league.logo && <img src={m.league.logo} alt="" className="w-4 h-4 object-contain" />}
           <span className="truncate">{m.league.name}</span>
         </span>
-        <span className={cn("font-black shrink-0", live ? "text-red-400" : m.status === "finished" ? "text-white/40" : "text-emerald-400")}>
-          {live ? `مباشر ${m.elapsed ?? ""}'` : m.status === "finished" ? "انتهت" : "قريباً"}
+        <span className="flex items-center gap-2 shrink-0">
+          {m.favorite && <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />}
+          <span className={cn("font-black", live ? "text-red-400" : m.status === "finished" ? "text-white/40" : "text-emerald-400")}>
+            {live ? `مباشر ${m.elapsed ?? ""}'` : m.status === "finished" ? "انتهت" : "قريباً"}
+          </span>
+          <button onClick={toggleHidden} title={hidden ? "إظهار المباراة" : "إخفاء المباراة (في كل الأجهزة)"} className="w-8 h-8 rounded-full bg-black/40 border border-white/10 text-white/60 hover:text-white flex items-center justify-center focusable">
+            {hidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+          </button>
         </span>
       </div>
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+      {/* LTR so the home team sits on the left of "home - away" (in RTL it ended up on the right, reversing the score) */}
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3" dir="ltr">
         <Team name={m.home.name} logo={m.home.logo} />
         <div className="text-center min-w-[72px]">
           {started
@@ -106,7 +167,51 @@ function MatchCard({ m }: { m: TopMatch }) {
         </div>
         <Team name={m.away.name} logo={m.away.logo} />
       </div>
-      {m.channels.length > 0 && <div className="mt-3 text-center text-[10px] text-white/40" dir="ltr">📺 {m.channels.join(" · ")}</div>}
+
+      <div className="mt-3 flex items-center justify-center gap-2 text-xs font-bold">
+        <Tv className="w-4 h-4 text-emerald-400 shrink-0" />
+        {channels.length > 0
+          ? <span className="text-white/80 truncate" dir="ltr">{channels.join(" · ")}</span>
+          : <span className="text-white/30">{lookedUp === null && !m.channels.length ? "جاري البحث عن القناة..." : "القناة الناقلة غير متوفرة"}</span>}
+      </div>
+
+      {open && (
+        <div className="mt-3 rounded-2xl bg-black/30 p-3 space-y-2 text-xs">
+          {loadingDetails && !details && <div className="flex justify-center"><Loader2 className="w-4 h-4 animate-spin text-emerald-400" /></div>}
+          {detailsError && <p className="text-red-300">{detailsError}</p>}
+          {details && (
+            <>
+              <div className="grid grid-cols-2 gap-3" dir="ltr">
+                {(["home", "away"] as const).map(side => (
+                  <ul key={side} className={cn("space-y-1", side === "away" && "text-right")}>
+                    {scorers(side).length === 0
+                      ? <li className="text-white/30">—</li>
+                      : scorers(side).map((g, i) => <li key={i}>⚽ {g.player || "?"} <span className="text-white/50">{g.minute}{g.note ? ` (${g.note})` : ""}</span></li>)}
+                  </ul>
+                ))}
+              </div>
+              <div className="text-white/60 space-y-0.5 border-t border-white/5 pt-2">
+                <p>🎙️ المعلق: {details.commentators.length ? details.commentators.join("، ") : <span className="text-white/30">غير متوفر من المصدر</span>}</p>
+                {details.venue && <p>🏟️ الملعب: <span dir="ltr">{details.venue}</span></p>}
+                {details.referee && <p>🧑‍⚖️ الحكم: <span dir="ltr">{details.referee}</span></p>}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      <div className="mt-3 flex gap-2">
+        <button onClick={() => setOpen(v => !v)} className="flex-1 h-9 rounded-full bg-white/5 border border-white/10 text-xs font-bold hover:bg-white/10 focusable">
+          {open ? "إخفاء التفاصيل" : "التفاصيل والهدّافون"}
+        </button>
+        <button
+          onClick={() => togglePin({ id: m.id, home: m.home.name, away: m.away.name })}
+          className={cn("h-9 px-4 rounded-full border text-xs font-bold focusable flex items-center gap-1", isPinned ? "bg-emerald-500 text-black border-emerald-500" : "bg-white/5 border-white/10 hover:bg-white/10")}
+          title="عرض المباراة كجزيرة عائمة"
+        >
+          <Pin className="w-3.5 h-3.5" /> {isPinned ? "مثبّتة في الجزيرة" : "تثبيت كجزيرة"}
+        </button>
+      </div>
     </div>
   );
 }

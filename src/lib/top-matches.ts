@@ -1,7 +1,7 @@
-import { omanDate } from "@/lib/oman-time";
+import { footballDay } from "@/lib/oman-time";
 import { EXTRA_SOURCES } from "@/lib/match-sources-extra";
 import {
-  BROWSER_HEADERS, build, getJson, importanceOf, leagueWeightByName, num, pickTop, shiftedDash, shiftedYmd,
+  BROWSER_HEADERS, build, getJson, importanceOf, leagueWeightByName, num, pickTop, sameTeam, shiftedDash, shiftedYmd,
   type SourceAttempt, type TopMatch, type TopMatchesResult,
 } from "@/lib/match-core";
 import { omanTime } from "@/lib/oman-time";
@@ -182,15 +182,17 @@ export function map365Game(g: any): TopMatch | null {
 async function from365(date: string): Promise<TopMatch[]> {
   const [y, m, d] = date.split("-");
   const dmy = `${d}/${m}/${y}`; // 365Scores wants DD/MM/YYYY
-  const url = `https://webws.365scores.com/web/games/allscores/?appTypeId=5&langId=1&timezoneName=Asia/Muscat&userCountryId=1&startDate=${dmy}&endDate=${dmy}&sports=1&showOdds=false`;
+  const next = shiftedYmd(date, 1); // the football day runs until 05:00 the next morning
+  const dmyNext = `${next.slice(6)}/${next.slice(4, 6)}/${next.slice(0, 4)}`;
+  const url = `https://webws.365scores.com/web/games/allscores/?appTypeId=5&langId=1&timezoneName=Asia/Muscat&userCountryId=1&startDate=${dmy}&endDate=${dmyNext}&sports=1&showOdds=false`;
   const json = await getJson(url, BROWSER_HEADERS("https://www.365scores.com"));
   return ((json?.games ?? []) as any[]).map(map365Game).filter(Boolean) as TopMatch[];
 }
 
 export const SOURCES: { name: string; kind?: string; run: (date: string) => Promise<TopMatch[]> }[] = [
   { name: "espn", run: fromEspn },
-  { name: "sofascore", run: fromSofascore },
   { name: "365scores", run: from365 },
+  { name: "sofascore", run: fromSofascore },
   { name: "thesportsdb", run: fromSportsDb },
   ...EXTRA_SOURCES,
 ];
@@ -202,17 +204,21 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
   });
 }
 
-type Run = { attempt: SourceAttempt; top: TopMatch[]; total: number; priority: number };
+type Run = { attempt: SourceAttempt; top: TopMatch[]; day: TopMatch[]; total: number; priority: number };
 
 const CACHE_TTL_MS = 60_000;
+const LIVE_CACHE_TTL_MS = 20_000; // while something is live, refresh faster
 const GRACE_MS = 2500; // after a source already filled the list, wait this long for the others, then decide
 const cache = new Map<string, { at: number; value: TopMatchesResult }>();
 
-export async function getTopMatchesToday(limit = 10, only?: string, includeAll = false): Promise<TopMatchesResult> {
-  const date = omanDate();
-  const key = `${date}|${limit}|${only ?? ""}|${includeAll}`;
+/**
+ * @param teams team names whose matches today must be included even if they aren't "important" (favourite teams)
+ */
+export async function getTopMatchesToday(limit = 10, only?: string, includeAll = false, teams: string[] = []): Promise<TopMatchesResult> {
+  const date = footballDay(); // until 05:00 Oman time this is still yesterday's football day
+  const key = `${date}|${limit}|${only ?? ""}|${includeAll}|${teams.join(",")}`;
   const hit = cache.get(key);
-  if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.value;
+  if (hit && Date.now() - hit.at < (hit.value.matches.some(m => m.status === "live") ? LIVE_CACHE_TTL_MS : CACHE_TTL_MS)) return hit.value;
 
   const chosen = only ? SOURCES.filter(s => s.name === only) : SOURCES;
   if (!chosen.length) throw new Error(`unknown source "${only}"`);
@@ -221,11 +227,11 @@ export async function getTopMatchesToday(limit = 10, only?: string, includeAll =
     const t0 = Date.now();
     try {
       // Sources use different day boundaries, so each returns a 3-day window and we filter by Oman date here.
-      const { total, top } = pickTop(await withTimeout(src.run(date), 25000), date, limit);
+      const { total, top, day } = pickTop(await withTimeout(src.run(date), 25000), date, limit);
       const important = includeAll ? top : top.filter(m => m.importance > 0);
-      return { attempt: { source: src.name, kind: src.kind, ok: true, ms: Date.now() - t0, total, important: important.length }, top: important, total, priority };
+      return { attempt: { source: src.name, kind: src.kind, ok: true, ms: Date.now() - t0, total, important: important.length }, top: important, day, total, priority };
     } catch (e: any) {
-      return { attempt: { source: src.name, kind: src.kind, ok: false, ms: Date.now() - t0, total: 0, important: 0, error: e?.message || "failed" }, top: [], total: 0, priority };
+      return { attempt: { source: src.name, kind: src.kind, ok: false, ms: Date.now() - t0, total: 0, important: 0, error: e?.message || "failed" }, top: [], day: [], total: 0, priority };
     }
   };
 
@@ -238,7 +244,13 @@ export async function getTopMatchesToday(limit = 10, only?: string, includeAll =
       runOne(src, priority).then(r => {
         finished.push(r);
         pending--;
-        if (r.attempt.ok && r.top.length >= limit && !grace) grace = setTimeout(resolve, GRACE_MS);
+        // decide early once the preferred source (365Scores) has answered with matches, or - if it is out of the
+        // race (not chosen / already failed) - once any source has filled the list
+        const pref = finished.find(f => f.attempt.source === "365scores");
+        const prefOut = !chosen.some(c => c.name === "365scores") || (pref && !(pref.attempt.ok && pref.top.length > 0));
+        const ready = (r.attempt.source === "365scores" && r.attempt.ok && r.top.length > 0)
+          || (prefOut && finished.some(f => f.attempt.ok && f.top.length >= limit));
+        if (ready && !grace) grace = setTimeout(resolve, GRACE_MS);
         if (pending === 0) { if (grace) clearTimeout(grace); resolve(); }
       });
     });
@@ -255,13 +267,19 @@ export async function getTopMatchesToday(limit = 10, only?: string, includeAll =
   }
   // Best = highest total importance of its top matches, then most matches overall, then the preferred source order.
   const quality = (r: Run) => r.top.reduce((n, m) => n + m.importance, 0);
-  const best = [...working].sort((a, b) => quality(b) - quality(a) || b.total - a.total || a.priority - b.priority)[0];
+  // 365Scores is preferred whenever it answered with matches (live scores, channels, Arabic-region coverage);
+  // otherwise the source with the most important matches wins.
+  const preferred = working.find(r => r.attempt.source === "365scores" && r.top.length > 0);
+  const best = preferred ?? [...working].sort((a, b) => quality(b) - quality(a) || b.total - a.total || a.priority - b.priority)[0];
   const value: TopMatchesResult = {
     date,
     timezone: "Asia/Muscat",
     source: best.attempt.source,
     total: best.total,
-    matches: best.top,
+    // Favourite teams' matches are always included, then sorted with the rest by importance and kick-off.
+    matches: [...best.top, ...best.day.filter(m => !best.top.some(t => t.id === m.id) && teams.some(t => sameTeam(t, m.home.name) || sameTeam(t, m.away.name)))]
+      .map(m => teams.some(t => sameTeam(t, m.home.name) || sameTeam(t, m.away.name)) ? { ...m, favorite: true } : m)
+      .sort((a, b) => (b.status === "live" ? 1 : 0) - (a.status === "live" ? 1 : 0) || b.importance - a.importance || a.timestamp - b.timestamp),
     attempts,
     fetchedAt: new Date().toISOString(),
   };

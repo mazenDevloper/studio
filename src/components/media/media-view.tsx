@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { 
-  Plus, Loader2, X, List, Youtube, Star, Mic, Layers, Sparkles, Clock, Bookmark, Trash2, RefreshCw, CloudDownload, Trophy, Baby, Library, FolderHeart, CalendarDays, Send, Edit3, Save, Search, Calendar, BookOpen, Music, ExternalLink, ChevronRight, ChevronLeft, Headset, RadioTower
+  Plus, Loader2, X, List, Youtube, Star, Mic, Layers, Sparkles, Clock, Bookmark, Trash2, RefreshCw, CloudDownload, Trophy, Baby, Library, FolderHeart, CalendarDays, Send, Edit3, Save, Search, Calendar, BookOpen, Music, ExternalLink, ChevronRight, ChevronLeft, Headset, RadioTower, Play
 } from "lucide-react";
 import { useMediaStore, YouTubeChannel, YouTubeVideo } from "@/lib/store";
 import { fetchChannelVideos, searchYouTubeVideos, fetchYouTubePlaylistVideos } from "@/lib/youtube";
@@ -72,7 +72,8 @@ export function MediaView() {
     selectedChannel, setSelectedChannel, channelVideos, setChannelVideos,
     favoriteReciters, favoritePodcasts, incrementReciterClick, playlists, addPlaylist, removePlaylist,
     setActiveIptv, favoriteIptvChannels, fetchSpecificBin, mapSettings, updateMapSettings, syncMasterBin,
-    savedVideos, setActiveAudio, addChannel, addPodcast, removePodcast
+    savedVideos, setActiveAudio, addChannel, addPodcast, removePodcast,
+    continueWatching, removeContinue, updateVideoProgress, ensureScreenData
   } = useMediaStore();
 
   const [search, setSearch] = useState("");
@@ -328,6 +329,14 @@ export function MediaView() {
     performSearch(query);
   };
 
+  // If the media lists are still empty shortly after opening (first cloud fetch failed/slow), fetch them again.
+  useEffect(() => {
+    const t1 = setTimeout(() => ensureScreenData('/media'), 1500);
+    const t2 = setTimeout(() => ensureScreenData('/media'), 6000);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleDirectPlaylistFetch = async () => { 
     setIsFetchingPlaylists(true); 
     try { 
@@ -456,6 +465,34 @@ export function MediaView() {
 
         {!selectedChannel && !selectedPlaylist && searchResults.length === 0 && (
           <div className="space-y-12">
+            {continueWatching.length > 0 && (
+              <section data-row-id="row-continue" className="py-4">
+                <div className="px-10 mb-6 flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center shadow-glow"><Play className="w-6 h-6 text-white" /></div>
+                  <h2 className="text-2xl font-black text-white uppercase tracking-widest">استكمال المشاهدة</h2>
+                </div>
+                <div className={horizontalListClass}>
+                  {continueWatching.map((c, i) => (
+                    <div key={c.video.id} className="w-72 shrink-0 relative group">
+                      <button
+                        onClick={() => { updateVideoProgress(c.video.id, c.progress); setActiveVideo(c.video); }}
+                        className="w-full text-right rounded-[2rem] overflow-hidden bg-zinc-900 border-2 border-emerald-500/20 focusable"
+                        tabIndex={0} data-nav-id={`continue-item-${i}`}
+                      >
+                        <div className="relative aspect-video">
+                          <img src={c.video.thumbnail} className="w-full h-full object-cover" alt="" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
+                          <span className="absolute bottom-2 left-3 text-xs font-black text-emerald-300 tabular-nums" dir="ltr">⏯ {Math.floor(c.progress / 60)}:{String(c.progress % 60).padStart(2, "0")}</span>
+                        </div>
+                        <p className="p-3 text-sm font-black text-white line-clamp-2">{c.video.title}</p>
+                      </button>
+                      <button onClick={() => removeContinue(c.video.id)} className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/70 text-white/70 hover:text-red-400 flex items-center justify-center focusable" title="إزالة"><X className="w-4 h-4" /></button>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
             <section data-row-id="row-all-playlists" className="py-4">
               <div className="px-10 mb-6 flex items-center gap-4">
                 <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center shadow-glow"><Library className="w-6 h-6 text-white" /></div>
@@ -543,17 +580,17 @@ export function MediaView() {
                 <div className="w-8 h-8 rounded-lg bg-red-600 flex items-center justify-center"><Youtube className="w-5 h-5 text-white" /></div>
                 <h2 className="text-lg font-black text-white/60">الاشتراكات السيادية</h2>
               </div>
-              <div className={cn(horizontalListClass, "gap-3 py-2")}>
+              <div className={cn(horizontalListClass, "gap-1 py-2")}>
                   {favoriteChannels.map((ch, idx) => (
                     <button 
                       key={idx} 
                       onClick={() => { setSelectedChannel(ch); setSelectedPlaylist(null); setSearchResults([]); setIsSidebarShrinked(true); }}
-                      className="flex flex-col items-center gap-2 px-2 py-2 rounded-2xl focusable shrink-0 transition-all active:scale-95"
+                      className="flex flex-col items-center gap-2 px-1 py-2 rounded-2xl focusable shrink-0 transition-all active:scale-95"
                       tabIndex={0}
                       data-nav-id={`mobile-sub-avatar-${idx}`}
                     >
-                      <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-primary/20 shadow-lg"><img src={ch.image} className="w-full h-full object-cover" alt="" /></div>
-                      <span className="text-[7px] font-black text-white/40 truncate w-14 text-center uppercase tracking-tighter">{ch.name}</span>
+                      <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-primary/30 shadow-2xl"><img src={ch.image} className="w-full h-full object-cover" alt="" /></div>
+                      <span className="text-[10px] font-black text-white/70 truncate w-24 text-center">{ch.name}</span>
                     </button>
                   ))}
               </div>

@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { HlsVideo } from "@/components/iptv/hls-video";
 import { isStreamUrl } from "@/lib/m3u";
+import { getYoutubeTime } from "@/components/media/youtube-background-bridge";
 
 /**
  * GlobalVideoPlayer v1280.0 - External Popup Protocol
@@ -26,7 +27,8 @@ export function GlobalVideoPlayer() {
     isPlayerControlsExpanded, setIsPlayerControlsExpanded, cyclePlayerMode,
     isPlayerPlaylistOpen, setIsPlayerPlaylistOpen,
     videoProgress, dockSide, playlists, addVideoToPlaylist, isPlaying, setIsPlaying,
-    favoriteIptvChannels, toggleFavoriteIptvChannel, nextIptvChannel, prevIptvChannel, iptvPlaylist, iptvPlaylistIndex
+    favoriteIptvChannels, toggleFavoriteIptvChannel, nextIptvChannel, prevIptvChannel, iptvPlaylist, iptvPlaylistIndex,
+    continueWatching, saveForContinue
   } = useMediaStore();
   
   const { toast } = useToast();
@@ -162,6 +164,7 @@ export function GlobalVideoPlayer() {
   const isStream = isStreamUrl(activeIptv?.url);
   const hasIptvList = !!activeIptv && iptvPlaylist.length > 1;
 
+  const isInContinue = activeVideo ? continueWatching.some(c => c.video.id === activeVideo.id) : false;
   const isSaved = activeVideo ? savedVideos.some(v => v.id === activeVideo.id) : false;
   const isWebType = activeIptv?.type === 'web' || !!activeIptv;
 
@@ -196,7 +199,7 @@ export function GlobalVideoPlayer() {
   const popupSideClass = dockSide === 'left' ? "right-12" : "left-12";
   // Side lists sit next to the car dock
   const dockSideEdgeClass = dockSide === 'left' ? "left-0 border-r" : "right-0 border-l";
-  const ctrlBtnClass = "rounded-full flex items-center justify-center focusable transition-all shadow-glow active:scale-90 w-12 h-12 min-[968px]:w-14 min-[968px]:h-14 max-[968px]:w-16 max-[968px]:h-16";
+  const ctrlBtnClass = "rounded-full flex items-center justify-center focusable transition-all shadow-glow active:scale-90 w-11 h-11 min-[968px]:w-12 min-[968px]:h-12 [&_svg]:w-5 [&_svg]:h-5";
 
   const effectiveCountdown = isEnded ? 5 - postEndTimer : null;
 
@@ -208,9 +211,9 @@ export function GlobalVideoPlayer() {
 
       <div className={cn(
         "fixed z-[99999] shadow-[0_0_120px_rgba(0,0,0,0.9)] transition-all duration-500 overflow-hidden pointer-events-auto", 
-        isMinimized ? "bottom-8 left-1/2 -translate-x-1/2 w-[520px] h-24 rounded-[2.5rem] premium-glass bg-black/80 border border-white/20" : 
+        isMinimized ? "bottom-8 max-[968px]:bottom-[100px] left-1/2 -translate-x-1/2 w-[520px] max-w-[92vw] h-24 rounded-[2.5rem] premium-glass bg-black/80 border border-white/20" : 
         isFullScreen ? "inset-0 w-full h-full bg-black flex flex-col" : 
-        `bottom-12 ${popupSideClass} w-[35vw] h-[40vh] premium-glass rounded-[3.5rem] bg-black/95 border-2 border-white/10 flex`
+        `bottom-32 max-[968px]:bottom-[190px] ${popupSideClass} w-[50vw] h-auto aspect-video premium-glass rounded-[2.5rem] bg-black/95 border-2 border-white/10 flex`
       )}>
         <div className={cn("relative flex-1 transition-opacity duration-500 flex flex-col", isMinimized ? "opacity-0 pointer-events-none absolute -top-[9999px]" : "opacity-100")}>
            <div className="flex-1 relative">
@@ -352,8 +355,8 @@ export function GlobalVideoPlayer() {
       </div>
 
       {!isMinimized && (
-        <div className="fixed z-[100000] flex items-center transition-all duration-500 left-1/2 -translate-x-1/2 bottom-0 scale-[0.95] origin-bottom pb-8">
-          <div className="flex items-center gap-3 bg-black/40 backdrop-blur-3xl p-2 rounded-full border border-white/10 shadow-[0_0_100px_rgba(0,0,0,0.7)] transition-all">
+        <div className="fixed z-[100000] flex items-center transition-all duration-500 left-1/2 -translate-x-1/2 bottom-0 max-[968px]:bottom-[80px] scale-[0.9] max-[968px]:scale-[0.85] origin-bottom pb-6 max-[968px]:pb-3 max-w-[100vw]">
+          <div className="flex items-center gap-2 bg-black/40 backdrop-blur-3xl p-1.5 rounded-full border border-white/10 shadow-[0_0_100px_rgba(0,0,0,0.7)] transition-all">
             <div className="relative group">
               <button onClick={handleClose} data-nav-id="player-close-btn" className={cn(ctrlBtnClass, "bg-red-600/40 text-red-500 border-2 border-red-500/20")}>
                 <X className="w-6 h-6" />
@@ -362,10 +365,10 @@ export function GlobalVideoPlayer() {
             </div>
             
             {isPlayerControlsExpanded && (
-              <div className="flex items-center gap-3 animate-in slide-in-from-left-4 duration-300">
+              <div className="flex items-center gap-2 animate-in slide-in-from-left-4 duration-300">
                 {isWebType && (
-                  <div className="flex items-center gap-3 bg-white/5 rounded-full px-5 h-12 min-[968px]:h-14 max-[968px]:h-16 border-2 border-white/10 group focus-within:border-emerald-500/40 transition-all">
-                    <Input value={urlInput} onChange={(e) => setUrlInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handlePutToIframe()} placeholder="URL..." className="bg-transparent border-none text-[16px] font-black text-white p-0 h-full w-48 focus-visible:ring-0" />
+                  <div className="flex items-center gap-2 bg-white/5 rounded-full px-4 h-11 min-[968px]:h-12 border-2 border-white/10 group focus-within:border-emerald-500/40 transition-all">
+                    <Input value={urlInput} onChange={(e) => setUrlInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handlePutToIframe()} placeholder="URL..." className="bg-transparent border-none text-[15px] font-black text-white p-0 h-full w-28 min-[968px]:w-40 focus-visible:ring-0" />
                     <button onClick={handlePutToIframe} className="w-10 h-10 rounded-xl bg-emerald-600/20 text-emerald-400 flex items-center justify-center"><ChevronRight className="w-5 h-5" /></button>
                   </div>
                 )}
@@ -434,6 +437,19 @@ export function GlobalVideoPlayer() {
                         <button onClick={() => activeVideo && toggleSaveVideo(activeVideo)} className="w-full text-right p-5 rounded-3xl hover:bg-white/10 flex items-center justify-between text-white text-lg font-black transition-all">
                            <span>المفضلات العامة ⭐</span>
                            {isSaved && <BookmarkCheck className="w-6 h-6 text-accent" />}
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (!activeVideo) return;
+                            const t = getYoutubeTime(activeVideo.id) || localElapsed || videoProgress[activeVideo.id] || 0;
+                            saveForContinue(activeVideo, t);
+                            const mm = Math.floor(t / 60), ss = Math.floor(t % 60).toString().padStart(2, "0");
+                            toast({ title: "تم الحفظ للاستكمال", description: `سيكمل من ${mm}:${ss}` });
+                          }}
+                          className="w-full text-right p-5 rounded-3xl hover:bg-white/10 flex items-center justify-between text-white text-lg font-black transition-all"
+                        >
+                           <span>حفظ للاستكمال ⏯</span>
+                           {isInContinue && <BookmarkCheck className="w-6 h-6 text-emerald-400" />}
                         </button>
                         {playlists.map(p => (
                           <button key={p.id} onClick={() => { if(activeVideo) { addVideoToPlaylist(p.id, activeVideo); toast({ title: "تم الحفظ", description: `تمت الإضافة إلى قائمة ${p.name}` }); } }} className="w-full text-right p-5 rounded-3xl hover:bg-indigo-600 flex items-center gap-5 text-white text-lg font-black transition-all group/item"><div className="w-10 h-10 rounded-2xl bg-white/5 flex items-center justify-center group-hover/item:bg-white/20"><ListPlus className="w-6 h-6" /></div><span className="truncate">{p.name}</span></button>

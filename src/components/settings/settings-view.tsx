@@ -2,6 +2,10 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { ScrollText as TabScrollText, Bell as TabBell, Sparkles as TabSparkles, Youtube as TabYoutube, Tv as TabTv, Image as TabImage, Mic as TabMic, FolderOpen as TabFolderOpen, Gamepad2 as TabGamepad2 } from "lucide-react";
+
+/** Settings tab look: icon + label, the active tab is clearly highlighted */
+const TAB_CLASS = "rounded-full px-5 h-full shrink-0 gap-2 font-black text-sm transition-none focusable text-white/60 data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-glow";
 import { useMediaStore, Reminder, Manuscript, MappingContext, AppAction, ManuscriptWord, YouTubeChannel, IptvChannel, Playlist, updateBin } from "@/lib/store";
 import { 
    Settings, Bell, Trash2, Edit2, Plus, Minus, Keyboard, Timer, ArrowRightLeft, 
@@ -151,7 +155,7 @@ export function SettingsView() {
     keyMappings, removeSpecificKeyMapping, setKeyMapping,
     favoriteReciters, removeReciter, updateReciterName, favoriteIptvChannels, toggleFavoriteIptvChannel,
     favoriteChannels, removeChannel, toggleStarChannel, addChannel, addReciter, addIptvChannel,
-    fetchPriorityData, fetchSpecificBin, syncMasterBin, saveRecitersReorder, saveChannelsReorder, saveIptvReorder,
+    fetchPriorityData, fetchSpecificBin, syncMasterBin, saveRecitersAndPodcasts, saveChannelsReorder, saveIptvReorder,
     customFonts, addCustomFont, saveManuscriptsReorder, setIsRecordingKey, isRecordingKey, recordingAction, setRecordingAction,
     manuscriptScales, updateManuscriptScale, isReorderMode, toggleReorderMode,
     customWallBackgrounds, addCustomWallBackground, removeCustomWallBackground,
@@ -337,7 +341,7 @@ export function SettingsView() {
   const handleSaveReciterName = async (id: string) => {
     updateReciterName(id, reciterNameInput);
     setEditingReciterId(null);
-    await saveRecitersReorder();
+    await saveRecitersAndPodcasts(); // was calling a store function that does not exist (renaming a reciter crashed)
     toast({ title: "تم تحديث الاسم" });
   };
 
@@ -385,7 +389,7 @@ export function SettingsView() {
 
   const handleSaveManuscript = async () => {
     if (!manuscriptInput && manuscriptType === 'text') return;
-    const pngDataUrl = generateManuscriptPng(currentWords, selectedFont);
+    const pngDataUrl = await generateManuscriptPng(currentWords, selectedFont);
     const item: Manuscript = { id: editingManuscriptId || Date.now().toString(), type: manuscriptType, content: manuscriptInput, fontFamily: selectedFont, words: currentWords, pngDataUrl, x: 50, y: 50, scale: 1.0 };
     if (editingManuscriptId) updateManuscript(editingManuscriptId, item);
     else addManuscript(item);
@@ -393,7 +397,11 @@ export function SettingsView() {
     toast({ title: "تم حفظ المخطوطة السيادية" });
   };
 
-  const generateManuscriptPng = (words: ManuscriptWord[], fontFamily: string): string => {
+  const generateManuscriptPng = async (words: ManuscriptWord[], fontFamily: string): Promise<string> => {
+    // Family names with spaces ("Aref Ruqaa") must be quoted in the canvas font shorthand, otherwise the browser
+    // rejects it and draws with its default font; and the font has to be loaded before drawing.
+    const fam = `"${fontFamily.replace(/"/g, "")}"`;
+    try { await document.fonts.load(`bold 100px ${fam}`, words.map(w => w.text).join(" ") || "ا"); } catch {}
     const canvas = document.createElement("canvas");
     canvas.width = 1200; canvas.height = 900;
     const ctx = canvas.getContext("2d");
@@ -402,7 +410,7 @@ export function SettingsView() {
     ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillStyle = mapSettings.manuscriptColor;
     words.forEach(word => {
       const fontSize = 100 * word.scale;
-      ctx.font = `bold ${fontSize}px ${fontFamily}`;
+      ctx.font = `bold ${fontSize}px ${fam}, serif`;
       ctx.fillText(word.text, (word.x / 100) * canvas.width, (word.y / 100) * canvas.height);
     });
     return canvas.toDataURL("image/png");
@@ -478,16 +486,16 @@ export function SettingsView() {
       </header>
 
       <Tabs defaultValue="reminders" className="w-full">
-        <TabsList className="bg-white/5 p-1 rounded-full border border-white/10 h-20 mb-12 flex justify-around overflow-x-auto no-scrollbar shadow-2xl">
-          <TabsTrigger value="manuscripts" className="rounded-full px-8 h-full font-black text-sm transition-none focusable">المخطوطات</TabsTrigger>
-          <TabsTrigger value="reminders" className="rounded-full px-8 h-full font-black text-sm transition-none focusable">التذكيرات</TabsTrigger>
-          <TabsTrigger value="azkar" className="rounded-full px-8 h-full font-black text-sm transition-none focusable">الأذكار</TabsTrigger>
-          <TabsTrigger value="subscriptions" className="rounded-full px-8 h-full font-black text-sm transition-none focusable">الاشتراكات</TabsTrigger>
-          <TabsTrigger value="iptv" className="rounded-full px-8 h-full font-black text-sm transition-none focusable">قنوات IPTV</TabsTrigger>
-          <TabsTrigger value="backgrounds" className="rounded-full px-8 h-full font-black text-sm transition-none focusable">الخلفيات</TabsTrigger>
-          <TabsTrigger value="reciters" className="rounded-full px-8 h-full font-black text-sm transition-none focusable">القراء</TabsTrigger>
-          <TabsTrigger value="playlists" className="rounded-full px-8 h-full font-black text-sm transition-none focusable">المجلدات</TabsTrigger>
-          <TabsTrigger value="buttonmap" className="rounded-full px-8 h-full font-black text-sm transition-none focusable">التحكم</TabsTrigger>
+        <TabsList className="bg-white/5 p-1.5 rounded-full border border-white/10 h-16 mb-10 flex justify-start min-[1200px]:justify-around gap-1 overflow-x-auto no-scrollbar shadow-2xl w-full">
+          <TabsTrigger value="manuscripts" className={TAB_CLASS}><TabScrollText className="w-4 h-4" />المخطوطات</TabsTrigger>
+          <TabsTrigger value="reminders" className={TAB_CLASS}><TabBell className="w-4 h-4" />التذكيرات</TabsTrigger>
+          <TabsTrigger value="azkar" className={TAB_CLASS}><TabSparkles className="w-4 h-4" />الأذكار</TabsTrigger>
+          <TabsTrigger value="subscriptions" className={TAB_CLASS}><TabYoutube className="w-4 h-4" />الاشتراكات</TabsTrigger>
+          <TabsTrigger value="iptv" className={TAB_CLASS}><TabTv className="w-4 h-4" />قنوات IPTV</TabsTrigger>
+          <TabsTrigger value="backgrounds" className={TAB_CLASS}><TabImage className="w-4 h-4" />الخلفيات</TabsTrigger>
+          <TabsTrigger value="reciters" className={TAB_CLASS}><TabMic className="w-4 h-4" />القراء</TabsTrigger>
+          <TabsTrigger value="playlists" className={TAB_CLASS}><TabFolderOpen className="w-4 h-4" />المجلدات</TabsTrigger>
+          <TabsTrigger value="buttonmap" className={TAB_CLASS}><TabGamepad2 className="w-4 h-4" />التحكم</TabsTrigger>
         </TabsList>
 
         <TabsContent value="manuscripts" className="space-y-8 animate-in fade-in duration-0">
