@@ -73,14 +73,27 @@
 
 .no-scrollbar::-webkit-scrollbar { display: none; }
 
-/* --- HYPER-SMOOTH TOUCH SCROLLING --- */
+/* --- TOUCH SCROLLING ---
+   touch-action used to be "pan-x" here, which forbids vertical finger scrolling whenever the gesture starts on a
+   horizontal list or a sidebar: the page "sticks". Allow both directions and let the browser pick by gesture.
+   (No overscroll-behavior here: a vertical swipe on a horizontal row must chain to the page scroller.) */
 [data-nav-zone="content"] .overflow-x-auto,
 [data-nav-zone="sidebar"] .overflow-y-auto,
-.overflow-x-auto {
-    scroll-behavior: smooth;
+.overflow-x-auto,
+.overflow-y-auto,
+.overflow-auto {
     -webkit-overflow-scrolling: touch;
-    touch-action: pan-x;
+    touch-action: pan-x pan-y;
     pointer-events: auto !important;
+}
+
+/* Swiping across a thumbnail must scroll, not start a native image drag or a text selection */
+img { -webkit-user-drag: none; user-drag: none; user-select: none; -webkit-user-select: none; }
+.focusable:not(input):not(textarea) { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+
+/* Touch screens: don't scale/jump an item just because a finger touched it (keyboard/remote focus keeps the effect) */
+@media (hover: none) and (pointer: coarse) {
+  .focusable:focus:not(:focus-visible) { transform: none !important; }
 }
 
 /* --- SOVEREIGN THMANYAH TYPOGRAPHY ENGINE --- */

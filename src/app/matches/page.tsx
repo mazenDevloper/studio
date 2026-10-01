@@ -113,7 +113,8 @@ function MatchCard({ m }: { m: TopMatch }) {
           {live ? `مباشر ${m.elapsed ?? ""}'` : m.status === "finished" ? "انتهت" : "قريباً"}
         </span>
       </div>
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+      {/* LTR so the home team sits on the left of "home - away" (in RTL it ended up on the right, reversing the score) */}
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3" dir="ltr">
         <Team name={m.home.name} logo={m.home.logo} />
         <div className="text-center min-w-[72px]">
           {started
