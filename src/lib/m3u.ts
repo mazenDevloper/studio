@@ -23,7 +23,8 @@ export function parseM3u(text: string): M3uChannel[] {
     if (!line) continue;
     if (line.startsWith("#EXTINF")) {
       const attr = (key: string) => line.match(new RegExp(`${key}="([^"]*)"`, "i"))?.[1];
-      const name = line.slice(line.lastIndexOf(",") + 1).trim();
+      // the title follows the first comma outside quoted attributes (titles may contain commas)
+      const name = line.slice(line.replace(/"[^"]*"/g, q => " ".repeat(q.length)).indexOf(",") + 1).trim();
       meta = { name: name || attr("tvg-name") || "Channel", logo: attr("tvg-logo"), group: attr("group-title") };
     } else if (line.startsWith("#EXTGRP:") && meta) {
       meta.group = meta.group || line.slice(8).trim();
@@ -60,4 +61,15 @@ export function xtreamLiveUrl(c: XtreamCreds, streamId: string | number): string
 
 export function xtreamPlaylistUrl(c: XtreamCreds): string {
   return `${c.host.replace(/\/+$/, "")}/get.php?username=${encodeURIComponent(c.username)}&password=${encodeURIComponent(c.password)}&type=m3u_plus&output=m3u8`;
+}
+
+/** Browsers can't play raw MPEG-TS; Xtream serves the same live stream as HLS. */
+export function toPlayableUrl(url: string): string {
+  return url.replace(/(\/live\/[^/]+\/[^/]+\/\d+)\.ts(\?.*)?$/i, "$1.m3u8$2");
+}
+
+/** True when the URL points at a media stream (played with hls.js / <video>) rather than a web page. */
+export function isStreamUrl(url?: string): boolean {
+  if (!url) return false;
+  return /\.(m3u8?|ts|mp4|mkv|webm)(\?|$)/i.test(url) || /\/live\/[^/]+\/[^/]+\/\d+/.test(url) || url.includes("m3u8");
 }
