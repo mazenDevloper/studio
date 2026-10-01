@@ -5,11 +5,12 @@ import { useState, useEffect, useMemo } from "react";
 import { useMediaStore, IptvChannel } from "@/lib/store";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Tv, List, ChevronRight, Loader2, X, Star, Zap, Search, ArrowRightLeft } from "lucide-react";
+import { Tv, List, ChevronRight, Loader2, X, Star, Zap, Search, ArrowRightLeft, Link2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { getIptvCategories, getIptvChannels } from "@/app/actions/iptv";
 import { cn } from "@/lib/utils";
 import { ShortcutBadge } from "@/components/layout/car-dock";
+import { M3uPlayerPopup } from "@/components/iptv/m3u-player-popup";
 
 /**
  * IptvView v115.0 - Free-Grid Navigation Hub
@@ -26,6 +27,7 @@ export function IptvView() {
   const [selectedCat, setSelectedCat] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
+  const [linkOpen, setLinkOpen] = useState(false);
 
   const isDockLeft = dockSide === 'left';
 
@@ -112,6 +114,9 @@ export function IptvView() {
               <ArrowRightLeft className="w-4 h-4 ml-2" /> {isReorderMode ? "إيقاف الترتيب" : "ترتيب المفضلة"}
             </Button>
           )}
+          <Button onClick={() => setLinkOpen(true)} variant="outline" className="rounded-full focusable h-12 px-6 bg-white/5" data-nav-id="iptv-link-btn">
+            <Link2 className="w-4 h-4 ml-2" /> رابط
+          </Button>
           <Button onClick={() => fetchChannels('direct')} variant="outline" className={cn("rounded-full focusable h-12 px-6", selectedCat === 'direct' ? "bg-emerald-500 text-black shadow-glow" : "bg-white/5")} data-nav-id="iptv-fav-toggle">
             <Zap className="w-4 h-4 ml-2" /> المفضلة
           </Button>
@@ -186,6 +191,7 @@ export function IptvView() {
           </div>
         </div>
       )}
+      <M3uPlayerPopup open={linkOpen} onOpenChange={setLinkOpen} />
     </div>
   );
 }
