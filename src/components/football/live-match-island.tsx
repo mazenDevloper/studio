@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
-import { useLiveMatches, useLiveMatchesStore } from "@/lib/live-matches";
+import { useLiveMatches } from "@/lib/live-matches";
 import { useMediaStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { X, Eye, EyeOff, Bell, Clock, Timer, Check, Trophy, Play, ChevronDown, ChevronUp, Zap, Cloud, Bookmark } from "lucide-react";
@@ -24,6 +24,8 @@ interface AlertItem {
   homeName?: string;
   awayName?: string;
   matchTimeStr?: string;
+  /** live minute (or "انتهت") shown under the score */
+  minuteStr?: string;
 }
 
 /**
@@ -43,7 +45,9 @@ export function LiveMatchIsland() {
   const [showSyncIsland, setShowSyncIsland] = useState(true);
   // Live scores for today's matches; favourite teams' matches are always included in the feed.
   const favoriteNames = useMemo(() => (favoriteTeams || []).map(t => t?.name).filter(Boolean) as string[], [favoriteTeams]);
-  const { data: liveFeed, pinned, togglePin, celebrating } = useLiveMatches(favoriteNames);
+  const { data: liveFeed, celebrating } = useLiveMatches(favoriteNames);
+  const pinned = useMediaStore(s => s.pinnedMatches) || [];
+  const togglePin = useMediaStore(s => s.togglePinnedMatch);
 
   useEffect(() => {
     setMounted(true);
@@ -192,6 +196,7 @@ export function LiveMatchIsland() {
         homeName: m.home.name,
         awayName: m.away.name,
         matchTimeStr: started ? `${m.score.home ?? 0}-${m.score.away ?? 0}` : convertTo12Hour(m.omanTime),
+        minuteStr: m.status === "live" ? (m.elapsed ? `${m.elapsed}'` : "مباشر") : m.status === "finished" ? "انتهت" : undefined,
       });
     }
 
@@ -245,7 +250,7 @@ export function LiveMatchIsland() {
                    <div key={alert.id} onClick={() => setIsMatchCollapsed(!isMatchCollapsed)} className={cn("pointer-events-auto premium-glass rounded-full flex items-center animate-in slide-in-from-top-2 border transition-all relative group shadow-2xl cursor-pointer", alert.completed ? "bg-emerald-600/60 border-emerald-400" : "border-white/10", isMatchCollapsed ? "min-w-[10rem] h-[4.5rem] gap-0 px-1" : "min-w-[18rem] h-[7.5rem] gap-0 px-2")}>
                      <button onClick={(e) => { e.stopPropagation(); handleAction(alert.id, 'match'); }} className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-black/60 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center pointer-events-auto transition-opacity z-50 border border-white/10 shadow-glow"><X className="w-3.5 h-3.5" /></button>
                      <div className={cn("rounded-full bg-white/5 flex items-center justify-center border border-white/10 overflow-hidden shrink-0 shadow-lg relative", isMatchCollapsed ? "w-12 h-12" : "w-20 h-20")}>{alert.homeLogo ? <img src={alert.homeLogo} className={cn("object-contain drop-shadow-md", isMatchCollapsed ? "w-10 h-10" : "w-16 h-16")} alt="" /> : <Trophy className={cn("text-white/10", isMatchCollapsed ? "w-5 h-5" : "w-8 h-8")} />}{!isMatchCollapsed && <span className="absolute bottom-0 left-0 right-0 bg-black/60 text-[6px] font-black text-white text-center truncate px-1">{alert.homeName || "HOME"}</span>}</div>
-                     <div className={cn("flex-1 flex flex-col items-center justify-center p-0 m-0", isMatchCollapsed ? "min-w-[6rem]" : "min-w-[12rem]")}><div className={cn("w-full p-0 m-0 flex items-center justify-center", isMatchCollapsed ? "h-14" : "h-24")}><GlassNumber text={alert.matchTimeStr || "--:--"} id={`match-${alert.id}`} size={isMatchCollapsed ? "4.5rem" : "5.6rem"} colorClass={alert.isExpired ? "text-emerald-400 animate-pulse" : "text-white"} /></div></div>
+                     <div className={cn("flex-1 flex flex-col items-center justify-center p-0 m-0", isMatchCollapsed ? "min-w-[6rem]" : "min-w-[12rem]")}><div className={cn("w-full p-0 m-0 flex items-center justify-center", isMatchCollapsed ? "h-14" : "h-24")}><GlassNumber text={alert.matchTimeStr || "--:--"} id={`match-${alert.id}`} size={isMatchCollapsed ? "4.5rem" : "5.6rem"} colorClass={alert.isExpired ? "text-emerald-400 animate-pulse" : "text-white"} /></div>{alert.minuteStr && <span className={cn("font-black leading-none tabular-nums -mt-1", isMatchCollapsed ? "text-[0.65rem]" : "text-[0.9rem]", alert.isExpired ? "text-red-400" : "text-white/50")}>{alert.minuteStr}</span>}</div>
                      <div className={cn("rounded-full bg-white/5 flex items-center justify-center border border-white/10 overflow-hidden shrink-0 shadow-lg relative", isMatchCollapsed ? "w-12 h-12" : "w-20 h-20")}>{alert.awayLogo ? <img src={alert.awayLogo} className={cn("object-contain drop-shadow-md", isMatchCollapsed ? "w-10 h-10" : "w-16 h-16")} alt="" /> : <Trophy className={cn("text-white/10", isMatchCollapsed ? "w-5 h-5" : "w-8 h-8")} />}{!isMatchCollapsed && <span className="absolute bottom-0 left-0 right-0 bg-black/60 text-[6px] font-black text-white text-center truncate px-1">{alert.awayName || "AWAY"}</span>}</div>
                    </div>
                  );

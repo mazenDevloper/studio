@@ -76,6 +76,8 @@ export interface IptvChannel {
 }
 
 export interface FavoriteTeam { id: number; name: string; logo: string; }
+/** A match pinned as a floating island (synced to the cloud with the master bin). */
+export interface PinnedMatch { id: string; home: string; away: string; }
 
 export interface ManuscriptWord { id: string; text: string; x: number; y: number; scale: number; }
 
@@ -96,7 +98,7 @@ export type AppAction =
 
 interface MediaState {
   favoriteChannels: YouTubeChannel[]; savedVideos: YouTubeVideo[]; videoProgress: Record<string, number>;
-  favoriteTeams: FavoriteTeam[]; favoriteLeagueIds: number[]; belledMatchIds: string[]; skippedMatchIds: string[];
+  favoriteTeams: FavoriteTeam[]; pinnedMatches: PinnedMatch[]; favoriteLeagueIds: number[]; belledMatchIds: string[]; skippedMatchIds: string[];
   skippedReminderIds: string[]; favoriteIptvChannels: IptvChannel[]; favoriteReciters: YouTubeChannel[];
   favoritePodcasts: YouTubeChannel[];
   iptvPlaylist: IptvChannel[]; iptvPlaylistIndex: number; prayerTimes: any[]; prayerSettings: PrayerSetting[];
@@ -161,6 +163,7 @@ interface MediaState {
   fetchPriorityData: (context: 'dashboard' | 'media' | 'all') => Promise<void>;
   fetchSpecificBin: (id: string) => Promise<void>;
   syncMasterBin: () => Promise<void>;
+  togglePinnedMatch: (m: PinnedMatch) => void;
   saveIptvReorder: () => Promise<void>;
   saveChannelsReorder: () => Promise<void>;
   saveRecitersAndPodcasts: () => Promise<void>;
@@ -234,7 +237,7 @@ const DEFAULT_PRAYER_SETTINGS: PrayerSetting[] = [
 export const useMediaStore = create<MediaState>()(
   persist(
     (set, get) => ({
-      favoriteChannels: [], savedVideos: [], videoProgress: {}, favoriteTeams: [], favoriteLeagueIds: [307, 39, 2, 140, 135], belledMatchIds: [], skippedMatchIds: [], skippedReminderIds: [], favoriteIptvChannels: [], favoriteReciters: [], favoritePodcasts: [], iptvPlaylist: [], iptvPlaylistIndex: 0, prayerTimes: prayerTimesData, prayerSettings: DEFAULT_PRAYER_SETTINGS, reminders: [], generalAzkar: [], customManuscripts: [], manuscriptScales: {}, customFonts: [], customWallBackgrounds: [], playlists: [], isLooping: true,
+      favoriteChannels: [], savedVideos: [], videoProgress: {}, favoriteTeams: [], pinnedMatches: [], favoriteLeagueIds: [307, 39, 2, 140, 135], belledMatchIds: [], skippedMatchIds: [], skippedReminderIds: [], favoriteIptvChannels: [], favoriteReciters: [], favoritePodcasts: [], iptvPlaylist: [], iptvPlaylistIndex: 0, prayerTimes: prayerTimesData, prayerSettings: DEFAULT_PRAYER_SETTINGS, reminders: [], generalAzkar: [], customManuscripts: [], manuscriptScales: {}, customFonts: [], customWallBackgrounds: [], playlists: [], isLooping: true,
       mapSettings: { zoom: 20.0, tilt: 65, carScale: 1.02, backgroundIndex: 0, showManuscriptBg: true, manuscriptBgUrl: "https://www.image2url.com/r2/default/images/1782382707952-d99447c6-bc60-475d-9406-5fd2ef320bd5.png", fontScale: 1.0, manuscriptColor: '#ffffff', showManuscriptOnMoon: true, moonManuIdx: 0, hue: 0, saturation: 100, brightness: 100, winwinUrl: "https://psee.io/9f4ngl", beinUrl: "https://idebsports.ly/matches", omanUrl: "https://player.mangomolo.com/v1/live?id=MTY8&channelid=MTYx&countries=Q0M%3D&filter=DENY&signature=3fd1e8dd84138a41bf33d93afd4a7f09&language=en&app_id=&fullscreen=yes&player_profile=&base_url=aHR0cHM6Ly9heW4ub20vbGl2ZS8xNjEvJUQ5JTgyJUQ5JTg2JUQ4JUE3JUQ4JUE5LSVEOCVCOSVEOSU4NSVEOCVBNyVEOSU4Ni0lRDklODUlRDglQTglRDglQTclRDglQjQlRDglQjE%3D&autoplay=false&vast=true", bein1Url: "https://online.aflam4you.net/zremb472.php/?vid=68&aflam_s=1&aflam_w=360&aflam_w=360&aflam_h=250&aflam_k=18311111", mbc1Url: "https://online.aflam4you.net/zremb472.php?vid=5&aflam_s=1&aflam_w=360&h=250&aflam_k=18311111", invertJoystickX: true, invertJoystickY: true, autoRotateNav90: true },
       displayScale: 1.0, dockScale: 1.0, keyMappings: DEFAULT_CONTEXT_MAPPINGS, activeVideo: null, lastPlayedVideo: null, activeIptv: null, activeAudio: null, activeQuranUrl: "https://quran.com/ar/radio?autoplay=1", playlist: [], playlistIndex: 0, isPlaying: false, isMinimized: false, isFullScreen: false, isPlayerControlsExpanded: false, isPlayerPlaylistOpen: false, gridMode: 'hidden', dockSide: 'left', showIslands: true, autoHideIsland: true, isSidebarShrinked: false, wallPlateType: null, wallPlateData: null, isReorderMode: false, isRecordingKey: false, recordingAction: null, isInitialLoading: true, aiSuggestions: [], pickedUpId: null,
       
@@ -259,6 +262,10 @@ export const useMediaStore = create<MediaState>()(
           else if (binId === JSONBIN_BACKGROUNDS_BIN_ID) set({ customWallBackgrounds: data.backgrounds || data || [] });
           else if (binId === JSONBIN_PRAYER_TIMES_BIN_ID) set({ prayerTimes: data.prayers || data || prayerTimesData });
           else if (binId === JSONBIN_MASTER_BIN_ID) set({ 
+            // favourite teams + pinned matches follow the user to every device
+            favoriteTeams: Array.isArray(data.favoriteTeams) ? data.favoriteTeams : get().favoriteTeams,
+            favoriteLeagueIds: Array.isArray(data.favoriteLeagueIds) ? data.favoriteLeagueIds : get().favoriteLeagueIds,
+            pinnedMatches: Array.isArray(data.pinnedMatches) ? data.pinnedMatches : get().pinnedMatches,
             reminders: data.reminders || get().reminders, 
             generalAzkar: data.generalAzkar || get().generalAzkar, 
             prayerSettings: data.prayerSettings || DEFAULT_PRAYER_SETTINGS, 
@@ -283,9 +290,14 @@ export const useMediaStore = create<MediaState>()(
         set({ isInitialLoading: false });
       },
 
+      togglePinnedMatch: (m) => {
+        set((s) => ({ pinnedMatches: s.pinnedMatches.some(p => p.id === m.id) ? s.pinnedMatches.filter(p => p.id !== m.id) : [...s.pinnedMatches, m] }));
+        setTimeout(() => get().syncMasterBin(), 100);
+      },
+
       syncMasterBin: async () => {
         const s = get();
-        await updateBin(JSONBIN_MASTER_BIN_ID, { favoriteTeams: s.favoriteTeams, favoriteLeagueIds: s.favoriteLeagueIds, belledMatchIds: s.belledMatchIds, skippedMatchIds: s.skippedMatchIds, prayerSettings: s.prayerSettings, reminders: s.reminders, generalAzkar: s.generalAzkar, mapSettings: s.mapSettings, keyMappings: s.keyMappings, savedVideos: s.savedVideos, manuscriptScales: s.manuscriptScales, lastPlayedVideo: s.lastPlayedVideo, playlists: s.playlists });
+        await updateBin(JSONBIN_MASTER_BIN_ID, { favoriteTeams: s.favoriteTeams, pinnedMatches: s.pinnedMatches, favoriteLeagueIds: s.favoriteLeagueIds, belledMatchIds: s.belledMatchIds, skippedMatchIds: s.skippedMatchIds, prayerSettings: s.prayerSettings, reminders: s.reminders, generalAzkar: s.generalAzkar, mapSettings: s.mapSettings, keyMappings: s.keyMappings, savedVideos: s.savedVideos, manuscriptScales: s.manuscriptScales, lastPlayedVideo: s.lastPlayedVideo, playlists: s.playlists });
       },
 
       saveIptvReorder: async () => await updateBin(JSONBIN_IPTV_FAVS_BIN_ID, { iptv: get().favoriteIptvChannels }),

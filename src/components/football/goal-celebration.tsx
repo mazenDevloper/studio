@@ -6,7 +6,9 @@ import type { TopMatch } from "@/lib/match-core";
 
 interface GoalEvent { key: string; match: TopMatch; side: "home" | "away"; }
 
-const SHOW_MS = 6500;
+const SHOW_MS = 5200;
+/** fraction of SHOW_MS at which the card starts shrinking back; the normal islands return at that moment */
+const SHRINK_AT = 0.88;
 
 /** Dispatch this to preview the animation: window.dispatchEvent(new CustomEvent(GOAL_TEST_EVENT)) */
 export const GOAL_TEST_EVENT = "goal-celebration-test";
@@ -65,6 +67,8 @@ export function GoalCelebration() {
     setCelebrating(!!current);
     if (!current) return;
     const t = setTimeout(() => setQueue(q => q.slice(1)), SHOW_MS);
+    // give the stage back to the other islands as soon as the card starts shrinking, not after it has gone
+    const back = setTimeout(() => setCelebrating(false), SHOW_MS * SHRINK_AT);
     const el = islandRef.current;
     const anims: Animation[] = [];
     if (el && typeof el.animate === "function") {
@@ -74,11 +78,11 @@ export function GoalCelebration() {
       const big = { width: `${W}px`, height: `${H}px`, borderRadius: "44px" };
       anims.push(el.animate(
         [{ ...pill, opacity: 0, offset: 0 }, { ...pill, opacity: 1, offset: 0.04 }, { ...big, opacity: 1, offset: 0.14 },
-         { ...big, opacity: 1, offset: 0.86 }, { ...pill, opacity: 1, offset: 0.95 }, { ...pill, opacity: 0, offset: 1 }],
+         { ...big, opacity: 1, offset: SHRINK_AT }, { ...pill, opacity: 0.6, offset: 0.97 }, { ...pill, opacity: 0, offset: 1 }],
         { duration: SHOW_MS, easing: "cubic-bezier(.3,.7,.2,1)", fill: "forwards" }));
       const q = (sel: string) => Array.from(el.querySelectorAll<HTMLElement>(sel));
       q(".gi-content").forEach(c => anims.push(c.animate(
-        [{ opacity: 0, offset: 0 }, { opacity: 0, offset: 0.12 }, { opacity: 1, offset: 0.18 }, { opacity: 1, offset: 0.83 }, { opacity: 0, offset: 0.88 }, { opacity: 0, offset: 1 }],
+        [{ opacity: 0, offset: 0 }, { opacity: 0, offset: 0.12 }, { opacity: 1, offset: 0.18 }, { opacity: 1, offset: SHRINK_AT - 0.03 }, { opacity: 0, offset: SHRINK_AT }, { opacity: 0, offset: 1 }],
         { duration: SHOW_MS, fill: "forwards" })));
       q(".gi-sweep").forEach(c => anims.push(c.animate(
         [{ transform: "skewX(-20deg) translateX(-130%)" }, { transform: "skewX(-20deg) translateX(330%)" }],
@@ -93,7 +97,7 @@ export function GoalCelebration() {
         [{ transform: "scale(0) rotate(-140deg)" }, { transform: "scale(1.15) rotate(8deg)", offset: 0.7 }, { transform: "scale(1) rotate(0)" }],
         { duration: 800, delay: 800, easing: "ease-out", fill: "both" })));
     }
-    return () => { clearTimeout(t); anims.forEach(a => a.cancel()); };
+    return () => { clearTimeout(t); clearTimeout(back); anims.forEach(a => a.cancel()); };
   }, [current, setCelebrating]);
 
   useEffect(() => () => setCelebrating(false), [setCelebrating]);

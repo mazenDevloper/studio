@@ -75,7 +75,8 @@ export default function MatchesTestPage() {
 function MatchCard({ m }: { m: TopMatch }) {
   const live = m.status === "live";
   const started = m.status !== "upcoming";
-  const { pinned, togglePin } = useLiveMatchesStore();
+  const pinned = useMediaStore(s => s.pinnedMatches) || [];
+  const togglePin = useMediaStore(s => s.togglePinnedMatch);
   const isPinned = pinned.some(p => p.id === m.id);
   const [open, setOpen] = useState(false);
   const [details, setDetails] = useState<MatchDetails | null>(null);

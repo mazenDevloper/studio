@@ -208,9 +208,9 @@ export function GlobalVideoPlayer() {
 
       <div className={cn(
         "fixed z-[99999] shadow-[0_0_120px_rgba(0,0,0,0.9)] transition-all duration-500 overflow-hidden pointer-events-auto", 
-        isMinimized ? "bottom-8 left-1/2 -translate-x-1/2 w-[520px] h-24 rounded-[2.5rem] premium-glass bg-black/80 border border-white/20" : 
+        isMinimized ? "bottom-8 max-[968px]:bottom-[100px] left-1/2 -translate-x-1/2 w-[520px] max-w-[92vw] h-24 rounded-[2.5rem] premium-glass bg-black/80 border border-white/20" : 
         isFullScreen ? "inset-0 w-full h-full bg-black flex flex-col" : 
-        `bottom-12 ${popupSideClass} w-[35vw] h-[40vh] premium-glass rounded-[3.5rem] bg-black/95 border-2 border-white/10 flex`
+        `bottom-32 max-[968px]:bottom-[190px] ${popupSideClass} w-[50vw] h-auto aspect-video premium-glass rounded-[2.5rem] bg-black/95 border-2 border-white/10 flex`
       )}>
         <div className={cn("relative flex-1 transition-opacity duration-500 flex flex-col", isMinimized ? "opacity-0 pointer-events-none absolute -top-[9999px]" : "opacity-100")}>
            <div className="flex-1 relative">
@@ -352,7 +352,7 @@ export function GlobalVideoPlayer() {
       </div>
 
       {!isMinimized && (
-        <div className="fixed z-[100000] flex items-center transition-all duration-500 left-1/2 -translate-x-1/2 bottom-0 scale-[0.95] origin-bottom pb-8">
+        <div className="fixed z-[100000] flex items-center transition-all duration-500 left-1/2 -translate-x-1/2 bottom-0 max-[968px]:bottom-[80px] scale-[0.95] origin-bottom pb-8 max-[968px]:pb-3">
           <div className="flex items-center gap-3 bg-black/40 backdrop-blur-3xl p-2 rounded-full border border-white/10 shadow-[0_0_100px_rgba(0,0,0,0.7)] transition-all">
             <div className="relative group">
               <button onClick={handleClose} data-nav-id="player-close-btn" className={cn(ctrlBtnClass, "bg-red-600/40 text-red-500 border-2 border-red-500/20")}>

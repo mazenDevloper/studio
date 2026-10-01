@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { create } from "zustand";
+import { useMediaStore } from "@/lib/store";
 import type { TopMatchesResult } from "@/lib/match-core";
 
 /**
@@ -12,27 +13,16 @@ import type { TopMatchesResult } from "@/lib/match-core";
 
 const POLL_MS = 30_000;
 
-export interface PinnedMatch { id: string; home: string; away: string }
-
-const PIN_KEY = "pinned_matches_v1";
-const loadPins = (): PinnedMatch[] => {
-  try { return typeof window === "undefined" ? [] : JSON.parse(localStorage.getItem(PIN_KEY) || "[]"); } catch { return []; }
-};
-const savePins = (pins: PinnedMatch[]) => { try { localStorage.setItem(PIN_KEY, JSON.stringify(pins)); } catch {} };
-
 interface LiveMatchesState {
   data: TopMatchesResult | null;
   error: string;
   loading: boolean;
   updatedAt: number | null;
   teams: string[];
-  /** matches the user pinned as a floating island (kept across reloads) */
-  pinned: PinnedMatch[];
   /** true while the goal island is expanded: the other islands step aside */
   celebrating: boolean;
   refresh: () => Promise<void>;
   setTeams: (teams: string[]) => void;
-  togglePin: (m: PinnedMatch) => void;
   setCelebrating: (v: boolean) => void;
 }
 
@@ -42,16 +32,13 @@ export const useLiveMatchesStore = create<LiveMatchesState>((set, get) => ({
   loading: false,
   updatedAt: null,
   teams: [],
-  pinned: loadPins(),
   celebrating: false,
   refresh: async () => {
     if (get().loading) return;
     set({ loading: true });
     try {
       const q = new URLSearchParams({ limit: "12" });
-      // favourite teams + both sides of every pinned match are always included in the feed
-      const teams = Array.from(new Set([...get().teams, ...get().pinned.flatMap(p => [p.home, p.away])]));
-      if (teams.length) q.set("teams", teams.join("|"));
+      if (get().teams.length) q.set("teams", get().teams.join("|"));
       const res = await fetch(`/api/matches?${q}`, { cache: "no-store" });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
@@ -61,12 +48,6 @@ export const useLiveMatchesStore = create<LiveMatchesState>((set, get) => ({
     } finally {
       set({ loading: false });
     }
-  },
-  togglePin: (m) => {
-    const pins = get().pinned.some(p => p.id === m.id) ? get().pinned.filter(p => p.id !== m.id) : [...get().pinned, m];
-    savePins(pins);
-    set({ pinned: pins });
-    get().refresh();
   },
   setCelebrating: (v) => set({ celebrating: v }),
   setTeams: (teams) => {
@@ -82,7 +63,10 @@ let timer: ReturnType<typeof setInterval> | null = null;
 /** Subscribe to the shared feed. Pass `teams` (favourite team names) to always include their matches. */
 export function useLiveMatches(teams?: string[]) {
   const state = useLiveMatchesStore();
-  const teamsKey = teams?.join("|");
+  // both sides of every pinned match (cloud-synced) are always included, like favourite teams
+  const pins = useMediaStore(s => s.pinnedMatches) || [];
+  const allTeams = teams ? Array.from(new Set([...teams, ...pins.flatMap(p => [p.home, p.away])])) : undefined;
+  const teamsKey = allTeams?.join("|");
 
   useEffect(() => {
     subscribers++;
@@ -100,7 +84,7 @@ export function useLiveMatches(teams?: string[]) {
   }, []);
 
   useEffect(() => {
-    if (teams) useLiveMatchesStore.getState().setTeams(teams);
+    if (allTeams) useLiveMatchesStore.getState().setTeams(allTeams);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [teamsKey]);
 
