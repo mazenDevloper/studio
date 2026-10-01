@@ -97,6 +97,7 @@ export function CarDock() {
   }, [pathname, mounted]);
 
   const apps = [
+    { name: "المباريات", href: "/matches", icon: Trophy, action: "goto_matches" as AppAction },
     { name: "Media", href: "/media", icon: Radio, action: "goto_media" as AppAction },
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard, action: "goto_home" as AppAction },
     { 

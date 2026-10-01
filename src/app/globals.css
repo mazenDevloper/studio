@@ -63,6 +63,9 @@
   outline-offset: 4px !important;
 }
 
+/* Text inputs must not jump/scale on focus (it made the first tap feel lost) */
+.focusable.no-focus-scale:focus { transform: none !important; }
+
 .shadow-glow { 
   box-shadow: 0 0 50px rgba(0, 136, 255, 0.8); 
 }

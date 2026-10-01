@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useDeferredValue } from "react";
 import { useMediaStore, IptvChannel } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Tv, List, ChevronRight, Loader2, Star, ArrowRightLeft, Link2, RotateCcw } from "lucide-react";
@@ -41,6 +41,8 @@ export function IptvView() {
   const [activeSource, setActiveSource] = useState<IptvSource>(DEFAULT_IPTV_SOURCE);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
+  // Keep typing instant even with thousands of channels: the grid re-filters at low priority.
+  const deferredSearch = useDeferredValue(search);
   const [linkOpen, setLinkOpen] = useState(false);
   const [sourceChannels, setSourceChannels] = useState<IptvChannel[]>([]);
   const [group, setGroup] = useState("all");
@@ -97,9 +99,10 @@ export function IptvView() {
 
   useEffect(() => { 
     fetchCategories(); 
+    // Only grab focus when nothing else has it, so typing in the search box is never interrupted.
     setTimeout(() => {
-      const firstChannel = document.querySelector('[data-nav-id="iptv-channel-0"]') as HTMLElement;
-      firstChannel?.focus();
+      if (document.activeElement && document.activeElement !== document.body) return;
+      (document.querySelector('[data-nav-id="iptv-channel-0"]') as HTMLElement)?.focus();
     }, 800);
   }, []);
 
@@ -151,16 +154,19 @@ export function IptvView() {
       if (Array.isArray(data)) {
         const transformed = data.map((ch: any) => ({ ...ch, type: 'web', url: `http://playstop.watch:2095/live/W87d737/Pd37qj34/${ch.stream_id}.m3u8` }));
         setChannels(transformed);
-        setTimeout(() => { (document.querySelector('[data-nav-id="iptv-channel-0"]') as HTMLElement)?.focus(); }, 300);
+        setTimeout(() => {
+          if (document.activeElement && document.activeElement !== document.body) return;
+          (document.querySelector('[data-nav-id="iptv-channel-0"]') as HTMLElement)?.focus();
+        }, 300);
       }
     } finally { setLoading(false); }
   };
 
   const filteredChannels = useMemo(() => {
     const list = Array.isArray(channels) ? channels : [];
-    const q = search.toLowerCase();
+    const q = deferredSearch.toLowerCase();
     return list.filter(c => c.name && c.name.toLowerCase().includes(q) && (selectedCat !== 'source' || group === 'all' || c.group === group));
-  }, [channels, search, group, selectedCat]);
+  }, [channels, deferredSearch, group, selectedCat]);
 
   const sourceGroups = useMemo(() => Array.from(new Set(sourceChannels.map(c => c.group).filter(Boolean) as string[])), [sourceChannels]);
 
@@ -240,7 +246,16 @@ export function IptvView() {
           </div>
         </header>
 
-        <Input placeholder="ابحث عن قناة..." value={search} onChange={(e) => setSearch(e.target.value)} className="bg-white/5 border-white/10 h-14 rounded-[2rem] px-6 text-lg text-white shadow-2xl focusable outline-none" data-nav-id="iptv-search-input" />
+        <Input placeholder="ابحث عن قناة..." value={search} onChange={(e) => setSearch(e.target.value)} autoComplete="off" inputMode="search" enterKeyHint="search" className="bg-white/5 border-white/10 h-14 rounded-[2rem] px-6 text-lg text-white shadow-2xl focusable no-focus-scale outline-none" data-nav-id="iptv-search-input" />
+
+        {sourceStatus === 'error' && (
+          <div className="flex items-center justify-between gap-4 rounded-2xl border border-red-500/30 bg-red-500/10 px-5 py-3">
+            <span className="text-sm font-bold text-red-300">تعذر تحميل القائمة. قد يكون الرابط محجوباً من السيرفر أو انتهت مهلة الاتصال.</span>
+            <Button onClick={() => loadInitialSource(activeSource)} variant="outline" className="rounded-full h-10 px-5 bg-white/5 focusable shrink-0" data-nav-id="iptv-retry-source">
+              <RotateCcw className="w-4 h-4 ml-2" /> إعادة المحاولة
+            </Button>
+          </div>
+        )}
 
         {(loading || (selectedCat === 'source' && sourceStatus === 'loading')) ? (
           <div className="py-32 flex flex-col items-center gap-4 text-white/40"><Loader2 className="w-12 h-12 animate-spin text-emerald-500" /><span className="text-sm font-bold">جاري تحميل القنوات...</span></div>

@@ -1,6 +1,9 @@
 
 import { IptvView } from "@/components/iptv/iptv-view";
 
+// Playlist loading runs as a server action; give big Xtream accounts room on serverless hosts.
+export const maxDuration = 60;
+
 export default function IptvPage() {
   return (
     <main className="w-full min-h-full bg-black relative">

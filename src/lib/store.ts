@@ -89,7 +89,7 @@ export type MappingContext = 'global' | 'player' | 'dashboard' | 'media' | 'qura
 export type AppAction = 
   | 'nav_up' | 'nav_down' | 'nav_left' | 'nav_right' | 'nav_ok' | 'nav_scroll_up' | 'nav_scroll_down'
   | 'toggle_star' | 'delete_item' | 'toggle_reorder'
-  | 'goto_home' | 'goto_media' | 'goto_quran' | 'goto_hihi2' | 'goto_iptv' | 'goto_football' | 'goto_settings' | 'goto_car_dashboard'
+  | 'goto_home' | 'goto_media' | 'goto_quran' | 'goto_hihi2' | 'goto_iptv' | 'goto_football' | 'goto_settings' | 'goto_car_dashboard' | 'goto_matches'
   | 'player_next' | 'player_prev' | 'player_save' | 'player_fullscreen' | 'player_playlist' | 'player_minimize' | 'player_close' | 'player_settings' | 'player_mode'
   | 'focus_search' | 'focus_reciters' | 'focus_surahs'
   | 'inc_zoom' | 'dec_zoom' | 'inc_font' | 'dec_font' | 'next_manuscript' | 'prev_manuscript';
@@ -198,6 +198,7 @@ const DEFAULT_CONTEXT_MAPPINGS: Record<string, Record<string, string[]>> = {
     goto_football: ['*'], 
     goto_settings: [], 
     goto_car_dashboard: [],
+    goto_matches: [],
     delete_item: ['Red'], 
     toggle_star: ['Yellow'], 
     toggle_reorder: ['Blue'] 

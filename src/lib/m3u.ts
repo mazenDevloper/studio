@@ -73,3 +73,28 @@ export function isStreamUrl(url?: string): boolean {
   if (!url) return false;
   return /\.(m3u8?|ts|mp4|mkv|webm)(\?|$)/i.test(url) || /\/live\/[^/]+\/[^/]+\/\d+/.test(url) || url.includes("m3u8");
 }
+
+/** Route that relays http streams through our own https origin (avoids mixed-content blocking). */
+export const HLS_PROXY_PATH = "/api/hls";
+
+/** On an https page an http stream is blocked by the browser, so send it through the proxy. */
+export function proxiedUrl(src: string): string {
+  if (typeof window !== "undefined" && window.location.protocol === "https:" && src.startsWith("http:")) {
+    return `${HLS_PROXY_PATH}?u=${encodeURIComponent(src)}`;
+  }
+  return src;
+}
+
+/** Rewrite every URI in an HLS manifest so segments, keys and sub-playlists also go through the proxy. */
+export function rewriteHlsManifest(text: string, baseUrl: string, proxyPath = HLS_PROXY_PATH): string {
+  const wrap = (u: string) => `${proxyPath}?u=${encodeURIComponent(new URL(u, baseUrl).toString())}`;
+  return text
+    .split(/\r?\n/)
+    .map(line => {
+      const t = line.trim();
+      if (!t) return line;
+      if (t.startsWith("#")) return line.replace(/URI="([^"]+)"/g, (_m, u) => `URI="${wrap(u)}"`);
+      return wrap(t);
+    })
+    .join("\n");
+}

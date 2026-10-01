@@ -11,8 +11,18 @@ export interface LoadResult {
   single: boolean;
 }
 
+const LOAD_TIMEOUT_MS = 40000;
+
+/** Server actions can hang (cold start, blocked provider, platform time limit): never leave the UI spinning forever. */
+function withTimeout<T>(p: Promise<T>, ms = LOAD_TIMEOUT_MS): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error("انتهت مهلة التحميل / Request timed out")), ms);
+    p.then(v => { clearTimeout(t); resolve(v); }, e => { clearTimeout(t); reject(e); });
+  });
+}
+
 async function loadXtream(c: XtreamCreds): Promise<LoadResult> {
-  const res = await fetchXtreamLive(c.host, c.username, c.password);
+  const res = await withTimeout(fetchXtreamLive(c.host, c.username, c.password));
   if (!res.ok) throw new Error(res.error);
   return { single: false, channels: res.channels.map(ch => ({ ...ch, url: xtreamLiveUrl(c, ch.id) })) };
 }
@@ -38,7 +48,7 @@ export async function loadSource(src: IptvSource): Promise<LoadResult> {
     try { return await loadXtream(creds); } catch { /* fall through to plain m3u */ }
   }
 
-  const res = await fetchPlaylistText(input);
+  const res = await withTimeout(fetchPlaylistText(input));
   if (!res.ok) {
     // Server could not read it: let the browser try a plain stream link directly.
     if (/\.m3u8?(\?|$)/i.test(input)) return one(input);

@@ -237,6 +237,7 @@ export function RemotePointer() {
     if (isAction(finalKey, 'goto_home')) { e?.preventDefault(); router.push('/dashboard'); return; }
     if (isAction(finalKey, 'goto_media')) { e?.preventDefault(); router.push('/media'); return; }
     if (isAction(finalKey, 'goto_quran')) { e?.preventDefault(); router.push('/quran'); return; }
+    if (isAction(finalKey, 'goto_matches')) { e?.preventDefault(); router.push('/matches'); return; }
     if (isAction(finalKey, 'goto_hihi2')) { e?.preventDefault(); router.push('/hihi2'); return; }
     if (isAction(finalKey, 'goto_iptv')) { e?.preventDefault(); router.push('/iptv'); return; }
     if (isAction(finalKey, 'goto_football')) { e?.preventDefault(); router.push('/football'); return; }
