@@ -169,18 +169,25 @@ const TEAM_ALIASES: [RegExp, string][] = [
   [/\bpsg\b|\bparis sg\b/, "paris saint germain"],
   [/\bbayern munchen\b|\bbayern munich\b/, "bayern"],
   [/\batletico de madrid\b/, "atletico madrid"],
+  [/\binternazionale( milano)?\b|\binter milano\b/, "inter milan"],
+  [/\bqadisiy?ah?\b|\bqadsia\b|\bqadsiya\b/, "qadsiah"],
+  [/\bnasr\b/, "nasr"],
 ];
 export function teamKey(name: string): string {
   let n = normalizeTeamName(name);
   for (const [re, to] of TEAM_ALIASES) n = n.replace(re, to);
   return n.replace(/[^a-z0-9 ]/g, " ").replace(TEAM_NOISE, " ").replace(/\s+/g, " ").trim();
 }
+const DIFFERENT_SIDE = new Set(["tula", "montevideo", "castilla", "b", "ii", "u17", "u19", "u20", "u21", "u23", "women", "w", "reserves", "youth", "academy"]);
 export function sameTeam(a: string, b: string): boolean {
   const x = teamKey(a), y = teamKey(b);
   if (!x || !y) return false;
   if (x === y) return true;
   const [s, l] = x.length <= y.length ? [x, y] : [y, x];
-  return s.length >= 4 && (` ${l} `).includes(` ${s} `);
+  if (s.length < 4 || !(` ${l} `).includes(` ${s} `)) return false;
+  // "Arsenal" ~ "Arsenal FC" but not "Arsenal Tula" / "Real Madrid Castilla" / youth & women's sides
+  const extra = l.split(" ").filter(w => !s.split(" ").includes(w));
+  return !extra.some(w => DIFFERENT_SIDE.has(w));
 }
 
 
