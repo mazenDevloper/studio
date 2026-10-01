@@ -196,7 +196,7 @@ export function GlobalVideoPlayer() {
   const popupSideClass = dockSide === 'left' ? "right-12" : "left-12";
   // Side lists sit next to the car dock
   const dockSideEdgeClass = dockSide === 'left' ? "left-0 border-r" : "right-0 border-l";
-  const ctrlBtnClass = "rounded-full flex items-center justify-center focusable transition-all shadow-glow active:scale-90 w-12 h-12 min-[968px]:w-14 min-[968px]:h-14 max-[968px]:w-16 max-[968px]:h-16";
+  const ctrlBtnClass = "rounded-full flex items-center justify-center focusable transition-all shadow-glow active:scale-90 w-11 h-11 min-[968px]:w-12 min-[968px]:h-12 [&_svg]:w-5 [&_svg]:h-5";
 
   const effectiveCountdown = isEnded ? 5 - postEndTimer : null;
 
@@ -352,8 +352,8 @@ export function GlobalVideoPlayer() {
       </div>
 
       {!isMinimized && (
-        <div className="fixed z-[100000] flex items-center transition-all duration-500 left-1/2 -translate-x-1/2 bottom-0 max-[968px]:bottom-[80px] scale-[0.95] origin-bottom pb-8 max-[968px]:pb-3">
-          <div className="flex items-center gap-3 bg-black/40 backdrop-blur-3xl p-2 rounded-full border border-white/10 shadow-[0_0_100px_rgba(0,0,0,0.7)] transition-all">
+        <div className="fixed z-[100000] flex items-center transition-all duration-500 left-1/2 -translate-x-1/2 bottom-0 max-[968px]:bottom-[80px] scale-[0.9] max-[968px]:scale-[0.85] origin-bottom pb-6 max-[968px]:pb-3 max-w-[100vw]">
+          <div className="flex items-center gap-2 bg-black/40 backdrop-blur-3xl p-1.5 rounded-full border border-white/10 shadow-[0_0_100px_rgba(0,0,0,0.7)] transition-all">
             <div className="relative group">
               <button onClick={handleClose} data-nav-id="player-close-btn" className={cn(ctrlBtnClass, "bg-red-600/40 text-red-500 border-2 border-red-500/20")}>
                 <X className="w-6 h-6" />
@@ -362,10 +362,10 @@ export function GlobalVideoPlayer() {
             </div>
             
             {isPlayerControlsExpanded && (
-              <div className="flex items-center gap-3 animate-in slide-in-from-left-4 duration-300">
+              <div className="flex items-center gap-2 animate-in slide-in-from-left-4 duration-300">
                 {isWebType && (
-                  <div className="flex items-center gap-3 bg-white/5 rounded-full px-5 h-12 min-[968px]:h-14 max-[968px]:h-16 border-2 border-white/10 group focus-within:border-emerald-500/40 transition-all">
-                    <Input value={urlInput} onChange={(e) => setUrlInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handlePutToIframe()} placeholder="URL..." className="bg-transparent border-none text-[16px] font-black text-white p-0 h-full w-48 focus-visible:ring-0" />
+                  <div className="flex items-center gap-2 bg-white/5 rounded-full px-4 h-11 min-[968px]:h-12 border-2 border-white/10 group focus-within:border-emerald-500/40 transition-all">
+                    <Input value={urlInput} onChange={(e) => setUrlInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handlePutToIframe()} placeholder="URL..." className="bg-transparent border-none text-[15px] font-black text-white p-0 h-full w-28 min-[968px]:w-40 focus-visible:ring-0" />
                     <button onClick={handlePutToIframe} className="w-10 h-10 rounded-xl bg-emerald-600/20 text-emerald-400 flex items-center justify-center"><ChevronRight className="w-5 h-5" /></button>
                   </div>
                 )}

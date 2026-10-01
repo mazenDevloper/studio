@@ -43,6 +43,7 @@
     @apply bg-background text-foreground w-full h-screen overflow-hidden;
     background: radial-gradient(circle at 50% 50%, #0a0a1a 0%, #000000 100%);
     font-family: 'Thmanyah Sans', 'Inter', sans-serif !important;
+    font-weight: 700; /* bold by default everywhere; explicit font-black etc. still apply */
     font-feature-settings: "liga" 1, "rlig" 1, "calt" 1, "locl" 1, "ccmp" 1, "mark" 1, "mkmk" 1, "ss01" 1, "ss02" 1, "ss03" 1, "zero" 1;
   }
 }
@@ -222,3 +223,7 @@ span.text-\[18cqw\].font-black.text-white.leading-none.tracking-tight.block {
   -webkit-background-clip: text; background-clip: text; color: transparent;
   filter: drop-shadow(0 6px 24px rgba(0,0,0,.6));
 }
+
+/* Bold-first typography: lighter Tailwind weights are lifted to bold */
+.font-thin, .font-extralight, .font-light, .font-normal, .font-medium { font-weight: 700 !important; }
+input, textarea, select, button { font-weight: 700; }

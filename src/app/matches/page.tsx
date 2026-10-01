@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Loader2, RefreshCw, Trophy, AlertTriangle, Star, PartyPopper, Pin } from "lucide-react";
 import { useLiveMatches, useLiveMatchesStore } from "@/lib/live-matches";
 import type { MatchDetails } from "@/lib/match-details";
+import { sameTeam } from "@/lib/match-core";
 import { useMediaStore } from "@/lib/store";
 import { GOAL_TEST_EVENT } from "@/components/football/goal-celebration";
 import { Button } from "@/components/ui/button";
@@ -77,7 +78,7 @@ function MatchCard({ m }: { m: TopMatch }) {
   const started = m.status !== "upcoming";
   const pinned = useMediaStore(s => s.pinnedMatches) || [];
   const togglePin = useMediaStore(s => s.togglePinnedMatch);
-  const isPinned = pinned.some(p => p.id === m.id);
+  const isPinned = pinned.some(p => p.id === m.id || (sameTeam(p.home, m.home.name) && sameTeam(p.away, m.away.name)));
   const [open, setOpen] = useState(false);
   const [details, setDetails] = useState<MatchDetails | null>(null);
   const [detailsError, setDetailsError] = useState("");

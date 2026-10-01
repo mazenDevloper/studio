@@ -3,6 +3,7 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { sameTeam } from "@/lib/match-core";
 import { YouTubeChannel, YouTubeVideo } from "./youtube";
 import { 
   JSONBIN_MASTER_KEY, 
@@ -280,18 +281,18 @@ export const useMediaStore = create<MediaState>()(
       },
 
       fetchPriorityData: async (context) => {
-        await get().fetchSpecificBin(JSONBIN_MASTER_BIN_ID);
-        const others = [
-          JSONBIN_CHANNELS_BIN_ID, JSONBIN_POPULAR_RECITERS_BIN_ID, JSONBIN_IPTV_FAVS_BIN_ID, 
-          JSONBIN_MANUSCRIPTS_BIN_ID, JSONBIN_FONTS_BIN_ID, JSONBIN_BACKGROUNDS_BIN_ID, 
-          JSONBIN_PRAYER_TIMES_BIN_ID
+        // Everything loads in parallel (prayer times first in the queue); nothing waits for the master bin anymore.
+        const all = [
+          JSONBIN_PRAYER_TIMES_BIN_ID, JSONBIN_MASTER_BIN_ID, JSONBIN_IPTV_FAVS_BIN_ID, JSONBIN_CHANNELS_BIN_ID,
+          JSONBIN_POPULAR_RECITERS_BIN_ID, JSONBIN_FONTS_BIN_ID, JSONBIN_MANUSCRIPTS_BIN_ID, JSONBIN_BACKGROUNDS_BIN_ID,
         ];
-        await Promise.allSettled(others.map(id => get().fetchSpecificBin(id)));
+        await Promise.allSettled(all.map(id => get().fetchSpecificBin(id)));
         set({ isInitialLoading: false });
       },
 
       togglePinnedMatch: (m) => {
-        set((s) => ({ pinnedMatches: s.pinnedMatches.some(p => p.id === m.id) ? s.pinnedMatches.filter(p => p.id !== m.id) : [...s.pinnedMatches, m] }));
+        const same = (p: PinnedMatch) => p.id === m.id || (sameTeam(p.home, m.home) && sameTeam(p.away, m.away));
+        set((s) => ({ pinnedMatches: s.pinnedMatches.some(same) ? s.pinnedMatches.filter(p => !same(p)) : [...s.pinnedMatches, m] }));
         setTimeout(() => get().syncMasterBin(), 100);
       },
 
@@ -322,6 +323,7 @@ export const useMediaStore = create<MediaState>()(
       toggleFavoriteIptvChannel: (ch) => set((s) => { const e = s.favoriteIptvChannels.some(c => c.stream_id === ch.stream_id); const n = e ? s.favoriteIptvChannels.filter(c => c.stream_id !== ch.stream_id) : [...s.favoriteIptvChannels, ch]; setTimeout(() => get().saveIptvReorder(), 100); return { favoriteIptvChannels: n }; }),
       updateIptvChannel: (id, updates) => set((s) => { const n = s.favoriteIptvChannels.map(ch => ch.stream_id === id ? { ...ch, ...updates } : ch); setTimeout(() => get().saveIptvReorder(), 100); return { favoriteIptvChannels: n }; }),
       addIptvChannel: (ch) => set((s) => { const n = [...s.favoriteIptvChannels, ch]; setTimeout(() => get().saveIptvReorder(), 100); return { favoriteIptvChannels: n }; }),
+      reorderChannelTo: (f, t) => set((s) => { const l = [...s.favoriteChannels], fI = l.findIndex(i => i.channelid === f), tI = l.findIndex(i => i.channelid === t); if (fI === -1 || tI === -1) return s; const [m] = l.splice(fI, 1); l.splice(tI, 0, m); return { favoriteChannels: l }; }),
       reorderIptvChannelTo: (f, t) => set((s) => { const l = [...s.favoriteIptvChannels], fI = l.findIndex(i => i.stream_id === f), tI = l.findIndex(i => i.stream_id === t); if (fI === -1 || tI === -1) return s; const [m] = l.splice(fI, 1); l.splice(tI, 0, m); return { favoriteIptvChannels: l }; }),
       
       addPlaylist: (name, videos = []) => {
@@ -371,14 +373,20 @@ export const useMediaStore = create<MediaState>()(
       setWallPlate: (t, d) => set({ wallPlateType: t, wallPlateData: d }), resetMediaView: () => set({ selectedChannel: null, channelVideos: [] }),
       setAiSuggestions: (s) => set({ aiSuggestions: s }),
       addManuscript: (m) => set((s) => { const n = [...s.customManuscripts, m]; setTimeout(() => get().saveManuscriptsReorder(), 100); return { customManuscripts: n }; }),
-      updateManuscript: (id, u) => set((s) => { const n = s.customManuscripts.map(m => i.id === id ? { ...m, ...u } : m); setTimeout(() => get().saveManuscriptsReorder(), 100); return { customManuscripts: n }; }),
+      updateManuscript: (id, u) => set((s) => { const n = s.customManuscripts.map(m => m.id === id ? { ...m, ...u } : m); setTimeout(() => get().saveManuscriptsReorder(), 100); return { customManuscripts: n }; }),
       removeManuscript: (id) => set((s) => { const n = s.customManuscripts.filter(m => m.id !== id); setTimeout(() => get().saveManuscriptsReorder(), 100); return { customManuscripts: n }; }),
       updateManuscriptScale: (id, scale) => set((s) => { const n = { ...s.manuscriptScales, [id]: (s.manuscriptScales[id] || 1.0) + scale }; setTimeout(() => get().syncMasterBin(), 100); return { manuscriptScales: n }; }),
       updatePrayerSetting: (id, updates) => set((s) => { const n = s.prayerSettings.map(p => p.id === id ? { ...p, ...updates } : p); setTimeout(() => get().syncMasterBin(), 100); return { prayerSettings: n }; }),
     }),
     {
       name: "drivecast-sovereign-v143", 
-      partialize: (s) => ({ dockSide: s.dockSide, displayScale: s.displayScale, dockScale: s.dockScale, isLooping: s.isLooping }),
+      // Last-known cloud data is kept locally so the app shows it instantly on start, then the cloud refresh replaces it.
+      partialize: (s) => ({
+        dockSide: s.dockSide, displayScale: s.displayScale, dockScale: s.dockScale, isLooping: s.isLooping,
+        prayerTimes: s.prayerTimes, prayerSettings: s.prayerSettings, reminders: s.reminders, generalAzkar: s.generalAzkar,
+        favoriteTeams: s.favoriteTeams, pinnedMatches: s.pinnedMatches, favoriteLeagueIds: s.favoriteLeagueIds,
+        favoriteIptvChannels: s.favoriteIptvChannels, favoriteChannels: s.favoriteChannels, customFonts: s.customFonts,
+      }),
     }
   )
 );

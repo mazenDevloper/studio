@@ -3,6 +3,7 @@
 
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useLiveMatches } from "@/lib/live-matches";
+import { sameTeam } from "@/lib/match-core";
 import { useMediaStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { X, Eye, EyeOff, Bell, Clock, Timer, Check, Trophy, Play, ChevronDown, ChevronUp, Zap, Cloud, Bookmark } from "lucide-react";
@@ -177,12 +178,19 @@ export function LiveMatchIsland() {
     }
     // Today's matches of my favourite teams and the matches I pinned, with live scores
     const nowSecs = Math.floor(now.getTime() / 1000);
+    const seenLive = new Set<string>();
     for (const m of liveFeed?.matches ?? []) {
       const id = `live-${m.id}`;
-      const isPinned = pinned.some(p => p.id === m.id);
+      if (seenLive.has(m.id)) continue;
+      seenLive.add(m.id);
+      // a pin made from another source has a different id: match it by the two team names as well
+      const isPinned = pinned.some(p => p.id === m.id || (sameTeam(p.home, m.home.name) && sameTeam(p.away, m.away.name)));
       if ((!m.favorite && !isPinned) || (!isPinned && skippedMatchIds.includes(id))) continue;
       if (m.status === "finished" && nowSecs - m.timestamp > 3.5 * 3600) continue; // drop long-finished games
       const started = m.status !== "upcoming";
+      // never show the same fixture twice: a live island replaces an older reminder-based match island
+      const dup = list.findIndex(a => a.type === 'match' && a.homeName && a.awayName && sameTeam(a.homeName, m.home.name) && sameTeam(a.awayName, m.away.name));
+      if (dup !== -1) { if (list[dup].id.startsWith('live-')) continue; list.splice(dup, 1); }
       list.push({
         id,
         name: m.league.name,
@@ -206,7 +214,8 @@ export function LiveMatchIsland() {
   const handleAction = async (id: string, type: 'match' | 'reminder' | 'sync' | 'azkar') => {
     if (type === 'match') {
       // closing a pinned live match unpins it; anything else is skipped for today as before
-      const pin = id.startsWith('live-') ? pinned.find(p => `live-${p.id}` === id) : undefined;
+      const live = id.startsWith('live-') ? liveFeed?.matches.find(m => `live-${m.id}` === id) : undefined;
+      const pin = live ? pinned.find(p => p.id === live.id || (sameTeam(p.home, live.home.name) && sameTeam(p.away, live.away.name))) : undefined;
       if (pin) { togglePin(pin); return; }
       skipMatch(id);
     }
