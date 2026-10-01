@@ -140,7 +140,7 @@ interface MediaState {
   toggleSaveVideo: (video: YouTubeVideo) => void;
   removeVideo: (id: string) => void; toggleStarChannel: (channelid: string) => void;
   addReminder: (reminder: Reminder) => void; updateReminder: (id: string, reminder: Partial<Reminder>) => void;
-  removeReminder: (id: string) => void; toggleReminder: (id: string) => void; skipReminder: (id: string) => void; skipMatch: (id: string) => void;
+  removeReminder: (id: string) => void; toggleReminder: (id: string) => void; skipReminder: (id: string) => void; skipMatch: (id: string) => void; unskipMatch: (id: string) => void;
   addAzkar: (azkar: Reminder) => void; updateAzkar: (id: string, azkar: Partial<Reminder>) => void;
   removeAzkar: (id: string) => void;
   addPlaylist: (name: string, videos?: YouTubeVideo[]) => Playlist; removePlaylist: (id: string) => void; addVideoToPlaylist: (playlistId: string, video: YouTubeVideo) => void;
@@ -404,6 +404,7 @@ export const useMediaStore = create<MediaState>()(
       toggleReminder: (id) => set((s) => ({ reminders: s.reminders.map(r => r.id === id ? { ...r, completed: !r.completed } : r) })),
       skipReminder: (id) => set((s) => ({ skippedReminderIds: [...s.skippedReminderIds, id] })),
       skipMatch: (id) => set((s) => ({ skippedMatchIds: [...s.skippedMatchIds.filter(x => x !== id), id].slice(-300) })),
+      unskipMatch: (id) => { set((s) => ({ skippedMatchIds: s.skippedMatchIds.filter(x => x !== id) })); setTimeout(() => get().syncMasterBin(), 100); },
       addAzkar: (a) => set((s) => { const n = [...s.generalAzkar, a]; setTimeout(() => get().syncMasterBin(), 100); return { generalAzkar: n }; }),
       updateAzkar: (id, u) => set((s) => { const n = s.generalAzkar.map(a => a.id === id ? { ...a, ...u } : a); setTimeout(() => get().syncMasterBin(), 100); return { generalAzkar: n }; }),
       removeAzkar: (id) => set((s) => { const n = s.generalAzkar.filter(a => a.id !== id); setTimeout(() => get().syncMasterBin(), 100); return { generalAzkar: n }; }),

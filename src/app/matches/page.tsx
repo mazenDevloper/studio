@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, RefreshCw, Trophy, AlertTriangle, Star, PartyPopper, Pin } from "lucide-react";
+import { Loader2, RefreshCw, Trophy, AlertTriangle, Star, PartyPopper, Pin, Eye, EyeOff, Tv } from "lucide-react";
 import { useLiveMatches, useLiveMatchesStore } from "@/lib/live-matches";
 import type { MatchDetails } from "@/lib/match-details";
-import { sameTeam } from "@/lib/match-core";
+import { sameTeam, matchHideKey } from "@/lib/match-core";
 import { useMediaStore } from "@/lib/store";
 import { GOAL_TEST_EVENT } from "@/components/football/goal-celebration";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,9 @@ export default function MatchesTestPage() {
   const favoriteNames = useMemo(() => (favoriteTeams || []).map(t => t?.name).filter(Boolean) as string[], [favoriteTeams]);
   const { data, error, loading, updatedAt, refresh } = useLiveMatches(favoriteNames);
   const [showJson, setShowJson] = useState(false);
+  const [showHidden, setShowHidden] = useState(false);
+  const skipped = useMediaStore(s => s.skippedMatchIds) || [];
+  const isHidden = (m: TopMatch) => skipped.includes(matchHideKey(m));
   const [, tick] = useState(0);
   useEffect(() => { const t = setInterval(() => tick(n => n + 1), 5000); return () => clearInterval(t); }, []);
   const ago = updatedAt ? Math.round((Date.now() - updatedAt) / 1000) : null;
@@ -61,9 +64,17 @@ export default function MatchesTestPage() {
           {data.matches.length === 0 ? (
             <div className="py-20 text-center text-white/30 font-bold">لا توجد مباريات مهمة اليوم</div>
           ) : (
-            <div className="grid gap-3 md:grid-cols-2">
-              {data.matches.map(m => <MatchCard key={m.id} m={m} />)}
-            </div>
+            <>
+              {data.matches.some(isHidden) && (
+                <button onClick={() => setShowHidden(v => !v)} className="text-xs font-bold text-white/50 hover:text-white flex items-center gap-2 focusable">
+                  {showHidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {showHidden ? "إخفاء المباريات المخفية" : `إظهار المباريات المخفية (${data.matches.filter(isHidden).length})`}
+                </button>
+              )}
+              <div className="grid gap-3 md:grid-cols-2">
+                {data.matches.filter(m => showHidden || !isHidden(m)).map(m => <MatchCard key={m.id} m={m} hidden={isHidden(m)} />)}
+              </div>
+            </>
           )}
         </>
       )}
@@ -73,7 +84,33 @@ export default function MatchesTestPage() {
   );
 }
 
-function MatchCard({ m }: { m: TopMatch }) {
+/** Channels looked up once per match (the list feed doesn't always carry them). */
+const channelCache = new Map<string, Promise<string[]>>();
+function lookupChannels(m: TopMatch): Promise<string[]> {
+  if (!channelCache.has(m.id)) {
+    const q = new URLSearchParams({ id: m.id, league: m.league.id, homeId: m.home.id });
+    channelCache.set(m.id, fetch(`/api/matches/details?${q}`).then(r => (r.ok ? r.json() : null)).then(j => j?.channels ?? []).catch(() => []));
+  }
+  return channelCache.get(m.id)!;
+}
+
+function MatchCard({ m, hidden = false }: { m: TopMatch; hidden?: boolean }) {
+  const skipMatch = useMediaStore(s => s.skipMatch);
+  const unskipMatch = useMediaStore(s => s.unskipMatch);
+  const syncMasterBin = useMediaStore(s => s.syncMasterBin);
+  const [lookedUp, setLookedUp] = useState<string[] | null>(null);
+  useEffect(() => {
+    if (m.channels.length) return;
+    let alive = true;
+    lookupChannels(m).then(c => { if (alive) setLookedUp(c); });
+    return () => { alive = false; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [m.id, m.channels.length]);
+  const toggleHidden = () => {
+    // same key as the floating island, synced through the master bin
+    if (hidden) unskipMatch(matchHideKey(m));
+    else { skipMatch(matchHideKey(m)); setTimeout(() => syncMasterBin(), 100); }
+  };
   const live = m.status === "live";
   const started = m.status !== "upcoming";
   const pinned = useMediaStore(s => s.pinnedMatches) || [];
@@ -98,19 +135,25 @@ function MatchCard({ m }: { m: TopMatch }) {
   useEffect(() => { if (open) loadDetails(); // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, m.score.home, m.score.away]);
 
-  const channels = Array.from(new Set([...m.channels, ...(details?.channels ?? [])]));
+  const channels = Array.from(new Set([...m.channels, ...(details?.channels ?? []), ...(lookedUp ?? [])]));
   const scorers = (side: "home" | "away") => (details?.scorers ?? []).filter(s => s.side === side);
 
   return (
-    <div className={cn("rounded-3xl border p-4 bg-white/5 relative", live ? "border-red-500/50" : isPinned ? "border-emerald-400/60" : m.favorite ? "border-yellow-400/50" : "border-white/10")}>
-      {m.favorite && <Star className="absolute top-3 left-3 w-4 h-4 fill-yellow-400 text-yellow-400" />}
+    <div className={cn("rounded-3xl border p-4 bg-white/5 relative", hidden && "opacity-50", live ? "border-red-500/50" : isPinned ? "border-emerald-400/60" : m.favorite ? "border-yellow-400/50" : "border-white/10")}>
+
       <div className="flex items-center justify-between text-[11px] text-white/50 mb-3">
         <span className="flex items-center gap-2 min-w-0">
           {m.league.logo && <img src={m.league.logo} alt="" className="w-4 h-4 object-contain" />}
           <span className="truncate">{m.league.name}</span>
         </span>
-        <span className={cn("font-black shrink-0", live ? "text-red-400" : m.status === "finished" ? "text-white/40" : "text-emerald-400")}>
-          {live ? `مباشر ${m.elapsed ?? ""}'` : m.status === "finished" ? "انتهت" : "قريباً"}
+        <span className="flex items-center gap-2 shrink-0">
+          {m.favorite && <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />}
+          <span className={cn("font-black", live ? "text-red-400" : m.status === "finished" ? "text-white/40" : "text-emerald-400")}>
+            {live ? `مباشر ${m.elapsed ?? ""}'` : m.status === "finished" ? "انتهت" : "قريباً"}
+          </span>
+          <button onClick={toggleHidden} title={hidden ? "إظهار المباراة" : "إخفاء المباراة (في كل الأجهزة)"} className="w-8 h-8 rounded-full bg-black/40 border border-white/10 text-white/60 hover:text-white flex items-center justify-center focusable">
+            {hidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+          </button>
         </span>
       </div>
       {/* LTR so the home team sits on the left of "home - away" (in RTL it ended up on the right, reversing the score) */}
@@ -125,7 +168,12 @@ function MatchCard({ m }: { m: TopMatch }) {
         <Team name={m.away.name} logo={m.away.logo} />
       </div>
 
-      {channels.length > 0 && <div className="mt-3 text-center text-[11px] text-white/60" dir="ltr">📺 {channels.join(" · ")}</div>}
+      <div className="mt-3 flex items-center justify-center gap-2 text-xs font-bold">
+        <Tv className="w-4 h-4 text-emerald-400 shrink-0" />
+        {channels.length > 0
+          ? <span className="text-white/80 truncate" dir="ltr">{channels.join(" · ")}</span>
+          : <span className="text-white/30">{lookedUp === null && !m.channels.length ? "جاري البحث عن القناة..." : "القناة الناقلة غير متوفرة"}</span>}
+      </div>
 
       {open && (
         <div className="mt-3 rounded-2xl bg-black/30 p-3 space-y-2 text-xs">
