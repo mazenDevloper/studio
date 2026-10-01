@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
-import { useLiveMatches } from "@/lib/live-matches";
+import { useLiveMatches, useLiveMatchesStore } from "@/lib/live-matches";
 import { useMediaStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { X, Eye, EyeOff, Bell, Clock, Timer, Check, Trophy, Play, ChevronDown, ChevronUp, Zap, Cloud, Bookmark } from "lucide-react";
@@ -43,7 +43,7 @@ export function LiveMatchIsland() {
   const [showSyncIsland, setShowSyncIsland] = useState(true);
   // Live scores for today's matches; favourite teams' matches are always included in the feed.
   const favoriteNames = useMemo(() => (favoriteTeams || []).map(t => t?.name).filter(Boolean) as string[], [favoriteTeams]);
-  const { data: liveFeed } = useLiveMatches(favoriteNames);
+  const { data: liveFeed, pinned, togglePin, celebrating } = useLiveMatches(favoriteNames);
 
   useEffect(() => {
     setMounted(true);
@@ -171,11 +171,12 @@ export function LiveMatchIsland() {
         });
       }
     }
-    // Today's matches of my favourite teams, with live scores
+    // Today's matches of my favourite teams and the matches I pinned, with live scores
     const nowSecs = Math.floor(now.getTime() / 1000);
     for (const m of liveFeed?.matches ?? []) {
       const id = `live-${m.id}`;
-      if (!m.favorite || skippedMatchIds.includes(id)) continue;
+      const isPinned = pinned.some(p => p.id === m.id);
+      if ((!m.favorite && !isPinned) || (!isPinned && skippedMatchIds.includes(id))) continue;
       if (m.status === "finished" && nowSecs - m.timestamp > 3.5 * 3600) continue; // drop long-finished games
       const started = m.status !== "upcoming";
       list.push({
@@ -195,10 +196,15 @@ export function LiveMatchIsland() {
     }
 
     return list.sort((a, b) => Math.abs(a.diff) - Math.abs(b.diff));
-  }, [now, prayerTimes, prayerSettings, reminders, generalAzkar, skippedReminderIds, skippedMatchIds, showSyncIsland, isInitialLoading, liveFeed]);
+  }, [now, prayerTimes, prayerSettings, reminders, generalAzkar, skippedReminderIds, skippedMatchIds, showSyncIsland, isInitialLoading, liveFeed, pinned]);
 
   const handleAction = async (id: string, type: 'match' | 'reminder' | 'sync' | 'azkar') => {
-    if (type === 'match') skipMatch(id);
+    if (type === 'match') {
+      // closing a pinned live match unpins it; anything else is skipped for today as before
+      const pin = id.startsWith('live-') ? pinned.find(p => `live-${p.id}` === id) : undefined;
+      if (pin) { togglePin(pin); return; }
+      skipMatch(id);
+    }
     else if (type === 'sync') setShowSyncIsland(false);
     else if (type === 'azkar') toggleReminder(id);
     else toggleReminder(id);
@@ -225,6 +231,7 @@ export function LiveMatchIsland() {
 
   if (!mounted || !now) return null;
   if (autoHideIsland && !activeAlerts.length) return null;
+  if (celebrating) return null; // the goal island takes the stage, then everything comes back as it was
 
   return (
     <div className={cn("fixed top-6 left-1/2 -translate-x-1/2 z-[10001] flex flex-col items-center gap-3 pointer-events-none scale-[0.7] min-[968px]:scale-[0.80] dir-rtl transition-all duration-700", (showIslands || activeAlerts.length) ? "translate-y-0 opacity-100" : "-translate-y-20 opacity-0")}>

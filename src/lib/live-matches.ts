@@ -12,14 +12,28 @@ import type { TopMatchesResult } from "@/lib/match-core";
 
 const POLL_MS = 30_000;
 
+export interface PinnedMatch { id: string; home: string; away: string }
+
+const PIN_KEY = "pinned_matches_v1";
+const loadPins = (): PinnedMatch[] => {
+  try { return typeof window === "undefined" ? [] : JSON.parse(localStorage.getItem(PIN_KEY) || "[]"); } catch { return []; }
+};
+const savePins = (pins: PinnedMatch[]) => { try { localStorage.setItem(PIN_KEY, JSON.stringify(pins)); } catch {} };
+
 interface LiveMatchesState {
   data: TopMatchesResult | null;
   error: string;
   loading: boolean;
   updatedAt: number | null;
   teams: string[];
+  /** matches the user pinned as a floating island (kept across reloads) */
+  pinned: PinnedMatch[];
+  /** true while the goal island is expanded: the other islands step aside */
+  celebrating: boolean;
   refresh: () => Promise<void>;
   setTeams: (teams: string[]) => void;
+  togglePin: (m: PinnedMatch) => void;
+  setCelebrating: (v: boolean) => void;
 }
 
 export const useLiveMatchesStore = create<LiveMatchesState>((set, get) => ({
@@ -28,12 +42,16 @@ export const useLiveMatchesStore = create<LiveMatchesState>((set, get) => ({
   loading: false,
   updatedAt: null,
   teams: [],
+  pinned: loadPins(),
+  celebrating: false,
   refresh: async () => {
     if (get().loading) return;
     set({ loading: true });
     try {
       const q = new URLSearchParams({ limit: "12" });
-      if (get().teams.length) q.set("teams", get().teams.join("|"));
+      // favourite teams + both sides of every pinned match are always included in the feed
+      const teams = Array.from(new Set([...get().teams, ...get().pinned.flatMap(p => [p.home, p.away])]));
+      if (teams.length) q.set("teams", teams.join("|"));
       const res = await fetch(`/api/matches?${q}`, { cache: "no-store" });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
@@ -44,6 +62,13 @@ export const useLiveMatchesStore = create<LiveMatchesState>((set, get) => ({
       set({ loading: false });
     }
   },
+  togglePin: (m) => {
+    const pins = get().pinned.some(p => p.id === m.id) ? get().pinned.filter(p => p.id !== m.id) : [...get().pinned, m];
+    savePins(pins);
+    set({ pinned: pins });
+    get().refresh();
+  },
+  setCelebrating: (v) => set({ celebrating: v }),
   setTeams: (teams) => {
     if (teams.join("|") === get().teams.join("|")) return;
     set({ teams });

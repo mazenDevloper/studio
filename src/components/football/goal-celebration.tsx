@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useLiveMatches } from "@/lib/live-matches";
+import { useLiveMatches, useLiveMatchesStore } from "@/lib/live-matches";
 import type { TopMatch } from "@/lib/match-core";
 
 interface GoalEvent { key: string; match: TopMatch; side: "home" | "away"; }
@@ -12,7 +12,7 @@ const SHOW_MS = 6500;
 export const GOAL_TEST_EVENT = "goal-celebration-test";
 
 /**
- * Watches today's important matches and plays a Premier-League-style "GOAAAAAL" overlay
+ * Watches today's important matches and plays a Premier-League-style "GOAAAAAL" inside an expanded floating island
  * whenever any score goes up. The first load only seeds the scores (no animation for goals scored earlier).
  */
 export function GoalCelebration() {
@@ -58,84 +58,81 @@ export function GoalCelebration() {
   }, [data]);
 
   const current = queue[0];
-  const rootRef = useRef<HTMLDivElement>(null);
+  const islandRef = useRef<HTMLDivElement>(null);
+  const setCelebrating = useLiveMatchesStore(st => st.setCelebrating);
+
   useEffect(() => {
+    setCelebrating(!!current);
     if (!current) return;
     const t = setTimeout(() => setQueue(q => q.slice(1)), SHOW_MS);
-    const root = rootRef.current;
+    const el = islandRef.current;
     const anims: Animation[] = [];
-    if (root && typeof root.animate === "function") {
-      const q = (sel: string) => Array.from(root.querySelectorAll<HTMLElement>(sel));
-      const ease = "cubic-bezier(.2,.8,.2,1)";
-      // Grow out of the floating island (top-centre pill), hold, then shrink back into it — like a Dynamic Island.
-      const pill = "inset(22px calc(50% - 120px) calc(100% - 86px) calc(50% - 120px) round 32px)";
-      const full = "inset(0px 0px 0px 0px round 0px)";
-      anims.push(root.animate(
-        [
-          { clipPath: pill, opacity: 0 },
-          { clipPath: pill, opacity: 1, offset: 0.04 },
-          { clipPath: full, opacity: 1, offset: 0.13 },
-          { clipPath: full, opacity: 1, offset: 0.86 },
-          { clipPath: pill, opacity: 1, offset: 0.95 },
-          { clipPath: pill, opacity: 0 },
-        ],
+    if (el && typeof el.animate === "function") {
+      // The floating island itself grows into the goal card, holds, then shrinks back to a pill and fades.
+      const W = Math.min(760, window.innerWidth * 0.94), H = window.innerWidth < 640 ? 230 : 200;
+      const pill = { width: "220px", height: "64px", borderRadius: "32px" };
+      const big = { width: `${W}px`, height: `${H}px`, borderRadius: "44px" };
+      anims.push(el.animate(
+        [{ ...pill, opacity: 0, offset: 0 }, { ...pill, opacity: 1, offset: 0.04 }, { ...big, opacity: 1, offset: 0.14 },
+         { ...big, opacity: 1, offset: 0.86 }, { ...pill, opacity: 1, offset: 0.95 }, { ...pill, opacity: 0, offset: 1 }],
         { duration: SHOW_MS, easing: "cubic-bezier(.3,.7,.2,1)", fill: "forwards" }));
-      q(".goal-sweep").forEach((el, i) => anims.push(el.animate(
-        [{ transform: "skewY(-12deg) translateX(-110%)" }, { transform: "skewY(-12deg) translateX(0)", offset: 0.6 }, { transform: "skewY(-12deg) translateX(8%)", opacity: 0.55 }],
-        { duration: 1100, delay: 50 + i * 150, easing: ease, fill: "both" })));
-      q(".goal-logo").forEach(el => anims.push(el.animate(
-        [{ transform: "scale(0) rotate(-180deg)", opacity: 0 }, { transform: "scale(1) rotate(0)", opacity: 1 }],
-        { duration: 900, delay: 600, easing: "cubic-bezier(.17,.89,.32,1.49)", fill: "both" })));
-      q(".goal-text").forEach(el => {
-        anims.push(el.animate(
-          [{ transform: "scale(3)", letterSpacing: "0.6em", opacity: 0, filter: "blur(12px)" }, { transform: "scale(1)", letterSpacing: "-0.02em", opacity: 1, filter: "blur(0)" }],
-          { duration: 1000, delay: 900, easing: ease, fill: "both" }));
-        anims.push(el.animate([{ backgroundPosition: "0% 0" }, { backgroundPosition: "300% 0" }], { duration: 2400, delay: 1900, iterations: Infinity }));
+      const q = (sel: string) => Array.from(el.querySelectorAll<HTMLElement>(sel));
+      q(".gi-content").forEach(c => anims.push(c.animate(
+        [{ opacity: 0, offset: 0 }, { opacity: 0, offset: 0.12 }, { opacity: 1, offset: 0.18 }, { opacity: 1, offset: 0.83 }, { opacity: 0, offset: 0.88 }, { opacity: 0, offset: 1 }],
+        { duration: SHOW_MS, fill: "forwards" })));
+      q(".gi-sweep").forEach(c => anims.push(c.animate(
+        [{ transform: "skewX(-20deg) translateX(-130%)" }, { transform: "skewX(-20deg) translateX(330%)" }],
+        { duration: 1200, delay: 750, easing: "cubic-bezier(.2,.8,.2,1)", fill: "both" })));
+      q(".gi-text").forEach(c => {
+        anims.push(c.animate(
+          [{ transform: "scale(2.2)", letterSpacing: "0.5em", filter: "blur(8px)" }, { transform: "scale(1)", letterSpacing: "-0.01em", filter: "blur(0)" }],
+          { duration: 800, delay: 900, easing: "cubic-bezier(.2,.8,.2,1)", fill: "both" }));
+        anims.push(c.animate([{ backgroundPosition: "0% 0" }, { backgroundPosition: "300% 0" }], { duration: 2400, delay: 1700, iterations: Infinity }));
       });
-      q(".goal-score").forEach(el => anims.push(el.animate(
-        [{ transform: "translateY(40px)", opacity: 0 }, { transform: "translateY(0)", opacity: 1 }],
-        { duration: 700, delay: 1500, easing: "ease-out", fill: "both" })));
+      q(".gi-scorer").forEach(c => anims.push(c.animate(
+        [{ transform: "scale(0) rotate(-140deg)" }, { transform: "scale(1.15) rotate(8deg)", offset: 0.7 }, { transform: "scale(1) rotate(0)" }],
+        { duration: 800, delay: 800, easing: "ease-out", fill: "both" })));
     }
     return () => { clearTimeout(t); anims.forEach(a => a.cancel()); };
-  }, [current]);
+  }, [current, setCelebrating]);
+
+  useEffect(() => () => setCelebrating(false), [setCelebrating]);
 
   if (!current) return null;
   const { match: m, side } = current;
-  const scorer = side === "home" ? m.home : m.away;
 
   return (
-    <div ref={rootRef} key={current.key} className="goal-overlay fixed inset-0 z-[100005] overflow-hidden flex items-center justify-center" onClick={() => setQueue(q => q.slice(1))} dir="ltr">
-      <div className="absolute inset-0 bg-[#1a0020]/80 backdrop-blur-sm" />
-      {/* diagonal colour sweeps */}
-      <div className="goal-sweep goal-sweep-1" />
-      <div className="goal-sweep goal-sweep-2" />
-      <div className="goal-sweep goal-sweep-3" />
-
-      <div className="relative flex flex-col items-center gap-6 px-6 text-center">
-        <div className="goal-logo w-40 h-40 md:w-52 md:h-52 rounded-full bg-white/95 flex items-center justify-center shadow-[0_0_80px_rgba(0,255,133,0.6)]">
-          {scorer.logo ? <img src={scorer.logo} alt="" className="w-28 h-28 md:w-36 md:h-36 object-contain" /> : <span className="text-5xl font-black text-[#37003c]">{scorer.name.slice(0, 3).toUpperCase()}</span>}
-        </div>
-
-        <div className="goal-text text-6xl md:text-[9rem] leading-none font-black italic tracking-tight">GOAAAAAL!</div>
-
-        <div className="goal-score flex items-center gap-4 md:gap-6 bg-[#37003c] border-2 border-[#00ff85] rounded-2xl px-5 py-3 md:px-8 md:py-4 shadow-2xl">
-          <TeamChip name={m.home.name} logo={m.home.logo} active={side === "home"} />
-          <span className="text-4xl md:text-6xl font-black text-white tabular-nums">{m.score.home ?? 0} - {m.score.away ?? 0}</span>
-          <TeamChip name={m.away.name} logo={m.away.logo} active={side === "away"} />
-        </div>
-        <div className="goal-score text-sm md:text-base font-bold text-white/80">
-          {m.league.name}{m.elapsed ? ` · ${m.elapsed}'` : ""}
+    <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100005] pointer-events-none" dir="ltr">
+      <div
+        ref={islandRef}
+        key={current.key}
+        onClick={() => setQueue(q => q.slice(1))}
+        className="pointer-events-auto relative overflow-hidden mx-auto bg-gradient-to-br from-[#37003c] via-[#24002a] to-[#0b0010] border-2 border-[#00ff85]/70 shadow-[0_0_60px_rgba(0,255,133,0.35)]"
+        style={{ width: 220, height: 64, borderRadius: 32 }}
+      >
+        <div className="gi-sweep absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-[#04f5ff]/40 to-transparent" />
+        <div className="gi-content absolute inset-0 flex items-center justify-between gap-3 px-5 md:px-8">
+          <TeamBadge logo={m.home.logo} name={m.home.name} scorer={side === "home"} />
+          <div className="flex flex-col items-center min-w-0">
+            <div className="gi-text text-4xl md:text-6xl font-black italic leading-none bg-gradient-to-r from-[#00ff85] via-[#04f5ff] to-[#00ff85] bg-[length:300%_100%] bg-clip-text text-transparent">GOAAAAAL!</div>
+            <div className="mt-2 text-4xl md:text-5xl font-black text-white tabular-nums">{m.score.home ?? 0} - {m.score.away ?? 0}</div>
+            <div className="mt-1 text-[11px] md:text-xs font-bold text-white/60 truncate max-w-[16rem]">{m.league.name}{m.elapsed ? ` · ${m.elapsed}'` : ""}</div>
+          </div>
+          <TeamBadge logo={m.away.logo} name={m.away.name} scorer={side === "away"} />
         </div>
       </div>
     </div>
   );
 }
 
-function TeamChip({ name, logo, active }: { name: string; logo?: string; active: boolean }) {
+/** Scoring team in full colour with a neon ring; the other team greyed out. */
+function TeamBadge({ logo, name, scorer }: { logo?: string; name: string; scorer: boolean }) {
   return (
-    <div className={`flex items-center gap-2 ${active ? "text-[#00ff85]" : "text-white/80"}`}>
-      {logo && <img src={logo} alt="" className="w-8 h-8 md:w-10 md:h-10 object-contain" />}
-      <span className="text-sm md:text-xl font-black max-w-[9rem] truncate">{name}</span>
+    <div className={`flex flex-col items-center gap-1 w-24 md:w-32 shrink-0 ${scorer ? "gi-scorer" : "opacity-40 grayscale"}`}>
+      <div className={`w-16 h-16 md:w-24 md:h-24 rounded-full flex items-center justify-center ${scorer ? "bg-white shadow-[0_0_30px_rgba(0,255,133,0.8)] ring-4 ring-[#00ff85]" : "bg-white/70"}`}>
+        {logo ? <img src={logo} alt="" className="w-12 h-12 md:w-16 md:h-16 object-contain" /> : <span className="text-lg font-black text-[#37003c]">{name.slice(0, 3).toUpperCase()}</span>}
+      </div>
+      <span className={`text-[11px] md:text-sm font-black truncate max-w-full ${scorer ? "text-[#00ff85]" : "text-white/70"}`}>{name}</span>
     </div>
   );
 }

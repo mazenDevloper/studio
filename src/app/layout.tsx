@@ -5,6 +5,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { GlobalVideoPlayer } from "@/components/media/global-player";
 import { GoalCelebration } from "@/components/football/goal-celebration";
+import { YoutubeBackgroundBridge } from "@/components/media/youtube-background-bridge";
 import { GlobalQuranPlayer } from "@/components/quran/global-quran-player";
 import { AudioPlayer } from "@/components/media/audio-player";
 import { FirebaseClientProvider } from "@/firebase";
@@ -153,6 +154,7 @@ export default function RootLayout({
               {children}
             </MainLayoutShell>
             <GlobalVideoPlayer />
+            <YoutubeBackgroundBridge />
             <GlobalQuranPlayer />
             <AudioPlayer />
             <Toaster />

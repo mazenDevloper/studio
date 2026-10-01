@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, RefreshCw, Trophy, AlertTriangle, Star, PartyPopper } from "lucide-react";
-import { useLiveMatches } from "@/lib/live-matches";
+import { Loader2, RefreshCw, Trophy, AlertTriangle, Star, PartyPopper, Pin } from "lucide-react";
+import { useLiveMatches, useLiveMatchesStore } from "@/lib/live-matches";
+import type { MatchDetails } from "@/lib/match-details";
 import { useMediaStore } from "@/lib/store";
 import { GOAL_TEST_EVENT } from "@/components/football/goal-celebration";
 import { Button } from "@/components/ui/button";
@@ -74,8 +75,32 @@ export default function MatchesTestPage() {
 function MatchCard({ m }: { m: TopMatch }) {
   const live = m.status === "live";
   const started = m.status !== "upcoming";
+  const { pinned, togglePin } = useLiveMatchesStore();
+  const isPinned = pinned.some(p => p.id === m.id);
+  const [open, setOpen] = useState(false);
+  const [details, setDetails] = useState<MatchDetails | null>(null);
+  const [detailsError, setDetailsError] = useState("");
+  const [loadingDetails, setLoadingDetails] = useState(false);
+
+  const loadDetails = async () => {
+    setLoadingDetails(true); setDetailsError("");
+    try {
+      const q = new URLSearchParams({ id: m.id, league: m.league.id, homeId: m.home.id });
+      const r = await fetch(`/api/matches/details?${q}`, { cache: "no-store" });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`);
+      setDetails(j);
+    } catch (e: any) { setDetailsError(e?.message || "failed"); } finally { setLoadingDetails(false); }
+  };
+  // refresh scorers while the card is open and the score changes
+  useEffect(() => { if (open) loadDetails(); // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, m.score.home, m.score.away]);
+
+  const channels = Array.from(new Set([...m.channels, ...(details?.channels ?? [])]));
+  const scorers = (side: "home" | "away") => (details?.scorers ?? []).filter(s => s.side === side);
+
   return (
-    <div className={cn("rounded-3xl border p-4 bg-white/5 relative", live ? "border-red-500/50" : m.favorite ? "border-yellow-400/50" : "border-white/10")}>
+    <div className={cn("rounded-3xl border p-4 bg-white/5 relative", live ? "border-red-500/50" : isPinned ? "border-emerald-400/60" : m.favorite ? "border-yellow-400/50" : "border-white/10")}>
       {m.favorite && <Star className="absolute top-3 left-3 w-4 h-4 fill-yellow-400 text-yellow-400" />}
       <div className="flex items-center justify-between text-[11px] text-white/50 mb-3">
         <span className="flex items-center gap-2 min-w-0">
@@ -96,7 +121,46 @@ function MatchCard({ m }: { m: TopMatch }) {
         </div>
         <Team name={m.away.name} logo={m.away.logo} />
       </div>
-      {m.channels.length > 0 && <div className="mt-3 text-center text-[10px] text-white/40" dir="ltr">📺 {m.channels.join(" · ")}</div>}
+
+      {channels.length > 0 && <div className="mt-3 text-center text-[11px] text-white/60" dir="ltr">📺 {channels.join(" · ")}</div>}
+
+      {open && (
+        <div className="mt-3 rounded-2xl bg-black/30 p-3 space-y-2 text-xs">
+          {loadingDetails && !details && <div className="flex justify-center"><Loader2 className="w-4 h-4 animate-spin text-emerald-400" /></div>}
+          {detailsError && <p className="text-red-300">{detailsError}</p>}
+          {details && (
+            <>
+              <div className="grid grid-cols-2 gap-3" dir="ltr">
+                {(["home", "away"] as const).map(side => (
+                  <ul key={side} className={cn("space-y-1", side === "away" && "text-right")}>
+                    {scorers(side).length === 0
+                      ? <li className="text-white/30">—</li>
+                      : scorers(side).map((g, i) => <li key={i}>⚽ {g.player || "?"} <span className="text-white/50">{g.minute}{g.note ? ` (${g.note})` : ""}</span></li>)}
+                  </ul>
+                ))}
+              </div>
+              <div className="text-white/60 space-y-0.5 border-t border-white/5 pt-2">
+                <p>🎙️ المعلق: {details.commentators.length ? details.commentators.join("، ") : <span className="text-white/30">غير متوفر من المصدر</span>}</p>
+                {details.venue && <p>🏟️ الملعب: <span dir="ltr">{details.venue}</span></p>}
+                {details.referee && <p>🧑‍⚖️ الحكم: <span dir="ltr">{details.referee}</span></p>}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      <div className="mt-3 flex gap-2">
+        <button onClick={() => setOpen(v => !v)} className="flex-1 h-9 rounded-full bg-white/5 border border-white/10 text-xs font-bold hover:bg-white/10 focusable">
+          {open ? "إخفاء التفاصيل" : "التفاصيل والهدّافون"}
+        </button>
+        <button
+          onClick={() => togglePin({ id: m.id, home: m.home.name, away: m.away.name })}
+          className={cn("h-9 px-4 rounded-full border text-xs font-bold focusable flex items-center gap-1", isPinned ? "bg-emerald-500 text-black border-emerald-500" : "bg-white/5 border-white/10 hover:bg-white/10")}
+          title="عرض المباراة كجزيرة عائمة"
+        >
+          <Pin className="w-3.5 h-3.5" /> {isPinned ? "مثبّتة في الجزيرة" : "تثبيت كجزيرة"}
+        </button>
+      </div>
     </div>
   );
 }
