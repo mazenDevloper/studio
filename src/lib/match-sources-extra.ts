@@ -127,7 +127,7 @@ export function mapFpl(fixtures: any[], teams: any[]): TopMatch[] {
 }
 async function fromFpl(): Promise<TopMatch[]> {
   const [boot, fixtures] = await Promise.all([
-    getJson("https://fantasy.premierleague.com/api/bootstrap-static/", UA),
+    getJson("https://fantasy.premierleague.com/api/bootstrap-static/", UA, 3600),
     getJson("https://fantasy.premierleague.com/api/fixtures/", UA),
   ]);
   return mapFpl(fixtures ?? [], boot?.teams ?? []);
@@ -199,7 +199,7 @@ async function fromOpenFootball(date: string): Promise<TopMatch[]> {
   const y = seasonStartYear(date);
   const season = `${y}-${String((y + 1) % 100).padStart(2, "0")}`;
   const res = await Promise.allSettled(OPENFOOTBALL.map(lg =>
-    getJson(`https://raw.githubusercontent.com/openfootball/football.json/master/${season}/${lg.file}.json`, UA).then(j => mapOpenFootball(j, lg))));
+    getJson(`https://raw.githubusercontent.com/openfootball/football.json/master/${season}/${lg.file}.json`, UA, 600).then(j => mapOpenFootball(j, lg))));
   const ok = res.filter(r => r.status === "fulfilled") as PromiseFulfilledResult<TopMatch[]>[];
   if (!ok.length) throw new Error((res[0] as PromiseRejectedResult).reason?.message ?? "failed");
   return ok.flatMap(r => r.value);
@@ -236,7 +236,7 @@ export function mapFixtureDownload(rows: any[], lg: (typeof FIXTUREDOWNLOAD)[num
 }
 async function fromFixtureDownload(date: string): Promise<TopMatch[]> {
   const y = seasonStartYear(date);
-  const res = await Promise.allSettled(FIXTUREDOWNLOAD.map(lg => getJson(`https://fixturedownload.com/feed/json/${lg.slug}-${y}`, UA).then(j => mapFixtureDownload(j ?? [], lg))));
+  const res = await Promise.allSettled(FIXTUREDOWNLOAD.map(lg => getJson(`https://fixturedownload.com/feed/json/${lg.slug}-${y}`, UA, 600).then(j => mapFixtureDownload(j ?? [], lg))));
   const ok = res.filter(r => r.status === "fulfilled") as PromiseFulfilledResult<TopMatch[]>[];
   if (!ok.length) throw new Error((res[0] as PromiseRejectedResult).reason?.message ?? "failed");
   return ok.flatMap(r => r.value);

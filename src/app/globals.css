@@ -209,3 +209,16 @@ span.text-\[18cqw\].font-black.text-white.leading-none.tracking-tight.block {
 .show-subs-under-reciters {
   display: none;
 }
+/* --- GOAL CELEBRATION (Premier League style) ---
+   Motion is driven by the Web Animations API in goal-celebration.tsx: the base layer forces
+   animation-duration: 0ms on every element, which would kill CSS keyframe animations. */
+.goal-sweep { position: absolute; left: -60%; width: 220%; height: 34vh; transform: skewY(-12deg) translateX(-110%); }
+.goal-sweep-1 { top: 8%;  background: linear-gradient(90deg, #37003c, #e90052); }
+.goal-sweep-2 { top: 38%; background: linear-gradient(90deg, #00ff85, #04f5ff); opacity: .85; }
+.goal-sweep-3 { top: 68%; background: linear-gradient(90deg, #04f5ff, #37003c); }
+.goal-text {
+  background: linear-gradient(90deg, #00ff85, #04f5ff, #ffffff, #00ff85);
+  background-size: 300% 100%;
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 6px 24px rgba(0,0,0,.6));
+}

@@ -2,8 +2,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
-import { Match } from "@/lib/football-data";
-import { fetchFootballData } from "@/lib/football-api";
+import { useLiveMatches } from "@/lib/live-matches";
 import { useMediaStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { X, Eye, EyeOff, Bell, Clock, Timer, Check, Trophy, Play, ChevronDown, ChevronUp, Zap, Cloud, Bookmark } from "lucide-react";
@@ -39,11 +38,12 @@ export function LiveMatchIsland() {
   } = useMediaStore();
 
   const [mounted, setMounted] = useState(false);
-  const [topMatches, setTopMatches] = useState<Match[]>([]);
   const [now, setNow] = useState<Date | null>(null);
   const [isMatchCollapsed, setIsMatchCollapsed] = useState(true);
   const [showSyncIsland, setShowSyncIsland] = useState(true);
-  const lastFetchRef = useRef<number>(0);
+  // Live scores for today's matches; favourite teams' matches are always included in the feed.
+  const favoriteNames = useMemo(() => (favoriteTeams || []).map(t => t?.name).filter(Boolean) as string[], [favoriteTeams]);
+  const { data: liveFeed } = useLiveMatches(favoriteNames);
 
   useEffect(() => {
     setMounted(true);
@@ -53,19 +53,6 @@ export function LiveMatchIsland() {
     const syncTimer = setTimeout(() => setShowSyncIsland(false), 10000);
     return () => { clearInterval(timer); clearTimeout(syncTimer); };
   }, []);
-
-  const fetchMatches = useCallback(async (force = false) => {
-    const timeSinceLast = Date.now() - lastFetchRef.current;
-    if (!force && timeSinceLast < 60000) return;
-    try {
-      const matches = await fetchFootballData('today');
-      lastFetchRef.current = Date.now();
-      setTopMatches(matches || []);
-    } catch (e) {}
-  }, []);
-
-  useEffect(() => { fetchMatches(true); }, [fetchMatches]);
-  useEffect(() => { const interval = setInterval(() => fetchMatches(), 60000); return () => clearInterval(interval); }, [fetchMatches]);
 
   const tToM = (t: string) => { if (!t) return 0; const [h, m] = t.split(':').map(Number); return h * 60 + m; };
 
@@ -184,8 +171,31 @@ export function LiveMatchIsland() {
         });
       }
     }
+    // Today's matches of my favourite teams, with live scores
+    const nowSecs = Math.floor(now.getTime() / 1000);
+    for (const m of liveFeed?.matches ?? []) {
+      const id = `live-${m.id}`;
+      if (!m.favorite || skippedMatchIds.includes(id)) continue;
+      if (m.status === "finished" && nowSecs - m.timestamp > 3.5 * 3600) continue; // drop long-finished games
+      const started = m.status !== "upcoming";
+      list.push({
+        id,
+        name: m.league.name,
+        diff: m.timestamp - nowSecs,
+        type: 'match',
+        iconType: 'match',
+        color: 'text-white',
+        isExpired: m.status === "live",
+        homeLogo: m.home.logo,
+        awayLogo: m.away.logo,
+        homeName: m.home.name,
+        awayName: m.away.name,
+        matchTimeStr: started ? `${m.score.home ?? 0}-${m.score.away ?? 0}` : convertTo12Hour(m.omanTime),
+      });
+    }
+
     return list.sort((a, b) => Math.abs(a.diff) - Math.abs(b.diff));
-  }, [now, prayerTimes, prayerSettings, reminders, generalAzkar, skippedReminderIds, skippedMatchIds, showSyncIsland, isInitialLoading]);
+  }, [now, prayerTimes, prayerSettings, reminders, generalAzkar, skippedReminderIds, skippedMatchIds, showSyncIsland, isInitialLoading, liveFeed]);
 
   const handleAction = async (id: string, type: 'match' | 'reminder' | 'sync' | 'azkar') => {
     if (type === 'match') skipMatch(id);

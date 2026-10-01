@@ -4,6 +4,7 @@
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { GlobalVideoPlayer } from "@/components/media/global-player";
+import { GoalCelebration } from "@/components/football/goal-celebration";
 import { GlobalQuranPlayer } from "@/components/quran/global-quran-player";
 import { AudioPlayer } from "@/components/media/audio-player";
 import { FirebaseClientProvider } from "@/firebase";
@@ -145,6 +146,7 @@ export default function RootLayout({
         <FirebaseClientProvider>
           <RootLayoutWrapper>
             <LiveMatchIsland />
+            <GoalCelebration />
             <RemotePointer />
             <CarDock />
             <MainLayoutShell>

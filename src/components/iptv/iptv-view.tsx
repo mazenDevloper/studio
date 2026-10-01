@@ -36,7 +36,8 @@ export function IptvView() {
   
   const [categories, setCategories] = useState<any[]>([]);
   const [channels, setChannels] = useState<IptvChannel[]>([]);
-  const [selectedCat, setSelectedCat] = useState<string | null>("source");
+  // Favourites are open by default; "my list" (the loaded playlist) is one click away.
+  const [selectedCat, setSelectedCat] = useState<string | null>("direct");
   const [sourceStatus, setSourceStatus] = useState<"loading" | "ready" | "error">("loading");
   const [activeSource, setActiveSource] = useState<IptvSource>(DEFAULT_IPTV_SOURCE);
   const [loading, setLoading] = useState(false);
@@ -173,7 +174,7 @@ export function IptvView() {
   const allCategories = useMemo(() => {
     const [direct, ...rest] = categories.length ? categories : [{ category_id: "direct", category_name: "القنوات المفضلة" }];
     const src = { category_id: "source", category_name: sourceChannels.length ? `قائمتي (${sourceChannels.length})` : "قائمتي" };
-    return [src, direct, ...rest];
+    return [direct, src, ...rest];
   }, [categories, sourceChannels.length]);
 
   useEffect(() => { setVisibleCount(PAGE_SIZE); }, [search, group, selectedCat]);
@@ -183,12 +184,14 @@ export function IptvView() {
   return (
     <div dir="ltr" className={cn("h-screen flex overflow-hidden relative", isDockLeft ? "flex-row" : "flex-row-reverse")}>
       {/* Categories: full-height side panel next to the car dock */}
-      <aside data-nav-zone="sidebar" dir="rtl" className={cn("flex h-full z-[110] premium-glass flex-col shrink-0 bg-black/60 border-white/5 w-[34%] md:w-[22%] min-w-[180px]", isDockLeft ? "border-r" : "border-l")}>
+      <aside data-nav-zone="sidebar" dir="rtl" className={cn("flex h-full min-h-0 overflow-hidden z-[110] premium-glass flex-col shrink-0 bg-black/60 border-white/5 w-[34%] md:w-[22%] min-w-[180px]", isDockLeft ? "border-r" : "border-l")}>
         <div className="p-4 flex items-center gap-3 border-b border-white/5">
           <div className="w-9 h-9 rounded-xl bg-emerald-600 flex items-center justify-center shadow-glow"><List className="w-5 h-5 text-white" /></div>
           <h2 className="text-lg font-black text-white tracking-tight">التصنيفات</h2>
         </div>
-        <div className="flex-1 overflow-y-auto no-scrollbar p-3 pb-40 space-y-2">
+        {/* min-h-0 lets this flex child shrink below its content height, which is what makes it scrollable */}
+        {/* globals.css sets touch-action: pan-x on sidebar scrollers, which blocks vertical finger scrolling: override it here */}
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-3 pb-40 space-y-2" style={{ touchAction: "pan-y" }}>
           {allCategories.map((cat, idx) => (
             <div key={String(cat.category_id) + idx} data-row-id={`iptv-cat-row-${idx}`} className="space-y-1.5">
               <button
@@ -222,7 +225,7 @@ export function IptvView() {
         </div>
       </aside>
 
-      <main data-nav-zone="content" className="flex-1 min-w-0 overflow-y-auto no-scrollbar p-6 pb-40 space-y-6" dir="rtl">
+      <main data-nav-zone="content" className="flex-1 min-w-0 min-h-0 overflow-y-auto overscroll-contain no-scrollbar p-6 pb-40 space-y-6" dir="rtl">
         <header className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-col gap-1">
             <h1 className="text-3xl font-black font-headline text-white tracking-tighter flex items-center gap-4">

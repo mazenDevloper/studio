@@ -19,6 +19,8 @@ export interface TopMatch {
   /** TV channels when ESPN lists them */
   channels: string[];
   importance: number;
+  /** set when the match involves one of the user's favourite teams */
+  favorite?: boolean;
 }
 
 export interface TopMatchesResult {
@@ -84,10 +86,11 @@ export const BROWSER_HEADERS = (origin: string) => ({
   "Sec-Fetch-Site": "cross-site",
 });
 
-export async function getJson(url: string, headers: Record<string, string> = UA): Promise<any> {
+/** `revalidate` (seconds) is short by default so live scores stay fresh; static schedule files pass a longer one. */
+export async function getJson(url: string, headers: Record<string, string> = UA, revalidate = 20): Promise<any> {
   let res: Response;
   try {
-    res = await fetch(url, { headers, next: { revalidate: 60 }, signal: AbortSignal.timeout(12000) });
+    res = await fetch(url, { headers, next: { revalidate }, signal: AbortSignal.timeout(12000) });
   } catch (e: any) {
     // Surface the real network cause (ENOTFOUND, ECONNRESET, timeout...) instead of a generic "fetch failed".
     throw new Error(e?.cause?.code || e?.cause?.message || e?.name || e?.message || "network error");
@@ -146,7 +149,7 @@ export function build(base: Omit<TopMatch, "omanTime" | "importance">, weight: n
 }
 
 /** Keep only matches whose kick-off falls on the given Oman calendar day, most important first. */
-export function pickTop(matches: TopMatch[], omanYmd: string, limit: number): { total: number; top: TopMatch[] } {
+export function pickTop(matches: TopMatch[], omanYmd: string, limit: number): { total: number; top: TopMatch[]; day: TopMatch[] } {
   const seen = new Set<string>();
   const today = matches.filter(m => {
     if (seen.has(m.id)) return false;
@@ -154,7 +157,30 @@ export function pickTop(matches: TopMatch[], omanYmd: string, limit: number): { 
     return omanDate(new Date(m.timestamp * 1000)) === omanYmd;
   });
   const top = [...today].sort((a, b) => b.importance - a.importance || a.timestamp - b.timestamp).slice(0, limit);
-  return { total: today.length, top };
+  return { total: today.length, top, day: today };
+}
+
+const TEAM_NOISE = /\b(fc|sc|cf|afc|club|saudi|football|calcio|sk|sv|ac|as|cd|fk|de|al)\b/g;
+/** Loose key for comparing team names across sources ("Al-Hilal Saudi FC" ~ "Al Hilal"). */
+const TEAM_ALIASES: [RegExp, string][] = [
+  [/\bman(chester)? (utd|united)\b/, "manchester united"],
+  [/\bman(chester)? city\b/, "manchester city"],
+  [/\bspurs\b|\btottenham hotspur\b/, "tottenham"],
+  [/\bpsg\b|\bparis sg\b/, "paris saint germain"],
+  [/\bbayern munchen\b|\bbayern munich\b/, "bayern"],
+  [/\batletico de madrid\b/, "atletico madrid"],
+];
+export function teamKey(name: string): string {
+  let n = normalizeTeamName(name);
+  for (const [re, to] of TEAM_ALIASES) n = n.replace(re, to);
+  return n.replace(/[^a-z0-9 ]/g, " ").replace(TEAM_NOISE, " ").replace(/\s+/g, " ").trim();
+}
+export function sameTeam(a: string, b: string): boolean {
+  const x = teamKey(a), y = teamKey(b);
+  if (!x || !y) return false;
+  if (x === y) return true;
+  const [s, l] = x.length <= y.length ? [x, y] : [y, x];
+  return s.length >= 4 && (` ${l} `).includes(` ${s} `);
 }
 
 
