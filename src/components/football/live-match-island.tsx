@@ -28,6 +28,8 @@ interface AlertItem {
   matchTimeStr?: string;
   /** live minute (or "انتهت") shown under the score */
   minuteStr?: string;
+  /** a favourite team is playing and the match is live: shown above everything, even the player */
+  favLive?: boolean;
 }
 
 /**
@@ -40,6 +42,7 @@ export function LiveMatchIsland() {
     showIslands, toggleShowIslands, skippedMatchIds, skipMatch, autoHideIsland,
     skippedReminderIds, skipReminder, toggleReminder, syncMasterBin, isInitialLoading
   } = useMediaStore();
+  const playerCovers = useMediaStore(s => !!(s.activeVideo || s.activeIptv) && s.isFullScreen && !s.isMinimized);
 
   const [mounted, setMounted] = useState(false);
   const [now, setNow] = useState<Date | null>(null);
@@ -209,10 +212,12 @@ export function LiveMatchIsland() {
         awayName: m.away.name,
         matchTimeStr: started ? `${m.score.home ?? 0}-${m.score.away ?? 0}` : convertTo12Hour(m.omanTime),
         minuteStr: m.status === "live" ? (m.elapsed ? `${m.elapsed}'` : "مباشر") : m.status === "finished" ? "انتهت" : undefined,
+        favLive: !!m.favorite && m.status === "live",
       });
     }
 
-    return list.sort((a, b) => Math.abs(a.diff) - Math.abs(b.diff));
+    // favourite teams' live matches first, then by time
+    return list.sort((a, b) => Number(!!b.favLive) - Number(!!a.favLive) || Math.abs(a.diff) - Math.abs(b.diff));
   }, [now, prayerTimes, prayerSettings, reminders, generalAzkar, skippedReminderIds, skippedMatchIds, showSyncIsland, isInitialLoading, liveFeed, pinned]);
 
   const handleAction = async (id: string, type: 'match' | 'reminder' | 'sync' | 'azkar') => {
@@ -251,16 +256,20 @@ export function LiveMatchIsland() {
   if (autoHideIsland && !activeAlerts.length) return null;
   if (celebrating) return null; // the goal island takes the stage, then everything comes back as it was
 
+  // a favourite team's live match goes above everything, the player included; over a full-screen player only those show
+  const hasFavLive = activeAlerts.some(a => a.favLive);
+  const visibleAlerts = playerCovers && hasFavLive ? activeAlerts.filter(a => a.favLive) : activeAlerts;
+
   return (
-    <div className={cn("fixed top-6 left-1/2 -translate-x-1/2 z-[10001] flex flex-col items-center gap-3 pointer-events-none scale-[0.7] min-[968px]:scale-[0.80] dir-rtl transition-all duration-700", (showIslands || activeAlerts.length) ? "translate-y-0 opacity-100" : "-translate-y-20 opacity-0")}>
+    <div className={cn("fixed top-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3 pointer-events-none scale-[0.7] min-[968px]:scale-[0.80] dir-rtl transition-all duration-700", hasFavLive ? "z-[100002]" : "z-[10001]", (showIslands || activeAlerts.length) ? "translate-y-0 opacity-100" : "-translate-y-20 opacity-0")}>
       <div className="flex items-start gap-3">
         <div onClick={toggleShowIslands} className="pointer-events-auto shadow-2xl w-12 h-12 rounded-full flex items-center justify-center premium-glass cursor-pointer border border-white/10 active:scale-90 transition-all">{showIslands ? <Eye className="w-5 h-5 text-accent" /> : <EyeOff className="w-5 h-5 text-white/20" />}</div>
         {showIslands && (
           <div className="flex items-center gap-2">
-            {activeAlerts.map((alert) => {
+            {visibleAlerts.map((alert) => {
                if (alert.type === 'match') {
                  return (
-                   <div key={alert.id} dir="ltr" onClick={() => setIsMatchCollapsed(!isMatchCollapsed)} className={cn("pointer-events-auto premium-glass rounded-full flex items-center animate-in slide-in-from-top-2 border transition-all relative group shadow-2xl cursor-pointer", alert.completed ? "bg-emerald-600/60 border-emerald-400" : "border-white/10", isMatchCollapsed ? "min-w-[10rem] h-[4.5rem] gap-0 px-1" : "min-w-[18rem] h-[7.5rem] gap-0 px-2")}>
+                   <div key={alert.id} dir="ltr" onClick={() => setIsMatchCollapsed(!isMatchCollapsed)} className={cn("pointer-events-auto premium-glass rounded-full flex items-center animate-in slide-in-from-top-2 border transition-all relative group shadow-2xl cursor-pointer", alert.completed ? "bg-emerald-600/60 border-emerald-400" : alert.favLive ? "border-yellow-400/70 shadow-[0_0_24px_rgba(250,204,21,0.35)]" : "border-white/10", isMatchCollapsed ? "min-w-[10rem] h-[4.5rem] gap-0 px-1" : "min-w-[18rem] h-[7.5rem] gap-0 px-2")}>
                      <button onClick={(e) => { e.stopPropagation(); handleAction(alert.id, 'match'); }} className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-black/60 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center pointer-events-auto transition-opacity z-50 border border-white/10 shadow-glow"><X className="w-3.5 h-3.5" /></button>
                      {/* live: the minute sits clearly next to the home team - "د86 [home] 1-0 [away]" */}
                      {alert.isExpired && alert.minuteStr && (
