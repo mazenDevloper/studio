@@ -55,6 +55,12 @@ export const LEAGUE_CHANNEL_RULES: LeagueChannelRule[] = [
     label: "الدوري العماني وكأس السلطان", channels: ["Oman Sport"], kind: "rights", alwaysList: true,
     test: l => /\boman|omantel|sultan qaboos|عمان|عُمان/i.test(l.name) || /^oman$/i.test(l.country ?? ""),
   },
+  {
+    // Sharjah Sports' 2026/27 schedule: Scottish league, League Cup and Super Cup (+ a weekly Scottish league magazine)
+    label: "الدوري الاسكتلندي وكأس الرابطة والسوبر", channels: ["Sharjah Sports"], kind: "rights", alwaysList: true,
+    test: l => slug(l, "sco.1", "sco.cis") || named(l, /scottish (premiership|league cup)|^spfl/i)
+      || (/scotland/i.test(l.country ?? "") && named(l, /^premiership$|league cup|super cup/i)),
+  },
   // ---------- Arab networks (exact channel number comes from the match sources) ----------
   { label: "الدوري الهولندي", channels: ["Dubai Sports"], kind: "network",
     test: l => slug(l, "ned.1") || named(l, /eredivisie/i) },
@@ -82,8 +88,6 @@ export const LEAGUE_CHANNEL_RULES: LeagueChannelRule[] = [
     test: l => slug(l, "arg.1") || (named(l, /liga profesional|primera divisi[oó]n|torneo (apertura|clausura)|copa de la liga/i) && /argentin/i.test(l.country ?? "")) },
   { label: "الدوري الأمريكي", channels: ["Apple TV"], kind: "foreign",
     test: l => slug(l, "usa.1") || named(l, /^mls$|major league soccer/i) },
-  { label: "الدوري الاسكتلندي", channels: ["Sky Sports", "Premier Sports"], kind: "foreign",
-    test: l => slug(l, "sco.1") || named(l, /scottish premiership/i) || (named(l, /^premiership$/i) && /scotland/i.test(l.country ?? "")) },
   { label: "الدوري البلجيكي", channels: ["DAZN"], kind: "foreign",
     test: l => slug(l, "bel.1") || named(l, /jupiler|belgian pro league|first division a/i) || (named(l, /^pro league$/i) && /belgi/i.test(l.country ?? "")) },
   { label: "الدوري البرازيلي", channels: ["Premiere", "Globo"], kind: "foreign",
@@ -211,7 +215,7 @@ export function uniqueChannels(names: string[]): string[] {
 // ---- Arab vs foreign channels ----
 /** Arab-region broadcasters (after channelTokens normalisation, or Arabic script). */
 const ARAB_BRANDS = new Set(["bein", "thmanyah", "ssc", "adsport", "dubaisport", "sharjahsport", "ksasport", "alkass", "mbc", "starzplay", "shahid"]);
-const ARAB_NAMES = /\b(oman|kuwait|bahrain|qatar|jordan|iraq|yemen|libya|syria|saudi|emirates|abu dhabi|dubai|sharjah|ajman|nile|on time|ontime|al ?jazeera|arryadia|arriyadia|alwan|aloula|al ?oula|tunisia|algeri|maroc|morocc|egypt|cbc|dmc|nahar|rotana|alhadath|alarabiya|ad sports|ad sport)\b/i;
+const ARAB_NAMES = /\b(oman|kuwait|bahrain|qatar|jordan|iraq|yemen|libya|syria|saudi|emirates|abu dhabi|dubai|sharjah|ajman|nile|on time|ontime|al ?jazeera|arryadia|arriyadia|alwan|aloula|al ?oula|tunisia|algeri|maroc|morocc|egypt|cbc|dmc|nahar|rotana|alhadath|alarabiya|ad sports|ad sport|ktv)\b/i;
 
 export function isArabChannel(name: string): boolean {
   if (/[؀-ۿ]/.test(name)) return true; // written in Arabic
