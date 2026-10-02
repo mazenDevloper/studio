@@ -11,6 +11,37 @@ const HEADERS = {
   "Accept-Language": "ar,en;q=0.8",
 };
 
+/** The day page is rendered in the browser from these JSON endpoints (found by /api/matches/winwin-debug). */
+export const WINWIN_API = "https://www.winwin.com/api";
+export const WINWIN_DAY_APIS = [
+  `${WINWIN_API}/page-data?v=01&path=%2Fmatches`,
+  `${WINWIN_API}/component_data/match_landing_section/82053?path=%2Fmatches&endpoint_no=2&v=01`,
+  `${WINWIN_API}/page_info?v=01&path=/matches`,
+];
+
+export async function fetchWinwinJson(url: string): Promise<{ status: number; json: any; text: string }> {
+  const res = await fetch(url, {
+    headers: { ...HEADERS, Accept: "application/json, text/plain, */*", Referer: "https://www.winwin.com/matches" },
+    cache: "no-store", signal: AbortSignal.timeout(15000),
+  });
+  const text = await res.text();
+  let json: any = null;
+  try { json = JSON.parse(text); } catch {}
+  return { status: res.status, json, text };
+}
+
+/** Key paths of a JSON value (arrays shown once as [], with the first item's shape), for the debug report. */
+export function jsonShape(v: any, depth = 0, max = 6): any {
+  if (Array.isArray(v)) return v.length ? [`len ${v.length}`, depth < max ? jsonShape(v[0], depth + 1, max) : "…"] : [];
+  if (v && typeof v === "object") {
+    if (depth >= max) return "{…}";
+    const o: Record<string, any> = {};
+    for (const k of Object.keys(v).slice(0, 40)) o[k] = jsonShape(v[k], depth + 1, max);
+    return o;
+  }
+  return typeof v === "string" ? (v.length > 60 ? v.slice(0, 60) + "…" : v) : v;
+}
+
 export async function fetchWinwin(url = WINWIN_TODAY): Promise<{ status: number; html: string; finalUrl: string }> {
   const res = await fetch(encodeURI(decodeURI(url)), { headers: HEADERS, cache: "no-store", signal: AbortSignal.timeout(15000) });
   return { status: res.status, html: await res.text(), finalUrl: res.url };
