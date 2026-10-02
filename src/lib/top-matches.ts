@@ -1,6 +1,6 @@
 import { footballDay } from "@/lib/oman-time";
 import { S365_HEADERS, remember365Countries } from "@/lib/scores365";
-import { leagueAlwaysListed } from "@/lib/match-channels";
+import { leagueAlwaysListed, leagueTopClubs } from "@/lib/match-channels";
 import { EXTRA_SOURCES } from "@/lib/match-sources-extra";
 import {
   BROWSER_HEADERS, build, getJson, sortMatches, importanceOf, leagueWeightByName, num, pickTop, sameTeam, shiftedDash, shiftedYmd,
@@ -360,7 +360,11 @@ export async function getTopMatchesToday(limit = 10, only?: string, includeAll =
     source: best.attempt.source,
     total: best.total,
     // Favourite teams' matches are always included; order: live favourites, live, favourites, then the rest
-    matches: sortMatches([...best.top, ...favExtra].map(m => (isFav(m) ? { ...m, favorite: true } : m))),
+    // Belgian, Dutch, Brazilian, Argentine leagues: only the two biggest clubs (and favourite teams)
+    matches: sortMatches([...best.top, ...favExtra].filter(m => {
+      const clubs = isFav(m) || includeAll ? null : leagueTopClubs(m.league);
+      return !clubs || clubs.some(t => sameTeam(t, m.home.name) || sameTeam(t, m.away.name));
+    }).map(m => (isFav(m) ? { ...m, favorite: true } : m))),
     attempts: runs.map(r => r.attempt),
     fetchedAt: new Date(day.at).toISOString(),
   };

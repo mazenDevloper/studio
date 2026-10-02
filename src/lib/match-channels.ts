@@ -102,6 +102,33 @@ export const LEAGUE_CHANNEL_RULES: LeagueChannelRule[] = [
 ];
 
 const usableLeague = (l: TopMatch["league"]) => !/women|female|u\d\d|youth|reserve|سيدات/i.test(l.name);
+/** Stable key of a league for the user's own channel choice (same league from any source). */
+export function leagueKey(league: TopMatch["league"]): string {
+  return `${String(league.country ?? "").trim().toLowerCase()}|${String(league.name ?? "").trim().toLowerCase().replace(/\s+/g, " ")}`;
+}
+
+/** The league's default channels before any user change (shown in the editor). */
+export function defaultLeagueChannels(league: TopMatch["league"]): string[] {
+  const rules = leagueRules(league);
+  const rights = rules.filter(r => r.kind === "rights").flatMap(r => r.channels);
+  if (rights.length) return rights;
+  const network = rules.filter(r => r.kind === "network").flatMap(r => r.channels);
+  return network.length ? network : rules.filter(r => r.kind === "foreign").flatMap(r => r.channels);
+}
+
+/** Leagues where only the two biggest clubs' matches are listed (besides favourite teams). */
+const TOP_CLUBS_ONLY: { label: string; teams: string[] }[] = [
+  { label: "الدوري البلجيكي", teams: ["Club Brugge", "Club Brugge KV", "Anderlecht"] },
+  { label: "الدوري الهولندي", teams: ["Ajax", "PSV", "PSV Eindhoven"] },
+  { label: "الدوري البرازيلي", teams: ["Flamengo", "Palmeiras"] },
+  { label: "الدوري الأرجنتيني", teams: ["Boca Juniors", "River Plate"] },
+];
+/** The two clubs to keep for this league, or null when every match counts. */
+export function leagueTopClubs(league: TopMatch["league"]): string[] | null {
+  const rules = leagueRules(league);
+  return TOP_CLUBS_ONLY.find(t => rules.some(r => r.label === t.label))?.teams ?? null;
+}
+
 export function leagueRules(league: TopMatch["league"]): LeagueChannelRule[] {
   return usableLeague(league) ? LEAGUE_CHANNEL_RULES.filter(r => r.test(league)) : [];
 }
@@ -120,7 +147,15 @@ export function leagueAlwaysListed(league: TopMatch["league"]): boolean {
  * Channels for one match: the league's rights holder + every source; Arab channels first; an Arab network
  * ("beIN SPORTS") when no source names the exact channel; foreign channels only when there's no Arab one.
  */
-export function matchChannels(league: TopMatch["league"], sources: string[]): string[] {
+export function matchChannels(league: TopMatch["league"], sources: string[], userChannels?: string[]): string[] {
+  // the user's own channels for this league replace the default rights holder and always come first
+  if (userChannels?.length) {
+    const defaults = new Set(defaultLeagueChannels(league).map(channelKey));
+    const rest = matchChannels(league, sources).filter(c => !defaults.has(channelKey(c)));
+    const numbered = new Set(sources.filter(c => c && channelTokens(c).some(isNum)).map(c => channelTokens(c).filter(t => !isNum(t)).sort().join(" ")));
+    const mine = userChannels.filter(c => channelTokens(c).some(isNum) || !numbered.has(channelTokens(c).filter(t => !isNum(t)).sort().join(" ")));
+    return uniqueChannels([...mine, ...rest]);
+  }
   const rules = leagueRules(league);
   const of = (k: LeagueChannelRule["kind"]) => rules.filter(r => r.kind === k).flatMap(r => r.channels);
   // a source naming the exact numbered channel ("Thmanyah 2") replaces the rights holder's other numbers

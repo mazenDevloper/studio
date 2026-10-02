@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Loader2, RefreshCw, Trophy, AlertTriangle, Star, PartyPopper, Pin, Eye, EyeOff, Tv, MapPin, Flag, LayoutGrid, Server, BellRing, BellOff, CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
+import { Loader2, RefreshCw, Trophy, AlertTriangle, Star, PartyPopper, Pin, Eye, EyeOff, Tv, MapPin, Flag, LayoutGrid, Server, BellRing, BellOff, Pencil, CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import { useLiveMatches, useLiveMatchesStore, MATCHES_LIMIT } from "@/lib/live-matches";
 import type { MatchDetails } from "@/lib/match-details";
 import { sameTeam, matchHideKey, matchDetailsUrl, goalAlertOn, sortMatches } from "@/lib/match-core";
@@ -9,7 +9,8 @@ import { useMediaStore } from "@/lib/store";
 import { GOAL_TEST_EVENT } from "@/components/football/goal-celebration";
 import { MatchChannelChips } from "@/components/football/match-channel-chips";
 import { leagueCountry } from "@/lib/iptv-catalog";
-import { matchChannels } from "@/lib/match-channels";
+import { matchChannels, leagueKey } from "@/lib/match-channels";
+import { LeagueChannelsEditor } from "@/components/football/league-channels-editor";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { omanDateLabel, footballDay } from "@/lib/oman-time";
@@ -232,7 +233,9 @@ function MatchCard({ m, hidden = false }: { m: TopMatch; hidden?: boolean }) {
   // Middle East channels from 365Scores first; the feed's own list only when 365Scores has none
   // every source together (league rights holder, 365Scores details, the feed), then: Arab channels first, and the
   // foreign ones only when the match has no Arab channel at all
-  const channels = matchChannels(m.league, [...(details?.channels ?? []), ...(lookedUp ?? []), ...m.channels]);
+  const userChannels = useMediaStore(s => s.leagueChannelOverrides?.[leagueKey(m.league)]);
+  const [editChannels, setEditChannels] = useState(false);
+  const channels = matchChannels(m.league, [...(details?.channels ?? []), ...(lookedUp ?? []), ...m.channels], userChannels);
   const scorers = (side: "home" | "away") => (details?.scorers ?? []).filter(s => s.side === side);
 
   return (
@@ -278,7 +281,14 @@ function MatchCard({ m, hidden = false }: { m: TopMatch; hidden?: boolean }) {
         {channels.length > 0
           ? <MatchChannelChips names={channels} country={leagueCountry(m.league)} idPrefix={`match-${m.id}`} className="justify-center" />
           : <span className="text-white/30">{lookedUp === null ? "جاري البحث عن القناة..." : "القناة الناقلة غير متوفرة"}</span>}
+        {/* edit / add the league's default channels */}
+        <button onClick={() => setEditChannels(true)} title="تعديل أو إضافة قناة لهذا الدوري" data-nav-id={`match-edit-ch-${m.id}`}
+          className={cn("focusable no-focus-scale h-8 rounded-full border flex items-center justify-center gap-1 shrink-0",
+            channels.length ? "w-8 bg-white/5 border-white/10 text-white/40 hover:text-white" : "px-3 bg-emerald-500/10 border-emerald-400/30 text-emerald-300")}>
+          <Pencil className="w-3.5 h-3.5" />{!channels.length && <span>إضافة قناة</span>}
+        </button>
       </div>
+      {editChannels && <LeagueChannelsEditor league={m.league} onClose={() => setEditChannels(false)} />}
 
       {open && (
         <div className="mt-3 space-y-3 text-xs">
