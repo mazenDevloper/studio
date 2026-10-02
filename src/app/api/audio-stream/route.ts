@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const videoId = searchParams.get('id');
 
-  if (!videoId) {
+  if (!videoId || !/^[\w-]{11}$/.test(videoId)) {
     return NextResponse.json({ error: 'Video ID is required' }, { status: 400 });
   }
 
@@ -21,11 +21,13 @@ export async function GET(req: NextRequest) {
 
   try {
     const ytBin = await getYtDlp(); // installs yt-dlp on first use if it isn't available
+    let ytProcess: ReturnType<typeof spawn> | null = null;
+    let closed = false;
     const stream = new ReadableStream({
       start(controller) {
         // yt-dlp optimized for direct binary audio piping with browser spoofing
         // Forced to webm/opus for maximum decoder stability in browsers
-        const ytProcess = spawn(ytBin, [
+        const proc = spawn(ytBin, [
           '--user-agent', userAgent,
           '--no-check-certificates',
           '--quiet',
@@ -37,37 +39,43 @@ export async function GET(req: NextRequest) {
           videoUrl
         ]);
 
-        ytProcess.stdout.on('data', (chunk) => {
-          controller.enqueue(chunk);
+        ytProcess = proc;
+        // the listener closing the tab ends the stream: never touch the controller after that
+        proc.stdout?.on('data', (chunk) => {
+          if (!closed) try { controller.enqueue(chunk); } catch { closed = true; }
         });
 
-        ytProcess.stderr.on('data', (data) => {
+        proc.stderr?.on('data', (data) => {
           const errMessage = data.toString();
           if (errMessage.includes('ERROR')) {
             console.error(`[Sovereign Proxy Engine Error]: ${errMessage}`);
           }
         });
 
-        ytProcess.on('close', (code) => {
-          controller.close();
+        proc.on('close', () => {
+          if (!closed) { closed = true; try { controller.close(); } catch {} }
         });
 
-        ytProcess.on('error', (err) => {
+        proc.on('error', (err) => {
           console.error(`Failed to start yt-dlp process: ${err}`);
-          controller.error(err);
+          if (!closed) { closed = true; try { controller.error(err); } catch {} }
         });
 
         req.signal.addEventListener('abort', () => {
-          ytProcess.kill('SIGKILL');
+          closed = true;
+          proc.kill('SIGKILL');
         });
-      }
+      },
+      cancel() {
+        closed = true;
+        ytProcess?.kill('SIGKILL');
+      },
     });
 
     return new NextResponse(stream, {
       headers: {
         'Content-Type': 'audio/webm',
         'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Access-Control-Allow-Origin': '*',
         'X-Content-Type-Options': 'nosniff',
         'Transfer-Encoding': 'chunked'
       },

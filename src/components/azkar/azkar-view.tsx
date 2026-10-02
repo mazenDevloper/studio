@@ -97,6 +97,7 @@ export function AzkarView() {
       iconType: "circle",
       startType: "manual",
       startOffset: 0,
+      endOffset: 0,
       endType: "duration",
       durationMinutes: 1440,
       showCountdown: false,
@@ -110,8 +111,8 @@ export function AzkarView() {
   };
 
   return (
-    <div data-nav-zone="content" className="p-10 space-y-10 pb-40 text-right dir-rtl relative min-h-screen transition-none">
-      <header className="flex items-center justify-between relative z-50">
+    <div data-nav-zone="content" className="p-10 space-y-10 pb-40 text-right dir-rtl relative min-h-full transition-none">
+      <header className="flex flex-wrap items-center justify-between gap-4 relative z-50">
         <div className="flex flex-col gap-1">
           <h1 className="text-5xl font-black text-white tracking-tighter flex items-center gap-4">
             {activeTab === 'evening' ? 'أذكار المساء' : activeTab === 'general' ? 'أذكار سيادية' : 'أذكار الصباح'} 
@@ -120,12 +121,12 @@ export function AzkarView() {
           <p className="text-white/20 font-bold uppercase tracking-[0.6em] text-[10px]">Sovereign Remembrance Hub</p>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-4">
            <Tabs value={activeTab} onValueChange={setActiveTab} className="bg-white/5 p-1 rounded-full border border-white/10">
               <TabsList className="bg-transparent border-none h-14">
-                 <TabsTrigger value="morning" className="rounded-full px-10 font-black text-sm h-full focusable">الصباح</TabsTrigger>
-                 <TabsTrigger value="evening" className="rounded-full px-10 font-black text-sm h-full focusable">المساء</TabsTrigger>
-                 <TabsTrigger value="general" className="rounded-full px-10 font-black text-sm h-full focusable">سيادية</TabsTrigger>
+                 <TabsTrigger value="morning" className="rounded-full px-5 md:px-10 font-black text-sm h-full focusable">الصباح</TabsTrigger>
+                 <TabsTrigger value="evening" className="rounded-full px-5 md:px-10 font-black text-sm h-full focusable">المساء</TabsTrigger>
+                 <TabsTrigger value="general" className="rounded-full px-5 md:px-10 font-black text-sm h-full focusable">سيادية</TabsTrigger>
               </TabsList>
            </Tabs>
            

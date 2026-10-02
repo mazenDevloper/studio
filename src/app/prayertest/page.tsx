@@ -39,7 +39,7 @@ export default function PrayerTestPage() {
   const al = res?.aladhan;
 
   return (
-    <div className="min-h-screen bg-black text-white p-6 md:p-10 space-y-6" dir="rtl">
+    <div className="min-h-full bg-black text-white p-6 md:p-10 space-y-6" dir="rtl">
       <header>
         <h1 className="text-3xl font-black flex items-center gap-3">اختبار مواقيت الصلاة — صلالة <Clock className="w-7 h-7 text-emerald-400" /></h1>
         <p className="text-white/50 text-sm mt-1">يقرأ صفحة وزارة الأوقاف (mara.gov.om) ويعرض ما فيها من نماذج وجداول، مع مواقيت مرجعية من Aladhan للمقارنة.</p>

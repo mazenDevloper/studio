@@ -77,9 +77,13 @@ export function isStreamUrl(url?: string): boolean {
 /** Route that relays http streams through our own https origin (avoids mixed-content blocking). */
 export const HLS_PROXY_PATH = "/api/hls";
 
-/** On an https page an http stream is blocked by the browser, so send it through the proxy. */
-export function proxiedUrl(src: string): string {
-  if (typeof window !== "undefined" && window.location.protocol === "https:" && src.startsWith("http:")) {
+/**
+ * On an https page an http stream is blocked by the browser, so send it through the proxy ("auto").
+ * "relay" always goes through it (VLC user agent, no CORS problems); "direct" never does unless the page is https.
+ */
+export function proxiedUrl(src: string, mode: "auto" | "direct" | "relay" = "auto"): string {
+  const https = typeof window !== "undefined" && window.location.protocol === "https:";
+  if ((mode === "relay" && /^https?:/i.test(src)) || (https && src.startsWith("http:"))) {
     return `${HLS_PROXY_PATH}?u=${encodeURIComponent(src)}`;
   }
   return src;

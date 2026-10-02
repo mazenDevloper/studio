@@ -36,6 +36,15 @@ export function normalizeKey(e: KeyboardEvent): string {
     457: 'Info', 458: 'Text', 459: 'Settings'
   };
 
+  // 0. Colour keys named by the browser (Android TV / Chrome: "ColorF0Red"..., some TVs: "Red"/"F1"-style names)
+  const colorByKey: Record<string, string> = {
+    ColorF0Red: 'Red', ColorF1Green: 'Green', ColorF2Yellow: 'Yellow', ColorF3Blue: 'Blue',
+    Red: 'Red', Green: 'Green', Yellow: 'Yellow', Blue: 'Blue',
+  };
+  if (e.key && colorByKey[e.key]) return colorByKey[e.key];
+  // Android TV key codes for the colour buttons (KEYCODE_PROG_RED..BLUE), only when the browser gives no name
+  if ((!e.key || e.key === 'Unidentified') && e.keyCode >= 183 && e.keyCode <= 186) return ['Red', 'Green', 'Yellow', 'Blue'][e.keyCode - 183];
+
   // 1. High-priority mapping for Smart TV & Joystick Hardware Keys
   if (codeMap[e.keyCode]) return codeMap[e.keyCode];
 

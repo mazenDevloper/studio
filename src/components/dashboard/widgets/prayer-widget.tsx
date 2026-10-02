@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Star } from "lucide-react";
 import { convertTo12Hour } from "@/lib/constants";
 import { useMediaStore } from "@/lib/store";
+import { prayerDayFor } from "@/lib/prayer-day";
 
 export function PrayerWidget() {
   const [todayPrayer, setTodayPrayer] = useState<any>(null);
@@ -17,7 +18,7 @@ export function PrayerWidget() {
     
     const now = new Date();
     const dateStr = `2026-02-${now.getDate().toString().padStart(2, '0')}`;
-    const found = prayerTimes.find(p => p.date === dateStr) || prayerTimes[0];
+    const found = prayerDayFor(prayerTimes, dateStr);
     setTodayPrayer(found);
 
     const timer = setInterval(() => {

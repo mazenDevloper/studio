@@ -5,6 +5,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { GlobalVideoPlayer } from "@/components/media/global-player";
 import { GoalCelebration } from "@/components/football/goal-celebration";
+import { MATCHES_PREFETCH_SCRIPT } from "@/lib/live-matches";
 import { YoutubeBackgroundBridge } from "@/components/media/youtube-background-bridge";
 import { GlobalQuranPlayer } from "@/components/quran/global-quran-player";
 import { AudioPlayer } from "@/components/media/audio-player";
@@ -33,12 +34,16 @@ function RootLayoutWrapper({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const requestWakeLock = async () => {
       try {
-        if ('wakeLock' in navigator) {
+        if ('wakeLock' in navigator && document.visibilityState === 'visible') {
           wakeLockRef.current = await (navigator as any).wakeLock.request('screen');
         }
       } catch (err) {}
     };
     requestWakeLock();
+    // the browser drops the lock whenever the app is hidden (another app, screen off): take it again on return
+    const onVisible = () => { if (document.visibilityState === 'visible') requestWakeLock(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
   }, []);
 
   // 2. Sovereign Auto-Click Sync Protocol v12000
@@ -98,7 +103,7 @@ function RootLayoutWrapper({ children }: { children: React.ReactNode }) {
   if (!mounted) return <div className="bg-black w-full h-screen" />;
   
   return (
-    <div className="w-full h-screen overflow-hidden bg-black relative flex">
+    <div className="w-full h-screen supports-[height:100dvh]:h-[100dvh] overflow-hidden bg-black relative flex">
       {isInitialLoading && (
         <div className="fixed inset-0 z-[100000] bg-black flex flex-col items-center justify-center gap-8 animate-in fade-in duration-500">
            <div className="relative">
@@ -135,6 +140,8 @@ export default function RootLayout({
   return (
     <html lang="ar" dir="rtl" className="dark" suppressHydrationWarning>
       <head>
+        {/* starts today's matches request while the page is still loading (before the stylesheets, which would delay it) */}
+        <script dangerouslySetInnerHTML={{ __html: MATCHES_PREFETCH_SCRIPT }} />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -142,7 +149,6 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&family=Amiri:wght@400;700&family=Aref+Ruqaa:wght@400;700&family=Reem+Kufi:wght@400;700&family=Alkalami&family=Gulzar&display=swap" rel="stylesheet" />
         <Script type="text/javascript" src="$vidaa/sdk/vidaa-sdk.js" strategy="beforeInteractive" />
-        <Script src="https://polyfill.io/v3/polyfill.min.js?features=default,es6,es7,es8,es9" strategy="beforeInteractive" />
       </head>
       <body className="font-body antialiased bg-black text-foreground overflow-hidden h-screen w-full relative" suppressHydrationWarning>
         <FirebaseClientProvider>

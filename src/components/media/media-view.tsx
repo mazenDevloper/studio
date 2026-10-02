@@ -137,11 +137,13 @@ export function MediaView() {
   }, [setIsSidebarShrinked]);
 
   useEffect(() => {
+    let alive = true; // a slow answer for the previous channel must not replace the current channel's videos
     async function fetchVideos() {
       if (selectedChannel) {
         setLoading(true);
         try {
           const vids = await fetchChannelVideos(selectedChannel.channelid);
+          if (!alive) return;
           setChannelVideos(vids);
           setTimeout(() => {
             const firstVid = document.querySelector('[data-nav-id="channel-results-item-0"]') as HTMLElement;
@@ -158,6 +160,7 @@ export function MediaView() {
       }
     }
     fetchVideos();
+    return () => { alive = false; };
   }, [selectedChannel, setChannelVideos]);
 
   const occasionSuggestions = useMemo(() => {
@@ -247,7 +250,8 @@ export function MediaView() {
     } finally { setLoading(false); }
   };
 
-  useEffect(() => { fetch("https://api.quran.com/api/v4/chapters?language=ar").then(r => r.json()).then(d => { setSurahs(d.chapters || []); setAllSurahs(d.chapters || []); }); }, []);
+  // offline / quran.com down: keep the empty list instead of an unhandled rejection
+  useEffect(() => { fetch("https://api.quran.com/api/v4/chapters?language=ar").then(r => r.json()).then(d => { setSurahs(d.chapters || []); setAllSurahs(d.chapters || []); }).catch(() => {}); }, []);
 
   const resetView = () => { setSelectedChannel(null); setSelectedPlaylist(null); setSearchResults([]); setSearch(""); setIsSidebarShrinked(false); setSelectedReciter(null); setSelectedSurah(null); setSelectedJuz(null); setSurahs(allSurahs); };
 
@@ -414,7 +418,7 @@ export function MediaView() {
   );
 
   return (
-    <div className={cn("h-screen flex bg-transparent overflow-hidden relative", isDockLeft ? "flex-row-reverse" : "flex-row")}>
+    <div className={cn("h-full flex bg-transparent overflow-hidden relative", isDockLeft ? "flex-row-reverse" : "flex-row")}>
       <aside data-nav-zone="sidebar" className={cn("hidden md:flex h-full z-[110] premium-glass flex flex-col shrink-0 border-white/5 bg-black/60 transition-all duration-300", isSidebarShrinked ? "w-[80px]" : "w-[28%]", isDockLeft ? "border-l" : "border-r")}>
         <div className="p-4 flex items-center justify-between border-b border-white/5"><button className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center focusable border border-primary/20" tabIndex={0} data-nav-id="sidebar-add-btn"><Plus className="w-5 h-5" /></button></div>
         <div className="flex-1 overflow-y-auto py-2 no-scrollbar">

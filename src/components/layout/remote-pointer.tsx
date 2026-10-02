@@ -189,6 +189,37 @@ export function RemotePointer() {
     return next;
   };
 
+  /** Is `key` mapped to `action` in one specific context (player / page / global)? */
+  const inCtx = (key: string, action: AppAction, ctx: string) =>
+    (useMediaStore.getState().keyMappings?.[ctx]?.[action] ?? []).some(k => String(k).toLowerCase() === key.toLowerCase());
+
+  /** Press the visible button that shows this action's key badge (the badge says which button the key works). */
+  const pressShortcut = (action: AppAction, scope: ParentNode = document): boolean => {
+    const badges = Array.from(scope.querySelectorAll<HTMLElement>(`[data-shortcut="${action}"]`)).reverse(); // later = on top (player)
+    for (const b of badges) {
+      const host = (b.closest("button") || b.parentElement?.querySelector("button") || b.parentElement) as HTMLElement | null;
+      if (!host) continue;
+      const r = host.getBoundingClientRect();
+      if (!r.width || !r.height) continue;
+      host.click();
+      return true;
+    }
+    return false;
+  };
+
+  /** Actions on the selected item (favourite star, remove): only inside the focused card, never another card. */
+  const itemAction = (action: AppAction): boolean => {
+    let scope: HTMLElement | null = document.activeElement as HTMLElement;
+    for (let i = 0; scope && scope !== document.body && i < 3; i++, scope = scope.parentElement) {
+      if (pressShortcut(action, scope)) return true;
+      if (action === "toggle_star" || action === "delete_item") {
+        const star = scope.querySelector("svg.lucide-star")?.closest("button") as HTMLElement | null;
+        if (star) { star.click(); return true; }
+      }
+    }
+    return false;
+  };
+
   const executeAction = useCallback((finalKey: string, e: KeyboardEvent | null) => {
     const activeEl = document.activeElement as any;
     const isTypingMode = (activeEl?.tagName === 'INPUT' || activeEl?.tagName === 'TEXTAREA') && !activeEl?.readOnly;
@@ -215,6 +246,29 @@ export function RemotePointer() {
        }
        // Do not run isAction checks for any other keys when typing
        return;
+    }
+
+    // ---- player keys: in full screen, in the small window and (close / restore only) when minimised ----
+    const st = useMediaStore.getState();
+    if (activeVideo || activeIptv) {
+      const playerActs: AppAction[] = ['player_close', 'player_minimize', 'player_playlist', 'player_settings', 'player_fullscreen', 'player_mode', 'player_save'];
+      for (const act of playerActs) {
+        if (isMinimized && act !== 'player_close' && act !== 'player_minimize') continue;
+        if (!inCtx(finalKey, act, 'player')) continue;
+        e?.preventDefault();
+        if (act === 'player_close') handleClose();
+        else if (act === 'player_minimize') st.setIsMinimized(!isMinimized);
+        else if (act === 'player_playlist') { if (!pressShortcut(act)) st.setIsPlayerPlaylistOpen(!st.isPlayerPlaylistOpen); }
+        else if (act === 'player_fullscreen') { if (!pressShortcut(act)) st.setIsFullScreen(!isFullScreen); }
+        else pressShortcut(act);
+        return;
+      }
+    }
+
+    // ---- colour keys on the page: star / remove the selected item, reorder mode ----
+    for (const act of ['toggle_star', 'delete_item', 'toggle_reorder'] as AppAction[]) {
+      if (!isAction(finalKey, act)) continue;
+      if (act === 'toggle_reorder' ? pressShortcut(act) : itemAction(act)) { e?.preventDefault(); return; }
     }
 
     const isPlayerActive = (activeVideo || activeIptv) && isFullScreen && !isMinimized;

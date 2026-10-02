@@ -6,6 +6,7 @@ import { persist } from "zustand/middleware";
 import { sameTeam } from "@/lib/match-core";
 import { DEFAULT_FAVORITE_TEAMS } from "@/lib/favorite-teams";
 import { YouTubeChannel, YouTubeVideo } from "./youtube";
+export type { YouTubeChannel, YouTubeVideo } from "./youtube";
 import { 
   JSONBIN_MASTER_KEY, 
   JSONBIN_MASTER_BIN_ID,
@@ -75,6 +76,8 @@ export interface MapSettings {
 export interface IptvChannel {
   name: string; stream_id: string; stream_icon: string; category_id: string; starred?: boolean;
   url?: string; type?: 'iptv' | 'web' | 'live'; stream_type?: string; displayNumber?: number; group?: string;
+  /** broadcast-name keys (see match-channels.ts) the user linked to this channel from a match card */
+  matchAliases?: string[];
 }
 
 export interface FavoriteTeam { id: number; name: string; logo: string; }
@@ -150,6 +153,8 @@ interface MediaState {
   toggleFavoriteTeam: (team: FavoriteTeam) => void; toggleBelledMatch: (matchId: string) => void;
   toggleFavoriteIptvChannel: (channel: IptvChannel) => void; updateIptvChannel: (streamId: string, updates: Partial<IptvChannel>) => void;
   addIptvChannel: (channel: IptvChannel) => void;
+  /** Link a match broadcast name (its channelKey) to one favourite channel; null removes the link. Synced to the cloud. */
+  linkIptvAlias: (aliasKey: string, streamId: string | null) => void;
   reorderIptvChannelTo: (fromId: string, toId: string) => void; updateMapSettings: (settings: Partial<MapSettings>) => void;
   setActiveVideo: (video: YouTubeVideo | null, context?: YouTubeVideo[]) => void;
   setActiveIptv: (channel: IptvChannel | null, context?: IptvChannel[], keepWindow?: boolean) => void;
@@ -178,7 +183,29 @@ interface MediaState {
   saveManuscriptsReorder: () => Promise<void>;
 }
 
+/** First candidate that is an array: a bin that comes back empty or in another shape must not crash the app. */
+const arr = (...candidates: any[]): any[] => candidates.find(Array.isArray) ?? [];
+
+/** Bins that were read from the cloud in this session. */
+const loadedBins = new Set<string>();
+/** Last cloud copy of the master bin (keys this version doesn't know are kept when saving). */
+let lastMasterCloud: Record<string, any> = {};
+/** Master-bin fields as they were when the app started (after the local cache was restored). */
+let masterBaseline: Record<string, string> | null = null;
+
+/** Bins whose whole content is replaced by every save: never written before they were read in this session. */
+const LOAD_BEFORE_SAVE = new Set<string>([
+  JSONBIN_MASTER_BIN_ID, JSONBIN_IPTV_FAVS_BIN_ID, JSONBIN_CHANNELS_BIN_ID, JSONBIN_POPULAR_RECITERS_BIN_ID,
+  JSONBIN_MANUSCRIPTS_BIN_ID, JSONBIN_FONTS_BIN_ID, JSONBIN_BACKGROUNDS_BIN_ID,
+]);
+
 export const updateBin = async (binId: string, data: any) => {
+  if (LOAD_BEFORE_SAVE.has(binId) && !loadedBins.has(binId)) {
+    // The payload was built from a state that never saw the cloud copy (start-up fetch failed or is still running):
+    // saving it would wipe whatever this device doesn't have. Load the cloud copy instead and skip this save.
+    await useMediaStore.getState().fetchSpecificBin(binId);
+    return;
+  }
   try {
     await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
       method: 'PUT',
@@ -242,6 +269,26 @@ const DEFAULT_PRAYER_SETTINGS: PrayerSetting[] = [
   { id: 'isha', name: 'العشاء', offsetMinutes: 0, showCountdown: true, countdownWindow: 20, showCountup: true, countupWindow: 25, iqamahDuration: 20 },
 ];
 
+/** Lists changed on this device before the cloud copy arrived: cloud items plus the local ones (local wins per id). */
+function mergeLists(cloud: unknown, local: unknown): unknown {
+  if (!Array.isArray(cloud) || !Array.isArray(local)) return local;
+  const key = (x: any) => (typeof x === 'string' || typeof x === 'number' ? String(x) : x?.id ?? x?.video?.id ?? JSON.stringify(x));
+  const localByKey = new Map(local.map(x => [key(x), x]));
+  const merged = cloud.map(x => (localByKey.has(key(x)) ? localByKey.get(key(x)) : x));
+  const seen = new Set(cloud.map(key));
+  return [...merged, ...local.filter(x => !seen.has(key(x)))];
+}
+
+/** Everything the master bin stores. */
+function masterPayload(s: MediaState) {
+  return {
+    favoriteTeams: s.favoriteTeams, pinnedMatches: s.pinnedMatches, seededTeamsV1: s.seededTeamsV1, continueWatching: s.continueWatching,
+    favoriteLeagueIds: s.favoriteLeagueIds, belledMatchIds: s.belledMatchIds, skippedMatchIds: s.skippedMatchIds, prayerSettings: s.prayerSettings,
+    reminders: s.reminders, generalAzkar: s.generalAzkar, mapSettings: s.mapSettings, keyMappings: s.keyMappings, savedVideos: s.savedVideos,
+    manuscriptScales: s.manuscriptScales, lastPlayedVideo: s.lastPlayedVideo, playlists: s.playlists,
+  };
+}
+
 export const useMediaStore = create<MediaState>()(
   persist(
     (set, get) => ({
@@ -254,20 +301,22 @@ export const useMediaStore = create<MediaState>()(
 
       fetchSpecificBin: async (binId) => {
         try {
-          const r = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest?v=${Date.now()}`, { headers: { 'X-Master-Key': JSONBIN_MASTER_KEY, 'X-Bin-Meta': 'false' }, cache: 'no-store' });
+          const r = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest?v=${Date.now()}`, { headers: { 'X-Master-Key': JSONBIN_MASTER_KEY, 'X-Bin-Meta': 'false' }, cache: 'no-store', signal: AbortSignal.timeout(12000) });
           if (!r.ok) return;
           const data = await r.json();
-          if (binId === JSONBIN_CHANNELS_BIN_ID) set({ favoriteChannels: data.channels || data || [] });
+          loadedBins.add(binId);
+          if (binId === JSONBIN_MASTER_BIN_ID && data && typeof data === 'object' && !Array.isArray(data)) lastMasterCloud = data;
+          if (binId === JSONBIN_CHANNELS_BIN_ID) set({ favoriteChannels: arr(data?.channels, data) });
           else if (binId === JSONBIN_POPULAR_RECITERS_BIN_ID) {
             set({ 
-              favoriteReciters: (data.reciters || []).sort((a: any, b: any) => (b.clickschannel || 0) - (a.clickschannel || 0)),
-              favoritePodcasts: data.podcasts || []
+              favoriteReciters: arr(data?.reciters).sort((a: any, b: any) => (b.clickschannel || 0) - (a.clickschannel || 0)),
+              favoritePodcasts: arr(data?.podcasts)
             });
           }
-          else if (binId === JSONBIN_IPTV_FAVS_BIN_ID) set({ favoriteIptvChannels: data.iptv || data.channels || [] });
-          else if (binId === JSONBIN_MANUSCRIPTS_BIN_ID) set({ customManuscripts: data.manuscripts || data || [] });
-          else if (binId === JSONBIN_FONTS_BIN_ID) set({ customFonts: data.fonts || data || [] });
-          else if (binId === JSONBIN_BACKGROUNDS_BIN_ID) set({ customWallBackgrounds: data.backgrounds || data || [] });
+          else if (binId === JSONBIN_IPTV_FAVS_BIN_ID) set({ favoriteIptvChannels: arr(data?.iptv, data?.channels) });
+          else if (binId === JSONBIN_MANUSCRIPTS_BIN_ID) set({ customManuscripts: arr(data?.manuscripts, data) });
+          else if (binId === JSONBIN_FONTS_BIN_ID) set({ customFonts: arr(data?.fonts, data) });
+          else if (binId === JSONBIN_BACKGROUNDS_BIN_ID) set({ customWallBackgrounds: arr(data?.backgrounds, data) });
           else if (binId === JSONBIN_PRAYER_TIMES_BIN_ID) {
             // Merge the cloud days with the bundled ones (cloud wins for a date it has); if the bundle adds dates the
             // cloud doesn't have yet (e.g. a new month), push the merged list back so every device gets it.
@@ -286,16 +335,16 @@ export const useMediaStore = create<MediaState>()(
             pinnedMatches: Array.isArray(data.pinnedMatches) ? data.pinnedMatches : get().pinnedMatches,
             seededTeamsV1: !!data.seededTeamsV1 || get().seededTeamsV1,
             skippedMatchIds: Array.isArray(data.skippedMatchIds) ? data.skippedMatchIds : get().skippedMatchIds,
-            reminders: data.reminders || get().reminders, 
-            generalAzkar: data.generalAzkar || get().generalAzkar, 
-            prayerSettings: data.prayerSettings || DEFAULT_PRAYER_SETTINGS, 
+            reminders: Array.isArray(data.reminders) ? data.reminders : get().reminders, 
+            generalAzkar: Array.isArray(data.generalAzkar) ? data.generalAzkar : get().generalAzkar, 
+            prayerSettings: Array.isArray(data.prayerSettings) && data.prayerSettings.length ? data.prayerSettings : get().prayerSettings || DEFAULT_PRAYER_SETTINGS, 
             mapSettings: { ...get().mapSettings, ...data.mapSettings }, 
-            keyMappings: data.keyMappings || DEFAULT_CONTEXT_MAPPINGS, 
-            savedVideos: data.savedVideos || get().savedVideos,
+            keyMappings: data.keyMappings && typeof data.keyMappings === 'object' ? data.keyMappings : DEFAULT_CONTEXT_MAPPINGS, 
+            savedVideos: Array.isArray(data.savedVideos) ? data.savedVideos : get().savedVideos,
             continueWatching: Array.isArray(data.continueWatching) ? data.continueWatching : get().continueWatching, 
             manuscriptScales: data.manuscriptScales || get().manuscriptScales, 
             lastPlayedVideo: data.lastPlayedVideo || get().lastPlayedVideo, 
-            playlists: data.playlists || get().playlists || []
+            playlists: Array.isArray(data.playlists) ? data.playlists : get().playlists || []
           });
           // One-time: add the user's favourite teams (by name; ids are synthetic) and remember it in the cloud,
           // so a team removed later is not added back and every device gets the same list.
@@ -314,7 +363,8 @@ export const useMediaStore = create<MediaState>()(
           JSONBIN_PRAYER_TIMES_BIN_ID, JSONBIN_MASTER_BIN_ID, JSONBIN_IPTV_FAVS_BIN_ID, JSONBIN_CHANNELS_BIN_ID,
           JSONBIN_POPULAR_RECITERS_BIN_ID, JSONBIN_FONTS_BIN_ID, JSONBIN_MANUSCRIPTS_BIN_ID, JSONBIN_BACKGROUNDS_BIN_ID,
         ];
-        await Promise.allSettled(all.map(id => get().fetchSpecificBin(id)));
+        // the start screen waits for the cloud at most 5s: one slow bin must not hold the whole app (the rest keeps loading)
+        await Promise.race([Promise.allSettled(all.map(id => get().fetchSpecificBin(id))), new Promise(r => setTimeout(r, 5000))]);
         set({ isInitialLoading: false });
       },
 
@@ -353,8 +403,19 @@ export const useMediaStore = create<MediaState>()(
       },
 
       syncMasterBin: async () => {
-        const s = get();
-        await updateBin(JSONBIN_MASTER_BIN_ID, { favoriteTeams: s.favoriteTeams, pinnedMatches: s.pinnedMatches, seededTeamsV1: s.seededTeamsV1, continueWatching: s.continueWatching, favoriteLeagueIds: s.favoriteLeagueIds, belledMatchIds: s.belledMatchIds, skippedMatchIds: s.skippedMatchIds, prayerSettings: s.prayerSettings, reminders: s.reminders, generalAzkar: s.generalAzkar, mapSettings: s.mapSettings, keyMappings: s.keyMappings, savedVideos: s.savedVideos, manuscriptScales: s.manuscriptScales, lastPlayedVideo: s.lastPlayedVideo, playlists: s.playlists });
+        if (!loadedBins.has(JSONBIN_MASTER_BIN_ID)) {
+          // Saving before the cloud copy was read would replace playlists, saved videos, reminders... with this
+          // device's defaults. Read it first, then put back only what was changed here since start-up.
+          const local = masterPayload(get());
+          await get().fetchSpecificBin(JSONBIN_MASTER_BIN_ID);
+          if (!loadedBins.has(JSONBIN_MASTER_BIN_ID)) return; // cloud unreachable: keep the cloud copy intact
+          const cloud = masterPayload(get()) as Record<string, any>;
+          const changed = Object.fromEntries(Object.entries(local)
+            .filter(([k, v]) => masterBaseline && JSON.stringify(v) !== masterBaseline[k])
+            .map(([k, v]) => [k, mergeLists(cloud[k], v)]));
+          if (Object.keys(changed).length) set(changed as Partial<MediaState>);
+        }
+        await updateBin(JSONBIN_MASTER_BIN_ID, { ...lastMasterCloud, ...masterPayload(get()) });
       },
 
       saveIptvReorder: async () => await updateBin(JSONBIN_IPTV_FAVS_BIN_ID, { iptv: get().favoriteIptvChannels }),
@@ -378,6 +439,18 @@ export const useMediaStore = create<MediaState>()(
       toggleStarChannel: (id) => set((s) => { const n = s.favoriteChannels.map(c => c.channelid === id ? { ...c, starred: !c.starred } : c); setTimeout(() => get().saveChannelsReorder(), 100); return { favoriteChannels: n }; }),
       toggleFavoriteIptvChannel: (ch) => set((s) => { const e = s.favoriteIptvChannels.some(c => c.stream_id === ch.stream_id); const n = e ? s.favoriteIptvChannels.filter(c => c.stream_id !== ch.stream_id) : [...s.favoriteIptvChannels, ch]; setTimeout(() => get().saveIptvReorder(), 100); return { favoriteIptvChannels: n }; }),
       updateIptvChannel: (id, updates) => set((s) => { const n = s.favoriteIptvChannels.map(ch => ch.stream_id === id ? { ...ch, ...updates } : ch); setTimeout(() => get().saveIptvReorder(), 100); return { favoriteIptvChannels: n }; }),
+      linkIptvAlias: (key, streamId) => {
+        if (!key) return;
+        set((s) => ({
+          favoriteIptvChannels: s.favoriteIptvChannels.map(ch => {
+            const rest = (ch.matchAliases || []).filter(a => a !== key);
+            const aliases = ch.stream_id === streamId ? [...rest, key] : rest;
+            if (aliases.length === (ch.matchAliases || []).length && aliases.every((a, i) => a === ch.matchAliases?.[i])) return ch;
+            return { ...ch, matchAliases: aliases.length ? aliases : undefined };
+          }),
+        }));
+        setTimeout(() => get().saveIptvReorder(), 100);
+      },
       addIptvChannel: (ch) => set((s) => { const n = [...s.favoriteIptvChannels, ch]; setTimeout(() => get().saveIptvReorder(), 100); return { favoriteIptvChannels: n }; }),
       reorderChannelTo: (f, t) => set((s) => { const l = [...s.favoriteChannels], fI = l.findIndex(i => i.channelid === f), tI = l.findIndex(i => i.channelid === t); if (fI === -1 || tI === -1) return s; const [m] = l.splice(fI, 1); l.splice(tI, 0, m); return { favoriteChannels: l }; }),
       reorderIptvChannelTo: (f, t) => set((s) => { const l = [...s.favoriteIptvChannels], fI = l.findIndex(i => i.stream_id === f), tI = l.findIndex(i => i.stream_id === t); if (fI === -1 || tI === -1) return s; const [m] = l.splice(fI, 1); l.splice(tI, 0, m); return { favoriteIptvChannels: l }; }),
@@ -448,3 +521,14 @@ export const useMediaStore = create<MediaState>()(
     }
   )
 );
+
+// Remember the master-bin fields as restored from the local cache, so a save that has to wait for the cloud copy
+// can tell which fields were really changed on this device.
+if (typeof window !== 'undefined') {
+  const captureBaseline = () => {
+    if (masterBaseline) return;
+    masterBaseline = Object.fromEntries(Object.entries(masterPayload(useMediaStore.getState())).map(([k, v]) => [k, JSON.stringify(v)]));
+  };
+  if (useMediaStore.persist?.hasHydrated?.()) captureBaseline();
+  else useMediaStore.persist?.onFinishHydration?.(captureBaseline);
+}

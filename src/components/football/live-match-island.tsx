@@ -8,6 +8,7 @@ import { useMediaStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { X, Eye, EyeOff, Bell, Clock, Timer, Check, Trophy, Play, ChevronDown, ChevronUp, Zap, Cloud, Bookmark } from "lucide-react";
 import { convertTo12Hour } from "@/lib/constants";
+import { prayerDayFor } from "@/lib/prayer-day";
 
 interface AlertItem {
   id: string;
@@ -27,6 +28,8 @@ interface AlertItem {
   matchTimeStr?: string;
   /** live minute (or "انتهت") shown under the score */
   minuteStr?: string;
+  /** a favourite team is playing and the match is live: shown above everything, even the player */
+  favLive?: boolean;
 }
 
 /**
@@ -39,6 +42,7 @@ export function LiveMatchIsland() {
     showIslands, toggleShowIslands, skippedMatchIds, skipMatch, autoHideIsland,
     skippedReminderIds, skipReminder, toggleReminder, syncMasterBin, isInitialLoading
   } = useMediaStore();
+  const playerCovers = useMediaStore(s => !!(s.activeVideo || s.activeIptv) && s.isFullScreen && !s.isMinimized);
 
   const [mounted, setMounted] = useState(false);
   const [now, setNow] = useState<Date | null>(null);
@@ -72,7 +76,7 @@ export function LiveMatchIsland() {
     const day = String(now.getDate()).padStart(2, '0');
     const dateStr = `${year}-${month}-${day}`;
     
-    const pData = prayerTimes.find(p => p.date === dateStr) || prayerTimes[0];
+    const pData = prayerDayFor(prayerTimes, dateStr);
     
     // Add Sync Island if in first 10 seconds
     if (showSyncIsland || isInitialLoading) {
@@ -187,7 +191,8 @@ export function LiveMatchIsland() {
       const isPinned = pinned.some(p => p.id === m.id || (sameTeam(p.home, m.home.name) && sameTeam(p.away, m.away.name)));
       // hiding works by a key built from the football day + both teams, so it survives a change of data source
       // and (being in skippedMatchIds, synced with the master bin) applies on every device
-      if ((!m.favorite && !isPinned) || (!isPinned && (skippedMatchIds.includes(matchHideKey(m)) || skippedMatchIds.includes(id)))) continue;
+      // the eye on the match card hides it from the island even when pinned
+      if ((!m.favorite && !isPinned) || skippedMatchIds.includes(matchHideKey(m)) || skippedMatchIds.includes(id)) continue;
       if (m.status === "finished" && nowSecs - m.timestamp > 3.5 * 3600) continue; // drop long-finished games
       const started = m.status !== "upcoming";
       // never show the same fixture twice: a live island replaces an older reminder-based match island
@@ -207,10 +212,12 @@ export function LiveMatchIsland() {
         awayName: m.away.name,
         matchTimeStr: started ? `${m.score.home ?? 0}-${m.score.away ?? 0}` : convertTo12Hour(m.omanTime),
         minuteStr: m.status === "live" ? (m.elapsed ? `${m.elapsed}'` : "مباشر") : m.status === "finished" ? "انتهت" : undefined,
+        favLive: !!m.favorite && m.status === "live",
       });
     }
 
-    return list.sort((a, b) => Math.abs(a.diff) - Math.abs(b.diff));
+    // favourite teams' live matches first, then by time
+    return list.sort((a, b) => Number(!!b.favLive) - Number(!!a.favLive) || Math.abs(a.diff) - Math.abs(b.diff));
   }, [now, prayerTimes, prayerSettings, reminders, generalAzkar, skippedReminderIds, skippedMatchIds, showSyncIsland, isInitialLoading, liveFeed, pinned]);
 
   const handleAction = async (id: string, type: 'match' | 'reminder' | 'sync' | 'azkar') => {
@@ -249,19 +256,29 @@ export function LiveMatchIsland() {
   if (autoHideIsland && !activeAlerts.length) return null;
   if (celebrating) return null; // the goal island takes the stage, then everything comes back as it was
 
+  // a favourite team's live match goes above everything, the player included; over a full-screen player only those show
+  const hasFavLive = activeAlerts.some(a => a.favLive);
+  const visibleAlerts = playerCovers && hasFavLive ? activeAlerts.filter(a => a.favLive) : activeAlerts;
+
   return (
-    <div className={cn("fixed top-6 left-1/2 -translate-x-1/2 z-[10001] flex flex-col items-center gap-3 pointer-events-none scale-[0.7] min-[968px]:scale-[0.80] dir-rtl transition-all duration-700", (showIslands || activeAlerts.length) ? "translate-y-0 opacity-100" : "-translate-y-20 opacity-0")}>
+    <div className={cn("fixed top-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3 pointer-events-none scale-[0.7] min-[968px]:scale-[0.80] dir-rtl transition-all duration-700", hasFavLive ? "z-[100002]" : "z-[10001]", (showIslands || activeAlerts.length) ? "translate-y-0 opacity-100" : "-translate-y-20 opacity-0")}>
       <div className="flex items-start gap-3">
         <div onClick={toggleShowIslands} className="pointer-events-auto shadow-2xl w-12 h-12 rounded-full flex items-center justify-center premium-glass cursor-pointer border border-white/10 active:scale-90 transition-all">{showIslands ? <Eye className="w-5 h-5 text-accent" /> : <EyeOff className="w-5 h-5 text-white/20" />}</div>
         {showIslands && (
           <div className="flex items-center gap-2">
-            {activeAlerts.map((alert) => {
+            {visibleAlerts.map((alert) => {
                if (alert.type === 'match') {
                  return (
-                   <div key={alert.id} dir="ltr" onClick={() => setIsMatchCollapsed(!isMatchCollapsed)} className={cn("pointer-events-auto premium-glass rounded-full flex items-center animate-in slide-in-from-top-2 border transition-all relative group shadow-2xl cursor-pointer", alert.completed ? "bg-emerald-600/60 border-emerald-400" : "border-white/10", isMatchCollapsed ? "min-w-[10rem] h-[4.5rem] gap-0 px-1" : "min-w-[18rem] h-[7.5rem] gap-0 px-2")}>
+                   <div key={alert.id} dir="ltr" onClick={() => setIsMatchCollapsed(!isMatchCollapsed)} className={cn("pointer-events-auto premium-glass rounded-full flex items-center animate-in slide-in-from-top-2 border transition-all relative group shadow-2xl cursor-pointer", alert.completed ? "bg-emerald-600/60 border-emerald-400" : alert.favLive ? "border-yellow-400/70 shadow-[0_0_24px_rgba(250,204,21,0.35)]" : "border-white/10", isMatchCollapsed ? "min-w-[10rem] h-[4.5rem] gap-0 px-1" : "min-w-[18rem] h-[7.5rem] gap-0 px-2")}>
                      <button onClick={(e) => { e.stopPropagation(); handleAction(alert.id, 'match'); }} className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-black/60 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center pointer-events-auto transition-opacity z-50 border border-white/10 shadow-glow"><X className="w-3.5 h-3.5" /></button>
+                     {/* live: the minute sits clearly next to the home team - "د86 [home] 1-0 [away]" */}
+                     {alert.isExpired && alert.minuteStr && (
+                       <span dir="rtl" className={cn("shrink-0 rounded-full bg-red-600 text-white font-black tabular-nums leading-none flex items-center justify-center shadow-[0_0_14px_rgba(220,38,38,0.6)]", isMatchCollapsed ? "text-[0.95rem] h-9 px-2.5 mr-1.5" : "text-[1.3rem] h-12 px-3.5 mr-2")}>
+                         {/^\d/.test(alert.minuteStr) ? `د${alert.minuteStr.replace(/'/g, "")}` : alert.minuteStr}
+                       </span>
+                     )}
                      <div className={cn("rounded-full bg-white/5 flex items-center justify-center border border-white/10 overflow-hidden shrink-0 shadow-lg relative", isMatchCollapsed ? "w-12 h-12" : "w-20 h-20")}>{alert.homeLogo ? <img src={alert.homeLogo} className={cn("object-contain drop-shadow-md", isMatchCollapsed ? "w-10 h-10" : "w-16 h-16")} alt="" /> : <Trophy className={cn("text-white/10", isMatchCollapsed ? "w-5 h-5" : "w-8 h-8")} />}{!isMatchCollapsed && <span className="absolute bottom-0 left-0 right-0 bg-black/60 text-[6px] font-black text-white text-center truncate px-1">{alert.homeName || "HOME"}</span>}</div>
-                     <div className={cn("flex-1 flex flex-col items-center justify-center p-0 m-0", isMatchCollapsed ? "min-w-[6rem]" : "min-w-[12rem]")}><div className={cn("w-full p-0 m-0 flex items-center justify-center", isMatchCollapsed ? "h-14" : "h-24")}><GlassNumber text={alert.matchTimeStr || "--:--"} id={`match-${alert.id}`} size={isMatchCollapsed ? "4.5rem" : "5.6rem"} colorClass={alert.isExpired ? "text-emerald-400 animate-pulse" : "text-white"} /></div>{alert.minuteStr && <span className={cn("font-black leading-none tabular-nums -mt-1", isMatchCollapsed ? "text-[0.65rem]" : "text-[0.9rem]", alert.isExpired ? "text-red-400" : "text-white/50")}>{alert.minuteStr}</span>}</div>
+                     <div className={cn("flex-1 flex flex-col items-center justify-center p-0 m-0", isMatchCollapsed ? "min-w-[6rem]" : "min-w-[12rem]")}><div className={cn("w-full p-0 m-0 flex items-center justify-center", isMatchCollapsed ? "h-14" : "h-24")}><GlassNumber text={alert.matchTimeStr || "--:--"} id={`match-${alert.id}`} size={isMatchCollapsed ? "4.5rem" : "5.6rem"} colorClass={alert.isExpired ? "text-emerald-400 animate-pulse" : "text-white"} /></div>{alert.minuteStr && !alert.isExpired && <span className={cn("font-black leading-none tabular-nums -mt-1", isMatchCollapsed ? "text-[0.65rem]" : "text-[0.9rem]", alert.isExpired ? "text-red-400" : "text-white/50")}>{alert.minuteStr}</span>}</div>
                      <div className={cn("rounded-full bg-white/5 flex items-center justify-center border border-white/10 overflow-hidden shrink-0 shadow-lg relative", isMatchCollapsed ? "w-12 h-12" : "w-20 h-20")}>{alert.awayLogo ? <img src={alert.awayLogo} className={cn("object-contain drop-shadow-md", isMatchCollapsed ? "w-10 h-10" : "w-16 h-16")} alt="" /> : <Trophy className={cn("text-white/10", isMatchCollapsed ? "w-5 h-5" : "w-8 h-8")} />}{!isMatchCollapsed && <span className="absolute bottom-0 left-0 right-0 bg-black/60 text-[6px] font-black text-white text-center truncate px-1">{alert.awayName || "AWAY"}</span>}</div>
                    </div>
                  );

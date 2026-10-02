@@ -4,7 +4,8 @@ import { footballDay, omanTime } from "@/lib/oman-time";
 
 export interface TopMatch {
   id: string;
-  league: { id: string; name: string; logo?: string };
+  /** country: the league's country when the source tells it (tells e.g. the German Bundesliga from the Austrian one) */
+  league: { id: string; name: string; logo?: string; country?: string };
   home: { id: string; name: string; logo?: string };
   away: { id: string; name: string; logo?: string };
   /** Kick-off, unix seconds */
@@ -222,4 +223,11 @@ export function zonedToUnix(ymd: string, hm: string, tz: string): number {
 /** Stable id for "hide this match" that survives switching between providers (ids differ per source). */
 export function matchHideKey(m: { timestamp: number; home: { name: string }; away: { name: string } }): string {
   return `match:${footballDay(new Date(m.timestamp * 1000))}:${teamKey(m.home.name)}:${teamKey(m.away.name)}`;
+}
+
+/** URL of /api/matches/details for a match (team names let other sources be matched on 365Scores). */
+export function matchDetailsUrl(m: TopMatch, fresh = false): string {
+  const q = new URLSearchParams({ id: m.id, league: m.league.id, homeId: m.home.id, home: m.home.name, away: m.away.name });
+  if (fresh) q.set("fresh", "1");
+  return `/api/matches/details?${q}`;
 }

@@ -1,11 +1,12 @@
 
 "use client";
 
-import { useMemo, useEffect, useState } from "react";
+import { useMemo, useEffect, useState, useRef } from "react";
 import { convertTo12Hour } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { Timer, BellRing, Sun, Sunrise, Sunset, Moon, Sparkles, CloudSun, Edit3, Plus, Minus, Check } from "lucide-react";
 import { useMediaStore } from "@/lib/store";
+import { prayerDayFor } from "@/lib/prayer-day";
 
 /**
  * PrayerTimelineWidget v305.0 - Dynamic Iqamah Time Swap Protocol
@@ -25,8 +26,9 @@ export function PrayerTimelineWidget() {
   const { prayers, activeIndex, currentStatus } = useMemo(() => {
     if (!now || !prayerTimes || prayerTimes.length === 0) return { prayers: [], activeIndex: -1, currentStatus: null };
     
-    const dateStr = now.toISOString().split('T')[0];
-    const data = prayerTimes.find(p => p.date === dateStr) || prayerTimes[0];
+    // the local calendar date (toISOString is UTC: between 00:00 and 04:00 in Oman it gave yesterday's times)
+    const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const data = prayerDayFor(prayerTimes, dateStr);
     
     if (!data) return { prayers: [], activeIndex: -1, currentStatus: null };
 
@@ -76,6 +78,23 @@ export function PrayerTimelineWidget() {
     return { prayers: processed, activeIndex: finalIndex, currentStatus: status };
   }, [now, prayerTimes, prayerSettings]);
 
+  // narrow screens: the bar scrolls sideways, so bring the next (or current iqamah) prayer to the middle
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const scroller = scrollerRef.current;
+    if (!scroller || activeIndex < 0) return;
+    const center = (smooth: boolean) => {
+      const card = scroller.querySelectorAll<HTMLElement>('[data-nav-id^="prayer-card-"]')[activeIndex];
+      if (!card || scroller.scrollWidth <= scroller.clientWidth + 2) return;
+      const c = card.getBoundingClientRect(), r = scroller.getBoundingClientRect();
+      scroller.scrollBy({ left: c.left + c.width / 2 - (r.left + r.width / 2), behavior: smooth ? 'smooth' : 'auto' });
+    };
+    const t = setTimeout(() => center(false), 50);
+    const onResize = () => center(false);
+    window.addEventListener('resize', onResize);
+    return () => { clearTimeout(t); window.removeEventListener('resize', onResize); };
+  }, [activeIndex, prayers.length]);
+
   const handleAdjustIqamah = (id: string, delta: number) => {
     const current = prayerSettings.find(s => s.id === id)?.iqamahDuration || 0;
     updatePrayerSetting(id, { iqamahDuration: Math.max(0, current + delta) });
@@ -85,7 +104,7 @@ export function PrayerTimelineWidget() {
 
   return (
     <div className="w-full bg-black/40 backdrop-blur-3xl rounded-[2.5rem] border border-white/10 p-2 overflow-hidden shadow-2xl relative transition-none h-auto">
-      <div className="flex flex-nowrap items-center justify-between gap-4 p-2 h-full overflow-x-auto no-scrollbar">
+      <div ref={scrollerRef} className="flex flex-nowrap items-center justify-between gap-4 p-2 h-full overflow-x-auto no-scrollbar scroll-smooth">
         {prayers.map((prayer, idx) => {
           const isActive = idx === activeIndex;
           const isCurrentIqamah = prayer.passed;

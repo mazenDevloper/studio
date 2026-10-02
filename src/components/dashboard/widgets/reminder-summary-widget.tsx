@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { Bell, Timer, Clock } from "lucide-react";
 import { FluidGlass } from "@/components/ui/fluid-glass";
 import { convertTo12Hour } from "@/lib/constants";
+import { prayerDayFor, localYmd } from "@/lib/prayer-day";
 
 interface ReminderItem {
   id: string;
@@ -59,8 +60,8 @@ export function ReminderSummaryWidget() {
       return convertTo12Hour(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`);
     };
 
-    const dateStr = now.toISOString().split('T')[0];
-    const pData = prayerTimes.find(p => p.date === dateStr) || prayerTimes[0];
+    const dateStr = localYmd(now);
+    const pData = prayerDayFor(prayerTimes, dateStr);
 
     if (pData) {
       for (const setting of prayerSettings) {

@@ -4,7 +4,9 @@
 import { useState, useEffect, useMemo, useDeferredValue, useRef } from "react";
 import { useMediaStore, IptvChannel } from "@/lib/store";
 import { Button } from "@/components/ui/button";
-import { Tv, List, ChevronRight, Loader2, Star, ArrowRightLeft, Link2, RotateCcw } from "lucide-react";
+import { Tv, List, ChevronRight, Loader2, Star, ArrowRightLeft, Link2, RotateCcw, SlidersHorizontal } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { IptvPlaybackSettings } from "@/components/iptv/iptv-playback-settings";
 import { Input } from "@/components/ui/input";
 import { getIptvCategories, getIptvChannels } from "@/app/actions/iptv";
 import { cn } from "@/lib/utils";
@@ -48,6 +50,7 @@ export function IptvView() {
   // Keep typing instant even with thousands of channels: the grid re-filters at low priority.
   const deferredSearch = useDeferredValue(search);
   const [linkOpen, setLinkOpen] = useState(false);
+  const [playbackOpen, setPlaybackOpen] = useState(false);
   const [sourceChannels, setSourceChannels] = useState<IptvChannel[]>([]);
   const [group, setGroup] = useState("all");
   const [groupsExpanded, setGroupsExpanded] = useState(false);
@@ -185,7 +188,7 @@ export function IptvView() {
   const cols = "grid-cols-2 md:grid-cols-3 xl:grid-cols-5";
 
   return (
-    <div dir="ltr" className={cn("h-screen flex overflow-hidden relative", isDockLeft ? "flex-row" : "flex-row-reverse")}>
+    <div dir="ltr" className={cn("h-full flex overflow-hidden relative", isDockLeft ? "flex-row" : "flex-row-reverse")}>
       {/* Categories: full-height side panel next to the car dock */}
       <aside data-nav-zone="sidebar" dir="rtl" className={cn("flex h-full min-h-0 overflow-hidden z-[110] premium-glass flex-col shrink-0 bg-black/60 border-white/5 w-[38%] md:w-[26%] min-w-[220px]", isDockLeft ? "border-r" : "border-l")}>
         <div className="p-4 flex items-center gap-3 border-b border-white/5">
@@ -245,6 +248,9 @@ export function IptvView() {
             )}
             <Button onClick={() => setLinkOpen(true)} variant="outline" className="rounded-full focusable h-11 px-5 bg-white/5" data-nav-id="iptv-link-btn">
               <Link2 className="w-4 h-4 ml-2" /> رابط
+            </Button>
+            <Button onClick={() => setPlaybackOpen(true)} variant="outline" className="rounded-full focusable h-11 px-5 bg-white/5" data-nav-id="iptv-playback-btn" title="تقليل تقطيع القنوات">
+              <SlidersHorizontal className="w-4 h-4 ml-2" /> إعدادات البث
             </Button>
             <Button onClick={resetSource} variant="outline" className="rounded-full focusable h-11 px-5 bg-white/5" data-nav-id="iptv-reset-source" title="استعادة الرابط الافتراضي">
               <RotateCcw className="w-4 h-4 ml-2" /> الافتراضي
@@ -335,6 +341,12 @@ export function IptvView() {
         )}
       </main>
 
+      <Dialog open={playbackOpen} onOpenChange={setPlaybackOpen}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto bg-zinc-950 text-white border-white/10 rounded-[2rem]" dir="rtl">
+          <DialogHeader><DialogTitle className="text-right font-black">إعدادات البث · تقليل التقطيع</DialogTitle></DialogHeader>
+          <IptvPlaybackSettings />
+        </DialogContent>
+      </Dialog>
       <M3uPlayerPopup open={linkOpen} onOpenChange={setLinkOpen} initialUrl={activeSource.kind === "url" ? activeSource.url : undefined} onLoad={handleSourceLoaded} />
     </div>
   );
