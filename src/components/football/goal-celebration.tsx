@@ -217,13 +217,13 @@ export function GoalCelebration() {
 /** Logos + score; the scoring team's number pops. In front of everything else in act 2. */
 function ScoreBar({ m, side, small = false }: { m: TopMatch; side: "home" | "away"; small?: boolean }) {
   const logo = (src: string | undefined, name: string) => src
-    ? <img src={src} alt="" className={cn("object-contain", small ? "w-7 h-7 md:w-9 md:h-9" : "w-11 h-11 md:w-14 md:h-14")} />
+    ? <img src={src} alt="" className={cn("object-contain", small ? "w-10 h-10 md:w-12 md:h-12" : "w-16 h-16 md:w-24 md:h-24")} />
     : <span className="text-xs font-black text-white/70">{name.slice(0, 3).toUpperCase()}</span>;
   return (
-    <div className={cn("gi-score flex items-center rounded-full bg-black/75 border border-white/15 shadow-[0_8px_30px_rgba(0,0,0,0.6)] backdrop-blur-md", small ? "gap-2.5 px-3 py-1.5" : "gap-4 px-5 py-2.5")}>
+    <div className={cn("gi-score flex items-center rounded-full bg-black/75 border border-white/15 shadow-[0_8px_30px_rgba(0,0,0,0.6)] backdrop-blur-md", small ? "gap-3 px-4 py-2" : "gap-5 md:gap-7 px-6 md:px-8 py-3")}>
       {logo(m.home.logo, m.home.name)}
       {!small && <span className="hidden md:block text-sm font-black text-white/80 max-w-[9rem] truncate">{m.home.name}</span>}
-      <span className={cn("font-black tabular-nums text-white flex items-center gap-2", small ? "text-3xl md:text-4xl" : "text-5xl md:text-6xl")}>
+      <span className={cn("font-black tabular-nums text-white flex items-center gap-2", small ? "text-4xl md:text-5xl" : "text-7xl md:text-8xl")}>
         <span className={cn("inline-block", side === "home" && "gi-pop")}>{m.score.home ?? 0}</span>
         <span className="text-white/40">-</span>
         <span className={cn("inline-block", side === "away" && "gi-pop")}>{m.score.away ?? 0}</span>
