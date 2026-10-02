@@ -242,3 +242,13 @@ export function goalAlertOn(m: TopMatch, belled: string[] = []): boolean {
   if (belled.includes(`mute:${k}`)) return false;
   return !!m.favorite;
 }
+
+/**
+ * Matches page / feed order: live favourites, live, favourites, then the rest - each group by importance, then
+ * kick-off (finished matches after the upcoming ones of the same group).
+ */
+export function sortMatches<T extends Pick<TopMatch, "status" | "importance" | "timestamp" | "favorite">>(list: T[]): T[] {
+  const rank = (m: T) => (m.status === "live" ? (m.favorite ? 0 : 1) : m.favorite ? 2 : 3);
+  return [...list].sort((a, b) => rank(a) - rank(b) || (a.status === "finished" ? 1 : 0) - (b.status === "finished" ? 1 : 0)
+    || (b.importance ?? 0) - (a.importance ?? 0) || a.timestamp - b.timestamp);
+}

@@ -172,7 +172,12 @@ const isNum = (t: string) => /^\d+$/.test(t);
 
 /** 0 = different channel, higher = closer. */
 export function channelScore(broadcast: string, candidate: string): number {
-  const a = new Set(channelTokens(broadcast)), b = new Set(channelTokens(candidate));
+  return tokenScore(channelTokens(broadcast), channelTokens(candidate));
+}
+
+/** channelScore on names already split by channelTokens (for big IPTV catalogues). */
+export function tokenScore(broadcastTokens: string[], candidateTokens: string[]): number {
+  const a = new Set(broadcastTokens), b = new Set(candidateTokens);
   if (!a.size || !b.size) return 0;
   const words = (s: Set<string>) => [...s].filter(t => !isNum(t));
   const nums = (s: Set<string>) => [...s].filter(isNum).sort().join(",");
@@ -187,7 +192,6 @@ export function channelScore(broadcast: string, candidate: string): number {
   return score >= 60 ? score : 0;
 }
 
-/** The favourite IPTV channel for a broadcast name: a hand-picked link first, then the closest name. */
 export function findFavoriteChannel<T extends LinkableChannel>(broadcast: string, favorites: T[]): T | null {
   const key = channelKey(broadcast);
   if (!key) return null;

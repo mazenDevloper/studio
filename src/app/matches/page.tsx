@@ -2,30 +2,66 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Loader2, RefreshCw, Trophy, AlertTriangle, Star, PartyPopper, Pin, Eye, EyeOff, Tv, MapPin, Flag, LayoutGrid, Server, BellRing, BellOff } from "lucide-react";
-import { useLiveMatches, useLiveMatchesStore } from "@/lib/live-matches";
+import { useLiveMatches, useLiveMatchesStore, MATCHES_LIMIT } from "@/lib/live-matches";
 import type { MatchDetails } from "@/lib/match-details";
-import { sameTeam, matchHideKey, matchDetailsUrl, goalAlertOn } from "@/lib/match-core";
+import { sameTeam, matchHideKey, matchDetailsUrl, goalAlertOn, sortMatches } from "@/lib/match-core";
 import { useMediaStore } from "@/lib/store";
 import { GOAL_TEST_EVENT } from "@/components/football/goal-celebration";
 import { MatchChannelChips } from "@/components/football/match-channel-chips";
+import { leagueCountry } from "@/lib/iptv-catalog";
 import { matchChannels } from "@/lib/match-channels";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { omanDateLabel } from "@/lib/oman-time";
 import type { TopMatch } from "@/lib/top-matches";
 
+type DayTab = -1 | 0 | 1;
+const DAY_TABS: { day: DayTab; label: string }[] = [{ day: -1, label: "الأمس" }, { day: 0, label: "اليوم" }, { day: 1, label: "الغد" }];
+
+/** Yesterday's / tomorrow's matches (favourite teams + the important ones), cached for the session. */
+const otherDays = new Map<string, { at: number; data: any }>();
+function useOtherDay(day: DayTab, teams: string[]) {
+  const key = `${day}|${teams.join("|")}`;
+  const [state, setState] = useState<{ key: string; data: any; error: string | null; loading: boolean }>({ key: "", data: null, error: null, loading: false });
+  const load = async (force = false) => {
+    if (!day) return;
+    const hit = otherDays.get(key);
+    if (hit && !force && Date.now() - hit.at < 10 * 60_000) { setState({ key, data: hit.data, error: null, loading: false }); return; }
+    setState(s => ({ key, data: s.key === key ? s.data : hit?.data ?? null, error: null, loading: true }));
+    try {
+      const q = new URLSearchParams({ limit: String(MATCHES_LIMIT), day: String(day) });
+      if (teams.length) q.set("teams", teams.join("|"));
+      const res = await fetch(`/api/matches?${q}`, { cache: "no-store" });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || "تعذر التحميل");
+      otherDays.set(key, { at: Date.now(), data: json });
+      setState({ key, data: json, error: null, loading: false });
+    } catch (e: any) {
+      setState(s => ({ ...s, key, error: e?.message || "تعذر التحميل", loading: false }));
+    }
+  };
+  useEffect(() => { load(); }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
+  const mine = state.key === key;
+  return { data: mine ? state.data : otherDays.get(key)?.data ?? null, error: mine ? state.error : null, loading: !mine || state.loading, refresh: () => load(true) };
+}
+
 /** Today's most important matches, kick-off in Oman time (GMT+4). Auto-refreshes every 30s from the shared live feed. */
 export default function MatchesTestPage() {
   const { favoriteTeams } = useMediaStore();
   const favoriteNames = useMemo(() => (favoriteTeams || []).map(t => t?.name).filter(Boolean) as string[], [favoriteTeams]);
-  const { data, error, loading, updatedAt, refresh } = useLiveMatches(favoriteNames);
+  const today = useLiveMatches(favoriteNames);
+  const [tab, setTab] = useState<DayTab>(0);
+  const other = useOtherDay(tab, favoriteNames);
+  const { data, error, loading, refresh } = tab ? other : today;
+  const updatedAt = tab ? null : today.updatedAt;
+  // live favourites, live, favourites, then the rest
+  const matches = useMemo(() => sortMatches<TopMatch>((data?.matches ?? []) as TopMatch[]), [data]);
   const [showJson, setShowJson] = useState(false);
   const skipped = useMediaStore(s => s.skippedMatchIds) || [];
   const isHidden = (m: TopMatch) => skipped.includes(matchHideKey(m));
   const [, tick] = useState(0);
   useEffect(() => { const t = setInterval(() => tick(n => n + 1), 5000); return () => clearInterval(t); }, []);
   const ago = updatedAt ? Math.round((Date.now() - updatedAt) / 1000) : null;
-  const load = refresh;
   // the channel buttons on the cards open IPTV favourites: make sure they are loaded
   const favCount = useMediaStore(s => s.favoriteIptvChannels?.length ?? 0);
   const ensureScreenData = useMediaStore(s => s.ensureScreenData);
@@ -35,14 +71,24 @@ export default function MatchesTestPage() {
     <div className="min-h-full bg-black text-white p-6 md:p-10 space-y-6" dir="rtl">
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-black flex items-center gap-3">أهم مباريات اليوم <Trophy className="w-8 h-8 text-yellow-400" /></h1>
-          <p className="text-white/50 text-sm mt-1">{omanDateLabel(new Date(Date.now() - 5 * 3600_000))} · التوقيت: عُمان (GMT+4) · اليوم الكروي حتى 5 فجراً</p>
+          <h1 className="text-3xl font-black flex items-center gap-3">أهم مباريات {DAY_TABS.find(t => t.day === tab)!.label} <Trophy className="w-8 h-8 text-yellow-400" /></h1>
+          <p className="text-white/50 text-sm mt-1">{omanDateLabel(new Date(Date.now() - 5 * 3600_000 + tab * 86_400_000))} · التوقيت: عُمان (GMT+4) · اليوم الكروي حتى 5 فجراً</p>
+          {/* yesterday / today / tomorrow: other days show only favourite teams + the important matches */}
+          <div className="mt-3 inline-flex rounded-full bg-white/5 border border-white/10 p-1 gap-1" role="tablist">
+            {DAY_TABS.map(t => (
+              <button key={t.day} role="tab" aria-selected={tab === t.day} onClick={() => setTab(t.day)} data-nav-id={`matches-day-${t.day + 1}`}
+                className={cn("focusable no-focus-scale h-9 px-5 rounded-full text-sm font-black transition-colors",
+                  tab === t.day ? "bg-emerald-500 text-black" : "text-white/60 hover:bg-white/10")}>
+                {t.label}
+              </button>
+            ))}
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           {ago !== null && <span className="text-xs text-white/40">تحديث تلقائي · منذ {ago} ث</span>}
           <Button variant="outline" onClick={() => window.dispatchEvent(new CustomEvent(GOAL_TEST_EVENT))} className="rounded-full bg-white/5 border-white/10"><PartyPopper className="w-4 h-4 ml-2" /> اختبار الهدف</Button>
           <Button variant="outline" onClick={() => setShowJson(v => !v)} className="rounded-full bg-white/5 border-white/10">JSON</Button>
-          <Button onClick={load} disabled={loading} className="rounded-full bg-emerald-500 text-black hover:bg-emerald-400">
+          <Button onClick={refresh} disabled={loading} className="rounded-full bg-emerald-500 text-black hover:bg-emerald-400">
             <RefreshCw className={cn("w-4 h-4 ml-2", loading && "animate-spin")} /> تحديث
           </Button>
         </div>
@@ -58,21 +104,21 @@ export default function MatchesTestPage() {
 
       {data && (
         <>
-          {data.matches.length === 0 ? (
-            <div className="py-20 text-center text-white/30 font-bold">لا توجد مباريات مهمة اليوم</div>
+          {matches.length === 0 ? (
+            <div className="py-20 text-center text-white/30 font-bold">لا توجد مباريات مهمة {tab === -1 ? "أمس" : tab === 1 ? "غداً" : "اليوم"}</div>
           ) : (
             <>
               <div className="grid gap-3 md:grid-cols-2">
-                {data.matches.map(m => <MatchCard key={m.id} m={m} hidden={isHidden(m)} />)}
+                {matches.map((m: TopMatch) => <MatchCard key={m.id} m={m} hidden={isHidden(m)} />)}
               </div>
             </>
           )}
 
           {/* data sources (APIs) at the bottom: the matches come first */}
           <section className="pt-6 mt-2 border-t border-white/5 space-y-2">
-            <p className="text-xs text-white/40 flex items-center gap-2"><Server className="w-3.5 h-3.5" /> {data.matches.length} من أصل {data.total} مباراة · {data.date} · المصدر: {data.source}</p>
+            <p className="text-xs text-white/40 flex items-center gap-2"><Server className="w-3.5 h-3.5" /> {matches.length} من أصل {data.total} مباراة · {data.date} · المصدر: {data.source}</p>
             <div className="flex flex-wrap gap-2" dir="ltr">
-              {data.attempts.map(a => (
+              {(data.attempts ?? []).map((a: any) => (
                 <span key={a.source} title={a.error} className={cn("text-[10px] font-bold px-3 py-1 rounded-full border", a.ok ? "border-emerald-500/40 text-emerald-300" : "border-red-500/40 text-red-300")}>
                   {a.source}{a.kind === "open" ? " ◈" : ""} · {a.ok ? `${a.important}/${a.total}` : "failed"} · {a.ms}ms
                 </span>
@@ -155,7 +201,7 @@ function MatchCard({ m, hidden = false }: { m: TopMatch; hidden?: boolean }) {
         </span>
         <span className="flex items-center gap-2 shrink-0">
           {m.favorite && <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />}
-          <span className={cn("font-black", live ? "text-red-400" : m.status === "finished" ? "text-white/40" : "text-emerald-400")}>
+          <span className={cn("font-black", live ? "text-red-300 text-base tabular-nums bg-red-600/20 border border-red-500/40 rounded-full px-2.5 leading-7" : m.status === "finished" ? "text-white/40" : "text-emerald-400")}>
             {live ? `مباشر ${m.elapsed ?? ""}'` : m.status === "finished" ? "انتهت" : "قريباً"}
           </span>
           <button
@@ -186,7 +232,7 @@ function MatchCard({ m, hidden = false }: { m: TopMatch; hidden?: boolean }) {
       <div className="mt-3 flex items-center justify-center gap-2 text-xs font-bold">
         {!channels.length && <Tv className="w-4 h-4 text-emerald-400 shrink-0" />}
         {channels.length > 0
-          ? <MatchChannelChips names={channels} idPrefix={`match-${m.id}`} className="justify-center" />
+          ? <MatchChannelChips names={channels} country={leagueCountry(m.league)} idPrefix={`match-${m.id}`} className="justify-center" />
           : <span className="text-white/30">{lookedUp === null ? "جاري البحث عن القناة..." : "القناة الناقلة غير متوفرة"}</span>}
       </div>
 
@@ -311,7 +357,7 @@ function MatchInfo({ m, d, channels }: { m: TopMatch; d: MatchDetails; channels:
             sub={[d.venueCapacity && `سعة الملعب: ${fmt(d.venueCapacity)}`, d.attendance && `الحضور: ${fmt(d.attendance)}`].filter(Boolean).join(" · ") || undefined} />
         )}
         <InfoRow icon={<Tv className="w-6 h-6" />} title="قنوات تلفزيون"
-          sub={channels.length ? <MatchChannelChips names={channels} idPrefix={`info-${m.id}`} editable className="mt-1.5" /> : "غير متوفرة"} />
+          sub={channels.length ? <MatchChannelChips names={channels} country={leagueCountry(m.league)} idPrefix={`info-${m.id}`} editable className="mt-1.5" /> : "غير متوفرة"} />
         {d.round && <InfoRow icon={<Flag className="w-6 h-6" />} title={<span dir="ltr">{d.round}</span>} sub={m.league.name} />}
         {d.formations && (
           <InfoRow icon={<LayoutGrid className="w-6 h-6" />} title="التشكيل"

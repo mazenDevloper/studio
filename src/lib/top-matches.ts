@@ -3,7 +3,7 @@ import { S365_HEADERS, remember365Countries } from "@/lib/scores365";
 import { leagueAlwaysListed } from "@/lib/match-channels";
 import { EXTRA_SOURCES } from "@/lib/match-sources-extra";
 import {
-  BROWSER_HEADERS, build, getJson, importanceOf, leagueWeightByName, num, pickTop, sameTeam, shiftedDash, shiftedYmd,
+  BROWSER_HEADERS, build, getJson, sortMatches, importanceOf, leagueWeightByName, num, pickTop, sameTeam, shiftedDash, shiftedYmd,
   type SourceAttempt, type TopMatch, type TopMatchesResult,
 } from "@/lib/match-core";
 import { omanTime } from "@/lib/oman-time";
@@ -321,9 +321,10 @@ export function startMatchesWarmup() {
 /**
  * @param teams team names whose matches today must be included even if they aren't "important" (favourite teams)
  */
-export async function getTopMatchesToday(limit = 10, only?: string, includeAll = false, teams: string[] = []): Promise<TopMatchesResult> {
-  lastUsedAt = Date.now();
-  const date = footballDay(); // until 05:00 Oman time this is still yesterday's football day
+export async function getTopMatchesToday(limit = 10, only?: string, includeAll = false, teams: string[] = [], dayOffset = 0): Promise<TopMatchesResult> {
+  if (!dayOffset) lastUsedAt = Date.now();
+  // until 05:00 Oman time this is still yesterday's football day; -1 / +1 = yesterday's / tomorrow's matches
+  const date = dayOffset ? shiftedDash(footballDay(), dayOffset) : footballDay();
   const day = await getDay(date, only);
 
   const runs: Run[] = day.raws.map(r => {
@@ -343,7 +344,8 @@ export async function getTopMatchesToday(limit = 10, only?: string, includeAll =
   const isFav = (m: TopMatch) => teams.some(t => sameTeam(t, m.home.name) || sameTeam(t, m.away.name));
   // always shown besides the top list: favourite teams' matches, and every match of a league that has a regional
   // channel (Saudi -> Thmanyah, UAE -> AD Sports / Sharjah, Bundesliga -> MBC Action, Serie A -> STARZPLAY, Oman...)
-  const isExtra = (m: TopMatch) => isFav(m) || (!includeAll && leagueAlwaysListed(m.league));
+  // (yesterday / tomorrow: only the favourites besides the important matches)
+  const isExtra = (m: TopMatch) => isFav(m) || (!includeAll && !dayOffset && leagueAlwaysListed(m.league));
   const favExtra: TopMatch[] = [];
   for (const r of [best, ...working.filter(w => w !== best)]) {
     for (const m of r.day) {
@@ -357,10 +359,8 @@ export async function getTopMatchesToday(limit = 10, only?: string, includeAll =
     timezone: "Asia/Muscat",
     source: best.attempt.source,
     total: best.total,
-    // Favourite teams' matches are always included, then sorted with the rest: live first, importance, kick-off.
-    matches: [...best.top, ...favExtra]
-      .map(m => (isFav(m) ? { ...m, favorite: true } : m))
-      .sort((a, b) => (b.status === "live" ? 1 : 0) - (a.status === "live" ? 1 : 0) || b.importance - a.importance || a.timestamp - b.timestamp),
+    // Favourite teams' matches are always included; order: live favourites, live, favourites, then the rest
+    matches: sortMatches([...best.top, ...favExtra].map(m => (isFav(m) ? { ...m, favorite: true } : m))),
     attempts: runs.map(r => r.attempt),
     fetchedAt: new Date(day.at).toISOString(),
   };

@@ -273,7 +273,7 @@ export function LiveMatchIsland() {
                      <button onClick={(e) => { e.stopPropagation(); handleAction(alert.id, 'match'); }} className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-black/60 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center pointer-events-auto transition-opacity z-50 border border-white/10 shadow-glow"><X className="w-3.5 h-3.5" /></button>
                      {/* live: the minute sits clearly next to the home team - "د86 [home] 1-0 [away]" */}
                      {alert.isExpired && alert.minuteStr && (
-                       <span dir="rtl" className={cn("shrink-0 rounded-full bg-red-600 text-white font-black tabular-nums leading-none flex items-center justify-center shadow-[0_0_14px_rgba(220,38,38,0.6)]", isMatchCollapsed ? "text-[0.95rem] h-9 px-2.5 mr-1.5" : "text-[1.3rem] h-12 px-3.5 mr-2")}>
+                       <span dir="rtl" className={cn("shrink-0 rounded-full bg-red-600 text-white font-black tabular-nums leading-none flex items-center justify-center shadow-[0_0_14px_rgba(220,38,38,0.6)]", isMatchCollapsed ? "text-[1.15rem] h-10 px-3 mr-1.5" : "text-[1.6rem] h-14 px-4 mr-2")}>
                          {/^\d/.test(alert.minuteStr) ? `د${alert.minuteStr.replace(/'/g, "")}` : alert.minuteStr}
                        </span>
                      )}
