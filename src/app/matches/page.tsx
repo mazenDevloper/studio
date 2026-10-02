@@ -7,6 +7,8 @@ import type { MatchDetails } from "@/lib/match-details";
 import { sameTeam, matchHideKey, matchDetailsUrl } from "@/lib/match-core";
 import { useMediaStore } from "@/lib/store";
 import { GOAL_TEST_EVENT } from "@/components/football/goal-celebration";
+import { MatchChannelChips } from "@/components/football/match-channel-chips";
+import { leagueChannels, uniqueChannels } from "@/lib/match-channels";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { omanDateLabel } from "@/lib/oman-time";
@@ -25,6 +27,10 @@ export default function MatchesTestPage() {
   useEffect(() => { const t = setInterval(() => tick(n => n + 1), 5000); return () => clearInterval(t); }, []);
   const ago = updatedAt ? Math.round((Date.now() - updatedAt) / 1000) : null;
   const load = refresh;
+  // the channel buttons on the cards open IPTV favourites: make sure they are loaded
+  const favCount = useMediaStore(s => s.favoriteIptvChannels?.length ?? 0);
+  const ensureScreenData = useMediaStore(s => s.ensureScreenData);
+  useEffect(() => { if (!favCount) ensureScreenData("/iptv"); }, [favCount, ensureScreenData]);
 
   return (
     <div className="min-h-screen bg-black text-white p-6 md:p-10 space-y-6" dir="rtl">
@@ -139,7 +145,8 @@ function MatchCard({ m, hidden = false }: { m: TopMatch; hidden?: boolean }) {
 
   // Middle East channels from 365Scores first; the feed's own list only when 365Scores has none
   const regional = Array.from(new Set([...(details?.channels ?? []), ...(lookedUp ?? [])]));
-  const channels = regional.length ? regional : m.channels;
+  // the league's own rights holder first (Bundesliga -> MBC Action, Saudi -> Thmanyah, Serie A -> STARZPLAY, Oman -> Oman Sport)
+  const channels = uniqueChannels([...leagueChannels(m.league), ...(regional.length ? regional : m.channels)]);
   const scorers = (side: "home" | "away") => (details?.scorers ?? []).filter(s => s.side === side);
 
   return (
@@ -173,9 +180,9 @@ function MatchCard({ m, hidden = false }: { m: TopMatch; hidden?: boolean }) {
       </div>
 
       <div className="mt-3 flex items-center justify-center gap-2 text-xs font-bold">
-        <Tv className="w-4 h-4 text-emerald-400 shrink-0" />
+        {!channels.length && <Tv className="w-4 h-4 text-emerald-400 shrink-0" />}
         {channels.length > 0
-          ? <span className="text-white/80 truncate" dir="ltr">{channels.join(" · ")}</span>
+          ? <MatchChannelChips names={channels} idPrefix={`match-${m.id}`} className="justify-center" />
           : <span className="text-white/30">{lookedUp === null ? "جاري البحث عن القناة..." : "القناة الناقلة غير متوفرة"}</span>}
       </div>
 
@@ -227,10 +234,10 @@ function InfoRow({ icon, title, sub }: { icon: ReactNode; title: ReactNode; sub?
   return (
     <div className="flex items-center gap-4 px-4 py-3 border-t border-white/10">
       <span className="text-sky-400 shrink-0">{icon}</span>
-      <span className="min-w-0">
-        <span className="block text-sm font-black text-white">{title}</span>
-        {sub && <span className="block text-[12px] font-bold text-white/50 mt-0.5">{sub}</span>}
-      </span>
+      <div className="min-w-0 flex-1">
+        <div className="text-sm font-black text-white">{title}</div>
+        {sub && <div className="text-[12px] font-bold text-white/50 mt-0.5">{sub}</div>}
+      </div>
     </div>
   );
 }
@@ -295,7 +302,8 @@ function MatchInfo({ m, d, channels }: { m: TopMatch; d: MatchDetails; channels:
           <InfoRow icon={<MapPin className="w-6 h-6" />} title={d.venue}
             sub={[d.venueCapacity && `سعة الملعب: ${fmt(d.venueCapacity)}`, d.attendance && `الحضور: ${fmt(d.attendance)}`].filter(Boolean).join(" · ") || undefined} />
         )}
-        <InfoRow icon={<Tv className="w-6 h-6" />} title="قنوات تلفزيون" sub={channels.length ? <span dir="ltr">{channels.join(" · ")}</span> : "غير متوفرة"} />
+        <InfoRow icon={<Tv className="w-6 h-6" />} title="قنوات تلفزيون"
+          sub={channels.length ? <MatchChannelChips names={channels} idPrefix={`info-${m.id}`} editable className="mt-1.5" /> : "غير متوفرة"} />
         {d.round && <InfoRow icon={<Flag className="w-6 h-6" />} title={<span dir="ltr">{d.round}</span>} sub={m.league.name} />}
         {d.formations && (
           <InfoRow icon={<LayoutGrid className="w-6 h-6" />} title="التشكيل"

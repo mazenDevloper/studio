@@ -107,7 +107,7 @@ export function mapSofascoreEvent(e: any): TopMatch | null {
   const started = status !== "upcoming";
   return build({
     id: `ss${e.id}`,
-    league: { id: String(t?.uniqueTournament?.id ?? t?.id ?? ""), name: leagueName, logo: t?.uniqueTournament?.id ? `https://api.sofascore.app/api/v1/unique-tournament/${t.uniqueTournament.id}/image` : undefined },
+    league: { id: String(t?.uniqueTournament?.id ?? t?.id ?? ""), name: leagueName, logo: t?.uniqueTournament?.id ? `https://api.sofascore.app/api/v1/unique-tournament/${t.uniqueTournament.id}/image` : undefined, country: t?.category?.name || undefined },
     home: { id: String(e.homeTeam.id), name: e.homeTeam.name, logo: `https://api.sofascore.app/api/v1/team/${e.homeTeam.id}/image` },
     away: { id: String(e.awayTeam.id), name: e.awayTeam.name, logo: `https://api.sofascore.app/api/v1/team/${e.awayTeam.id}/image` },
     timestamp: e.startTimestamp,
@@ -137,7 +137,7 @@ export function mapSportsDbEvent(e: any): TopMatch | null {
   const started = status !== "upcoming";
   return build({
     id: `sd${e.idEvent}`,
-    league: { id: String(e.idLeague ?? ""), name: e.strLeague ?? "", logo: e.strLeagueBadge || undefined },
+    league: { id: String(e.idLeague ?? ""), name: e.strLeague ?? "", logo: e.strLeagueBadge || undefined, country: e.strCountry || undefined },
     home: { id: String(e.idHomeTeam ?? ""), name: e.strHomeTeam, logo: e.strHomeTeamBadge || undefined },
     away: { id: String(e.idAwayTeam ?? ""), name: e.strAwayTeam, logo: e.strAwayTeamBadge || undefined },
     timestamp: Math.floor(ms / 1000),
@@ -156,7 +156,18 @@ async function fromSportsDb(date: string): Promise<TopMatch[]> {
 }
 
 // ---------- Source 4: 365Scores (popular in the Arab world; takes the timezone directly) ----------
-export function map365Game(g: any): TopMatch | null {
+/** competitionId -> country name, from the "competitions" + "countries" lists of a 365Scores response */
+export function competitionCountries365(json: any): Map<number, string> {
+  const countries = new Map<number, string>(((json?.countries ?? []) as any[]).map(c => [Number(c?.id), String(c?.name ?? "")]));
+  const out = new Map<number, string>();
+  for (const c of (json?.competitions ?? []) as any[]) {
+    const name = countries.get(Number(c?.countryId));
+    if (name) out.set(Number(c.id), name);
+  }
+  return out;
+}
+
+export function map365Game(g: any, countryOf?: Map<number, string>): TopMatch | null {
   const ms = Date.parse(g?.startTime);
   if (!g?.homeCompetitor?.name || !g?.awayCompetitor?.name || !Number.isFinite(ms)) return null;
   const group = Number(g.statusGroup); // 2 = scheduled, 3 = live, 4 = finished
@@ -166,9 +177,10 @@ export function map365Game(g: any): TopMatch | null {
   const started = status !== "upcoming";
   const img = (kind: string, id: unknown) => `https://imagecache.365scores.com/image/upload/f_png,w_64,h_64,c_limit,q_auto:eco/${kind}/${id}`;
   const leagueName: string = g.competitionDisplayName || "";
+  const country = countryOf?.get(Number(g.competitionId));
   return build({
     id: `365${g.id}`,
-    league: { id: String(g.competitionId ?? ""), name: leagueName, logo: g.competitionId ? img("Competitions", g.competitionId) : undefined },
+    league: { id: String(g.competitionId ?? ""), name: leagueName, logo: g.competitionId ? img("Competitions", g.competitionId) : undefined, country },
     home: { id: String(g.homeCompetitor.id), name: g.homeCompetitor.name, logo: img("Competitors", g.homeCompetitor.id) },
     away: { id: String(g.awayCompetitor.id), name: g.awayCompetitor.name, logo: img("Competitors", g.awayCompetitor.id) },
     timestamp: Math.floor(ms / 1000),
@@ -177,7 +189,7 @@ export function map365Game(g: any): TopMatch | null {
     elapsed: status === "live" ? num(String(g.gameTime ?? "").split(".")[0]) : null,
     score: { home: started ? num(g.homeCompetitor.score) : null, away: started ? num(g.awayCompetitor.score) : null },
     channels: ((g.tvNetworks ?? []) as any[]).map(t => t?.name).filter(Boolean),
-  }, leagueWeightByName(leagueName));
+  }, leagueWeightByName(leagueName, country));
 }
 
 async function from365(date: string): Promise<TopMatch[]> {
@@ -189,7 +201,8 @@ async function from365(date: string): Promise<TopMatch[]> {
   const url = await s365Url("games/allscores", { startDate: dmy, endDate: dmyNext, sports: 1, showOdds: "false" });
   const json = await getJson(url, S365_HEADERS);
   remember365Countries(json);
-  return ((json?.games ?? []) as any[]).map(map365Game).filter(Boolean) as TopMatch[];
+  const countryOf = competitionCountries365(json);
+  return ((json?.games ?? []) as any[]).map(g => map365Game(g, countryOf)).filter(Boolean) as TopMatch[];
 }
 
 export const SOURCES: { name: string; kind?: string; run: (date: string) => Promise<TopMatch[]> }[] = [

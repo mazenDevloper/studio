@@ -75,6 +75,8 @@ export interface MapSettings {
 export interface IptvChannel {
   name: string; stream_id: string; stream_icon: string; category_id: string; starred?: boolean;
   url?: string; type?: 'iptv' | 'web' | 'live'; stream_type?: string; displayNumber?: number; group?: string;
+  /** broadcast-name keys (see match-channels.ts) the user linked to this channel from a match card */
+  matchAliases?: string[];
 }
 
 export interface FavoriteTeam { id: number; name: string; logo: string; }
@@ -150,6 +152,8 @@ interface MediaState {
   toggleFavoriteTeam: (team: FavoriteTeam) => void; toggleBelledMatch: (matchId: string) => void;
   toggleFavoriteIptvChannel: (channel: IptvChannel) => void; updateIptvChannel: (streamId: string, updates: Partial<IptvChannel>) => void;
   addIptvChannel: (channel: IptvChannel) => void;
+  /** Link a match broadcast name (its channelKey) to one favourite channel; null removes the link. Synced to the cloud. */
+  linkIptvAlias: (aliasKey: string, streamId: string | null) => void;
   reorderIptvChannelTo: (fromId: string, toId: string) => void; updateMapSettings: (settings: Partial<MapSettings>) => void;
   setActiveVideo: (video: YouTubeVideo | null, context?: YouTubeVideo[]) => void;
   setActiveIptv: (channel: IptvChannel | null, context?: IptvChannel[], keepWindow?: boolean) => void;
@@ -378,6 +382,18 @@ export const useMediaStore = create<MediaState>()(
       toggleStarChannel: (id) => set((s) => { const n = s.favoriteChannels.map(c => c.channelid === id ? { ...c, starred: !c.starred } : c); setTimeout(() => get().saveChannelsReorder(), 100); return { favoriteChannels: n }; }),
       toggleFavoriteIptvChannel: (ch) => set((s) => { const e = s.favoriteIptvChannels.some(c => c.stream_id === ch.stream_id); const n = e ? s.favoriteIptvChannels.filter(c => c.stream_id !== ch.stream_id) : [...s.favoriteIptvChannels, ch]; setTimeout(() => get().saveIptvReorder(), 100); return { favoriteIptvChannels: n }; }),
       updateIptvChannel: (id, updates) => set((s) => { const n = s.favoriteIptvChannels.map(ch => ch.stream_id === id ? { ...ch, ...updates } : ch); setTimeout(() => get().saveIptvReorder(), 100); return { favoriteIptvChannels: n }; }),
+      linkIptvAlias: (key, streamId) => {
+        if (!key) return;
+        set((s) => ({
+          favoriteIptvChannels: s.favoriteIptvChannels.map(ch => {
+            const rest = (ch.matchAliases || []).filter(a => a !== key);
+            const aliases = ch.stream_id === streamId ? [...rest, key] : rest;
+            if (aliases.length === (ch.matchAliases || []).length && aliases.every((a, i) => a === ch.matchAliases?.[i])) return ch;
+            return { ...ch, matchAliases: aliases.length ? aliases : undefined };
+          }),
+        }));
+        setTimeout(() => get().saveIptvReorder(), 100);
+      },
       addIptvChannel: (ch) => set((s) => { const n = [...s.favoriteIptvChannels, ch]; setTimeout(() => get().saveIptvReorder(), 100); return { favoriteIptvChannels: n }; }),
       reorderChannelTo: (f, t) => set((s) => { const l = [...s.favoriteChannels], fI = l.findIndex(i => i.channelid === f), tI = l.findIndex(i => i.channelid === t); if (fI === -1 || tI === -1) return s; const [m] = l.splice(fI, 1); l.splice(tI, 0, m); return { favoriteChannels: l }; }),
       reorderIptvChannelTo: (f, t) => set((s) => { const l = [...s.favoriteIptvChannels], fI = l.findIndex(i => i.stream_id === f), tI = l.findIndex(i => i.stream_id === t); if (fI === -1 || tI === -1) return s; const [m] = l.splice(fI, 1); l.splice(tI, 0, m); return { favoriteIptvChannels: l }; }),

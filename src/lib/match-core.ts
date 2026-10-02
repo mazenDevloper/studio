@@ -4,7 +4,8 @@ import { footballDay, omanTime } from "@/lib/oman-time";
 
 export interface TopMatch {
   id: string;
-  league: { id: string; name: string; logo?: string };
+  /** country: the league's country when the source tells it (tells e.g. the German Bundesliga from the Austrian one) */
+  league: { id: string; name: string; logo?: string; country?: string };
   home: { id: string; name: string; logo?: string };
   away: { id: string; name: string; logo?: string };
   /** Kick-off, unix seconds */
