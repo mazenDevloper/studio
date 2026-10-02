@@ -5,6 +5,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { GlobalVideoPlayer } from "@/components/media/global-player";
 import { GoalCelebration } from "@/components/football/goal-celebration";
+import { MATCHES_PREFETCH_SCRIPT } from "@/lib/live-matches";
 import { YoutubeBackgroundBridge } from "@/components/media/youtube-background-bridge";
 import { GlobalQuranPlayer } from "@/components/quran/global-quran-player";
 import { AudioPlayer } from "@/components/media/audio-player";
@@ -139,6 +140,8 @@ export default function RootLayout({
   return (
     <html lang="ar" dir="rtl" className="dark" suppressHydrationWarning>
       <head>
+        {/* starts today's matches request while the page is still loading (before the stylesheets, which would delay it) */}
+        <script dangerouslySetInnerHTML={{ __html: MATCHES_PREFETCH_SCRIPT }} />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
