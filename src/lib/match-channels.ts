@@ -128,3 +128,23 @@ export function uniqueChannels(names: string[]): string[] {
     return true;
   });
 }
+
+// ---- Arab vs foreign channels ----
+/** Arab-region broadcasters (after channelTokens normalisation, or Arabic script). */
+const ARAB_BRANDS = new Set(["bein", "thmanyah", "ssc", "adsport", "dubaisport", "sharjahsport", "ksasport", "alkass", "mbc", "starzplay", "shahid"]);
+const ARAB_NAMES = /\b(oman|kuwait|bahrain|qatar|jordan|iraq|yemen|libya|syria|saudi|emirates|abu dhabi|dubai|sharjah|ajman|nile|on time|ontime|al ?jazeera|arryadia|arriyadia|alwan|aloula|al ?oula|tunisia|algeri|maroc|morocc|egypt|cbc|dmc|nahar|rotana|alhadath|alarabiya|ad sports|ad sport)\b/i;
+
+export function isArabChannel(name: string): boolean {
+  if (/[؀-ۿ]/.test(name)) return true; // written in Arabic
+  // beIN also runs foreign feeds (USA, France, Turkey, Asia...): those are not the Arab channels
+  if (/\b(usa|us|france|french|fr|turkey|türkiye|turkiye|asia|australia|espa[nñ]ol|canada|uk|english|xtra|connect)\b/i.test(name) && /b[ea]in/i.test(name)) return false;
+  if (channelTokens(name).some(t => ARAB_BRANDS.has(t))) return true;
+  return ARAB_NAMES.test(name);
+}
+
+/** Arab channels first; when a match has none, the foreign ones (from any source) are shown instead. */
+export function prioritizeChannels(names: string[]): string[] {
+  const list = uniqueChannels(names.filter(Boolean));
+  const arab = list.filter(isArabChannel);
+  return arab.length ? arab : list;
+}
