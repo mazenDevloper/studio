@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useLiveMatches, useLiveMatchesStore } from "@/lib/live-matches";
-import { matchDetailsUrl, type TopMatch } from "@/lib/match-core";
+import { matchDetailsUrl, matchHideKey, type TopMatch } from "@/lib/match-core";
+import { useMediaStore } from "@/lib/store";
 import type { MatchDetails, Scorer } from "@/lib/match-details";
 
 interface GoalEvent { key: string; match: TopMatch; side: "home" | "away"; scorer?: Scorer }
@@ -60,7 +61,10 @@ export function GoalCelebration() {
     // keep scores of matches that dropped out of this response so they don't re-trigger later
     prev.current?.forEach((v, k) => { if (!next.has(k)) next.set(k, v); });
     prev.current = next;
-    if (events.length) withScorers(events).then(full => setQueue(q => [...q, ...full]));
+    // a match hidden from the floating island (eye button) doesn't get the goal island either
+    const skipped = useMediaStore.getState().skippedMatchIds || [];
+    const shown = events.filter(e => !skipped.includes(matchHideKey(e.match)));
+    if (shown.length) withScorers(shown).then(full => setQueue(q => [...q, ...full]));
   }, [data]);
 
   useEffect(() => {

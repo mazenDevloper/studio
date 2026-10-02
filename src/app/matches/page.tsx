@@ -20,7 +20,6 @@ export default function MatchesTestPage() {
   const favoriteNames = useMemo(() => (favoriteTeams || []).map(t => t?.name).filter(Boolean) as string[], [favoriteTeams]);
   const { data, error, loading, updatedAt, refresh } = useLiveMatches(favoriteNames);
   const [showJson, setShowJson] = useState(false);
-  const [showHidden, setShowHidden] = useState(false);
   const skipped = useMediaStore(s => s.skippedMatchIds) || [];
   const isHidden = (m: TopMatch) => skipped.includes(matchHideKey(m));
   const [, tick] = useState(0);
@@ -63,14 +62,8 @@ export default function MatchesTestPage() {
             <div className="py-20 text-center text-white/30 font-bold">لا توجد مباريات مهمة اليوم</div>
           ) : (
             <>
-              {data.matches.some(isHidden) && (
-                <button onClick={() => setShowHidden(v => !v)} className="text-xs font-bold text-white/50 hover:text-white flex items-center gap-2 focusable">
-                  {showHidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  {showHidden ? "إخفاء المباريات المخفية" : `إظهار المباريات المخفية (${data.matches.filter(isHidden).length})`}
-                </button>
-              )}
               <div className="grid gap-3 md:grid-cols-2">
-                {data.matches.filter(m => showHidden || !isHidden(m)).map(m => <MatchCard key={m.id} m={m} hidden={isHidden(m)} />)}
+                {data.matches.map(m => <MatchCard key={m.id} m={m} hidden={isHidden(m)} />)}
               </div>
             </>
           )}
@@ -150,7 +143,7 @@ function MatchCard({ m, hidden = false }: { m: TopMatch; hidden?: boolean }) {
   const scorers = (side: "home" | "away") => (details?.scorers ?? []).filter(s => s.side === side);
 
   return (
-    <div className={cn("rounded-3xl border p-4 bg-white/5 relative", hidden && "opacity-50", live ? "border-red-500/50" : isPinned ? "border-emerald-400/60" : m.favorite ? "border-yellow-400/50" : "border-white/10")}>
+    <div className={cn("rounded-3xl border p-4 bg-white/5 relative", live ? "border-red-500/50" : isPinned ? "border-emerald-400/60" : m.favorite ? "border-yellow-400/50" : "border-white/10")}>
 
       <div className="flex items-center justify-between text-[11px] text-white/50 mb-3">
         <span className="flex items-center gap-2 min-w-0">
@@ -162,7 +155,7 @@ function MatchCard({ m, hidden = false }: { m: TopMatch; hidden?: boolean }) {
           <span className={cn("font-black", live ? "text-red-400" : m.status === "finished" ? "text-white/40" : "text-emerald-400")}>
             {live ? `مباشر ${m.elapsed ?? ""}'` : m.status === "finished" ? "انتهت" : "قريباً"}
           </span>
-          <button onClick={toggleHidden} title={hidden ? "إظهار المباراة" : "إخفاء المباراة (في كل الأجهزة)"} className="w-8 h-8 rounded-full bg-black/40 border border-white/10 text-white/60 hover:text-white flex items-center justify-center focusable">
+          <button onClick={toggleHidden} title={hidden ? "إظهار في الجزيرة العائمة" : "إخفاء من الجزيرة العائمة (في كل الأجهزة)"} className={cn("w-8 h-8 rounded-full bg-black/40 border border-white/10 text-white/60 hover:text-white flex items-center justify-center focusable", hidden && "text-red-300 border-red-400/50 bg-red-500/10")}>
             {hidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
           </button>
         </span>
@@ -199,7 +192,11 @@ function MatchCard({ m, hidden = false }: { m: TopMatch; hidden?: boolean }) {
           {open ? "إخفاء التفاصيل" : "معلومات المباراة والهدّافون"}
         </button>
         <button
-          onClick={() => togglePin({ id: m.id, home: m.home.name, away: m.away.name })}
+          onClick={() => {
+            // pinning a match hidden from the island shows it there again
+            if (!isPinned && hidden) unskipMatch(matchHideKey(m));
+            togglePin({ id: m.id, home: m.home.name, away: m.away.name });
+          }}
           className={cn("h-9 px-4 rounded-full border text-xs font-bold focusable flex items-center gap-1", isPinned ? "bg-emerald-500 text-black border-emerald-500" : "bg-white/5 border-white/10 hover:bg-white/10")}
           title="عرض المباراة كجزيرة عائمة"
         >

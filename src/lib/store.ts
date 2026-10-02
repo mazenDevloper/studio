@@ -183,6 +183,9 @@ interface MediaState {
   saveManuscriptsReorder: () => Promise<void>;
 }
 
+/** First candidate that is an array: a bin that comes back empty or in another shape must not crash the app. */
+const arr = (...candidates: any[]): any[] => candidates.find(Array.isArray) ?? [];
+
 /** Bins that were read from the cloud in this session. */
 const loadedBins = new Set<string>();
 /** Last cloud copy of the master bin (keys this version doesn't know are kept when saving). */
@@ -303,17 +306,17 @@ export const useMediaStore = create<MediaState>()(
           const data = await r.json();
           loadedBins.add(binId);
           if (binId === JSONBIN_MASTER_BIN_ID && data && typeof data === 'object' && !Array.isArray(data)) lastMasterCloud = data;
-          if (binId === JSONBIN_CHANNELS_BIN_ID) set({ favoriteChannels: data.channels || data || [] });
+          if (binId === JSONBIN_CHANNELS_BIN_ID) set({ favoriteChannels: arr(data?.channels, data) });
           else if (binId === JSONBIN_POPULAR_RECITERS_BIN_ID) {
             set({ 
-              favoriteReciters: (data.reciters || []).sort((a: any, b: any) => (b.clickschannel || 0) - (a.clickschannel || 0)),
-              favoritePodcasts: data.podcasts || []
+              favoriteReciters: arr(data?.reciters).sort((a: any, b: any) => (b.clickschannel || 0) - (a.clickschannel || 0)),
+              favoritePodcasts: arr(data?.podcasts)
             });
           }
-          else if (binId === JSONBIN_IPTV_FAVS_BIN_ID) set({ favoriteIptvChannels: data.iptv || data.channels || [] });
-          else if (binId === JSONBIN_MANUSCRIPTS_BIN_ID) set({ customManuscripts: data.manuscripts || data || [] });
-          else if (binId === JSONBIN_FONTS_BIN_ID) set({ customFonts: data.fonts || data || [] });
-          else if (binId === JSONBIN_BACKGROUNDS_BIN_ID) set({ customWallBackgrounds: data.backgrounds || data || [] });
+          else if (binId === JSONBIN_IPTV_FAVS_BIN_ID) set({ favoriteIptvChannels: arr(data?.iptv, data?.channels) });
+          else if (binId === JSONBIN_MANUSCRIPTS_BIN_ID) set({ customManuscripts: arr(data?.manuscripts, data) });
+          else if (binId === JSONBIN_FONTS_BIN_ID) set({ customFonts: arr(data?.fonts, data) });
+          else if (binId === JSONBIN_BACKGROUNDS_BIN_ID) set({ customWallBackgrounds: arr(data?.backgrounds, data) });
           else if (binId === JSONBIN_PRAYER_TIMES_BIN_ID) {
             // Merge the cloud days with the bundled ones (cloud wins for a date it has); if the bundle adds dates the
             // cloud doesn't have yet (e.g. a new month), push the merged list back so every device gets it.
@@ -332,16 +335,16 @@ export const useMediaStore = create<MediaState>()(
             pinnedMatches: Array.isArray(data.pinnedMatches) ? data.pinnedMatches : get().pinnedMatches,
             seededTeamsV1: !!data.seededTeamsV1 || get().seededTeamsV1,
             skippedMatchIds: Array.isArray(data.skippedMatchIds) ? data.skippedMatchIds : get().skippedMatchIds,
-            reminders: data.reminders || get().reminders, 
-            generalAzkar: data.generalAzkar || get().generalAzkar, 
-            prayerSettings: data.prayerSettings || DEFAULT_PRAYER_SETTINGS, 
+            reminders: Array.isArray(data.reminders) ? data.reminders : get().reminders, 
+            generalAzkar: Array.isArray(data.generalAzkar) ? data.generalAzkar : get().generalAzkar, 
+            prayerSettings: Array.isArray(data.prayerSettings) && data.prayerSettings.length ? data.prayerSettings : get().prayerSettings || DEFAULT_PRAYER_SETTINGS, 
             mapSettings: { ...get().mapSettings, ...data.mapSettings }, 
-            keyMappings: data.keyMappings || DEFAULT_CONTEXT_MAPPINGS, 
-            savedVideos: data.savedVideos || get().savedVideos,
+            keyMappings: data.keyMappings && typeof data.keyMappings === 'object' ? data.keyMappings : DEFAULT_CONTEXT_MAPPINGS, 
+            savedVideos: Array.isArray(data.savedVideos) ? data.savedVideos : get().savedVideos,
             continueWatching: Array.isArray(data.continueWatching) ? data.continueWatching : get().continueWatching, 
             manuscriptScales: data.manuscriptScales || get().manuscriptScales, 
             lastPlayedVideo: data.lastPlayedVideo || get().lastPlayedVideo, 
-            playlists: data.playlists || get().playlists || []
+            playlists: Array.isArray(data.playlists) ? data.playlists : get().playlists || []
           });
           // One-time: add the user's favourite teams (by name; ids are synthetic) and remember it in the cloud,
           // so a team removed later is not added back and every device gets the same list.

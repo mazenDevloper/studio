@@ -188,7 +188,8 @@ export function LiveMatchIsland() {
       const isPinned = pinned.some(p => p.id === m.id || (sameTeam(p.home, m.home.name) && sameTeam(p.away, m.away.name)));
       // hiding works by a key built from the football day + both teams, so it survives a change of data source
       // and (being in skippedMatchIds, synced with the master bin) applies on every device
-      if ((!m.favorite && !isPinned) || (!isPinned && (skippedMatchIds.includes(matchHideKey(m)) || skippedMatchIds.includes(id)))) continue;
+      // the eye on the match card hides it from the island even when pinned
+      if ((!m.favorite && !isPinned) || skippedMatchIds.includes(matchHideKey(m)) || skippedMatchIds.includes(id)) continue;
       if (m.status === "finished" && nowSecs - m.timestamp > 3.5 * 3600) continue; // drop long-finished games
       const started = m.status !== "upcoming";
       // never show the same fixture twice: a live island replaces an older reminder-based match island

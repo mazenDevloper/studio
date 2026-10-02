@@ -23,6 +23,12 @@ export const LEAGUE_CHANNEL_RULES: LeagueChannelRule[] = [
     test: l => l.id === "ksa.1" || /saudi (pro|professional) league|roshn|دوري روشن|الدوري السعودي/i.test(l.name)
       || (/^(pro|professional) league$/i.test(l.name.trim()) && /saudi/i.test(l.country ?? "")),
   },
+  // UAE league and cups: Abu Dhabi Sports and Sharjah Sports
+  ...["Abu Dhabi Sports 1", "Sharjah Sports"].map(channel => ({
+    label: "الدوري الإماراتي", channel,
+    test: (l: TopMatch["league"]) => l.id === "uae.1" || /\buae\b|adnoc|arabian gulf league|emirates|الدوري الإماراتي/i.test(l.name)
+      || /united arab emirates|^uae$/i.test(l.country ?? ""),
+  })),
   {
     label: "الدوري الإيطالي", channel: "STARZPLAY Sport 1",
     test: l => l.id === "ita.1" || (/^(italian )?serie a( tim| enilive)?$/i.test(l.name.trim()) && isCountry(l, /ital/i)),
@@ -34,7 +40,7 @@ export const LEAGUE_CHANNEL_RULES: LeagueChannelRule[] = [
 ];
 
 export function leagueChannels(league: TopMatch["league"]): string[] {
-  return LEAGUE_CHANNEL_RULES.filter(r => r.test(league)).map(r => r.channel);
+  return LEAGUE_CHANNEL_RULES.filter(r => !/women|female|u\d\d|youth|reserve|سيدات/i.test(league.name) && r.test(league)).map(r => r.channel);
 }
 
 // ---- name normalisation ----
