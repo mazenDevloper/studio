@@ -166,6 +166,9 @@ export function CarDock() {
         <div className="flex flex-col items-center flex-1 justify-start gap-2">
           {apps.map((app) => {
             const isActive = pathname === app.href;
+            // keep the active glow small: a 100px drop-shadow made the fixed dock's layer ~300px bigger than the bar,
+            // and on the bottom bar (<968px) every finger swipe starting in that invisible area hit the dock instead of
+            // the page - the screen "would not scroll" there, on the side of the active button.
             return (
               <button 
                 key={app.name} 
@@ -178,7 +181,7 @@ export function CarDock() {
                 )}
               >
                 <ShortcutBadge action={app.action} context="dock" />
-                <div className={cn("transition-all duration-0 flex items-center justify-center", isActive ? "text-blue-400 drop-shadow-[0_0_100px_rgba(96,165,250,0.8)]" : "text-white")}><app.icon className="w-6 h-6 min-[980px]:w-7 min-[980px]:h-7" /></div>
+                <div className={cn("transition-all duration-0 flex items-center justify-center", isActive ? "text-blue-400 drop-shadow-[0_0_6px_rgba(96,165,250,0.9)]" : "text-white")}><app.icon className="w-6 h-6 min-[980px]:w-7 min-[980px]:h-7" /></div>
               </button>
             );
           })}
