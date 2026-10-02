@@ -40,24 +40,12 @@ export function GlobalVideoPlayer() {
   const [playbackPanel, setPlaybackPanel] = useState(false);
   const [iptvListSearch, setIptvListSearch] = useState("");
   
-  const [isEnded, setIsEnded] = useState(false);
-  const [postEndTimer, setPostEndTimer] = useState(0);
-  const [localElapsed, setLocalElapsed] = useState(0);
   
   const audioHeartbeatRef = useRef<HTMLAudioElement>(null);
   const isAudioUnlockedRef = useRef(false);
 
   const isActive = !!(activeVideo || activeIptv);
 
-  const parseDurationToSeconds = (dur: string): number => {
-    if (!dur || dur === "FEED") return 0;
-    const parts = dur.split(':').map(Number);
-    if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
-    if (parts.length === 2) return parts[0] * 60 + parts[1];
-    return 0;
-  };
-
-  const totalDuration = useMemo(() => activeVideo ? parseDurationToSeconds(activeVideo.duration || "") : 0, [activeVideo]);
 
   const handleSystemPopup = () => {
     if (!isActive) return;
@@ -107,47 +95,28 @@ export function GlobalVideoPlayer() {
     }
   }, [isPlaying, isActive]);
 
+  // The end of a YouTube video, as the player itself reports it (playerState 0 through the iframe API - the
+  // YoutubeBackgroundBridge keeps the "listening" channel open): 3 seconds later the next one starts. No
+  // estimated timer, so pauses, buffering and ads can't make it jump early.
   useEffect(() => {
-    let interval: any;
-    if (isPlaying && activeVideo && !isEnded && totalDuration > 0) {
-      interval = setInterval(() => {
-        setLocalElapsed(prev => {
-          if (prev >= totalDuration) {
-            setIsEnded(true);
-            return prev;
-          }
-          return prev + 1;
-        });
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [isPlaying, activeVideo, isEnded, totalDuration]);
-
-  useEffect(() => {
-    let interval: any;
-    if (isEnded) {
-      interval = setInterval(() => {
-        setPostEndTimer(prev => {
-          if (prev >= 5) {
-            nextTrack();
-            resetWatchdog();
-            return 0;
-          }
-          return prev + 1;
-        });
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [isEnded, nextTrack]);
-
-  const resetWatchdog = () => {
-    setLocalElapsed(0);
-    setPostEndTimer(0);
-    setIsEnded(false);
-  };
-
-  useEffect(() => {
-    resetWatchdog();
+    const id = activeVideo?.id;
+    if (!id) return;
+    let next: ReturnType<typeof setTimeout> | null = null;
+    const frame = () => document.querySelector<HTMLIFrameElement>(`iframe[src*="youtube.com/embed/${id}"]`);
+    const onMsg = (e: MessageEvent) => {
+      try {
+        if (!/youtube(-nocookie)?\.com$/.test(new URL(e.origin).hostname)) return;
+        if (e.source && frame()?.contentWindow && e.source !== frame()!.contentWindow) return; // another player
+        const d = typeof e.data === "string" ? JSON.parse(e.data) : e.data;
+        const state = d?.event === "onStateChange" ? d.info : d?.info?.playerState;
+        const t = d?.info?.currentTime, dur = d?.info?.duration;
+        const ended = state === 0 || (typeof t === "number" && typeof dur === "number" && dur > 0 && t >= dur - 0.3 && state !== 1);
+        if (ended && !next) next = setTimeout(() => { next = null; useMediaStore.getState().nextTrack(); }, 3000);
+        else if (!ended && (state === 1 || state === 3) && next) { clearTimeout(next); next = null; } // replayed / seeked back
+      } catch {}
+    };
+    window.addEventListener("message", onMsg);
+    return () => { window.removeEventListener("message", onMsg); if (next) clearTimeout(next); };
   }, [activeVideo?.id]);
 
   useEffect(() => {
@@ -184,7 +153,7 @@ export function GlobalVideoPlayer() {
   const handleClose = () => { 
     setActiveVideo(null); setActiveIptv(null); setGridMode('hidden'); 
     setIsPlayerControlsExpanded(false); setIsFullScreen(false); setIsMinimized(false);
-    setIsPlayerPlaylistOpen(false); resetWatchdog(); setIsPlaying(false);
+    setIsPlayerPlaylistOpen(false); setIsPlaying(false);
   };
 
   const handlePutToIframe = () => {
@@ -203,7 +172,6 @@ export function GlobalVideoPlayer() {
   const dockSideEdgeClass = dockSide === 'left' ? "left-0 border-r" : "right-0 border-l";
   const ctrlBtnClass = "rounded-full flex items-center justify-center focusable transition-all shadow-glow active:scale-90 w-14 h-14 min-[968px]:w-16 min-[968px]:h-16 [&_svg]:w-7 [&_svg]:h-7 [&_svg]:stroke-[2.5]";
 
-  const effectiveCountdown = isEnded ? 5 - postEndTimer : null;
 
   return (
     <>
@@ -259,28 +227,6 @@ export function GlobalVideoPlayer() {
                 </div>
               )}
 
-              {(effectiveCountdown !== null && effectiveCountdown > 0) && (
-                <div className="absolute inset-0 z-[100] flex flex-col items-center justify-center bg-black/80 backdrop-blur-3xl animate-in fade-in duration-300">
-                  <div className="relative flex items-center justify-center">
-                     <div className="w-40 h-40 rounded-full border-4 border-white/5 flex items-center justify-center relative">
-                        <span className="text-7xl font-black text-white tabular-nums drop-shadow-[0_0_20px_rgba(255,255,255,0.4)]">{effectiveCountdown}</span>
-                        <svg className="absolute inset-0 -rotate-90 w-40 h-40">
-                          <circle
-                            cx="80" cy="80" r="76"
-                            fill="none" stroke="currentColor" strokeWidth="8"
-                            className="text-primary transition-all duration-1000 ease-linear"
-                            style={{ strokeDasharray: 477, strokeDashoffset: 477 * (1 - effectiveCountdown / 5) }}
-                          />
-                        </svg>
-                     </div>
-                  </div>
-                  <div className="mt-8 text-center space-y-2">
-                     <h2 className="text-2xl font-black text-white tracking-widest uppercase">الانتقال للتلاوة التالية</h2>
-                     <p className="text-white/40 font-bold uppercase tracking-[0.5em] text-[10px]">Sovereign Post-End Watchdog</p>
-                  </div>
-                  <button onClick={() => resetWatchdog()} className="mt-12 h-14 px-10 rounded-full bg-white/10 border border-white/20 text-white font-black hover:bg-white/20 transition-all focusable flex items-center gap-3"><RotateCcw className="w-5 h-5" /> إلغاء العد</button>
-                </div>
-              )}
            </div>
 
            {isPlayerPlaylistOpen && activeIptv && (
@@ -329,7 +275,7 @@ export function GlobalVideoPlayer() {
                    {playlist.map((v, i) => (
                      <button 
                        key={v.id + i} 
-                       onClick={() => { setActiveVideo(v, playlist); resetWatchdog(); }}
+                       onClick={() => setActiveVideo(v, playlist)}
                        className={cn(
                          "w-[260px] h-[120px] shrink-0 rounded-[2rem] border-2 transition-all duration-300 focusable overflow-hidden relative group text-right flex flex-col justify-end p-4 shadow-2xl",
                          i === playlistIndex 
@@ -420,13 +366,13 @@ export function GlobalVideoPlayer() {
                 {!isWebType && (
                   <>
                     <div className="relative group">
-                      <button onClick={() => { prevTrack(); resetWatchdog(); }} className={cn(ctrlBtnClass, "bg-white/15 text-white")}>
+                      <button onClick={() => prevTrack()} className={cn(ctrlBtnClass, "bg-white/15 text-white")}>
                         <ChevronRight className="w-6 h-6" />
                       </button>
                       <ShortcutBadge action="player_prev" className="-bottom-4 left-1/2 -translate-x-1/2 scale-75" />
                     </div>
                     <div className="relative group">
-                      <button onClick={() => { nextTrack(); resetWatchdog(); }} className={cn(ctrlBtnClass, "bg-white/15 text-white")}>
+                      <button onClick={() => nextTrack()} className={cn(ctrlBtnClass, "bg-white/15 text-white")}>
                         <ChevronLeft className="w-6 h-6" />
                       </button>
                       <ShortcutBadge action="player_next" className="-bottom-4 left-1/2 -translate-x-1/2 scale-75" />
@@ -460,7 +406,7 @@ export function GlobalVideoPlayer() {
                         <button
                           onClick={() => {
                             if (!activeVideo) return;
-                            const t = getYoutubeTime(activeVideo.id) || localElapsed || videoProgress[activeVideo.id] || 0;
+                            const t = getYoutubeTime(activeVideo.id) || videoProgress[activeVideo.id] || 0;
                             saveForContinue(activeVideo, t);
                             const mm = Math.floor(t / 60), ss = Math.floor(t % 60).toString().padStart(2, "0");
                             toast({ title: "تم الحفظ للاستكمال", description: `سيكمل من ${mm}:${ss}` });
