@@ -35,7 +35,7 @@ const slug = (l: TopMatch["league"], ...ids: string[]) => {
 export const LEAGUE_CHANNEL_RULES: LeagueChannelRule[] = [
   // ---------- Arab rights holders (one channel / platform) ----------
   {
-    label: "الدوري السعودي وكأس الملك والسوبر والدرجة الأولى", channels: ["Thmanyah"], kind: "rights", alwaysList: true,
+    label: "الدوري السعودي وكأس الملك والسوبر والدرجة الأولى", channels: ["Thmanyah 1", "Thmanyah 2", "Thmanyah 3"], kind: "network", alwaysList: true, // the exact channel when a source names it
     test: l => slug(l, "ksa.1", "ksa.2", "ksa.kings_cup") || /saudi (pro|professional) league|roshn|yelo|دوري روشن|الدوري السعودي/i.test(l.name)
       || (/saudi/i.test(l.country ?? "") && named(l, /^(pro|professional) league$|king'?s cup|super cup|first division/i)),
   },
