@@ -6,6 +6,7 @@ import { persist } from "zustand/middleware";
 import { sameTeam } from "@/lib/match-core";
 import { DEFAULT_FAVORITE_TEAMS } from "@/lib/favorite-teams";
 import { YouTubeChannel, YouTubeVideo } from "./youtube";
+export type { YouTubeChannel, YouTubeVideo } from "./youtube";
 import { 
   JSONBIN_MASTER_KEY, 
   JSONBIN_MASTER_BIN_ID,
@@ -182,7 +183,26 @@ interface MediaState {
   saveManuscriptsReorder: () => Promise<void>;
 }
 
+/** Bins that were read from the cloud in this session. */
+const loadedBins = new Set<string>();
+/** Last cloud copy of the master bin (keys this version doesn't know are kept when saving). */
+let lastMasterCloud: Record<string, any> = {};
+/** Master-bin fields as they were when the app started (after the local cache was restored). */
+let masterBaseline: Record<string, string> | null = null;
+
+/** Bins whose whole content is replaced by every save: never written before they were read in this session. */
+const LOAD_BEFORE_SAVE = new Set<string>([
+  JSONBIN_MASTER_BIN_ID, JSONBIN_IPTV_FAVS_BIN_ID, JSONBIN_CHANNELS_BIN_ID, JSONBIN_POPULAR_RECITERS_BIN_ID,
+  JSONBIN_MANUSCRIPTS_BIN_ID, JSONBIN_FONTS_BIN_ID, JSONBIN_BACKGROUNDS_BIN_ID,
+]);
+
 export const updateBin = async (binId: string, data: any) => {
+  if (LOAD_BEFORE_SAVE.has(binId) && !loadedBins.has(binId)) {
+    // The payload was built from a state that never saw the cloud copy (start-up fetch failed or is still running):
+    // saving it would wipe whatever this device doesn't have. Load the cloud copy instead and skip this save.
+    await useMediaStore.getState().fetchSpecificBin(binId);
+    return;
+  }
   try {
     await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
       method: 'PUT',
@@ -246,6 +266,26 @@ const DEFAULT_PRAYER_SETTINGS: PrayerSetting[] = [
   { id: 'isha', name: 'العشاء', offsetMinutes: 0, showCountdown: true, countdownWindow: 20, showCountup: true, countupWindow: 25, iqamahDuration: 20 },
 ];
 
+/** Lists changed on this device before the cloud copy arrived: cloud items plus the local ones (local wins per id). */
+function mergeLists(cloud: unknown, local: unknown): unknown {
+  if (!Array.isArray(cloud) || !Array.isArray(local)) return local;
+  const key = (x: any) => (typeof x === 'string' || typeof x === 'number' ? String(x) : x?.id ?? x?.video?.id ?? JSON.stringify(x));
+  const localByKey = new Map(local.map(x => [key(x), x]));
+  const merged = cloud.map(x => (localByKey.has(key(x)) ? localByKey.get(key(x)) : x));
+  const seen = new Set(cloud.map(key));
+  return [...merged, ...local.filter(x => !seen.has(key(x)))];
+}
+
+/** Everything the master bin stores. */
+function masterPayload(s: MediaState) {
+  return {
+    favoriteTeams: s.favoriteTeams, pinnedMatches: s.pinnedMatches, seededTeamsV1: s.seededTeamsV1, continueWatching: s.continueWatching,
+    favoriteLeagueIds: s.favoriteLeagueIds, belledMatchIds: s.belledMatchIds, skippedMatchIds: s.skippedMatchIds, prayerSettings: s.prayerSettings,
+    reminders: s.reminders, generalAzkar: s.generalAzkar, mapSettings: s.mapSettings, keyMappings: s.keyMappings, savedVideos: s.savedVideos,
+    manuscriptScales: s.manuscriptScales, lastPlayedVideo: s.lastPlayedVideo, playlists: s.playlists,
+  };
+}
+
 export const useMediaStore = create<MediaState>()(
   persist(
     (set, get) => ({
@@ -258,9 +298,11 @@ export const useMediaStore = create<MediaState>()(
 
       fetchSpecificBin: async (binId) => {
         try {
-          const r = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest?v=${Date.now()}`, { headers: { 'X-Master-Key': JSONBIN_MASTER_KEY, 'X-Bin-Meta': 'false' }, cache: 'no-store' });
+          const r = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest?v=${Date.now()}`, { headers: { 'X-Master-Key': JSONBIN_MASTER_KEY, 'X-Bin-Meta': 'false' }, cache: 'no-store', signal: AbortSignal.timeout(12000) });
           if (!r.ok) return;
           const data = await r.json();
+          loadedBins.add(binId);
+          if (binId === JSONBIN_MASTER_BIN_ID && data && typeof data === 'object' && !Array.isArray(data)) lastMasterCloud = data;
           if (binId === JSONBIN_CHANNELS_BIN_ID) set({ favoriteChannels: data.channels || data || [] });
           else if (binId === JSONBIN_POPULAR_RECITERS_BIN_ID) {
             set({ 
@@ -318,7 +360,8 @@ export const useMediaStore = create<MediaState>()(
           JSONBIN_PRAYER_TIMES_BIN_ID, JSONBIN_MASTER_BIN_ID, JSONBIN_IPTV_FAVS_BIN_ID, JSONBIN_CHANNELS_BIN_ID,
           JSONBIN_POPULAR_RECITERS_BIN_ID, JSONBIN_FONTS_BIN_ID, JSONBIN_MANUSCRIPTS_BIN_ID, JSONBIN_BACKGROUNDS_BIN_ID,
         ];
-        await Promise.allSettled(all.map(id => get().fetchSpecificBin(id)));
+        // the start screen waits for the cloud at most 5s: one slow bin must not hold the whole app (the rest keeps loading)
+        await Promise.race([Promise.allSettled(all.map(id => get().fetchSpecificBin(id))), new Promise(r => setTimeout(r, 5000))]);
         set({ isInitialLoading: false });
       },
 
@@ -357,8 +400,19 @@ export const useMediaStore = create<MediaState>()(
       },
 
       syncMasterBin: async () => {
-        const s = get();
-        await updateBin(JSONBIN_MASTER_BIN_ID, { favoriteTeams: s.favoriteTeams, pinnedMatches: s.pinnedMatches, seededTeamsV1: s.seededTeamsV1, continueWatching: s.continueWatching, favoriteLeagueIds: s.favoriteLeagueIds, belledMatchIds: s.belledMatchIds, skippedMatchIds: s.skippedMatchIds, prayerSettings: s.prayerSettings, reminders: s.reminders, generalAzkar: s.generalAzkar, mapSettings: s.mapSettings, keyMappings: s.keyMappings, savedVideos: s.savedVideos, manuscriptScales: s.manuscriptScales, lastPlayedVideo: s.lastPlayedVideo, playlists: s.playlists });
+        if (!loadedBins.has(JSONBIN_MASTER_BIN_ID)) {
+          // Saving before the cloud copy was read would replace playlists, saved videos, reminders... with this
+          // device's defaults. Read it first, then put back only what was changed here since start-up.
+          const local = masterPayload(get());
+          await get().fetchSpecificBin(JSONBIN_MASTER_BIN_ID);
+          if (!loadedBins.has(JSONBIN_MASTER_BIN_ID)) return; // cloud unreachable: keep the cloud copy intact
+          const cloud = masterPayload(get()) as Record<string, any>;
+          const changed = Object.fromEntries(Object.entries(local)
+            .filter(([k, v]) => masterBaseline && JSON.stringify(v) !== masterBaseline[k])
+            .map(([k, v]) => [k, mergeLists(cloud[k], v)]));
+          if (Object.keys(changed).length) set(changed as Partial<MediaState>);
+        }
+        await updateBin(JSONBIN_MASTER_BIN_ID, { ...lastMasterCloud, ...masterPayload(get()) });
       },
 
       saveIptvReorder: async () => await updateBin(JSONBIN_IPTV_FAVS_BIN_ID, { iptv: get().favoriteIptvChannels }),
@@ -464,3 +518,14 @@ export const useMediaStore = create<MediaState>()(
     }
   )
 );
+
+// Remember the master-bin fields as restored from the local cache, so a save that has to wait for the cloud copy
+// can tell which fields were really changed on this device.
+if (typeof window !== 'undefined') {
+  const captureBaseline = () => {
+    if (masterBaseline) return;
+    masterBaseline = Object.fromEntries(Object.entries(masterPayload(useMediaStore.getState())).map(([k, v]) => [k, JSON.stringify(v)]));
+  };
+  if (useMediaStore.persist?.hasHydrated?.()) captureBaseline();
+  else useMediaStore.persist?.onFinishHydration?.(captureBaseline);
+}

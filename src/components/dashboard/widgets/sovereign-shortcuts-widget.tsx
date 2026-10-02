@@ -11,7 +11,7 @@ import { useMemo, useState, useCallback } from "react";
 import { searchYouTubeVideos } from "@/lib/youtube";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
-import { JSONBIN_MANUSCRIPTS_BIN_ID, JSONBIN_PRAYER_TIMES_BIN_ID } from "@/lib/constants";
+import { JSONBIN_MANUSCRIPTS_BIN_ID, JSONBIN_PRAYER_TIMES_BIN_ID, JSONBIN_MASTER_BIN_ID } from "@/lib/constants";
 
 /**
  * SovereignShortcutsWidget v3100.0 - Icon-First Protocol
@@ -64,7 +64,9 @@ export function SovereignShortcutsWidget() {
     setIsSystemRefreshing(true);
     toast({ title: "محسن النظام", description: "جاري مزامنة المخطوطات والصلوات..." });
     try {
-      await Promise.all([fetchSpecificBin(JSONBIN_MANUSCRIPTS_BIN_ID), fetchSpecificBin(JSONBIN_PRAYER_TIMES_BIN_ID), syncMasterBin()]);
+      // refresh from the cloud (this runs automatically after opening the dashboard; every change already saves itself,
+      // so re-uploading the whole master bin here only cost quota - and could overwrite newer data from another device)
+      await Promise.all([fetchSpecificBin(JSONBIN_MANUSCRIPTS_BIN_ID), fetchSpecificBin(JSONBIN_PRAYER_TIMES_BIN_ID), fetchSpecificBin(JSONBIN_MASTER_BIN_ID)]);
       toast({ title: "تم التحسين", description: "النظام الآن في قمة أدائه السحابي." });
     } finally { setIsSystemRefreshing(false); }
   }, [syncMasterBin, fetchSpecificBin, isSystemRefreshing, toast]);

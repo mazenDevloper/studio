@@ -17,6 +17,12 @@ export async function GET(req: NextRequest) {
   if (site && site !== "same-origin" && site !== "none") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
+  // Browsers without Sec-Fetch-* (older TV browsers) still send our page as the referrer; a bare script sends neither.
+  if (!site) {
+    let sameHost = false;
+    try { sameHost = new URL(req.headers.get("referer") || "").host === req.headers.get("host"); } catch {}
+    if (!sameHost) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   const target = req.nextUrl.searchParams.get("u");
   if (!target) return NextResponse.json({ error: "Missing u" }, { status: 400 });

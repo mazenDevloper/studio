@@ -8,6 +8,7 @@ import { useMediaStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { X, Eye, EyeOff, Bell, Clock, Timer, Check, Trophy, Play, ChevronDown, ChevronUp, Zap, Cloud, Bookmark } from "lucide-react";
 import { convertTo12Hour } from "@/lib/constants";
+import { prayerDayFor } from "@/lib/prayer-day";
 
 interface AlertItem {
   id: string;
@@ -72,7 +73,7 @@ export function LiveMatchIsland() {
     const day = String(now.getDate()).padStart(2, '0');
     const dateStr = `${year}-${month}-${day}`;
     
-    const pData = prayerTimes.find(p => p.date === dateStr) || prayerTimes[0];
+    const pData = prayerDayFor(prayerTimes, dateStr);
     
     // Add Sync Island if in first 10 seconds
     if (showSyncIsland || isInitialLoading) {

@@ -7,6 +7,7 @@ import { convertTo12Hour } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { useEffect, useState, useMemo } from "react";
 import { SovereignShortcutsWidget } from "@/components/dashboard/widgets/sovereign-shortcuts-widget";
+import { prayerDayFor } from "@/lib/prayer-day";
 
 /**
  * CarDashboardView v3.3 - Sovereign Location & Sync Protocol
@@ -30,7 +31,7 @@ export default function CarDashboardPage() {
     if (!prayerTimes || prayerTimes.length === 0) return null;
     const today = new Date();
     const dateStr = today.toISOString().split('T')[0];
-    return prayerTimes.find(p => p.date === dateStr) || prayerTimes[0];
+    return prayerDayFor(prayerTimes, dateStr);
   };
 
   const p = getTodayPrayers();
@@ -108,7 +109,7 @@ export default function CarDashboardPage() {
     return day;
   };
 
-  if (!mounted || !now) return <div className="bg-black w-full h-screen" />;
+  if (!mounted || !now) return <div className="bg-black w-full h-full" />;
 
   const hijriDate = now.toLocaleDateString('ar-u-ca-islamic-umalqura-nu-latn', { day: '2-digit', month: '2-digit', year: 'numeric' });
   const dayName = now.toLocaleDateString('ar-EG', { weekday: 'long' });
@@ -118,7 +119,7 @@ export default function CarDashboardPage() {
   const currentTimeStr = `${h12}:${mins}`;
 
   return (
-    <main className="w-full h-screen bg-black flex overflow-hidden">
+    <main className="w-full h-full bg-black flex overflow-hidden">
       {/* Hidden Shortcut Controller for Auto-Sync Engine */}
       <div className="fixed top-[-9999px] left-[-9999px] opacity-0 pointer-events-none">
          <SovereignShortcutsWidget />

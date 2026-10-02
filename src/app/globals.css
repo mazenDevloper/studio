@@ -82,10 +82,17 @@
 .overflow-x-auto,
 .overflow-y-auto,
 .overflow-auto {
-    -webkit-overflow-scrolling: touch;
     touch-action: pan-x pan-y;
     pointer-events: auto !important;
 }
+
+/* One scroll axis per list. "overflow-x: auto" alone makes overflow-y compute to auto as well, so a sideways row
+   (reciter / channel avatars) became a vertical scroller too as soon as a focused item's scale(1.05) poked out by
+   2px: a finger swipe starting on the row then scrolled those 2px inside the row instead of the page - the page
+   felt blocked in one direction. Vertical lists had the same problem sideways, on the rtl or ltr side depending on
+   the dock direction. */
+.overflow-x-auto:not(.overflow-y-auto):not(.overflow-auto):not(.overflow-y-scroll) { overflow-y: hidden; }
+.overflow-y-auto:not(.overflow-x-auto):not(.overflow-auto):not(.overflow-x-scroll) { overflow-x: hidden; }
 
 /* Swiping across a thumbnail must scroll, not start a native image drag or a text selection */
 img { -webkit-user-drag: none; user-drag: none; user-select: none; -webkit-user-select: none; }

@@ -6,6 +6,7 @@ import { convertTo12Hour } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { Timer, BellRing, Sun, Sunrise, Sunset, Moon, Sparkles, CloudSun, Edit3, Plus, Minus, Check } from "lucide-react";
 import { useMediaStore } from "@/lib/store";
+import { prayerDayFor } from "@/lib/prayer-day";
 
 /**
  * PrayerTimelineWidget v305.0 - Dynamic Iqamah Time Swap Protocol
@@ -26,7 +27,7 @@ export function PrayerTimelineWidget() {
     if (!now || !prayerTimes || prayerTimes.length === 0) return { prayers: [], activeIndex: -1, currentStatus: null };
     
     const dateStr = now.toISOString().split('T')[0];
-    const data = prayerTimes.find(p => p.date === dateStr) || prayerTimes[0];
+    const data = prayerDayFor(prayerTimes, dateStr);
     
     if (!data) return { prayers: [], activeIndex: -1, currentStatus: null };
 

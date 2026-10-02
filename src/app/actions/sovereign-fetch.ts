@@ -1,5 +1,4 @@
-
-'use server';
+import { assertPublicHttpUrl } from "@/lib/net-guard";
 
 /**
  * Sovereign Universal Fetch Engine v6.0 - Human Spoofing Edition
@@ -26,7 +25,8 @@ const BROWSER_HEADERS = {
 
 export async function sovereignFetch(url: string, options: any = {}) {
   try {
-    const response = await fetch(url, {
+    // server helper for the FotMob actions only: never a client-callable action, never a private host
+    const response = await fetch(assertPublicHttpUrl(url), {
       ...options,
       headers: {
         ...BROWSER_HEADERS,

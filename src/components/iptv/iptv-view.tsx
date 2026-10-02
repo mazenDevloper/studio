@@ -188,7 +188,7 @@ export function IptvView() {
   const cols = "grid-cols-2 md:grid-cols-3 xl:grid-cols-5";
 
   return (
-    <div dir="ltr" className={cn("h-screen flex overflow-hidden relative", isDockLeft ? "flex-row" : "flex-row-reverse")}>
+    <div dir="ltr" className={cn("h-full flex overflow-hidden relative", isDockLeft ? "flex-row" : "flex-row-reverse")}>
       {/* Categories: full-height side panel next to the car dock */}
       <aside data-nav-zone="sidebar" dir="rtl" className={cn("flex h-full min-h-0 overflow-hidden z-[110] premium-glass flex-col shrink-0 bg-black/60 border-white/5 w-[38%] md:w-[26%] min-w-[220px]", isDockLeft ? "border-r" : "border-l")}>
         <div className="p-4 flex items-center gap-3 border-b border-white/5">

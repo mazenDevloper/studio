@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
  * SportsHubPage v160.0 - Sovereign Multi-Frame Control
  * Features: Editable frame URLs saved to cloud + Enhanced Iframe interaction.
  */
-export function SportsHubPage() {
+function SportsHubPage() {
   const { setActiveIptv, dockSide, mapSettings, updateMapSettings, syncMasterBin } = useMediaStore();
   const [key, setKey] = useState(0);
   const [viewMode, setViewMode] = useState<'split' | 'winwin' | 'beinlive'>('split');

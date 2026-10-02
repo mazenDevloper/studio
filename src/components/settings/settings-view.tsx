@@ -287,7 +287,7 @@ export function SettingsView() {
     } else {
       addAzkar({ 
          id: Date.now().toString(), label: text, color: "text-emerald-400", iconType: "circle",
-        startType: "manual", startOffset: 0, endType: "duration", durationMinutes: 1440,
+        startType: "manual", startOffset: 0, endOffset: 0, endType: "duration", durationMinutes: 1440,
         showCountdown: false, showCountup: false, completed: false, countdownWindow: 0
       });
       toast({ title: "تم إضافة الذكر" });
@@ -474,12 +474,12 @@ export function SettingsView() {
 
   return (
     <div data-nav-zone="content" className="p-12 space-y-12 max-w-7xl mx-auto pb-40 text-right dir-rtl bg-black min-h-full transition-none">
-      <header className="flex items-center justify-between">
+      <header className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-col gap-2">
           <h1 className="text-6xl font-black text-white tracking-tighter flex items-center gap-6">الإعدادات السيادية <Settings className="w-12 h-12 text-primary" /></h1>
           <p className="text-white/40 font-bold uppercase tracking-[0.6em] text-sm">Unified System Hub v3100.0</p>
         </div>
-        <div className="flex gap-4">
+        <div className="flex flex-wrap gap-4">
           <Button onClick={handleManualRefresh} disabled={isRefreshing} className="bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-full h-14 px-8 font-black focusable"><RefreshCw className={cn("w-5 h-5 ml-2", isRefreshing && "animate-spin")} /> تحديث محلي</Button>
           <Button onClick={async () => { setIsSyncing(true); await syncMasterBin(); setIsSyncing(false); toast({ title: "تم الحفظ سحابياً بنجاح" }); }} disabled={isSyncing} className="bg-primary text-white rounded-full h-14 px-8 font-black shadow-glow focusable">{isSyncing ? <Loader2 className="w-5 h-5 animate-spin ml-2" /> : <Zap className="w-5 h-5 ml-2" />} تخزين سحابي (JSONBin)</Button>
         </div>
