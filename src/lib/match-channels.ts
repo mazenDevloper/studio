@@ -8,39 +8,118 @@ import type { TopMatch } from "@/lib/match-core";
 
 export interface LinkableChannel { name: string; stream_id: string; matchAliases?: string[] }
 
-/** Channels shown for a whole league even when the feed lists none (regional rights holders). */
-export interface LeagueChannelRule { label: string; channel: string; test: (league: TopMatch["league"]) => boolean }
+/**
+ * Who shows each league in the Arab region (2026/27, see the broadcast report), and the main foreign channel for
+ * leagues nobody shows in the region.
+ *  - rights:  the exact rights holder (one channel / platform): listed first, always.
+ *  - network: an Arab network that spreads the matches over numbered channels (beIN, AD Sports...): only shown when
+ *             no source names the exact Arab channel of the match.
+ *  - foreign: only shown when the match has no Arab channel at all.
+ * alwaysList: every match of the league is listed on the matches page, not only the "important" ones.
+ */
+export interface LeagueChannelRule {
+  label: string;
+  channels: string[];
+  kind: "rights" | "network" | "foreign";
+  alwaysList?: boolean;
+  test: (league: TopMatch["league"]) => boolean;
+}
 
 const isCountry = (l: TopMatch["league"], re: RegExp) => !l.country || re.test(l.country);
+const named = (l: TopMatch["league"], re: RegExp) => re.test(String(l.name ?? "").trim());
+const slug = (l: TopMatch["league"], ...ids: string[]) => {
+  const id = String(l.id ?? "");
+  return ids.includes(id) || ids.some(x => x.endsWith(".") && id.startsWith(x));
+};
 
 export const LEAGUE_CHANNEL_RULES: LeagueChannelRule[] = [
+  // ---------- Arab rights holders (one channel / platform) ----------
   {
-    label: "الدوري الألماني", channel: "MBC Action",
-    test: l => l.id === "ger.1" || (/^(german |1\. ?)?bundesliga$/i.test(l.name.trim()) && isCountry(l, /german|deutschland/i)),
+    label: "الدوري السعودي وكأس الملك والسوبر والدرجة الأولى", channels: ["Thmanyah"], kind: "rights", alwaysList: true,
+    test: l => slug(l, "ksa.1", "ksa.2", "ksa.kings_cup") || /saudi (pro|professional) league|roshn|yelo|دوري روشن|الدوري السعودي/i.test(l.name)
+      || (/saudi/i.test(l.country ?? "") && named(l, /^(pro|professional) league$|king'?s cup|super cup|first division/i)),
   },
   {
-    label: "الدوري السعودي", channel: "Thmanyah",
-    test: l => l.id === "ksa.1" || /saudi (pro|professional) league|roshn|دوري روشن|الدوري السعودي/i.test(l.name)
-      || (/^(pro|professional) league$/i.test(l.name.trim()) && /saudi/i.test(l.country ?? "")),
-  },
-  // UAE league and cups: Abu Dhabi Sports and Sharjah Sports
-  ...["Abu Dhabi Sports 1", "Sharjah Sports"].map(channel => ({
-    label: "الدوري الإماراتي", channel,
-    test: (l: TopMatch["league"]) => l.id === "uae.1" || /\buae\b|adnoc|arabian gulf league|emirates|الدوري الإماراتي/i.test(l.name)
-      || /united arab emirates|^uae$/i.test(l.country ?? ""),
-  })),
-  {
-    label: "الدوري الإيطالي", channel: "STARZPLAY Sport 1",
-    test: l => l.id === "ita.1" || (/^(italian )?serie a( tim| enilive)?$/i.test(l.name.trim()) && isCountry(l, /ital/i)),
+    label: "الدوري الألماني", channels: ["MBC Action", "Shahid"], kind: "rights", alwaysList: true,
+    test: l => slug(l, "ger.1") || (named(l, /^(german |1\. ?)?bundesliga$/i) && isCountry(l, /german|deutschland/i)),
   },
   {
-    label: "الدوري العماني", channel: "Oman Sport",
-    test: l => /\boman|omantel|عمان|عُمان/i.test(l.name) || /^oman$/i.test(l.country ?? ""),
+    label: "الدوري الإيطالي", channels: ["STARZPLAY Sport 1"], kind: "rights", alwaysList: true,
+    test: l => slug(l, "ita.1") || (named(l, /^(italian )?serie a( tim| enilive)?$/i) && isCountry(l, /ital/i)),
   },
+  {
+    label: "الدوري الإماراتي وكؤوسه", channels: ["Abu Dhabi Sports 1", "Dubai Sports 1", "Sharjah Sports"], kind: "rights", alwaysList: true,
+    test: l => slug(l, "uae.1") || /\buae\b|adnoc|arabian gulf league|الدوري الإماراتي/i.test(l.name) || /united arab emirates|^uae$/i.test(l.country ?? ""),
+  },
+  {
+    label: "الدوري العماني وكأس السلطان", channels: ["Oman Sport"], kind: "rights", alwaysList: true,
+    test: l => /\boman|omantel|sultan qaboos|عمان|عُمان/i.test(l.name) || /^oman$/i.test(l.country ?? ""),
+  },
+  // ---------- Arab networks (exact channel number comes from the match sources) ----------
+  { label: "الدوري الهولندي", channels: ["Dubai Sports"], kind: "network",
+    test: l => slug(l, "ned.1") || named(l, /eredivisie/i) },
+  { label: "الدوري القطري", channels: ["Alkass"], kind: "network",
+    test: l => /stars league|qsl|الدوري القطري/i.test(l.name) || (/^qatar$/i.test(l.country ?? "") && named(l, /league|cup/i)) },
+  { label: "الدوري المصري", channels: ["ON Time Sports"], kind: "network",
+    test: l => slug(l, "egy.1") || /egyptian premier|الدوري المصري/i.test(l.name) || (/^egypt$/i.test(l.country ?? "") && named(l, /premier league/i)) },
+  { label: "كأس ألمانيا وكأس إيطاليا", channels: ["Abu Dhabi Sports"], kind: "network",
+    test: l => slug(l, "ger.dfb_pokal", "ita.coppa_italia") || named(l, /dfb.?pokal|german cup|coppa italia/i) },
+  {
+    label: "beIN: الإنجليزي والإسباني والفرنسي والتركي وأوروبا وآسيا وأفريقيا والكؤوس الإنجليزية", channels: ["beIN SPORTS"], kind: "network",
+    test: l => slug(l, "eng.1", "esp.1", "fra.1", "fra.2", "tur.1", "eng.2", "eng.3", "eng.4", "eng.fa", "eng.league_cup", "uefa.", "afc.", "caf.")
+      || (named(l, /^(english )?premier league$/i) && isCountry(l, /england/i))
+      || (named(l, /^(spanish )?la ?liga( ea sports)?$|^primera divisi[oó]n$/i) && isCountry(l, /spain|españa/i))
+      || (named(l, /^(french )?ligue [12]/i) && isCountry(l, /france/i))
+      || (named(l, /s[uü]per ?lig/i) && isCountry(l, /turk|türk/i))
+      || (named(l, /^(efl )?championship$|league one|league two|carabao|efl cup|^fa cup$/i) && isCountry(l, /england/i))
+      || (named(l, /uefa|^champions league$|^europa league$|conference league/i) && !named(l, /afc|caf|concacaf|asian|african/i))
+      || named(l, /^afc |\bafc champions|acl elite|asian champions|^caf |\bcaf champions|\bcaf confederation cup$/i),
+  },
+  // ---------- not shown in the Arab region: the main foreign channel ----------
+  { label: "الدوري البرتغالي", channels: ["Sport TV1"], kind: "foreign",
+    test: l => slug(l, "por.1") || (named(l, /primeira liga|liga portugal|betclic/i) && isCountry(l, /portugal/i)) },
+  { label: "الدوري الأرجنتيني", channels: ["TyC Sports Internacional", "ESPN Premium", "TNT Sports"], kind: "foreign",
+    test: l => slug(l, "arg.1") || (named(l, /liga profesional|primera divisi[oó]n|torneo (apertura|clausura)|copa de la liga/i) && /argentin/i.test(l.country ?? "")) },
+  { label: "الدوري الأمريكي", channels: ["Apple TV"], kind: "foreign",
+    test: l => slug(l, "usa.1") || named(l, /^mls$|major league soccer/i) },
+  { label: "الدوري الاسكتلندي", channels: ["Sky Sports", "Premier Sports"], kind: "foreign",
+    test: l => slug(l, "sco.1") || named(l, /scottish premiership/i) || (named(l, /^premiership$/i) && /scotland/i.test(l.country ?? "")) },
+  { label: "الدوري البلجيكي", channels: ["DAZN"], kind: "foreign",
+    test: l => slug(l, "bel.1") || named(l, /jupiler|belgian pro league|first division a/i) || (named(l, /^pro league$/i) && /belgi/i.test(l.country ?? "")) },
+  { label: "الدوري البرازيلي", channels: ["Premiere", "Globo"], kind: "foreign",
+    test: l => slug(l, "bra.1") || named(l, /brasileir[aã]o/i) || (named(l, /^s[eé]rie a$/i) && /brazil|brasil/i.test(l.country ?? "")) },
+  { label: "الدوري المكسيكي", channels: ["TUDN"], kind: "foreign",
+    test: l => slug(l, "mex.1") || named(l, /liga mx/i) },
 ];
 
+const usableLeague = (l: TopMatch["league"]) => !/women|female|u\d\d|youth|reserve|سيدات/i.test(l.name);
+export function leagueRules(league: TopMatch["league"]): LeagueChannelRule[] {
+  return usableLeague(league) ? LEAGUE_CHANNEL_RULES.filter(r => r.test(league)) : [];
+}
+
+/** The exact Arab rights holders of a league (shown first on the card). */
 export function leagueChannels(league: TopMatch["league"]): string[] {
-  return LEAGUE_CHANNEL_RULES.filter(r => !/women|female|u\d\d|youth|reserve|سيدات/i.test(league.name) && r.test(league)).map(r => r.channel);
+  return leagueRules(league).filter(r => r.kind === "rights").flatMap(r => r.channels);
+}
+
+/** Leagues whose every match is listed (regional rights holders), not only the important ones. */
+export function leagueAlwaysListed(league: TopMatch["league"]): boolean {
+  return leagueRules(league).some(r => r.alwaysList);
+}
+
+/**
+ * Channels for one match: the league's rights holder + every source; Arab channels first; an Arab network
+ * ("beIN SPORTS") when no source names the exact channel; foreign channels only when there's no Arab one.
+ */
+export function matchChannels(league: TopMatch["league"], sources: string[]): string[] {
+  const rules = leagueRules(league);
+  const of = (k: LeagueChannelRule["kind"]) => rules.filter(r => r.kind === k).flatMap(r => r.channels);
+  const all = uniqueChannels([...of("rights"), ...sources.filter(Boolean)]);
+  const arab = all.filter(isArabChannel);
+  if (arab.length) return arab;
+  const network = of("network");
+  if (network.length) return uniqueChannels(network);
+  return uniqueChannels([...of("foreign"), ...all]);
 }
 
 // ---- name normalisation ----

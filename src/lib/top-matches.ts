@@ -1,6 +1,6 @@
 import { footballDay } from "@/lib/oman-time";
 import { S365_HEADERS, remember365Countries } from "@/lib/scores365";
-import { leagueChannels } from "@/lib/match-channels";
+import { leagueAlwaysListed } from "@/lib/match-channels";
 import { EXTRA_SOURCES } from "@/lib/match-sources-extra";
 import {
   BROWSER_HEADERS, build, getJson, importanceOf, leagueWeightByName, num, pickTop, sameTeam, shiftedDash, shiftedYmd,
@@ -343,7 +343,7 @@ export async function getTopMatchesToday(limit = 10, only?: string, includeAll =
   const isFav = (m: TopMatch) => teams.some(t => sameTeam(t, m.home.name) || sameTeam(t, m.away.name));
   // always shown besides the top list: favourite teams' matches, and every match of a league that has a regional
   // channel (Saudi -> Thmanyah, UAE -> AD Sports / Sharjah, Bundesliga -> MBC Action, Serie A -> STARZPLAY, Oman...)
-  const isExtra = (m: TopMatch) => isFav(m) || (!includeAll && leagueChannels(m.league).length > 0);
+  const isExtra = (m: TopMatch) => isFav(m) || (!includeAll && leagueAlwaysListed(m.league));
   const favExtra: TopMatch[] = [];
   for (const r of [best, ...working.filter(w => w !== best)]) {
     for (const m of r.day) {
