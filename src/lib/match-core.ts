@@ -231,3 +231,14 @@ export function matchDetailsUrl(m: TopMatch, fresh = false): string {
   if (fresh) q.set("fresh", "1");
   return `/api/matches/details?${q}`;
 }
+
+/**
+ * Goal alerts (the goal animation) per match, from the bell on the match card. Stored in belledMatchIds as
+ * "goal:<key>" (turned on) or "mute:<key>" (a favourite team's match turned off); favourites are on by default.
+ */
+export function goalAlertOn(m: TopMatch, belled: string[] = []): boolean {
+  const k = matchHideKey(m);
+  if (belled.includes(`goal:${k}`)) return true;
+  if (belled.includes(`mute:${k}`)) return false;
+  return !!m.favorite;
+}

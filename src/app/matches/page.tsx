@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Loader2, RefreshCw, Trophy, AlertTriangle, Star, PartyPopper, Pin, Eye, EyeOff, Tv, MapPin, Flag, LayoutGrid, Server } from "lucide-react";
+import { Loader2, RefreshCw, Trophy, AlertTriangle, Star, PartyPopper, Pin, Eye, EyeOff, Tv, MapPin, Flag, LayoutGrid, Server, BellRing, BellOff } from "lucide-react";
 import { useLiveMatches, useLiveMatchesStore } from "@/lib/live-matches";
 import type { MatchDetails } from "@/lib/match-details";
-import { sameTeam, matchHideKey, matchDetailsUrl } from "@/lib/match-core";
+import { sameTeam, matchHideKey, matchDetailsUrl, goalAlertOn } from "@/lib/match-core";
 import { useMediaStore } from "@/lib/store";
 import { GOAL_TEST_EVENT } from "@/components/football/goal-celebration";
 import { MatchChannelChips } from "@/components/football/match-channel-chips";
@@ -108,6 +108,9 @@ function MatchCard({ m, hidden = false }: { m: TopMatch; hidden?: boolean }) {
     return () => { alive = false; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [m.id]);
+  const belled = useMediaStore(s => s.belledMatchIds) || [];
+  const toggleGoalAlert = useMediaStore(s => s.toggleGoalAlert);
+  const alertOn = goalAlertOn(m, belled);
   const toggleHidden = () => {
     // same key as the floating island, synced through the master bin
     if (hidden) unskipMatch(matchHideKey(m));
@@ -155,6 +158,14 @@ function MatchCard({ m, hidden = false }: { m: TopMatch; hidden?: boolean }) {
           <span className={cn("font-black", live ? "text-red-400" : m.status === "finished" ? "text-white/40" : "text-emerald-400")}>
             {live ? `مباشر ${m.elapsed ?? ""}'` : m.status === "finished" ? "انتهت" : "قريباً"}
           </span>
+          <button
+            onClick={() => toggleGoalAlert(matchHideKey(m), !!m.favorite)}
+            title={alertOn ? "إيقاف تنبيه الأهداف (الأنيميشن)" : "تفعيل تنبيه الأهداف (الأنيميشن)"}
+            data-nav-id={`match-bell-${m.id}`}
+            className={cn("w-8 h-8 rounded-full border flex items-center justify-center focusable", alertOn ? "bg-yellow-400 text-black border-yellow-300 shadow-[0_0_12px_rgba(250,204,21,0.5)]" : "bg-black/40 text-white/50 border-white/10 hover:text-white")}
+          >
+            {alertOn ? <BellRing className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
+          </button>
           <button onClick={toggleHidden} title={hidden ? "إظهار في الجزيرة العائمة" : "إخفاء من الجزيرة العائمة (في كل الأجهزة)"} className={cn("w-8 h-8 rounded-full bg-black/40 border border-white/10 text-white/60 hover:text-white flex items-center justify-center focusable", hidden && "text-red-300 border-red-400/50 bg-red-500/10")}>
             {hidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
           </button>
