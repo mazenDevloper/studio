@@ -9,7 +9,7 @@ import { useMediaStore } from "@/lib/store";
 import { GOAL_TEST_EVENT } from "@/components/football/goal-celebration";
 import { MatchChannelChips } from "@/components/football/match-channel-chips";
 import { leagueCountry } from "@/lib/iptv-catalog";
-import { matchChannels, leagueKey } from "@/lib/match-channels";
+import { matchChannels, findLeagueOverride } from "@/lib/match-channels";
 import { LeagueChannelsEditor } from "@/components/football/league-channels-editor";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -233,7 +233,7 @@ function MatchCard({ m, hidden = false }: { m: TopMatch; hidden?: boolean }) {
   // Middle East channels from 365Scores first; the feed's own list only when 365Scores has none
   // every source together (league rights holder, 365Scores details, the feed), then: Arab channels first, and the
   // foreign ones only when the match has no Arab channel at all
-  const userChannels = useMediaStore(s => s.leagueChannelOverrides?.[leagueKey(m.league)]);
+  const userChannels = useMediaStore(s => findLeagueOverride(s.leagueChannelOverrides, m.league)?.[1]);
   const [editChannels, setEditChannels] = useState(false);
   const channels = matchChannels(m.league, [...(details?.channels ?? []), ...(lookedUp ?? []), ...m.channels], userChannels);
   const scorers = (side: "home" | "away") => (details?.scorers ?? []).filter(s => s.side === side);

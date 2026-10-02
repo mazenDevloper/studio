@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Plus, X, RotateCcw, Check, ChevronUp } from "lucide-react";
 import { useMediaStore } from "@/lib/store";
-import { defaultLeagueChannels, leagueKey } from "@/lib/match-channels";
+import { defaultLeagueChannels, findLeagueOverride, leagueKey } from "@/lib/match-channels";
 import type { TopMatch } from "@/lib/match-core";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
@@ -13,8 +13,11 @@ import { cn } from "@/lib/utils";
  * replace the built-in rights holder). Saved in the cloud with the other match settings.
  */
 export function LeagueChannelsEditor({ league, onClose }: { league: TopMatch["league"]; onClose: () => void }) {
-  const key = leagueKey(league);
-  const saved = useMediaStore(s => s.leagueChannelOverrides?.[key]);
+  // edit the entry this league already uses (it may have been added by hand in the settings)
+  const overrides = useMediaStore(s => s.leagueChannelOverrides);
+  const found = findLeagueOverride(overrides, league);
+  const key = found?.[0] ?? leagueKey(league);
+  const saved = found?.[1];
   const setLeagueChannels = useMediaStore(s => s.setLeagueChannels);
   const defaults = defaultLeagueChannels(league);
   const [list, setList] = useState<string[]>(saved ?? defaults);

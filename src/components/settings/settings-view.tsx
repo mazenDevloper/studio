@@ -18,6 +18,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { FootballSettings } from "@/components/settings/football-settings";
+import { Trophy as TabTrophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -492,6 +494,7 @@ export function SettingsView() {
           <TabsTrigger value="reminders" className={TAB_CLASS}><TabBell className="w-4 h-4" />التذكيرات</TabsTrigger>
           <TabsTrigger value="azkar" className={TAB_CLASS}><TabSparkles className="w-4 h-4" />الأذكار</TabsTrigger>
           <TabsTrigger value="subscriptions" className={TAB_CLASS}><TabYoutube className="w-4 h-4" />الاشتراكات</TabsTrigger>
+          <TabsTrigger value="football" className={TAB_CLASS}><TabTrophy className="w-4 h-4" />المباريات</TabsTrigger>
           <TabsTrigger value="iptv" className={TAB_CLASS}><TabTv className="w-4 h-4" />قنوات IPTV</TabsTrigger>
           <TabsTrigger value="backgrounds" className={TAB_CLASS}><TabImage className="w-4 h-4" />الخلفيات</TabsTrigger>
           <TabsTrigger value="reciters" className={TAB_CLASS}><TabMic className="w-4 h-4" />القراء</TabsTrigger>
@@ -998,6 +1001,10 @@ export function SettingsView() {
                 ))}
               </div>
            </Card>
+        </TabsContent>
+
+        <TabsContent value="football" className="space-y-8 animate-in fade-in duration-0">
+          <FootballSettings />
         </TabsContent>
 
         <TabsContent value="iptv" className="space-y-8 animate-in fade-in duration-0">

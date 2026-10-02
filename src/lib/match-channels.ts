@@ -107,6 +107,26 @@ export function leagueKey(league: TopMatch["league"]): string {
   return `${String(league.country ?? "").trim().toLowerCase()}|${String(league.name ?? "").trim().toLowerCase().replace(/\s+/g, " ")}`;
 }
 
+const normLeague = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9\u0600-\u06ff]+/g, " ").trim();
+
+/**
+ * The user's channel entry for a league: the exact key, or one saved by hand from the settings (same name; a
+ * country only has to match when both sides have one). Returns [key, channels].
+ */
+export function findLeagueOverride(overrides: Record<string, string[]> | undefined, league: TopMatch["league"]): [string, string[]] | null {
+  if (!overrides) return null;
+  const exact = leagueKey(league);
+  if (overrides[exact]) return [exact, overrides[exact]];
+  const name = normLeague(String(league.name ?? "")), country = normLeague(String(league.country ?? ""));
+  if (!name) return null;
+  for (const [k, v] of Object.entries(overrides)) {
+    const i = k.indexOf("|");
+    const kc = normLeague(k.slice(0, i)), kn = normLeague(k.slice(i + 1));
+    if (kn === name && (!kc || !country || kc === country)) return [k, v];
+  }
+  return null;
+}
+
 /** The league's default channels before any user change (shown in the editor). */
 export function defaultLeagueChannels(league: TopMatch["league"]): string[] {
   const rules = leagueRules(league);
