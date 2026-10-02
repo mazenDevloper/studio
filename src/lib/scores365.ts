@@ -30,6 +30,14 @@ function pickPreferred(): number | null {
   return null;
 }
 
+/** All known Arab-region country ids, in preference order (TV rights differ per country: a channel missing in
+ * Oman is often listed for Saudi Arabia or the UAE). */
+export function s365RegionCountryIds(): number[] {
+  const out: number[] = [];
+  for (const re of PREFERRED) for (const [name, id] of countryIds) if (re.test(name) && !out.includes(id)) out.push(id);
+  return out;
+}
+
 /** Country id to send as userCountryId, or null to let 365Scores use the caller's IP (fine when running in Oman). */
 export async function s365CountryId(): Promise<number | null> {
   const env = Number(process.env.SCORES365_COUNTRY_ID);

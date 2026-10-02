@@ -1,6 +1,6 @@
 import { BROWSER_HEADERS, UA, getJson, sameTeam } from "@/lib/match-core";
 import { footballDay } from "@/lib/oman-time";
-import { S365_HEADERS, athleteImage, remember365Countries, s365Url } from "@/lib/scores365";
+import { S365_HEADERS, athleteImage, remember365Countries, s365CountryId, s365RegionCountryIds, s365Url } from "@/lib/scores365";
 
 /**
  * Extra info for one match card: goal scorers (with photos), TV channels, venue, referee, red cards, round,
@@ -94,6 +94,14 @@ async function details365(gameId: string, revalidate: number): Promise<MatchDeta
   const json = await getJson(await s365Url("game", { gameId }), S365_HEADERS, revalidate);
   remember365Countries(json);
   const out = parse365Game(json);
+  if (!out.channels.length) {
+    // no channel for our country: ask 365Scores as other Arab countries (rights differ per country)
+    const mine = await s365CountryId();
+    const others = s365RegionCountryIds().filter(id => id !== mine).slice(0, 4);
+    const found = await Promise.allSettled(others.map(c => getJson(`https://webws.365scores.com/web/game/?appTypeId=5&langId=1&timezoneName=Asia/Muscat&userCountryId=${c}&gameId=${gameId}`, S365_HEADERS, Math.max(revalidate, 300))));
+    const names = found.flatMap(r => (r.status === "fulfilled" ? ((r.value?.game?.tvNetworks ?? []) as any[]).map(t => t?.name) : [])).filter(Boolean);
+    out.channels = Array.from(new Set(names));
+  }
   const g = json?.game;
   if (g && Number(g.statusGroup) >= 3) {
     try {

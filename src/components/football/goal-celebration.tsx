@@ -120,6 +120,9 @@ export function GoalCelebration() {
           { duration: 800, delay: 900, easing: "cubic-bezier(.2,.8,.2,1)", fill: "both" }));
         anims.push(c.animate([{ backgroundPosition: "0% 0" }, { backgroundPosition: "300% 0" }], { duration: 2400, delay: 1700, iterations: Infinity }));
       });
+      q(".gi-photo").forEach(c => anims.push(c.animate(
+        [{ opacity: 0, transform: "translateY(30%) scale(0.85)" }, { opacity: 0.95, transform: "translateY(0) scale(1)" }],
+        { duration: 700, delay: 700, easing: "cubic-bezier(.2,.8,.2,1)", fill: "both" })));
       q(".gi-scorer").forEach(c => anims.push(c.animate(
         [{ transform: "scale(0) rotate(-140deg)" }, { transform: "scale(1.15) rotate(8deg)", offset: 0.7 }, { transform: "scale(1) rotate(0)" }],
         { duration: 800, delay: 800, easing: "ease-out", fill: "both" })));
@@ -143,18 +146,24 @@ export function GoalCelebration() {
       >
         <div className="gi-sweep absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-[#04f5ff]/40 to-transparent" />
         <div className="gi-content absolute inset-0 flex items-center justify-between gap-3 px-5 md:px-8">
-          <TeamBadge logo={m.home.logo} name={m.home.name} scorer={side === "home"} photo={side === "home" ? scorer?.photo : undefined} />
-          <div className="flex flex-col items-center min-w-0">
-            <div className="gi-text text-4xl md:text-6xl font-black italic leading-none bg-gradient-to-r from-[#00ff85] via-[#04f5ff] to-[#00ff85] bg-[length:300%_100%] bg-clip-text text-transparent">GOAAAAAL!</div>
-            <div className="mt-2 text-4xl md:text-5xl font-black text-white tabular-nums">{m.score.home ?? 0} - {m.score.away ?? 0}</div>
+          <TeamBadge logo={m.home.logo} name={m.home.name} scorer={side === "home"} />
+          <div className="relative self-stretch flex flex-col items-center justify-center min-w-0 px-2">
+            {/* the scorer's photo, large behind the score; the texts sit in front of it (z-10) */}
+            {scorer?.photo && (
+              <div className="absolute z-0 inset-x-0 bottom-0 h-[118%] flex justify-center pointer-events-none">
+                <img src={scorer.photo} alt="" className="gi-photo h-full w-auto max-w-none object-contain [mask-image:linear-gradient(to_top,transparent_0%,black_35%)]" />
+              </div>
+            )}
+            <div className="relative z-10 gi-text text-4xl md:text-6xl font-black italic leading-none bg-gradient-to-r from-[#00ff85] via-[#04f5ff] to-[#00ff85] bg-[length:300%_100%] bg-clip-text text-transparent">GOAAAAAL!</div>
+            <div className="relative z-10 mt-2 text-4xl md:text-5xl font-black text-white tabular-nums [text-shadow:0_3px_14px_rgba(0,0,0,0.95)]">{m.score.home ?? 0} - {m.score.away ?? 0}</div>
             {scorer && (
-              <div className="mt-1 text-sm md:text-base font-black text-[#00ff85] truncate max-w-[18rem]">
+              <div className="relative z-10 mt-1 text-sm md:text-base font-black text-[#00ff85] truncate max-w-[18rem] [text-shadow:0_2px_10px_rgba(0,0,0,0.95)]">
                 ⚽ {scorer.player} {scorer.minute}{scorer.note ? ` (${scorer.note})` : ""}
               </div>
             )}
-            <div className="mt-0.5 text-[11px] md:text-xs font-bold text-white/60 truncate max-w-[16rem]">{m.league.name}{!scorer && m.elapsed ? ` · ${m.elapsed}'` : ""}</div>
+            <div className="relative z-10 mt-0.5 text-[11px] md:text-xs font-bold text-white/70 truncate max-w-[16rem] [text-shadow:0_2px_8px_rgba(0,0,0,0.95)]">{m.league.name}{!scorer && m.elapsed ? ` · ${m.elapsed}'` : ""}</div>
           </div>
-          <TeamBadge logo={m.away.logo} name={m.away.name} scorer={side === "away"} photo={side === "away" ? scorer?.photo : undefined} />
+          <TeamBadge logo={m.away.logo} name={m.away.name} scorer={side === "away"} />
         </div>
       </div>
     </div>
