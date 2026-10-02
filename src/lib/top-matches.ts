@@ -365,3 +365,31 @@ export async function getTopMatchesToday(limit = 10, only?: string, includeAll =
     fetchedAt: new Date(day.at).toISOString(),
   };
 }
+
+/**
+ * Favourite teams' upcoming matches over the next `days` days, starting tomorrow (one day collection per day,
+ * a few at a time; each day is cached like today's).
+ */
+export async function getFavoriteUpcoming(teams: string[], days = 14): Promise<{ matches: TopMatch[]; days: string[] }> {
+  if (!teams.length) return { matches: [], days: [] };
+  const isFav = (m: TopMatch) => teams.some(t => sameTeam(t, m.home.name) || sameTeam(t, m.away.name));
+  const dates = Array.from({ length: days }, (_, i) => shiftedDash(footballDay(), i + 1));
+  const found: TopMatch[] = [];
+  for (let i = 0; i < dates.length; i += 3) {
+    await Promise.all(dates.slice(i, i + 3).map(async date => {
+      try {
+        const day = await getDay(date);
+        const seen: TopMatch[] = [];
+        for (const r of [...day.raws].sort((a, b) => a.priority - b.priority)) {
+          for (const m of r.matches) {
+            if (!isFav(m) || footballDay(new Date(m.timestamp * 1000)) !== date) continue;
+            if (seen.some(f => f.id === m.id || (sameTeam(f.home.name, m.home.name) && sameTeam(f.away.name, m.away.name)))) continue;
+            seen.push({ ...m, favorite: true });
+          }
+        }
+        found.push(...seen);
+      } catch { /* day unreachable: skip */ }
+    }));
+  }
+  return { matches: found.sort((a, b) => a.timestamp - b.timestamp), days: dates };
+}

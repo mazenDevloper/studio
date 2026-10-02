@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Loader2, RefreshCw, Trophy, AlertTriangle, Star, PartyPopper, Pin, Eye, EyeOff, Tv, MapPin, Flag, LayoutGrid, Server, BellRing, BellOff } from "lucide-react";
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Loader2, RefreshCw, Trophy, AlertTriangle, Star, PartyPopper, Pin, Eye, EyeOff, Tv, MapPin, Flag, LayoutGrid, Server, BellRing, BellOff, CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import { useLiveMatches, useLiveMatchesStore, MATCHES_LIMIT } from "@/lib/live-matches";
 import type { MatchDetails } from "@/lib/match-details";
 import { sameTeam, matchHideKey, matchDetailsUrl, goalAlertOn, sortMatches } from "@/lib/match-core";
@@ -12,26 +12,31 @@ import { leagueCountry } from "@/lib/iptv-catalog";
 import { matchChannels } from "@/lib/match-channels";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { omanDateLabel } from "@/lib/oman-time";
+import { omanDateLabel, footballDay } from "@/lib/oman-time";
 import type { TopMatch } from "@/lib/top-matches";
 
-type DayTab = -1 | 0 | 1;
-const DAY_TABS: { day: DayTab; label: string }[] = [{ day: -1, label: "الأمس" }, { day: 0, label: "اليوم" }, { day: 1, label: "الغد" }];
+/** a day offset from today's football day, or "fav" = favourite teams' upcoming matches */
+type DayTab = number | "fav";
+const DAY_NAMES: Record<number, string> = { [-1]: "الأمس", 0: "اليوم", 1: "الغد", 2: "بعد غد" };
+const DAY_MS = 86_400_000;
+/** Oman football day as a Date at noon UTC (for labels / the date picker) */
+const dayDate = (offset: number) => { const [y, m, d] = footballDay().split("-").map(Number); return new Date(Date.UTC(y, m - 1, d + offset, 12)); };
+const shortDate = (offset: number) => new Intl.DateTimeFormat("ar", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" }).format(dayDate(offset));
 
-/** Yesterday's / tomorrow's matches (favourite teams + the important ones), cached for the session. */
+/** Other days / favourites (favourite teams + the important ones), cached for the session. */
 const otherDays = new Map<string, { at: number; data: any }>();
-function useOtherDay(day: DayTab, teams: string[]) {
-  const key = `${day}|${teams.join("|")}`;
+function useOtherDay(tab: DayTab, teams: string[]) {
+  const key = `${tab}|${teams.join("|")}`;
   const [state, setState] = useState<{ key: string; data: any; error: string | null; loading: boolean }>({ key: "", data: null, error: null, loading: false });
   const load = async (force = false) => {
-    if (!day) return;
+    if (tab === 0) return;
     const hit = otherDays.get(key);
     if (hit && !force && Date.now() - hit.at < 10 * 60_000) { setState({ key, data: hit.data, error: null, loading: false }); return; }
     setState(s => ({ key, data: s.key === key ? s.data : hit?.data ?? null, error: null, loading: true }));
     try {
-      const q = new URLSearchParams({ limit: String(MATCHES_LIMIT), day: String(day) });
+      const q = new URLSearchParams(tab === "fav" ? { days: "14" } : { limit: String(MATCHES_LIMIT), day: String(tab) });
       if (teams.length) q.set("teams", teams.join("|"));
-      const res = await fetch(`/api/matches?${q}`, { cache: "no-store" });
+      const res = await fetch(tab === "fav" ? `/api/matches/favorites?${q}` : `/api/matches?${q}`, { cache: "no-store" });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || "تعذر التحميل");
       otherDays.set(key, { at: Date.now(), data: json });
@@ -45,6 +50,43 @@ function useOtherDay(day: DayTab, teams: string[]) {
   return { data: mine ? state.data : otherDays.get(key)?.data ?? null, error: mine ? state.error : null, loading: !mine || state.loading, refresh: () => load(true) };
 }
 
+/** Day tabs: yesterday / today / tomorrow / a date (day after tomorrow by default, ‹ › and a date picker), my teams */
+function DayTabs({ tab, setTab }: { tab: DayTab; setTab: (t: DayTab) => void }) {
+  const picker = useRef<HTMLInputElement>(null);
+  const [dateDay, setDateDay] = useState(2);
+  const dated = typeof tab === "number" && ![-1, 0, 1].includes(tab);
+  const shown = dated ? (tab as number) : dateDay;
+  const go = (n: number) => { if ([-1, 0, 1].includes(n)) setTab(n); else { setDateDay(n); setTab(n); } };
+  const step = (d: number) => go((typeof tab === "number" ? tab : 0) + d);
+  const openPicker = () => { const el = picker.current; if (!el) return; try { el.showPicker(); } catch { el.click(); } };
+  const btn = (active: boolean) => cn("focusable no-focus-scale h-9 px-4 rounded-full text-sm font-black transition-colors whitespace-nowrap",
+    active ? "bg-emerald-500 text-black" : "text-white/60 hover:bg-white/10");
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-2">
+      <div className="inline-flex items-center rounded-full bg-white/5 border border-white/10 p-1 gap-1" role="tablist">
+        <button onClick={() => step(-1)} title="اليوم السابق" data-nav-id="matches-day-prev" className={cn(btn(false), "px-2")}><ChevronRight className="w-5 h-5" /></button>
+        {[-1, 0, 1].map(d => (
+          <button key={d} role="tab" aria-selected={tab === d} onClick={() => setTab(d)} data-nav-id={`matches-day-${d + 1}`} className={btn(tab === d)}>{DAY_NAMES[d]}</button>
+        ))}
+        {/* the date tab: first press opens it, a press while open shows the date picker */}
+        <span className="relative">
+          <button role="tab" aria-selected={dated} onClick={() => (dated ? openPicker() : go(shown))} data-nav-id="matches-day-date" className={cn(btn(dated), "flex items-center gap-1.5")}>
+            <CalendarDays className="w-4 h-4" /> {DAY_NAMES[shown] && shown === 2 ? `${DAY_NAMES[2]} · ` : ""}{shortDate(shown)}
+          </button>
+          <input ref={picker} type="date" aria-hidden tabIndex={-1} className="absolute inset-0 opacity-0 pointer-events-none"
+            value={dayDate(shown).toISOString().slice(0, 10)}
+            onChange={e => { if (!e.target.value) return; const [y, m, d] = e.target.value.split("-").map(Number); go(Math.round((Date.UTC(y, m - 1, d, 12) - dayDate(0).getTime()) / DAY_MS)); }} />
+        </span>
+        <button onClick={() => step(1)} title="اليوم التالي" data-nav-id="matches-day-next" className={cn(btn(false), "px-2")}><ChevronLeft className="w-5 h-5" /></button>
+      </div>
+      <button role="tab" aria-selected={tab === "fav"} onClick={() => setTab("fav")} data-nav-id="matches-day-fav"
+        className={cn(btn(tab === "fav"), "flex items-center gap-1.5 border border-yellow-400/30", tab !== "fav" && "text-yellow-300")}>
+        <Star className={cn("w-4 h-4", tab === "fav" ? "fill-black" : "fill-yellow-400")} /> مباريات فرقي القادمة
+      </button>
+    </div>
+  );
+}
+
 /** Today's most important matches, kick-off in Oman time (GMT+4). Auto-refreshes every 30s from the shared live feed. */
 export default function MatchesTestPage() {
   const { favoriteTeams } = useMediaStore();
@@ -52,10 +94,11 @@ export default function MatchesTestPage() {
   const today = useLiveMatches(favoriteNames);
   const [tab, setTab] = useState<DayTab>(0);
   const other = useOtherDay(tab, favoriteNames);
-  const { data, error, loading, refresh } = tab ? other : today;
-  const updatedAt = tab ? null : today.updatedAt;
-  // live favourites, live, favourites, then the rest
-  const matches = useMemo(() => sortMatches<TopMatch>((data?.matches ?? []) as TopMatch[]), [data]);
+  const { data, error, loading, refresh } = tab !== 0 ? other : today;
+  const updatedAt = tab !== 0 ? null : today.updatedAt;
+  // live favourites, live, favourites, then the rest (my teams' upcoming matches: by kick-off)
+  const matches = useMemo(() => tab === "fav" ? ((data?.matches ?? []) as TopMatch[]) : sortMatches<TopMatch>((data?.matches ?? []) as TopMatch[]), [data, tab]);
+  const title = tab === "fav" ? "مباريات فرقي القادمة" : `أهم مباريات ${DAY_NAMES[tab] ?? shortDate(tab)}`;
   const [showJson, setShowJson] = useState(false);
   const skipped = useMediaStore(s => s.skippedMatchIds) || [];
   const isHidden = (m: TopMatch) => skipped.includes(matchHideKey(m));
@@ -71,18 +114,9 @@ export default function MatchesTestPage() {
     <div className="min-h-full bg-black text-white p-6 md:p-10 space-y-6" dir="rtl">
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-black flex items-center gap-3">أهم مباريات {DAY_TABS.find(t => t.day === tab)!.label} <Trophy className="w-8 h-8 text-yellow-400" /></h1>
-          <p className="text-white/50 text-sm mt-1">{omanDateLabel(new Date(Date.now() - 5 * 3600_000 + tab * 86_400_000))} · التوقيت: عُمان (GMT+4) · اليوم الكروي حتى 5 فجراً</p>
-          {/* yesterday / today / tomorrow: other days show only favourite teams + the important matches */}
-          <div className="mt-3 inline-flex rounded-full bg-white/5 border border-white/10 p-1 gap-1" role="tablist">
-            {DAY_TABS.map(t => (
-              <button key={t.day} role="tab" aria-selected={tab === t.day} onClick={() => setTab(t.day)} data-nav-id={`matches-day-${t.day + 1}`}
-                className={cn("focusable no-focus-scale h-9 px-5 rounded-full text-sm font-black transition-colors",
-                  tab === t.day ? "bg-emerald-500 text-black" : "text-white/60 hover:bg-white/10")}>
-                {t.label}
-              </button>
-            ))}
-          </div>
+          <h1 className="text-3xl font-black flex items-center gap-3">{title} <Trophy className="w-8 h-8 text-yellow-400" /></h1>
+          <p className="text-white/50 text-sm mt-1">{tab === "fav" ? `من الغد ولمدة 14 يوماً · ${favoriteNames.length} فريق` : omanDateLabel(dayDate(tab))} · التوقيت: عُمان (GMT+4) · اليوم الكروي حتى 5 فجراً</p>
+          <DayTabs tab={tab} setTab={setTab} />
         </div>
         <div className="flex flex-wrap items-center gap-3">
           {ago !== null && <span className="text-xs text-white/40">تحديث تلقائي · منذ {ago} ث</span>}
@@ -105,18 +139,28 @@ export default function MatchesTestPage() {
       {data && (
         <>
           {matches.length === 0 ? (
-            <div className="py-20 text-center text-white/30 font-bold">لا توجد مباريات مهمة {tab === -1 ? "أمس" : tab === 1 ? "غداً" : "اليوم"}</div>
+            <div className="py-20 text-center text-white/30 font-bold">{tab === "fav" ? (favoriteNames.length ? "لا توجد مباريات قادمة لفرقك في الأيام القادمة" : "لم تضف فرقاً مفضلة بعد") : `لا توجد مباريات مهمة ${DAY_NAMES[tab] ?? shortDate(tab)}`}</div>
           ) : (
             <>
               <div className="grid gap-3 md:grid-cols-2">
-                {matches.map((m: TopMatch) => <MatchCard key={m.id} m={m} hidden={isHidden(m)} />)}
+                {matches.map((m: TopMatch, i: number) => {
+                  // my teams' tab: a date heading before each new day
+                  const day = tab === "fav" ? footballDay(new Date(m.timestamp * 1000)) : "";
+                  const head = tab === "fav" && (i === 0 || footballDay(new Date(matches[i - 1].timestamp * 1000)) !== day);
+                  return (
+                    <Fragment key={m.id}>
+                      {head && <h2 className="md:col-span-2 pt-2 text-lg font-black text-yellow-300 flex items-center gap-2"><CalendarDays className="w-5 h-5" /> {omanDateLabel(new Date(m.timestamp * 1000 - 5 * 3600_000))}</h2>}
+                      <MatchCard m={m} hidden={isHidden(m)} />
+                    </Fragment>
+                  );
+                })}
               </div>
             </>
           )}
 
           {/* data sources (APIs) at the bottom: the matches come first */}
           <section className="pt-6 mt-2 border-t border-white/5 space-y-2">
-            <p className="text-xs text-white/40 flex items-center gap-2"><Server className="w-3.5 h-3.5" /> {matches.length} من أصل {data.total} مباراة · {data.date} · المصدر: {data.source}</p>
+            <p className="text-xs text-white/40 flex items-center gap-2"><Server className="w-3.5 h-3.5" /> {matches.length}{data.total != null ? ` من أصل ${data.total}` : ""} مباراة · {data.date ?? (data.days ? `${data.days[0]} → ${data.days.at(-1)}` : "")}{data.source ? ` · المصدر: ${data.source}` : ""}</p>
             <div className="flex flex-wrap gap-2" dir="ltr">
               {(data.attempts ?? []).map((a: any) => (
                 <span key={a.source} title={a.error} className={cn("text-[10px] font-bold px-3 py-1 rounded-full border", a.ok ? "border-emerald-500/40 text-emerald-300" : "border-red-500/40 text-red-300")}>
