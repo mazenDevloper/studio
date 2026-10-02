@@ -2,7 +2,7 @@
 "use client";
 
 import { useMediaStore, YouTubeVideo } from "@/lib/store";
-import { X, Monitor, ChevronRight, ChevronLeft, Maximize2, BookmarkCheck, Volume2, ListPlus, LayoutList, RotateCcw, Play, MousePointer2, ExternalLink, Star, Tv } from "lucide-react";
+import { X, Monitor, ChevronRight, ChevronLeft, Maximize2, BookmarkCheck, Volume2, ListPlus, LayoutList, RotateCcw, Play, MousePointer2, ExternalLink, Star, Tv, SlidersHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { SovereignIframe } from "@/components/ui/sovereign-iframe";
@@ -12,6 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { HlsVideo } from "@/components/iptv/hls-video";
+import { IptvPlaybackSettings } from "@/components/iptv/iptv-playback-settings";
 import { isStreamUrl } from "@/lib/m3u";
 import { getYoutubeTime } from "@/components/media/youtube-background-bridge";
 
@@ -36,6 +37,7 @@ export function GlobalVideoPlayer() {
   const [iframeKey, setIframeKey] = useState(0);
   const [urlInput, setUrlInput] = useState("");
   const [streamError, setStreamError] = useState("");
+  const [playbackPanel, setPlaybackPanel] = useState(false);
   const [iptvListSearch, setIptvListSearch] = useState("");
   
   const [isEnded, setIsEnded] = useState(false);
@@ -230,6 +232,16 @@ export function GlobalVideoPlayer() {
                   {activeIptv.stream_icon ? <img src={activeIptv.stream_icon} alt="" className="w-8 h-8 rounded-lg object-cover bg-zinc-900" /> : <Tv className="w-6 h-6 text-white/40" />}
                   <span className="flex-1 min-w-0 text-white font-black text-sm truncate">{activeIptv.name}</span>
                   {streamError && <span className="text-[11px] text-red-400 font-bold truncate">{streamError}</span>}
+                  {isStream && (
+                    <button
+                      onClick={() => setPlaybackPanel(v => !v)}
+                      data-nav-id="player-iptv-playback"
+                      title="إعدادات البث (تقليل التقطيع)"
+                      className={cn("pointer-events-auto w-9 h-9 rounded-full flex items-center justify-center focusable transition-all", playbackPanel ? "bg-emerald-500 text-black" : "bg-black/60 text-white/60 hover:text-white")}
+                    >
+                      <SlidersHorizontal className="w-4 h-4" />
+                    </button>
+                  )}
                   <button
                     onClick={() => toggleFavoriteIptvChannel(activeIptv)}
                     data-nav-id="player-iptv-fav"
@@ -238,6 +250,12 @@ export function GlobalVideoPlayer() {
                   >
                     <Star className={cn("w-4 h-4", isIptvFav && "fill-current")} />
                   </button>
+                </div>
+              )}
+
+              {activeIptv && isStream && playbackPanel && (
+                <div className="absolute top-16 right-4 z-[95] w-[min(26rem,calc(100%-2rem))] max-h-[calc(100%-6rem)] overflow-y-auto overscroll-contain rounded-3xl bg-zinc-950/95 border border-white/10 p-4 shadow-2xl" dir="rtl">
+                  <IptvPlaybackSettings compact />
                 </div>
               )}
 

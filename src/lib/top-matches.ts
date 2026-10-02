@@ -1,4 +1,5 @@
 import { footballDay } from "@/lib/oman-time";
+import { S365_HEADERS, remember365Countries, s365Url } from "@/lib/scores365";
 import { EXTRA_SOURCES } from "@/lib/match-sources-extra";
 import {
   BROWSER_HEADERS, build, getJson, importanceOf, leagueWeightByName, num, pickTop, sameTeam, shiftedDash, shiftedYmd,
@@ -184,8 +185,10 @@ async function from365(date: string): Promise<TopMatch[]> {
   const dmy = `${d}/${m}/${y}`; // 365Scores wants DD/MM/YYYY
   const next = shiftedYmd(date, 1); // the football day runs until 05:00 the next morning
   const dmyNext = `${next.slice(6)}/${next.slice(4, 6)}/${next.slice(0, 4)}`;
-  const url = `https://webws.365scores.com/web/games/allscores/?appTypeId=5&langId=1&timezoneName=Asia/Muscat&userCountryId=1&startDate=${dmy}&endDate=${dmyNext}&sports=1&showOdds=false`;
-  const json = await getJson(url, BROWSER_HEADERS("https://www.365scores.com"));
+  // country = Gulf (Middle East TV channels), see scores365.ts
+  const url = await s365Url("games/allscores", { startDate: dmy, endDate: dmyNext, sports: 1, showOdds: "false" });
+  const json = await getJson(url, S365_HEADERS);
+  remember365Countries(json);
   return ((json?.games ?? []) as any[]).map(map365Game).filter(Boolean) as TopMatch[];
 }
 
