@@ -31,6 +31,7 @@ import {
    JSONBIN_MANUSCRIPTS_BIN_ID, JSONBIN_MASTER_BIN_ID, JSONBIN_FONTS_BIN_ID, JSONBIN_BACKGROUNDS_BIN_ID,
    JSONBIN_TEAM_LOGOS_BIN_ID, JSONBIN_MASTER_KEY
 } from "@/lib/constants";
+import { localYmd } from "@/lib/prayer-day";
 
 // --- SUB-COMPONENTS ---
 
@@ -213,7 +214,7 @@ export function SettingsView() {
   const [remForm, setRemForm] = useState<Partial<Reminder>>({
     label: "", color: "text-primary", iconType: "bell", startType: "azan", startReference: "fajr", startOffset: 0,
     endType: "duration", durationMinutes: 30, countdownWindow: 15, showCountdown: true, manualStartTime: "05:00", manualEndTime: "22:00",
-    homeLogo: "", awayLogo: "", matchDate: new Date().toISOString().split('T')[0], homeName: "", awayName: ""
+    homeLogo: "", awayLogo: "", matchDate: localYmd(), homeName: "", awayName: ""
   });
 
   const [editingZikrId, setEditingZikrId] = useState<string | null>(null);
@@ -272,7 +273,7 @@ export function SettingsView() {
       addReminder({ ...remForm, id: Date.now().toString(), completed: false, showCountup: false } as Reminder);
       toast({ title: "تم إضافة التذكير" });
     }
-    setRemForm({ label: "", color: "text-primary", iconType: "bell", startType: "azan", startReference: "fajr", startOffset: 0, endType: "duration", durationMinutes: 30, countdownWindow: 15, showCountdown: true, manualStartTime: "05:00", manualEndTime: "22:00", matchDate: new Date().toISOString().split('T')[0], homeName: "", awayName: "" });
+    setRemForm({ label: "", color: "text-primary", iconType: "bell", startType: "azan", startReference: "fajr", startOffset: 0, endType: "duration", durationMinutes: 30, countdownWindow: 15, showCountdown: true, manualStartTime: "05:00", manualEndTime: "22:00", matchDate: localYmd(), homeName: "", awayName: "" });
     setHomeSearch(""); setAwaySearch("");
     await syncMasterBin();
   };

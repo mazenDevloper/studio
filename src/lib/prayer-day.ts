@@ -18,3 +18,8 @@ export function prayerDayFor<T extends { date?: string }>(rows: T[] | undefined 
   }
   return best ?? rows[0];
 }
+
+/** The device's local calendar date as YYYY-MM-DD (toISOString is UTC: in Oman it is yesterday until 04:00). */
+export function localYmd(d: Date = new Date()): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}

@@ -7,7 +7,7 @@ import { convertTo12Hour } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { useEffect, useState, useMemo } from "react";
 import { SovereignShortcutsWidget } from "@/components/dashboard/widgets/sovereign-shortcuts-widget";
-import { prayerDayFor } from "@/lib/prayer-day";
+import { prayerDayFor, localYmd } from "@/lib/prayer-day";
 
 /**
  * CarDashboardView v3.3 - Sovereign Location & Sync Protocol
@@ -30,7 +30,7 @@ export default function CarDashboardPage() {
   const getTodayPrayers = () => {
     if (!prayerTimes || prayerTimes.length === 0) return null;
     const today = new Date();
-    const dateStr = today.toISOString().split('T')[0];
+    const dateStr = localYmd(today);
     return prayerDayFor(prayerTimes, dateStr);
   };
 

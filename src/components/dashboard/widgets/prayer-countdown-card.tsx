@@ -6,7 +6,7 @@ import { convertTo12Hour } from "@/lib/constants";
 import { Timer, Clock, BellRing } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useMediaStore } from "@/lib/store";
-import { prayerDayFor } from "@/lib/prayer-day";
+import { prayerDayFor, localYmd } from "@/lib/prayer-day";
 
 export function PrayerCountdownCard() {
   const [mounted, setMounted] = useState(false);
@@ -30,7 +30,7 @@ export function PrayerCountdownCard() {
     };
     
     const currentMinutes = now.getHours() * 60 + now.getMinutes();
-    const dateStr = now.toISOString().split('T')[0];
+    const dateStr = localYmd(now);
     const pTimes = prayerDayFor(prayerTimes, dateStr);
     
     const isFriday = now.getDay() === 5;

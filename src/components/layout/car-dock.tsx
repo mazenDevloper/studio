@@ -55,7 +55,8 @@ export function ShortcutBadge({ action, className, context = 'default' }: { acti
   const scale = context === 'dock' ? 1.45 : context === 'player' ? 1.15 : 1.0;
   
   return (
-    <div className={cn(
+    // data-shortcut: the remote's colour/number key for this action presses the button this badge sits on
+    <div data-shortcut={action} className={cn(
       "absolute z-[200] hidden min-[968px]:flex items-center justify-center transition-all duration-0 -bottom-4 -left-4", 
       isColor ? "rounded-[0.6rem]" : "rounded-full", 
       displayKey === 'Red' && "bg-red-600 shadow-[0_0_15px_rgba(220,38,38,0.8)]", 
