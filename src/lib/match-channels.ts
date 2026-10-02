@@ -35,9 +35,14 @@ const slug = (l: TopMatch["league"], ...ids: string[]) => {
 export const LEAGUE_CHANNEL_RULES: LeagueChannelRule[] = [
   // ---------- Arab rights holders (one channel / platform) ----------
   {
-    label: "الدوري السعودي وكأس الملك والسوبر والدرجة الأولى", channels: ["Thmanyah 1", "Thmanyah 2", "Thmanyah 3"], kind: "network", alwaysList: true, // the exact channel when a source names it
+    label: "الدوري السعودي وكأس خادم الحرمين والسوبر والدرجة الأولى", channels: ["Thmanyah 1", "Thmanyah 2", "Thmanyah 3"], kind: "rights", alwaysList: true,
     test: l => slug(l, "ksa.1", "ksa.2", "ksa.kings_cup") || /saudi (pro|professional) league|roshn|yelo|دوري روشن|الدوري السعودي/i.test(l.name)
       || (/saudi/i.test(l.country ?? "") && named(l, /^(pro|professional) league$|king'?s cup|super cup|first division/i)),
+  },
+  {
+    label: "السوبر الإسباني والسوبر الإيطالي", channels: ["Thmanyah 1", "Thmanyah 2", "Thmanyah 3"], kind: "rights", alwaysList: true,
+    test: l => slug(l, "esp.super_cup", "ita.super_cup") || named(l, /supercopa de espa|spanish super ?cup|supercoppa|italian super ?cup|السوبر الإسباني|السوبر الايطالي|السوبر الإيطالي/i)
+      || (named(l, /^super ?cup$|^supercopa$|^supercoppa$/i) && /spain|españa|ital/i.test(l.country ?? "")),
   },
   {
     label: "الدوري الألماني", channels: ["MBC Action", "Shahid"], kind: "rights", alwaysList: true,
@@ -118,7 +123,12 @@ export function leagueAlwaysListed(league: TopMatch["league"]): boolean {
 export function matchChannels(league: TopMatch["league"], sources: string[]): string[] {
   const rules = leagueRules(league);
   const of = (k: LeagueChannelRule["kind"]) => rules.filter(r => r.kind === k).flatMap(r => r.channels);
-  const all = uniqueChannels([...of("rights"), ...sources.filter(Boolean)]);
+  // a source naming the exact numbered channel ("Thmanyah 2") replaces the rights holder's other numbers
+  const src = sources.filter(Boolean);
+  const brand = (c: string) => channelTokens(c).filter(t => !isNum(t)).sort().join(" ");
+  const numbered = new Set(src.filter(c => channelTokens(c).some(isNum)).map(brand));
+  const rights = of("rights").filter(r => !numbered.has(brand(r)));
+  const all = uniqueChannels([...rights, ...src]);
   const arab = all.filter(isArabChannel);
   if (arab.length) return arab;
   const network = of("network");
