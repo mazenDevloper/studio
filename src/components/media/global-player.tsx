@@ -201,7 +201,7 @@ export function GlobalVideoPlayer() {
   const popupSideClass = dockSide === 'left' ? "right-12" : "left-12";
   // Side lists sit next to the car dock
   const dockSideEdgeClass = dockSide === 'left' ? "left-0 border-r" : "right-0 border-l";
-  const ctrlBtnClass = "rounded-full flex items-center justify-center focusable transition-all shadow-glow active:scale-90 w-11 h-11 min-[968px]:w-12 min-[968px]:h-12 [&_svg]:w-5 [&_svg]:h-5";
+  const ctrlBtnClass = "rounded-full flex items-center justify-center focusable transition-all shadow-glow active:scale-90 w-14 h-14 min-[968px]:w-16 min-[968px]:h-16 [&_svg]:w-7 [&_svg]:h-7 [&_svg]:stroke-[2.5]";
 
   const effectiveCountdown = isEnded ? 5 - postEndTimer : null;
 
@@ -374,9 +374,10 @@ export function GlobalVideoPlayer() {
 
       {!isMinimized && (
         <div className="fixed z-[100000] flex items-center transition-all duration-500 left-1/2 -translate-x-1/2 bottom-0 max-[968px]:bottom-[80px] scale-[0.9] max-[968px]:scale-[0.85] origin-bottom pb-6 max-[968px]:pb-3 max-w-[100vw]">
-          <div className="flex items-center gap-2 bg-black/40 backdrop-blur-3xl p-1.5 rounded-full border border-white/10 shadow-[0_0_100px_rgba(0,0,0,0.7)] transition-all">
+          {/* phones: the bigger buttons may not all fit - the bar stays inside the screen and scrolls sideways */}
+          <div className="flex items-center gap-2 bg-black/40 backdrop-blur-3xl p-1.5 rounded-full border border-white/10 shadow-[0_0_100px_rgba(0,0,0,0.7)] transition-all [&_*]:shrink-0 max-[968px]:max-w-[calc((100vw-1rem)/0.85)] max-[968px]:overflow-x-auto max-[968px]:overflow-y-hidden no-scrollbar">
             <div className="relative group">
-              <button onClick={handleClose} data-nav-id="player-close-btn" className={cn(ctrlBtnClass, "bg-red-600/40 text-red-500 border-2 border-red-500/20")}>
+              <button onClick={handleClose} data-nav-id="player-close-btn" className={cn(ctrlBtnClass, "bg-red-600/60 text-white border-2 border-red-400/40")}>
                 <X className="w-6 h-6" />
               </button>
               <ShortcutBadge action="player_close" className="-bottom-4 left-1/2 -translate-x-1/2 scale-75" />
@@ -400,18 +401,18 @@ export function GlobalVideoPlayer() {
                 {hasIptvList && (
                   <>
                     <div className="relative group">
-                      <button onClick={prevIptvChannel} className={cn(ctrlBtnClass, "bg-white/5 text-white")}><ChevronRight className="w-6 h-6" /></button>
+                      <button onClick={prevIptvChannel} className={cn(ctrlBtnClass, "bg-white/15 text-white")}><ChevronRight className="w-6 h-6" /></button>
                       <ShortcutBadge action="player_prev" className="-bottom-4 left-1/2 -translate-x-1/2 scale-75" />
                     </div>
                     <div className="relative group">
-                      <button onClick={nextIptvChannel} className={cn(ctrlBtnClass, "bg-white/5 text-white")}><ChevronLeft className="w-6 h-6" /></button>
+                      <button onClick={nextIptvChannel} className={cn(ctrlBtnClass, "bg-white/15 text-white")}><ChevronLeft className="w-6 h-6" /></button>
                       <ShortcutBadge action="player_next" className="-bottom-4 left-1/2 -translate-x-1/2 scale-75" />
                     </div>
                   </>
                 )}
 
                 {activeIptv && (
-                  <button onClick={() => toggleFavoriteIptvChannel(activeIptv)} title="مفضلة" className={cn(ctrlBtnClass, isIptvFav ? "bg-yellow-500 text-black" : "bg-white/5 text-white/60")}>
+                  <button onClick={() => toggleFavoriteIptvChannel(activeIptv)} title="مفضلة" className={cn(ctrlBtnClass, isIptvFav ? "bg-yellow-500 text-black" : "bg-white/15 text-white")}>
                     <Star className={cn("w-6 h-6", isIptvFav && "fill-current")} />
                   </button>
                 )}
@@ -419,13 +420,13 @@ export function GlobalVideoPlayer() {
                 {!isWebType && (
                   <>
                     <div className="relative group">
-                      <button onClick={() => { prevTrack(); resetWatchdog(); }} className={cn(ctrlBtnClass, "bg-white/5 text-white")}>
+                      <button onClick={() => { prevTrack(); resetWatchdog(); }} className={cn(ctrlBtnClass, "bg-white/15 text-white")}>
                         <ChevronRight className="w-6 h-6" />
                       </button>
                       <ShortcutBadge action="player_prev" className="-bottom-4 left-1/2 -translate-x-1/2 scale-75" />
                     </div>
                     <div className="relative group">
-                      <button onClick={() => { nextTrack(); resetWatchdog(); }} className={cn(ctrlBtnClass, "bg-white/5 text-white")}>
+                      <button onClick={() => { nextTrack(); resetWatchdog(); }} className={cn(ctrlBtnClass, "bg-white/15 text-white")}>
                         <ChevronLeft className="w-6 h-6" />
                       </button>
                       <ShortcutBadge action="player_next" className="-bottom-4 left-1/2 -translate-x-1/2 scale-75" />
@@ -434,7 +435,7 @@ export function GlobalVideoPlayer() {
                 )}
                 
                 <div className="relative group">
-                  <button onClick={() => setIsPlayerPlaylistOpen(!isPlayerPlaylistOpen)} className={cn(ctrlBtnClass, isPlayerPlaylistOpen ? "bg-indigo-600 text-white" : "bg-white/5 text-white/60")}>
+                  <button onClick={() => setIsPlayerPlaylistOpen(!isPlayerPlaylistOpen)} className={cn(ctrlBtnClass, isPlayerPlaylistOpen ? "bg-indigo-600 text-white" : "bg-white/15 text-white")}>
                     <LayoutList className="w-6 h-6" />
                   </button>
                   <ShortcutBadge action="player_playlist" className="-bottom-4 left-1/2 -translate-x-1/2 scale-75" />
@@ -443,7 +444,7 @@ export function GlobalVideoPlayer() {
                 {!activeIptv && <Popover>
                   <PopoverTrigger asChild>
                     <div className="relative group">
-                      <button className={cn(ctrlBtnClass, isSaved ? "bg-accent/40 text-accent" : "bg-white/5 text-white/60")}>
+                      <button className={cn(ctrlBtnClass, isSaved ? "bg-accent/40 text-accent" : "bg-white/15 text-white")}>
                         <BookmarkCheck className="w-6 h-6" />
                         <ShortcutBadge action="player_save" className="-bottom-4 left-1/2 -translate-x-1/2 scale-75" />
                       </button>
@@ -477,21 +478,21 @@ export function GlobalVideoPlayer() {
                 </Popover>}
 
                 <div className="relative group">
-                  <button onClick={handleSystemPopup} className={cn(ctrlBtnClass, "bg-white/5 text-white/60")} title="نافذة منبثقة خارج المتصفح">
+                  <button onClick={handleSystemPopup} className={cn(ctrlBtnClass, "bg-white/15 text-white")} title="نافذة منبثقة خارج المتصفح">
                     <ExternalLink className="w-6 h-6" />
                   </button>
                   <ShortcutBadge action="player_mode" className="-bottom-4 left-1/2 -translate-x-1/2 scale-75" />
                 </div>
 
                 <div className="relative group">
-                  <button onClick={cyclePlayerMode} className={cn(ctrlBtnClass, "bg-white/5 text-white/60")}>
+                  <button onClick={cyclePlayerMode} className={cn(ctrlBtnClass, "bg-white/15 text-white")}>
                     <Maximize2 className="w-6 h-6" />
                   </button>
                   <ShortcutBadge action="player_mode" className="-bottom-4 left-1/2 -translate-x-1/2 scale-75" />
                 </div>
                 
                 <div className="relative group">
-                  <button onClick={() => setIsFullScreen(!isFullScreen)} className={cn(ctrlBtnClass, isFullScreen ? "bg-primary text-white shadow-glow" : "bg-white/5 text-white/60")}>
+                  <button onClick={() => setIsFullScreen(!isFullScreen)} className={cn(ctrlBtnClass, isFullScreen ? "bg-primary text-white shadow-glow" : "bg-white/15 text-white")}>
                     <Monitor className="w-6 h-6" />
                   </button>
                   <ShortcutBadge action="player_fullscreen" className="-bottom-4 left-1/2 -translate-x-1/2 scale-75" />
