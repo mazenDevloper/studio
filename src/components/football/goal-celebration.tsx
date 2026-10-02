@@ -199,8 +199,9 @@ export function GoalCelebration() {
                   {scorer.minute}{scorer.note ? ` (${scorer.note})` : ""}{scorer.assist ? <span className="text-white/60 font-bold"> · assist {scorer.assist}</span> : null}
                 </div>
               </div>
-              <div className="absolute bottom-3 inset-x-0 flex justify-center z-20">
-                <ScoreBar m={m} side={side} small />
+              {/* the score fills the space beside the photo, under the name */}
+              <div className={cn("absolute bottom-3 top-[46%] md:top-[57%] z-20 flex", fromLeft ? "left-[122px] md:left-[168px] right-4" : "right-[122px] md:right-[168px] left-4")}>
+                <ScoreBar m={m} side={side} fill />
               </div>
             </>
           ) : (
@@ -215,7 +216,23 @@ export function GoalCelebration() {
 }
 
 /** Logos + score; the scoring team's number pops. In front of everything else in act 2. */
-function ScoreBar({ m, side, small = false }: { m: TopMatch; side: "home" | "away"; small?: boolean }) {
+function ScoreBar({ m, side, small = false, fill = false }: { m: TopMatch; side: "home" | "away"; small?: boolean; fill?: boolean }) {
+  if (fill) {
+    const big = (src: string | undefined, name: string) => src
+      ? <img src={src} alt="" className="h-[62%] max-h-12 md:max-h-20 w-auto aspect-square object-contain shrink-0" />
+      : <span className="text-lg font-black text-white/70">{name.slice(0, 3).toUpperCase()}</span>;
+    return (
+      <div className="gi-score w-full h-full min-w-0 overflow-hidden flex items-center justify-around gap-1.5 px-2 md:px-4 rounded-[1.75rem] bg-black/75 border border-white/15 shadow-[0_8px_30px_rgba(0,0,0,0.6)] backdrop-blur-md">
+        {big(m.home.logo, m.home.name)}
+        <span className="font-black tabular-nums text-white flex items-center gap-1.5 md:gap-3 text-[3.25rem] md:text-8xl leading-none shrink-0">
+          <span className={cn("inline-block", side === "home" && "gi-pop")}>{m.score.home ?? 0}</span>
+          <span className="text-white/40">-</span>
+          <span className={cn("inline-block", side === "away" && "gi-pop")}>{m.score.away ?? 0}</span>
+        </span>
+        {big(m.away.logo, m.away.name)}
+      </div>
+    );
+  }
   const logo = (src: string | undefined, name: string) => src
     ? <img src={src} alt="" className={cn("object-contain", small ? "w-10 h-10 md:w-12 md:h-12" : "w-16 h-16 md:w-24 md:h-24")} />
     : <span className="text-xs font-black text-white/70">{name.slice(0, 3).toUpperCase()}</span>;
