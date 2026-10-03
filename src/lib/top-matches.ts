@@ -456,3 +456,29 @@ export async function getFavoriteUpcoming(teams: string[], days = 14): Promise<{
   }
   return { matches: found.sort((a, b) => a.timestamp - b.timestamp), days: dates };
 }
+
+/**
+ * Every match being played right now (today's football day, all working sources merged), strongest first:
+ * importance (league + big clubs), favourites on top. Same exclusions as the lists (lower tiers, the Americas
+ * outside MLS / Brazil / Argentina, youth and women's matches).
+ */
+export async function getLiveNow(teams: string[] = []): Promise<{ date: string; matches: TopMatch[]; fetchedAt: string }> {
+  const date = footballDay();
+  const day = await getDay(date);
+  const specs = teams.map(parseFavSpec);
+  const isFav = (m: TopMatch) => specs.some(f => favoriteOf(f, m));
+  const out: TopMatch[] = [];
+  for (const r of [...day.raws].sort((a, b) => a.priority - b.priority)) {
+    for (const m of r.matches) {
+      if (m.status !== "live") continue;
+      if (out.some(o => o.id === m.id || (sameTeam(o.home.name, m.home.name) && sameTeam(o.away.name, m.away.name)))) continue;
+      const fav = isFav(m);
+      if (isYouthMatch(m) && !fav) continue;
+      const excluded = isExcludedLeague(m.league);
+      if (excluded === "lower-tier" || (excluded === "americas" && !fav)) continue;
+      out.push(fav ? { ...m, favorite: true } : m);
+    }
+  }
+  out.sort((a, b) => Number(!!b.favorite) - Number(!!a.favorite) || b.importance - a.importance || a.timestamp - b.timestamp);
+  return { date, matches: out, fetchedAt: new Date(day.at).toISOString() };
+}

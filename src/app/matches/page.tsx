@@ -18,7 +18,7 @@ import { omanDateLabel, footballDay } from "@/lib/oman-time";
 import type { TopMatch } from "@/lib/top-matches";
 
 /** a day offset from today's football day, or "fav" = favourite teams' upcoming matches */
-type DayTab = number | "fav";
+type DayTab = number | "fav" | "live";
 const DAY_NAMES: Record<number, string> = { [-1]: "الأمس", 0: "اليوم", 1: "الغد", 2: "بعد غد" };
 const DAY_MS = 86_400_000;
 /** Oman football day as a Date at noon UTC (for labels / the date picker) */
@@ -33,12 +33,12 @@ function useOtherDay(tab: DayTab, teams: string[]) {
   const load = async (force = false) => {
     if (tab === 0) return;
     const hit = otherDays.get(key);
-    if (hit && !force && Date.now() - hit.at < 10 * 60_000) { setState({ key, data: hit.data, error: null, loading: false }); return; }
+    if (hit && !force && Date.now() - hit.at < (tab === "live" ? 25_000 : 10 * 60_000)) { setState({ key, data: hit.data, error: null, loading: false }); return; }
     setState(s => ({ key, data: s.key === key ? s.data : hit?.data ?? null, error: null, loading: true }));
     try {
-      const q = new URLSearchParams(tab === "fav" ? { days: "14" } : { limit: String(MATCHES_LIMIT), day: String(tab) });
+      const q = new URLSearchParams(tab === "fav" ? { days: "14" } : tab === "live" ? {} : { limit: String(MATCHES_LIMIT), day: String(tab) });
       if (teams.length) q.set("teams", teams.join("|"));
-      const res = await fetch(tab === "fav" ? `/api/matches/favorites?${q}` : `/api/matches?${q}`, { cache: "no-store" });
+      const res = await fetch(tab === "fav" ? `/api/matches/favorites?${q}` : tab === "live" ? `/api/matches/live?${q}` : `/api/matches?${q}`, { cache: "no-store" });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || "تعذر التحميل");
       otherDays.set(key, { at: Date.now(), data: json });
@@ -47,7 +47,13 @@ function useOtherDay(tab: DayTab, teams: string[]) {
       setState(s => ({ ...s, key, error: e?.message || "تعذر التحميل", loading: false }));
     }
   };
-  useEffect(() => { load(); }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    load();
+    // the live tab keeps itself up to date
+    if (tab !== "live") return;
+    const t = setInterval(() => { if (document.visibilityState === "visible") load(true); }, 30_000);
+    return () => clearInterval(t);
+  }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
   const mine = state.key === key;
   return { data: mine ? state.data : otherDays.get(key)?.data ?? null, error: mine ? state.error : null, loading: !mine || state.loading, refresh: () => load(true) };
 }
@@ -71,6 +77,12 @@ function DayTabs({ tab, setTab }: { tab: DayTab; setTab: (t: DayTab) => void }) 
         {[-1, 0, 1].map(d => (
           <button key={d} role="tab" aria-selected={tab === d} onClick={() => setTab(d)} data-nav-id={`matches-day-${d + 1}`} className={btn(tab === d)}>{DAY_NAMES[d]}</button>
         ))}
+        {/* every match being played now, strongest first */}
+        <button role="tab" aria-selected={tab === "live"} onClick={() => setTab("live")} data-nav-id="matches-day-live"
+          className={cn(btn(tab === "live"), "flex items-center gap-1.5", tab === "live" ? "!bg-red-600 !text-white" : "text-red-300")}>
+          <span className="relative flex w-2.5 h-2.5"><span className="absolute inset-0 rounded-full bg-red-400 animate-ping opacity-75" /><span className="relative w-2.5 h-2.5 rounded-full bg-red-500" /></span>
+          مباشر
+        </button>
       </div>
       {/* previous day · the date (tap = date picker) · next day */}
       <div className={group}>
@@ -109,8 +121,9 @@ export default function MatchesTestPage() {
   const { data, error, loading, refresh } = tab !== 0 ? other : today;
   const updatedAt = tab !== 0 ? null : today.updatedAt;
   // live favourites, live, favourites, then the rest (my teams' upcoming matches: by kick-off)
-  const allMatches = useMemo(() => tab === "fav" ? ((data?.matches ?? []) as TopMatch[]) : sortMatches<TopMatch>((data?.matches ?? []) as TopMatch[]), [data, tab]);
-  const title = tab === "fav" ? "مباريات فرقي القادمة" : `أهم مباريات ${DAY_NAMES[tab] ?? shortDate(tab)}`;
+  // my teams: by kick-off; live: the server's order (strongest first); days: live favourites, live, favourites...
+  const allMatches = useMemo(() => tab === "fav" || tab === "live" ? ((data?.matches ?? []) as TopMatch[]) : sortMatches<TopMatch>((data?.matches ?? []) as TopMatch[]), [data, tab]);
+  const title = tab === "fav" ? "مباريات فرقي القادمة" : tab === "live" ? "المباريات المباشرة الآن" : `أهم مباريات ${DAY_NAMES[tab] ?? shortDate(tab)}`;
   const [showJson, setShowJson] = useState(false);
   const skipped = useMediaStore(s => s.skippedMatchIds) || [];
   const isHidden = (m: TopMatch) => skipped.includes(matchHideKey(m));
@@ -131,7 +144,7 @@ export default function MatchesTestPage() {
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-black flex items-center gap-3">{title} <Trophy className="w-8 h-8 text-yellow-400" /></h1>
-          <p className="text-white/50 text-sm mt-1">{tab === "fav" ? `من الغد ولمدة 14 يوماً · ${favoriteNames.length} فريق` : omanDateLabel(dayDate(tab))} · التوقيت: عُمان (GMT+4) · اليوم الكروي حتى 5 فجراً</p>
+          <p className="text-white/50 text-sm mt-1">{tab === "fav" ? `من الغد ولمدة 14 يوماً · ${favoriteNames.length} فريق` : tab === "live" ? `${matches.length} مباراة · من الأقوى للأضعف · تحديث كل 30 ثانية` : omanDateLabel(dayDate(tab))} · التوقيت: عُمان (GMT+4) · اليوم الكروي حتى 5 فجراً</p>
           <DayTabs tab={tab} setTab={setTab} />
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -155,7 +168,7 @@ export default function MatchesTestPage() {
       {data && (
         <>
           {matches.length === 0 ? (
-            <div className="py-20 text-center text-white/30 font-bold">{tab === "fav" ? (favoriteNames.length ? "لا توجد مباريات قادمة لفرقك في الأيام القادمة" : "لم تضف فرقاً مفضلة بعد") : `لا توجد مباريات مهمة ${DAY_NAMES[tab] ?? shortDate(tab)}`}</div>
+            <div className="py-20 text-center text-white/30 font-bold">{tab === "live" ? "لا توجد مباريات مباشرة الآن" : tab === "fav" ? (favoriteNames.length ? "لا توجد مباريات قادمة لفرقك في الأيام القادمة" : "لم تضف فرقاً مفضلة بعد") : `لا توجد مباريات مهمة ${DAY_NAMES[tab] ?? shortDate(tab)}`}</div>
           ) : (
             <>
               <div className="grid gap-3 md:grid-cols-2">
