@@ -5,6 +5,7 @@ import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useLiveMatches } from "@/lib/live-matches";
 import { sameTeam, matchHideKey } from "@/lib/match-core";
 import { favSpecString, favoriteOf } from "@/lib/match-core";
+import { isDoneToday } from "@/lib/store";
 import { useMediaStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { X, Eye, EyeOff, Bell, Clock, Timer, Check, Trophy, Play, ChevronDown, ChevronUp, Zap, Cloud, Bookmark } from "lucide-react";
@@ -37,6 +38,9 @@ interface AlertItem {
  * LiveMatchIsland v1702.0 - Sovereign Precision Engine
  * Features: Fixed Local Date Sync | General Azkar Support | Robust Manual Visibility.
  */
+/** A reminder marked done stays on the island (as done) for this long, then hides until the next day. */
+const DONE_SHOWN_MS = 60 * 60_000;
+
 export function LiveMatchIsland() {
   const { 
     favoriteTeams, prayerTimes, prayerSettings, reminders, generalAzkar, belledMatchIds, 
@@ -106,6 +110,9 @@ export function LiveMatchIsland() {
 
       for (const rem of reminders) {
         if (skippedReminderIds.includes(rem.id) || skippedMatchIds.includes(rem.id)) continue;
+        // done today: shown as done for an hour, then hidden until tomorrow (the state resets each day)
+        const doneToday = isDoneToday(rem);
+        if (doneToday && now.getTime() - (rem.completedAt ?? 0) > DONE_SHOWN_MS) continue;
         if (rem.iconType === 'match' && rem.matchDate && rem.matchDate !== dateStr) continue;
 
         let startSecs = -1;
@@ -153,7 +160,7 @@ export function LiveMatchIsland() {
               color: rem.color, 
               isExpired: sDiff <= 0, 
               isEnding: eDiff > 0 && eDiff <= 600,
-              completed: rem.completed,
+              completed: doneToday,
               homeLogo: rem.homeLogo,
               awayLogo: rem.awayLogo,
               homeName: rem.homeName,
@@ -167,17 +174,17 @@ export function LiveMatchIsland() {
       // Add General Azkar to Island
       if (generalAzkar && generalAzkar.length > 0) {
         generalAzkar.forEach(az => {
-          if (!az.completed) {
-            list.push({ 
-              id: az.id, 
-              name: az.label, 
-              diff: 0, 
-              type: 'azkar', 
-              iconType: 'circle', 
-              color: 'text-emerald-400', 
-              completed: false 
-            });
-          }
+          const done = isDoneToday(az);
+          if (done && now.getTime() - (az.completedAt ?? 0) > DONE_SHOWN_MS) return;
+          list.push({
+            id: az.id,
+            name: az.label,
+            diff: 0,
+            type: 'azkar',
+            iconType: 'circle',
+            color: 'text-emerald-400',
+            completed: done,
+          });
         });
       }
     }

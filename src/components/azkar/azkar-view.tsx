@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
+import { isDoneToday, localDay } from "@/lib/store";
+import { prayerDayFor } from "@/lib/prayer-day";
 import { Card, CardContent } from "@/components/ui/card";
 import { Moon, RotateCcw, Sun, CheckCircle2, Bookmark, Plus, Trash2, Sparkles, Bell, Volume2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -37,10 +39,47 @@ const AZKAR_DATA = [
   { id: 'etsl-2', label: 'أمسينا وأمسى الملك لله', count: 1, category: 'evening', text: 'أمسينا وأمسى الملك لله، والحمد لله، لا إله إلا الله وحده لا شريك له، له الملك وله الحمد وهو على كل شيء قدير. رب أسألك خير ما في هذه الليلة وخير ما بعدها، وأعوذ بك من شر ما في هذه الليلة وشر ما بعدها، رب أعوذ بك من الكسل وسوء الكبر، رب أعوذ بك من عذاب في النار وعذاب في القبر.' },
 ];
 
+/** Morning azkar from Fajr until Asr, evening azkar from Asr until the next Fajr (today's prayer times). */
+function currentPeriod(prayerTimes: any[]): "morning" | "evening" {
+  const now = new Date();
+  const row: any = prayerDayFor(prayerTimes, localDay(now));
+  const mins = (t?: string) => { if (!t) return NaN; const [h, m] = t.split(":").map(Number); return h * 60 + m; };
+  const cur = now.getHours() * 60 + now.getMinutes();
+  const fajr = mins(row?.fajr), asr = mins(row?.asr);
+  if (Number.isNaN(fajr) || Number.isNaN(asr)) return now.getHours() >= 4 && now.getHours() < 15 ? "morning" : "evening";
+  return cur >= fajr && cur < asr ? "morning" : "evening";
+}
+
+const COUNTS_KEY = (day: string) => `azkar-counts-${day}`;
+
 export function AzkarView() {
   const { generalAzkar, addAzkar, removeAzkar, syncMasterBin } = useMediaStore();
+  const prayerTimes = useMediaStore(s => s.prayerTimes);
+  const reminders = useMediaStore(s => s.reminders);
+  const completeReminder = useMediaStore(s => s.completeReminder);
+  // today's counters are kept (leaving the screen doesn't lose the progress); a new day starts from zero
   const [counts, setCounters] = useState<Record<string, number>>({});
-  const [activeTab, setActiveTab] = useState("morning");
+  const [loaded, setLoaded] = useState(false);
+  // opens on the azkar of the current time: morning or evening (after mount: the server's clock is UTC)
+  const [activeTab, setActiveTab] = useState<string>("morning");
+  useEffect(() => {
+    setActiveTab(currentPeriod(prayerTimes));
+    try { setCounters(JSON.parse(localStorage.getItem(COUNTS_KEY(localDay())) || "{}")); } catch {}
+    setLoaded(true);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (loaded) try { localStorage.setItem(COUNTS_KEY(localDay()), JSON.stringify(counts)); } catch {} }, [counts, loaded]);
+
+  // all of a period's azkar done -> its reminder (label with "الصباح" / "المساء") is done for today
+  useEffect(() => {
+    for (const period of ["morning", "evening"] as const) {
+      const items = AZKAR_DATA.filter(a => a.category === period);
+      if (!items.length || !items.every(a => (counts[a.id] || 0) >= a.count)) continue;
+      const word = period === "morning" ? /صباح/ : /مساء/;
+      for (const r of [...(reminders || []), ...(generalAzkar || [])]) {
+        if (word.test(r.label) && /ذكار|ذكر/.test(r.label) && !isDoneToday(r)) completeReminder(r.id);
+      }
+    }
+  }, [counts]); // eslint-disable-line react-hooks/exhaustive-deps
   const [newReminderText, setNewReminderText] = useState("");
 
   const filteredAzkar = useMemo(() => {

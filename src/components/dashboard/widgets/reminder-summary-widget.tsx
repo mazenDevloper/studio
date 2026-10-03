@@ -3,6 +3,7 @@
 
 import { useMemo, useState, useEffect } from "react";
 import { useMediaStore } from "@/lib/store";
+import { isDoneToday } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { Bell, Timer, Clock } from "lucide-react";
 import { FluidGlass } from "@/components/ui/fluid-glass";
@@ -113,7 +114,7 @@ export function ReminderSummaryWidget() {
     // FILTER: Exclude Matches and Sports
     if (!isMobile) {
       for (const rem of reminders) {
-        if (rem.completed || rem.iconType === 'match') continue;
+        if (isDoneToday(rem) || rem.iconType === 'match') continue;
         let startSecs = 0;
         if (rem.startType === 'manual' && rem.manualStartTime) startSecs = tToM(rem.manualStartTime) * 60;
         else if (rem.startReference && pData[rem.startReference]) {

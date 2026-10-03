@@ -27,6 +27,11 @@ export interface AudioTrack {
   channelTitle?: string;
 }
 
+/** Local calendar day, YYYY-MM-DD. */
+export const localDay = (d: Date = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+/** A reminder / zikr counts as done only on the day it was marked done. */
+export const isDoneToday = (r: { completedOn?: string }) => !!r.completedOn && r.completedOn === localDay();
+
 export interface Reminder {
   id: string; 
   label: string; 
@@ -44,6 +49,10 @@ export interface Reminder {
   showCountdown: boolean; 
   showCountup: boolean; 
   completed: boolean; 
+  /** the local day (YYYY-MM-DD) it was marked done: "done" lasts that day only and resets the next day */
+  completedOn?: string;
+  /** when it was marked done (ms): the island shows it as done for an hour, then hides it */
+  completedAt?: number;
   countdownWindow: number;
   homeLogo?: string;
   awayLogo?: string;
@@ -148,7 +157,7 @@ interface MediaState {
   toggleSaveVideo: (video: YouTubeVideo) => void;
   removeVideo: (id: string) => void; toggleStarChannel: (channelid: string) => void;
   addReminder: (reminder: Reminder) => void; updateReminder: (id: string, reminder: Partial<Reminder>) => void;
-  removeReminder: (id: string) => void; toggleReminder: (id: string) => void; skipReminder: (id: string) => void; skipMatch: (id: string) => void; unskipMatch: (id: string) => void;
+  removeReminder: (id: string) => void; toggleReminder: (id: string) => void; completeReminder: (id: string) => void; skipReminder: (id: string) => void; skipMatch: (id: string) => void; unskipMatch: (id: string) => void;
   addAzkar: (azkar: Reminder) => void; updateAzkar: (id: string, azkar: Partial<Reminder>) => void;
   removeAzkar: (id: string) => void;
   addPlaylist: (name: string, videos?: YouTubeVideo[]) => Playlist; removePlaylist: (id: string) => void; addVideoToPlaylist: (playlistId: string, video: YouTubeVideo) => void;
@@ -490,7 +499,21 @@ export const useMediaStore = create<MediaState>()(
       addReminder: (r) => set((s) => { const n = [...s.reminders, r]; setTimeout(() => get().syncMasterBin(), 100); return { reminders: n }; }),
       updateReminder: (id, u) => set((s) => { const n = s.reminders.map(r => r.id === id ? { ...r, ...u } : r); setTimeout(() => get().syncMasterBin(), 100); return { reminders: n }; }),
       removeReminder: (id) => set((s) => { const n = s.reminders.filter(r => r.id !== id); setTimeout(() => get().syncMasterBin(), 100); return { reminders: n }; }),
-      toggleReminder: (id) => set((s) => ({ reminders: s.reminders.map(r => r.id === id ? { ...r, completed: !r.completed } : r) })),
+      // done for today only (completedOn), with the moment it was done (completedAt); toggling again undoes it
+      toggleReminder: (id) => {
+        const today = localDay();
+        const flip = <T extends Reminder>(r: T): T => (isDoneToday(r)
+          ? { ...r, completed: false, completedOn: undefined, completedAt: undefined }
+          : { ...r, completed: true, completedOn: today, completedAt: Date.now() });
+        set((s) => ({ reminders: s.reminders.map(r => r.id === id ? flip(r) : r), generalAzkar: s.generalAzkar.map(a => a.id === id ? flip(a) : a) }));
+        setTimeout(() => get().syncMasterBin(), 100);
+      },
+      completeReminder: (id) => {
+        const today = localDay();
+        const done = <T extends Reminder>(r: T): T => (isDoneToday(r) ? r : { ...r, completed: true, completedOn: today, completedAt: Date.now() });
+        set((s) => ({ reminders: s.reminders.map(r => r.id === id ? done(r) : r), generalAzkar: s.generalAzkar.map(a => a.id === id ? done(a) : a) }));
+        setTimeout(() => get().syncMasterBin(), 100);
+      },
       skipReminder: (id) => set((s) => ({ skippedReminderIds: [...s.skippedReminderIds, id] })),
       skipMatch: (id) => set((s) => ({ skippedMatchIds: [...s.skippedMatchIds.filter(x => x !== id), id].slice(-300) })),
       unskipMatch: (id) => { set((s) => ({ skippedMatchIds: s.skippedMatchIds.filter(x => x !== id) })); setTimeout(() => get().syncMasterBin(), 100); },
