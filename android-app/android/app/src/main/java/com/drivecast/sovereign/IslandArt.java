@@ -253,7 +253,7 @@ final class IslandArt {
             float pr = strip.height() * 0.38f;
             Bitmap photo = Images.cached(ctx, it.photo, Math.round(pr * 2.4f));
             TextPaint sc = Art.text(black, strip.height() * 0.42f, Art.WHITE);
-            String text = it.scorer + (it.minute.isEmpty() ? "" : "  " + it.minute);
+            String text = it.scorer + (it.minute.isEmpty() ? "" : "  د" + it.minute.replace("'", ""));
             float tw = Math.min(sc.measureText(text), strip.width() * 0.8f);
             float total = tw + (photo != null ? pr * 2 + strip.height() * 0.2f : 0);
             float sx2 = strip.centerX() + total / 2;

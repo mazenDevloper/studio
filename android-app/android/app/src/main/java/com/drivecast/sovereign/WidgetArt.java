@@ -278,12 +278,18 @@ final class WidgetArt {
         TextPaint np = Art.text(bold, h * 0.34f, Art.alpha(Art.WHITE, 0.92f));
         float leftMax = (mid - sw / 2 - nameGap) - (hcx + lr + nameGap);
         float rightMax = (acx - lr - nameGap) - (mid + sw / 2 + nameGap);
+        float nameSize = h * 0.34f;
         if (leftMax > h * 0.5f) {
+            // a long name first gets a slightly smaller size, then the smart shortening
+            np.setTextSize(nameSize);
+            Art.fit(np, hn, leftMax, nameSize * 0.8f);
             String s = Art.teamName(np, hn, leftMax);
             np.setTextAlign(Paint.Align.LEFT);
             c.drawText(s, hcx + lr + nameGap, Art.baseline(np, r.centerY()), np);
         }
         if (rightMax > h * 0.5f) {
+            np.setTextSize(nameSize);
+            Art.fit(np, an, rightMax, nameSize * 0.8f);
             String s = Art.teamName(np, an, rightMax);
             np.setTextAlign(Paint.Align.RIGHT);
             c.drawText(s, acx - lr - nameGap, Art.baseline(np, r.centerY()), np);
