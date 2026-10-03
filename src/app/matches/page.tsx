@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Loader2, RefreshCw, Trophy, AlertTriangle, Star, PartyPopper, Pin, Eye, EyeOff, Tv, MapPin, Flag, LayoutGrid, Server, BellRing, BellOff, Pencil, X, RotateCcw, CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
+import { Loader2, RefreshCw, Trophy, AlertTriangle, Star, PartyPopper, Pin, Eye, EyeOff, Tv, MapPin, Flag, LayoutGrid, Server, BellRing, BellOff, Pencil, X, RotateCcw, BookmarkCheck, BookmarkPlus, CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import { useLiveMatches, useLiveMatchesStore, MATCHES_LIMIT } from "@/lib/live-matches";
 import type { MatchDetails } from "@/lib/match-details";
 import { sameTeam, matchHideKey, matchDetailsUrl, goalAlertOn, sortMatches } from "@/lib/match-core";
@@ -10,7 +10,7 @@ import { useMediaStore } from "@/lib/store";
 import { GOAL_TEST_EVENT } from "@/components/football/goal-celebration";
 import { MatchChannelChips } from "@/components/football/match-channel-chips";
 import { leagueCountry } from "@/lib/iptv-catalog";
-import { matchChannels, findLeagueOverride } from "@/lib/match-channels";
+import { matchChannels, findLeagueOverride, leagueKeyMatches, leagueKey } from "@/lib/match-channels";
 import { LeagueChannelsEditor } from "@/components/football/league-channels-editor";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -28,7 +28,8 @@ const shortDate = (offset: number) => new Intl.DateTimeFormat("ar", { weekday: "
 /** Other days / favourites (favourite teams + the important ones), cached for the session. */
 const otherDays = new Map<string, { at: number; data: any }>();
 function useOtherDay(tab: DayTab, teams: string[]) {
-  const key = `${tab}|${teams.join("|")}`;
+  const follow = useMediaStore(s => s.followedLeagues) || [];
+  const key = `${tab}|${teams.join("|")}|${follow.join(";")}`;
   const [state, setState] = useState<{ key: string; data: any; error: string | null; loading: boolean }>({ key: "", data: null, error: null, loading: false });
   const load = async (force = false) => {
     if (tab === 0) return;
@@ -38,6 +39,7 @@ function useOtherDay(tab: DayTab, teams: string[]) {
     try {
       const q = new URLSearchParams(tab === "fav" ? { days: "14" } : tab === "live" ? {} : { limit: String(MATCHES_LIMIT), day: String(tab) });
       if (teams.length) q.set("teams", teams.join("|"));
+      for (const k of follow) q.append("follow", k);
       const res = await fetch(tab === "fav" ? `/api/matches/favorites?${q}` : tab === "live" ? `/api/matches/live?${q}` : `/api/matches?${q}`, { cache: "no-store" });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || "تعذر التحميل");
@@ -280,6 +282,7 @@ function MatchCard({ m, hidden = false }: { m: TopMatch; hidden?: boolean }) {
         <span className="flex items-center gap-2 min-w-0">
           {m.league.logo && <img src={m.league.logo} alt="" className="w-4 h-4 object-contain" />}
           <span className="truncate">{m.league.name}</span>
+          <FollowLeague league={m.league} navId={`match-follow-${m.id}`} />
         </span>
         <span className="flex items-center gap-2 shrink-0">
           {m.favorite && <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />}
@@ -356,6 +359,21 @@ function MatchCard({ m, hidden = false }: { m: TopMatch; hidden?: boolean }) {
         </button>
       </div>
     </div>
+  );
+}
+
+/** Follow a competition: all its matches are listed (not favourites: no bell, no island). */
+function FollowLeague({ league, navId }: { league: TopMatch["league"]; navId: string }) {
+  const followed = useMediaStore(s => s.followedLeagues) || [];
+  const toggle = useMediaStore(s => s.toggleFollowLeague);
+  const key = followed.find(k => leagueKeyMatches(k, league));
+  return (
+    <button onClick={() => toggle(key ?? leagueKey(league))} data-nav-id={navId}
+      title={key ? "إلغاء متابعة البطولة" : "متابعة البطولة: تظهر كل مبارياتها في القائمة (دون اعتبارها مفضلة)"}
+      className={cn("focusable no-focus-scale shrink-0 h-6 px-2 rounded-full border text-[10px] font-black flex items-center gap-1",
+        key ? "bg-sky-500/15 border-sky-400/40 text-sky-300" : "border-white/10 text-white/35 hover:text-white")}>
+      {key ? <BookmarkCheck className="w-3 h-3" /> : <BookmarkPlus className="w-3 h-3" />}{key ? "متابَعة" : "متابعة"}
+    </button>
   );
 }
 

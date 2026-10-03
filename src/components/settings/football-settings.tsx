@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Search, Plus, X, Loader2, Star, Trophy, Tv, Pencil, Link2 } from "lucide-react";
+import { Search, Plus, X, Loader2, Star, Trophy, Tv, Pencil, Link2, Layers, BookmarkCheck } from "lucide-react";
 import { useMediaStore, type FavoriteTeam } from "@/lib/store";
 import { useLiveMatchesStore } from "@/lib/live-matches";
 import type { TopMatch } from "@/lib/match-core";
@@ -21,6 +21,7 @@ export function FootballSettings() {
     <div className="grid gap-8 lg:grid-cols-2">
       <FavoriteTeamsSection />
       <LeagueChannelsSection />
+      <FollowedLeaguesSection />
     </div>
   );
 }
@@ -28,6 +29,7 @@ export function FootballSettings() {
 function FavoriteTeamsSection() {
   const teams = useMediaStore(s => s.favoriteTeams) || [];
   const toggle = useMediaStore(s => s.toggleFavoriteTeam);
+  const setIsland = useMediaStore(s => s.setFavoriteTeamIsland);
   const syncMasterBin = useMediaStore(s => s.syncMasterBin);
   const [q, setQ] = useState("");
   const [hits, setHits] = useState<TeamHit[]>([]);
@@ -110,6 +112,13 @@ function FavoriteTeamsSection() {
           <span key={`${t.id}-${t.name}`} className="flex items-center gap-2 h-11 pr-2 pl-1.5 rounded-full bg-white/5 border border-white/10">
             {t.logo ? <img src={t.logo} alt="" className="w-7 h-7 object-contain" /> : <Trophy className="w-5 h-5 text-white/20" />}
             <span className="text-sm font-black text-white" dir="auto">{t.name}</span>
+            {/* island switch: off = its matches stay on the matches page only */}
+            <button onClick={() => setIsland(t.name, t.island === false)} title={t.island === false ? "الجزيرة العائمة: مخفي (اضغط للإظهار)" : "الجزيرة العائمة: ظاهر (اضغط للإخفاء)"}
+              data-nav-id={`fav-team-island-${i}`}
+              className={cn("focusable no-focus-scale h-8 px-2.5 rounded-full border text-[11px] font-black flex items-center gap-1",
+                t.island === false ? "bg-white/5 border-white/10 text-white/35" : "bg-emerald-500/15 border-emerald-400/40 text-emerald-300")}>
+              <Layers className="w-3.5 h-3.5" /> {t.island === false ? "المباريات فقط" : "الجزيرة"}
+            </button>
             <button onClick={() => flip(t)} title="إزالة" data-nav-id={`fav-team-del-${i}`} className="focusable no-focus-scale w-8 h-8 rounded-full hover:bg-red-500/20 text-white/40 hover:text-red-300 flex items-center justify-center">
               <X className="w-4 h-4" />
             </button>
@@ -210,6 +219,52 @@ function LeagueChannelsSection() {
         ))}
       </div>
       {editing && <LeagueChannelsEditor league={editing} onClose={() => setEditing(null)} />}
+    </section>
+  );
+}
+
+/** Followed competitions: every match listed on the matches page, without counting as favourites. */
+function FollowedLeaguesSection() {
+  const followed = useMediaStore(s => s.followedLeagues) || [];
+  const toggle = useMediaStore(s => s.toggleFollowLeague);
+  const known = useKnownLeagues();
+  const [name, setName] = useState("");
+  const [country, setCountry] = useState("");
+  const pick = (v: string) => { setName(v); const l = known.find(x => x.name === v); if (l?.country) setCountry(l.country); };
+  const add = () => {
+    const n = name.trim();
+    if (!n) return;
+    const key = leagueKey({ id: "", name: n, country: country.trim() || undefined });
+    if (!followed.includes(key)) toggle(key);
+    setName(""); setCountry("");
+  };
+  const title = (x: string) => x.replace(/(^|\s)([a-z])/g, (_, a, c) => a + c.toUpperCase());
+  return (
+    <section className={cn(box, "lg:col-span-2")}>
+      <h2 className="text-2xl font-black text-white flex items-center gap-3"><BookmarkCheck className="w-7 h-7 text-sky-400" /> البطولات المتابعة</h2>
+      <p className="text-sm text-white/40 font-bold">كل مبارياتها تظهر في صفحة المباريات، دون اعتبارها مفضلة (لا جرس ولا جزيرة عائمة). أو اضغط «متابعة» بجانب اسم البطولة في كرت المباراة</p>
+      <form onSubmit={e => { e.preventDefault(); add(); }} className="flex flex-wrap gap-2">
+        <input value={name} onChange={e => pick(e.target.value)} list="known-leagues-follow" placeholder="اسم البطولة كما يظهر في صفحة المباريات" dir="auto" className={input} data-nav-id="follow-add-name" />
+        <datalist id="known-leagues-follow">{known.map(l => <option key={leagueKey(l)} value={l.name}>{l.country ?? ""}</option>)}</datalist>
+        <input value={country} onChange={e => setCountry(e.target.value)} placeholder="الدولة (اختياري)" dir="auto" className={cn(input, "max-w-[11rem]")} />
+        <button type="submit" disabled={!name.trim()} data-nav-id="follow-add-save" className="focusable no-focus-scale h-12 px-6 rounded-full bg-sky-500 text-black font-black flex items-center gap-2 disabled:opacity-40">
+          <Plus className="w-5 h-5" /> متابعة
+        </button>
+      </form>
+      <div className="flex flex-wrap gap-2">
+        {followed.length === 0 && <p className="text-sm text-white/30 font-bold">لا توجد بطولات متابعة</p>}
+        {followed.map((k, i) => {
+          const j = k.indexOf("|");
+          return (
+            <span key={k} className="flex items-center gap-2 h-11 pr-4 pl-1.5 rounded-full bg-sky-500/10 border border-sky-400/30">
+              <span className="text-sm font-black text-white" dir="auto">{title(k.slice(j + 1))}{k.slice(0, j) && <span className="text-white/40 font-bold"> · {title(k.slice(0, j))}</span>}</span>
+              <button onClick={() => toggle(k)} title="إلغاء المتابعة" data-nav-id={`follow-del-${i}`} className="focusable no-focus-scale w-8 h-8 rounded-full hover:bg-red-500/20 text-white/40 hover:text-red-300 flex items-center justify-center">
+                <X className="w-4 h-4" />
+              </button>
+            </span>
+          );
+        })}
+      </div>
     </section>
   );
 }

@@ -4,7 +4,7 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useLiveMatches } from "@/lib/live-matches";
 import { sameTeam, matchHideKey } from "@/lib/match-core";
-import { favSpecString } from "@/lib/match-core";
+import { favSpecString, favoriteOf } from "@/lib/match-core";
 import { useMediaStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { X, Eye, EyeOff, Bell, Clock, Timer, Check, Trophy, Play, ChevronDown, ChevronUp, Zap, Cloud, Bookmark } from "lucide-react";
@@ -181,6 +181,9 @@ export function LiveMatchIsland() {
         });
       }
     }
+    // a favourite whose island switch is off shows on the matches page only
+    const islandTeams = (favoriteTeams || []).filter(t => t?.name && t.island !== false).map(t => ({ name: t.name, country: t.country }));
+    const onIsland = (m: NonNullable<typeof liveFeed>["matches"][number]) => islandTeams.some(f => favoriteOf(f, m));
     // Today's matches of my favourite teams and the matches I pinned, with live scores
     const nowSecs = Math.floor(now.getTime() / 1000);
     const seenLive = new Set<string>();
@@ -193,7 +196,7 @@ export function LiveMatchIsland() {
       // hiding works by a key built from the football day + both teams, so it survives a change of data source
       // and (being in skippedMatchIds, synced with the master bin) applies on every device
       // the eye on the match card hides it from the island even when pinned
-      if ((!m.favorite && !isPinned) || skippedMatchIds.includes(matchHideKey(m)) || skippedMatchIds.includes(`del:${matchHideKey(m)}`) || skippedMatchIds.includes(id)) continue;
+      if ((!(m.favorite && onIsland(m)) && !isPinned) || skippedMatchIds.includes(matchHideKey(m)) || skippedMatchIds.includes(`del:${matchHideKey(m)}`) || skippedMatchIds.includes(id)) continue;
       if (m.status === "finished" && nowSecs - m.timestamp > 3.5 * 3600) continue; // drop long-finished games
       const started = m.status !== "upcoming";
       // never show the same fixture twice: a live island replaces an older reminder-based match island
@@ -219,7 +222,7 @@ export function LiveMatchIsland() {
 
     // favourite teams' live matches first, then by time
     return list.sort((a, b) => Number(!!b.favLive) - Number(!!a.favLive) || Math.abs(a.diff) - Math.abs(b.diff));
-  }, [now, prayerTimes, prayerSettings, reminders, generalAzkar, skippedReminderIds, skippedMatchIds, showSyncIsland, isInitialLoading, liveFeed, pinned]);
+  }, [now, prayerTimes, prayerSettings, reminders, generalAzkar, skippedReminderIds, skippedMatchIds, showSyncIsland, isInitialLoading, liveFeed, pinned, favoriteTeams]);
 
   const handleAction = async (id: string, type: 'match' | 'reminder' | 'sync' | 'azkar') => {
     if (type === 'match') {

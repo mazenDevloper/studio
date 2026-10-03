@@ -71,9 +71,11 @@ export const useLiveMatchesStore = create<LiveMatchesState>((set, get) => ({
       if (!json || json.error || !Array.isArray(json.matches)) {
         const q = new URLSearchParams({ limit: String(MATCHES_LIMIT) });
         // "pin:" entries are pinned matches' teams: listed, but not favourites
-        const fav = teams.filter(t => !t.startsWith("pin:")), pins = teams.filter(t => t.startsWith("pin:")).map(t => t.slice(4));
+        // "lg:" entries are followed competitions: listed, not favourites
+        const fav = teams.filter(t => !t.startsWith("pin:") && !t.startsWith("lg:")), pins = teams.filter(t => t.startsWith("pin:")).map(t => t.slice(4));
         if (fav.length) q.set("teams", fav.join("|"));
         if (pins.length) q.set("pins", pins.join("|"));
+        for (const t of teams) if (t.startsWith("lg:")) q.append("follow", t.slice(3));
         const res = await fetch(`/api/matches?${q}`, { cache: "no-store" });
         json = await res.json();
         if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
@@ -105,7 +107,8 @@ export function useLiveMatches(teams?: string[]) {
   const state = useLiveMatchesStore();
   // both sides of every pinned match (cloud-synced) are always included - as "pin:" entries, not favourites
   const pins = useMediaStore(s => s.pinnedMatches) || [];
-  const allTeams = teams ? Array.from(new Set([...teams, ...pins.flatMap(p => [`pin:${p.home}`, `pin:${p.away}`])])) : undefined;
+  const follow = useMediaStore(s => s.followedLeagues) || [];
+  const allTeams = teams ? Array.from(new Set([...teams, ...pins.flatMap(p => [`pin:${p.home}`, `pin:${p.away}`]), ...follow.map(k => `lg:${k}`)])) : undefined;
   const teamsKey = allTeams?.join("|");
 
   // teams first (same effect order as before), so the first request already carries them
@@ -146,7 +149,9 @@ var s=(JSON.parse(localStorage.getItem('drivecast-sovereign-v143')||'{}')||{}).s
 function add(n){if(n&&t.indexOf(n)<0)t.push(n)}
 (s.favoriteTeams||[]).forEach(function(x){if(x&&x.name)add(x.country?x.name+'~'+x.country:x.name)});
 (s.pinnedMatches||[]).forEach(function(p){if(p){add('pin:'+p.home);add('pin:'+p.away)}});
-var f=t.filter(function(x){return x.indexOf('pin:')!==0}),pn=t.filter(function(x){return x.indexOf('pin:')===0}).map(function(x){return x.slice(4)});
+(s.followedLeagues||[]).forEach(function(k){add('lg:'+k)});
+var f=t.filter(function(x){return x.indexOf('pin:')!==0&&x.indexOf('lg:')!==0}),pn=t.filter(function(x){return x.indexOf('pin:')===0}).map(function(x){return x.slice(4)});
 var q='limit=${MATCHES_LIMIT}'+(f.length?'&teams='+encodeURIComponent(f.join('|')):'')+(pn.length?'&pins='+encodeURIComponent(pn.join('|')):'');
+t.forEach(function(x){if(x.indexOf('lg:')===0)q+='&follow='+encodeURIComponent(x.slice(3))});
 window.__matchesPrefetch={teams:t,at:Date.now(),p:fetch('/api/matches?'+q,{cache:'no-store'}).then(function(r){return r.ok?r.json():null}).catch(function(){return null})};
 }catch(e){}})();`;

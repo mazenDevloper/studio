@@ -31,7 +31,8 @@ export function NativeIslandBridge() {
 
   const config = useMemo(() => {
     if (!native) return null;
-    const teams = (favoriteTeams || []).filter(t => t?.name).map(favSpecString);
+    // only the teams whose island switch is on: the native island shows the matches flagged favourite
+    const teams = (favoriteTeams || []).filter(t => t?.name && t.island !== false).map(favSpecString);
     const pins = (pinned || []).flatMap(p => [p.home, p.away]);
     const q = new URLSearchParams({ limit: String(MATCHES_LIMIT) });
     if (teams.length) q.set("teams", teams.join("|"));

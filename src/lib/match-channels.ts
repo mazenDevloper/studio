@@ -127,6 +127,15 @@ export function findLeagueOverride(overrides: Record<string, string[]> | undefin
   return null;
 }
 
+/** Does a saved league key ("country|name", e.g. from "follow" or the channel links) mean this league? */
+export function leagueKeyMatches(key: string, league: TopMatch["league"]): boolean {
+  if (key === leagueKey(league)) return true;
+  const i = key.indexOf("|");
+  const kc = normLeague(key.slice(0, i)), kn = normLeague(key.slice(i + 1));
+  const name = normLeague(String(league.name ?? "")), country = normLeague(String(league.country ?? ""));
+  return !!kn && kn === name && (!kc || !country || kc === country);
+}
+
 /** The league's default channels before any user change (shown in the editor). */
 export function defaultLeagueChannels(league: TopMatch["league"]): string[] {
   const rules = leagueRules(league);
