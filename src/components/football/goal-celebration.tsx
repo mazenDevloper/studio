@@ -152,12 +152,14 @@ export function GoalCelebration() {
   const minute = scorer?.minute || (m.elapsed ? `${m.elapsed}'` : "");
 
   return (
-    <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100005] pointer-events-none" dir="ltr">
+    // a full-width frame that clips at the screen edges: nothing in the animation can ever widen the page (Safari
+    // doesn't clip moving / scaled children of a rounded overflow-hidden box, so the card also gets its own layer)
+    <div className="fixed top-0 inset-x-0 pt-6 pb-16 overflow-hidden z-[100005] pointer-events-none flex justify-center" dir="ltr">
       <div
         ref={islandRef}
         key={current.key}
         onClick={() => setQueue(q => q.slice(1))}
-        className="pointer-events-auto relative overflow-hidden mx-auto bg-[#1a0020] border-2 border-[#00ff85]/70 shadow-[0_0_60px_rgba(0,255,133,0.35)]"
+        className="pointer-events-auto relative overflow-hidden shrink-0 bg-[#1a0020] border-2 border-[#00ff85]/70 shadow-[0_0_60px_rgba(0,255,133,0.35)] [isolation:isolate] [transform:translateZ(0)] [-webkit-mask-image:-webkit-radial-gradient(white,black)]"
         style={{ width: 220, height: 64, borderRadius: 32 }}
       >
         <div className="absolute inset-0 bg-gradient-to-br from-[#37003c] via-[#24002a] to-[#0b0010]" />

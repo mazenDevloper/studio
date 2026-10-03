@@ -148,7 +148,11 @@ const COUNTRY_GATED: [RegExp, RegExp][] = [
   [/la ?liga|primera divisi[oó]n|copa del rey/i, /spain|espa/i],
 ];
 
+/** Second / third tiers ("LaLiga 2", "Serie B / C", "2. Bundesliga", "Ligue 2"...): never "important" by name. */
+const LOWER_TIER = /laliga ?2|hypermotion|segunda|serie [bc]\b|2\. ?bundesliga|3\. ?liga|ligue 2|\bliga 2\b|primera federaci|segunda federaci|tercera|league (one|two)\b|second division|third division|\bnational league\b|super league 2|premier league 2|\b(ii|b|c)$/i;
+
 export function leagueWeightByName(name: string, country?: string): number {
+  if (LOWER_TIER.test(name.trim())) return 0;
   if (country) for (const [re, home] of COUNTRY_GATED) if (re.test(name.trim()) && !home.test(country)) return 0;
   for (const [re, w] of NAME_WEIGHTS) if (re.test(name)) return w;
   return 0;
@@ -192,7 +196,7 @@ export function teamKey(name: string): string {
 }
 const DIFFERENT_SIDE = new Set(["tula", "montevideo", "castilla", "b", "ii", "iii", "u15", "u16", "u17", "u18", "u19", "u20", "u21", "u23",
   "women", "w", "femeni", "femenino", "feminin", "feminine", "fem", "ladies", "reserves", "reserve", "res", "youth", "academy", "atletic",
-  "jong", "juvenil", "primavera", "sub", "2"]);
+  "jong", "juvenil", "primavera", "sub", "2", "c", "futuro", "next", "gen", "nextgen", "promesas", "mestalla"]);
 export function sameTeam(a: string, b: string): boolean {
   const x = teamKey(a), y = teamKey(b);
   if (!x || !y) return false;
@@ -279,7 +283,7 @@ const FAMOUS_CLUBS: Record<string, string> = Object.fromEntries(Object.entries({
   england: "liverpool|arsenal|chelsea|tottenham|manchester united|manchester city|newcastle united|aston villa|west ham united|everton",
   spain: "barcelona|real madrid|atletico madrid|sevilla|valencia|villarreal|real betis|real sociedad|athletic bilbao",
   italy: "juventus|inter|milan|ac milan|napoli|roma|lazio|atalanta|fiorentina",
-  germany: "bayern munich|bayern munchen|borussia dortmund|bayer leverkusen|rb leipzig|eintracht frankfurt",
+  germany: "bayern|dortmund|leverkusen|bayern munich|bayern munchen|borussia dortmund|bayer leverkusen|rb leipzig|eintracht frankfurt",
   france: "paris saint germain|psg|marseille|lyon|monaco|lille",
   portugal: "benfica|porto|sporting cp|sporting lisbon|braga",
   netherlands: "ajax|psv|psv eindhoven|feyenoord",
@@ -308,15 +312,21 @@ const sameCountry = (a: string, b: string) => {
 
 /** Is this match one of the favourite team's (same club, same country when that is known)? */
 export function favoriteOf(fav: FavSpec, m: Pick<TopMatch, "home" | "away" | "league">): boolean {
-  if (!sameTeam(fav.name, m.home.name) && !sameTeam(fav.name, m.away.name)) return false;
+  const side = [m.home.name, m.away.name].find(n => sameTeam(fav.name, n));
+  if (!side) return false;
   const want = fav.country || FAMOUS_CLUBS[teamKey(fav.name)] || FAMOUS_CLUBS[normalizeTeamName(fav.name)];
   const got = m.league.country || SLUG_COUNTRIES[String(m.league.id ?? "").split(".")[0]];
+  // a longer name ("Boca Juniors de Cali") is only trusted when the league's country can confirm it
+  if (teamKey(side) !== teamKey(fav.name) && !got) return false;
   if (!want || !got || INTERNATIONAL.test(got) || INTERNATIONAL.test(m.league.name)) return true;
   return sameCountry(want, got);
 }
 
-/** Youth / reserve matches (U18, U21, Primavera, reserves...): never listed. */
+/** Youth / reserve / women's matches (U18, U21, Primavera, reserves, (W)...): never listed. */
+const WOMEN_LEAGUE = /women|female|feminin|femenin|ladies|\bwsl\b|nwsl|frauen|\bliga f\b|damallsvenskan|\(w\)/i;
+const WOMEN_TEAM = /\(w\)|\bw$|\bwomen\b|\bfem(enino|enina|inine|eni)?\b|\bladies\b|frauen|damen/i;
 const YOUTH = /\b(u-? ?(1[3-9]|2[0-3])|under[- ]?(1[3-9]|2[0-3])|sub-?(1[3-9]|2[0-3])|youth|juvenil|primavera|reserves?|academy|jong)\b/i;
 export function isYouthMatch(m: Pick<TopMatch, "home" | "away" | "league">): boolean {
-  return YOUTH.test(m.league.name) || YOUTH.test(m.home.name) || YOUTH.test(m.away.name);
+  return YOUTH.test(m.league.name) || YOUTH.test(m.home.name) || YOUTH.test(m.away.name)
+    || WOMEN_LEAGUE.test(m.league.name) || WOMEN_TEAM.test(m.home.name) || WOMEN_TEAM.test(m.away.name);
 }
