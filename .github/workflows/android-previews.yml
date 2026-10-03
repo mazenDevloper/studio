@@ -74,7 +74,7 @@ jobs:
             adb install -r -g app/build/outputs/apk/debug/app-debug.apk
             adb install -r -g app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
             adb shell am instrument -w -e class com.drivecast.sovereign.PreviewRender com.drivecast.sovereign.test/androidx.test.runner.AndroidJUnitRunner > instrument.txt 2>&1 || true
-            mkdir -p previews && adb pull /sdcard/Android/data/com.drivecast.sovereign/files/previews/. previews/ || true
+            adb exec-out run-as com.drivecast.sovereign tar c files/previews > previews.tar || true
             adb logcat -d -t 400 AndroidRuntime:E TestRunner:V *:S > logcat.txt 2>&1 || true
 
       - name: Publish the previews
@@ -82,10 +82,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         working-directory: android-app/android
         run: |
-          ls -la previews || true
+          mkdir -p previews && (tar xf previews.tar -C previews || true)
+          ls -laR previews || true
           cat instrument.txt || true
+          FILES=$(find previews -name '*.png' | sort | tr '\n' ' ')
+          for f in instrument.txt logcat.txt; do [ -s "$f" ] && FILES="$FILES $f"; done
           gh release delete android-preview-shots --yes --cleanup-tag || true
-          gh release create android-preview-shots previews/*.png instrument.txt logcat.txt \
+          gh release create android-preview-shots $FILES \
             --target "$GITHUB_SHA" --prerelease \
             --title "Widget previews (${GITHUB_REF_NAME} @ ${GITHUB_SHA::7})" \
             --notes "Native widgets / islands drawn on an emulator with today's matches."

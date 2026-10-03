@@ -36,7 +36,7 @@ public class PreviewRender {
     @Test
     public void renderAll() throws Exception {
         ctx = InstrumentationRegistry.getInstrumentation().getTargetContext();
-        out = new File(ctx.getExternalFilesDir(null), "previews");
+        out = new File(ctx.getFilesDir(), "previews");
         //noinspection ResultOfMethodCallIgnored
         out.mkdirs();
         // the real font: start the downloads and wait for them
