@@ -77,6 +77,10 @@ public final class Widgets {
 
     public static class ChannelsWidget extends Base { }
 
+    public static class RecitersWidget extends Base { }
+
+    public static class SearchWidget extends Base { }
+
     public static class MapWidget extends Base { }
 
     public static class DayWidget extends Base { }
@@ -148,7 +152,9 @@ public final class Widgets {
         render(ctx, m, MoonWidget.class, 140, 140, Widgets::moon);
         render(ctx, m, ManuscriptWidget.class, 250, 140, Widgets::manuscript);
         render(ctx, m, FoldersWidget.class, 250, 180, Widgets::folders);
-        render(ctx, m, ChannelsWidget.class, 250, 180, Widgets::channels);
+        renderBrowse(ctx, m, ChannelsWidget.class);
+        renderBrowse(ctx, m, RecitersWidget.class);
+        renderBrowse(ctx, m, SearchWidget.class);
         render(ctx, m, MapWidget.class, 250, 180, Widgets::map);
         render(ctx, m, DayWidget.class, 300, 170, Widgets::day);
     }
@@ -168,6 +174,25 @@ public final class Widgets {
                 if (provider == FoldersWidget.class || provider == ChannelsWidget.class) m.notifyAppWidgetViewDataChanged(id, R.id.folders_grid);
             } catch (Throwable ignored) {
                 // never let one widget (or a big picture) stop the others
+            }
+        }
+    }
+
+    /** The browsing widgets (subscriptions, reciters, search): each keeps its own screen. */
+    private static void renderBrowse(Context ctx, AppWidgetManager m, Class<?> provider) {
+        int[] ids;
+        try {
+            ids = m.getAppWidgetIds(new ComponentName(ctx, provider));
+        } catch (Exception e) {
+            return;
+        }
+        if (ids == null) return;
+        for (int id : ids) {
+            try {
+                int[] s = sizePx(ctx, m, id, 250, 180);
+                m.updateAppWidget(id, MediaBrowser.build(ctx, id, s[0], s[1], s[2]));
+                m.notifyAppWidgetViewDataChanged(id, R.id.folders_grid);
+            } catch (Throwable ignored) {
             }
         }
     }

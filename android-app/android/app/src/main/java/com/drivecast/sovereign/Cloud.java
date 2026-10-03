@@ -33,6 +33,7 @@ final class Cloud {
     private static final String FONTS = "6a573cdbf5f4af5e29915034";
     private static final String CHANNELS = "68ef1b3dd0ea881f40a38bd1";
     private static final String PRAYERS = "69a00f6eae596e708f4b7291";
+    private static final String RECITERS = "6909c1cd43b1c97be997b522";
     /** the board's background when the cloud settings don't name one (the site's default) */
     static final String DEFAULT_BG = "https://www.image2url.com/r2/default/images/1782382707952-d99447c6-bc60-475d-9406-5fd2ef320bd5.png";
 
@@ -71,6 +72,19 @@ final class Cloud {
                             .put("image", c.optString("image")).put("starred", c.optBoolean("starred")));
                 }
                 e.putString("cloud_channels", out.toString());
+            }
+        } catch (Exception ignored) {
+        }
+        try {
+            JSONArray r = list(fetch(RECITERS), "reciters");
+            if (r != null) {
+                // most played first, like the site
+                java.util.List<JSONObject> l = new java.util.ArrayList<>();
+                for (int i = 0; i < r.length(); i++) if (r.optJSONObject(i) != null) l.add(r.optJSONObject(i));
+                java.util.Collections.sort(l, (a, b) -> b.optInt("clickschannel") - a.optInt("clickschannel"));
+                JSONArray out = new JSONArray();
+                for (JSONObject c : l) out.put(new JSONObject().put("id", c.optString("channelid")).put("name", c.optString("name", c.optString("channeltitle"))).put("image", c.optString("image")));
+                e.putString("cloud_reciters", out.toString());
             }
         } catch (Exception ignored) {
         }

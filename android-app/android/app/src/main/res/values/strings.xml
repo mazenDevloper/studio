@@ -29,6 +29,11 @@
     <string name="widget_map_label">DriveCast · الرادار</string>
     <string name="widget_day_desc">اليوم بخط ثمانية ومد الكشيدة، التاريخ الهجري، الوقت وعدّاد الصلاة القادمة</string>
     <string name="widget_day_label">DriveCast · اليوم</string>
+    <string name="widget_browse_back">رجوع</string>
+    <string name="widget_reciters_desc">اختر القارئ ثم السورة وتظهر التلاوات داخل الودجت</string>
+    <string name="widget_reciters_label">DriveCast · القرّاء</string>
+    <string name="widget_search_desc">ابحث في الوسائط (كتابة أو صوت) وتظهر النتائج داخل الودجت</string>
+    <string name="widget_search_label">DriveCast · البحث</string>
     <string name="goal_channel">أهداف فرقي</string>
     <string name="shortcut_dashboard">الرئيسية</string>
     <string name="shortcut_matches">المباريات</string>

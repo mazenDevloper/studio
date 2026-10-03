@@ -578,7 +578,7 @@ final class WidgetArt {
     }
 
     /** A most-viewed video card: thumbnail at 60%, title, channel avatar + name, the yellow chip. */
-    static Bitmap videoCard(Context ctx, int w, int h, String title, String channel, Bitmap thumb, Bitmap avatar) {
+    static Bitmap videoCard(Context ctx, int w, int h, String title, String channel, Bitmap thumb, Bitmap avatar, String badgeText) {
         Bitmap b = blank(w, h);
         Canvas c = new Canvas(b);
         float rad = h * 0.16f;
@@ -605,13 +605,22 @@ final class WidgetArt {
         TextPaint chp = Art.text(Fonts.bold(ctx), h * 0.055f, Art.alpha(Art.WHITE, 0.6f));
         chp.setTextAlign(Paint.Align.RIGHT);
         float nameRight = avatar != null ? ax - ar - h * 0.03f : w - pad;
-        String badge = "الأكثر مشاهدة";
-        TextPaint bp = Art.text(Fonts.black(ctx), h * 0.05f, Art.YELLOW);
-        float bw = bp.measureText(badge) + h * 0.06f, bh = h * 0.09f;
-        RectF br = new RectF(pad, ay - bh / 2, pad + bw, ay + bh / 2);
-        Art.fill(c, br, bh * 0.25f, Art.alpha(0xFFEAB308, 0.2f));
-        Art.stroke(c, br, bh * 0.25f, Art.alpha(0xFFEAB308, 0.4f), Math.max(1f, h / 220f));
-        Art.centerText(c, badge, br.centerX(), br.centerY(), bp);
+        RectF br = new RectF(pad, ay, pad, ay);
+        if (badgeText != null) {
+            TextPaint bp = Art.text(Fonts.black(ctx), h * 0.05f, Art.YELLOW);
+            float bw = bp.measureText(badgeText) + h * 0.06f, bh = h * 0.09f;
+            br = new RectF(pad, ay - bh / 2, pad + bw, ay + bh / 2);
+            Art.fill(c, br, bh * 0.25f, Art.alpha(0xFFEAB308, 0.2f));
+            Art.stroke(c, br, bh * 0.25f, Art.alpha(0xFFEAB308, 0.4f), Math.max(1f, h / 220f));
+            Art.centerText(c, badgeText, br.centerX(), br.centerY(), bp);
+        } else {
+            // play mark
+            Paint pm = new Paint(Paint.ANTI_ALIAS_FLAG);
+            pm.setColor(Art.alpha(Art.RED, 0.9f));
+            c.drawCircle(pad + h * 0.06f, ay, h * 0.06f, pm);
+            Art.playIcon(c, pad + h * 0.065f, ay, h * 0.028f, Art.WHITE, false);
+            br = new RectF(pad, ay, pad + h * 0.12f, ay);
+        }
         c.drawText(Art.ellipsize(chp, channel == null ? "" : channel, nameRight - br.right - h * 0.05f), nameRight, Art.baseline(chp, ay), chp);
         return b;
     }
@@ -754,6 +763,79 @@ final class WidgetArt {
         int w = Math.max(1, Math.round(t.measureText(name) + h * 0.3f));
         Bitmap b = blank(w, h);
         Art.centerText(new Canvas(b), name, w / 2f, h / 2f, t);
+        return b;
+    }
+
+    // ============================================================================================ browsing
+
+    /** Header of a browsing widget: icon square (red play / emerald book / blue magnifier) + the screen's title. */
+    static Bitmap browseHeader(Context ctx, int w, int h, String title, int count, String root) {
+        Bitmap b = blank(w, h);
+        Canvas c = new Canvas(b);
+        float icon = h * 0.8f;
+        int color = "reciters".equals(root) ? Art.EMERALD : "search".equals(root) ? Art.BLUE : Art.RED;
+        RectF ib = new RectF(w - icon - h * 0.1f, (h - icon) / 2, w - h * 0.1f, (h + icon) / 2);
+        Art.glow(c, ib, icon * 0.3f, Art.alpha(color, 0.5f), icon * 0.25f);
+        Art.fill(c, ib, icon * 0.3f, color);
+        if ("reciters".equals(root)) {
+            TextPaint ip = Art.text(Typeface.DEFAULT, icon * 0.5f, Art.WHITE);
+            Art.centerText(c, "📖", ib.centerX(), ib.centerY(), ip);
+        } else {
+            Art.playIcon(c, ib.centerX() + icon * 0.03f, ib.centerY(), icon * 0.2f, Art.WHITE, false);
+        }
+        TextPaint t = Art.text(Fonts.black(ctx), h * 0.44f, Art.WHITE);
+        t.setTextAlign(Paint.Align.RIGHT);
+        float maxW = ib.left - h * 0.3f - h * 0.9f;
+        c.drawText(Art.ellipsize(t, title, maxW), ib.left - h * 0.3f, Art.baseline(t, h / 2f), t);
+        if (count > 0) {
+            TextPaint n = Art.text(Fonts.bold(ctx), h * 0.3f, Art.alpha(Art.WHITE, 0.3f));
+            n.setTextAlign(Paint.Align.LEFT);
+            c.drawText(String.valueOf(count), h * 0.2f, Art.baseline(n, h / 2f), n);
+        }
+        return b;
+    }
+
+    /** The back button (an arrow pointing right: back in RTL). */
+    static Bitmap backButton(Context ctx, int w, int h) {
+        Bitmap b = blank(w, h);
+        Canvas c = new Canvas(b);
+        float r = Math.min(w, h) * 0.46f;
+        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        p.setColor(Art.alpha(Art.WHITE, 0.12f));
+        c.drawCircle(w / 2f, h / 2f, r, p);
+        p.setColor(Art.WHITE);
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeWidth(r * 0.16f);
+        p.setStrokeCap(Paint.Cap.ROUND);
+        p.setStrokeJoin(Paint.Join.ROUND);
+        float cx = w / 2f, cy = h / 2f, a = r * 0.42f;
+        c.drawLine(cx - a, cy, cx + a, cy, p);
+        android.graphics.Path head = new android.graphics.Path();
+        head.moveTo(cx + a * 0.1f, cy - a * 0.8f);
+        head.lineTo(cx + a, cy);
+        head.lineTo(cx + a * 0.1f, cy + a * 0.8f);
+        c.drawPath(head, p);
+        return b;
+    }
+
+    /** A surah: its number in an emerald circle and its name. */
+    static Bitmap surahTile(Context ctx, int w, int h, String number, String name) {
+        Bitmap b = blank(w, h);
+        Canvas c = new Canvas(b);
+        RectF r = new RectF(0, 0, w, h);
+        Art.fill(c, r, h * 0.22f, Art.alpha(Art.WHITE, 0.05f));
+        Art.stroke(c, r, h * 0.22f, Art.alpha(Art.EMERALD, 0.18f), Math.max(1f, h / 80f));
+        float cr = h * 0.2f, cx = w - h * 0.14f - cr, cy = h / 2f;
+        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        p.setColor(Art.alpha(Art.EMERALD, 0.18f));
+        c.drawCircle(cx, cy, cr, p);
+        TextPaint n = Art.text(Fonts.black(ctx), cr * 0.9f, Art.EMERALD);
+        Art.centerText(c, Art.arabicDigits(number), cx, cy, n);
+        TextPaint t = Art.text(Fonts.black(ctx), h * 0.26f, Art.WHITE);
+        float avail = cx - cr - h * 0.12f - h * 0.1f;
+        Art.fit(t, name, avail, h * 0.15f);
+        t.setTextAlign(Paint.Align.RIGHT);
+        c.drawText(name, cx - cr - h * 0.12f, Art.baseline(t, cy), t);
         return b;
     }
 }

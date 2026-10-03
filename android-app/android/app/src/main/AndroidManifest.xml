@@ -170,6 +170,35 @@
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_day_info" />
         </receiver>
 
+        <receiver
+            android:name=".Widgets$RecitersWidget"
+            android:exported="false"
+            android:label="@string/widget_reciters_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_reciters_info" />
+        </receiver>
+
+        <receiver
+            android:name=".Widgets$SearchWidget"
+            android:exported="false"
+            android:label="@string/widget_search_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_search_info" />
+        </receiver>
+
+        <!-- the search box of the browsing widgets (a small dialog with the keyboard / voice) -->
+        <activity
+            android:name=".SearchActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:taskAffinity=".search"
+            android:theme="@android:style/Theme.DeviceDefault.Dialog.NoActionBar"
+            android:windowSoftInputMode="stateAlwaysVisible|adjustResize" />
+
         <!-- the folders widget's scrolling grid of cards -->
         <service
             android:name=".FoldersWidgetService"

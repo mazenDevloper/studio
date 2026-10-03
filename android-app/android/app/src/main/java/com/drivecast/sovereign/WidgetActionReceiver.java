@@ -27,6 +27,11 @@ public class WidgetActionReceiver extends BroadcastReceiver {
     public void onReceive(Context ctx, Intent intent) {
         String a = intent.getAction();
         if (a == null) return;
+        if (MediaBrowser.BROWSE.equals(a) || MediaBrowser.BACK.equals(a)) {
+            // inside a browsing widget: open a channel / reciter / surah, go back, or play a video
+            MediaBrowser.onTap(ctx, intent, goAsync());
+            return;
+        }
         if (a.startsWith("com.drivecast.MEDIA_")) {
             String cmd = MEDIA_TOGGLE.equals(a) ? "toggle" : MEDIA_NEXT.equals(a) ? "next" : "prev";
             if (NativeIslandPlugin.isPageAlive()) {
