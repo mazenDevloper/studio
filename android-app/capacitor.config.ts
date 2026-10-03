@@ -14,6 +14,9 @@ const config: CapacitorConfig = {
     url: APP_URL,
     cleartext: true, // IPTV streams on plain http
     androidScheme: "https",
+    // stay inside the app for every page (Vercel sign-in / redirects included): a navigation to another host used
+    // to open an external browser tab with its address bar, where the native permissions don't exist
+    allowNavigation: ["*"],
   },
   android: {
     // not fullscreen: the status bar stays visible and the page starts below it
