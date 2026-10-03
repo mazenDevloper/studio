@@ -244,7 +244,13 @@ export function LiveMatchIsland() {
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`; 
   };
   
-  const GlassNumber = ({ text, size = '5.6rem', id, colorClass }: { text: string, size?: string, id: string, colorClass?: string }) => (
+  // Arabic words ("الآن", "منجز") as HTML: iPhone draws Arabic inside SVG letter by letter, reversed
+  const GlassNumber = ({ text, size = '5.6rem', id, colorClass }: { text: string, size?: string, id: string, colorClass?: string }) => /[\u0600-\u06ff]/.test(text) ? (
+    <div className="relative w-full h-full flex items-center justify-center p-0 m-0 overflow-visible" dir="rtl">
+      <span className={cn("font-black leading-none whitespace-nowrap", colorClass ?? "bg-gradient-to-br from-white/95 to-white/20 bg-clip-text text-transparent")}
+        style={{ fontSize: `calc(${size} * 0.32)` }}>{text}</span>
+    </div>
+  ) : (
     <div className="relative w-full h-full flex items-center justify-center p-0 m-0 overflow-visible">
       <svg className="w-full h-full overflow-visible" viewBox="0 0 160 80">
         <defs><linearGradient id={`textFill-${id}`} x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="rgba(255,255,255,0.95)" /><stop offset="100%" stopColor="rgba(255,255,255,0.15)" /></linearGradient></defs>

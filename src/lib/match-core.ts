@@ -299,7 +299,8 @@ const FAMOUS_CLUBS: Record<string, string> = Object.fromEntries(Object.entries({
 const SLUG_COUNTRIES: Record<string, string> = {
   eng: "england", esp: "spain", ita: "italy", ger: "germany", fra: "france", por: "portugal", ned: "netherlands", bel: "belgium",
   sco: "scotland", tur: "turkey", ksa: "saudi arabia", egy: "egypt", uae: "united arab emirates", qat: "qatar", uru: "uruguay",
-  ecu: "ecuador", arg: "argentina", bra: "brazil", mex: "mexico", usa: "usa", col: "colombia", chi: "chile",
+  ecu: "ecuador", arg: "argentina", bra: "brazil", mex: "mexico", usa: "usa", col: "colombia", chi: "chile", per: "peru",
+  par: "paraguay", bol: "bolivia", ven: "venezuela",
 };
 /** Competitions between countries / continents: any club can play there. */
 const INTERNATIONAL = /world|europe|international|intl|asia|africa|america|friendl|uefa|fifa|afc|caf|concacaf|conmebol|gulf|arab|champions|cup winners/i;
@@ -314,6 +315,7 @@ const sameCountry = (a: string, b: string) => {
 export function favoriteOf(fav: FavSpec, m: Pick<TopMatch, "home" | "away" | "league">): boolean {
   const side = [m.home.name, m.away.name].find(n => sameTeam(fav.name, n));
   if (!side) return false;
+  if (isExcludedLeague(m.league) === "lower-tier") return false;
   const want = fav.country || FAMOUS_CLUBS[teamKey(fav.name)] || FAMOUS_CLUBS[normalizeTeamName(fav.name)];
   const got = m.league.country || SLUG_COUNTRIES[String(m.league.id ?? "").split(".")[0]];
   // a longer name ("Boca Juniors de Cali") is only trusted when the league's country can confirm it
@@ -329,4 +331,36 @@ const YOUTH = /\b(u-? ?(1[3-9]|2[0-3])|under[- ]?(1[3-9]|2[0-3])|sub-?(1[3-9]|2[
 export function isYouthMatch(m: Pick<TopMatch, "home" | "away" | "league">): boolean {
   return YOUTH.test(m.league.name) || YOUTH.test(m.home.name) || YOUTH.test(m.away.name)
     || WOMEN_LEAGUE.test(m.league.name) || WOMEN_TEAM.test(m.home.name) || WOMEN_TEAM.test(m.away.name);
+}
+
+// ---- leagues that are never fetched into the lists ----
+
+/** Every second / third tier (any country, the Saudi Yelo league included). */
+const ANY_LOWER_TIER = /laliga ?2|hypermotion|segunda|serie [b-d]\b|2\. ?bundesliga|3\. ?liga|ligue [23]\b|\bliga [23]\b|primera federaci|segunda federaci|tercera|league (one|two)\b|second division|third division|\bnational league\b|super league 2|premier league 2|\bprimera [bc]\b|\bb nacional|federal a|yelo|first division league|championnat national|eerste divisie|challenger pro league|\bdivision 2\b|\b(ii|b|c)$/i;
+
+const AMERICAS = /united states|\busa\b|canada|mexico|colombia|peru|chile|uruguay|ecuador|paraguay|bolivia|venezuela|costa rica|honduras|guatemala|el salvador|panama|jamaica|haiti|trinidad|brazil|brasil|argentin|north america|south america|concacaf|conmebol/i;
+const AMERICAS_SLUGS = new Set(["usa", "can", "mex", "col", "per", "chi", "uru", "ecu", "par", "bol", "ven", "crc", "hon", "gua", "slv", "pan", "jam", "bra", "arg", "concacaf", "conmebol"]);
+const AMERICAS_NAMES = /liga mx|\bmls\b|major league soccer|usl|nwsl|canadian premier|brasileir|libertadores|sudamericana|recopa|concacaf|copa argentina|copa do brasil|campeonato (paulista|carioca|mineiro|gaucho)|liga betplay|primera a\b|liga 1 (peru|te apuesto)|liga auf|liga pro\b|torneo (apertura|clausura)/i;
+
+/** The Americas leagues that stay: MLS, Brazil's Série A and Argentina's top league (two clubs each, see
+ * leagueTopClubs), and the continental cups when one of those clubs plays (americasCupClubs). */
+const AMERICAS_KEPT = (l: TopMatch["league"]) => {
+  const slug = String(l.id ?? "").toLowerCase();
+  if (["usa.1", "bra.1", "arg.1"].includes(slug)) return true;
+  const n = l.name.trim(), c = (l.country ?? "").toLowerCase();
+  if (/^mls$|major league soccer/i.test(n)) return true;
+  if (/brazil|brasil/.test(c) || /brasileir/i.test(n)) return /^(brasileir[aã]o( betano)?( s[eé]rie a)?|s[eé]rie a|brazilian s[eé]rie a|campeonato brasileiro s[eé]rie a)$/i.test(n);
+  if (/argentin/.test(c) || /argentin/i.test(n)) return /liga profesional|^primera divisi[oó]n$|argentine (primera|liga)|^(torneo )?(apertura|clausura)$|copa de la liga/i.test(n);
+  return false;
+};
+
+export const AMERICAS_CUP = /libertadores|sudamericana|recopa|concacaf champions/i;
+
+/** Leagues left out of every list (unless a favourite team plays, for the Americas). */
+export function isExcludedLeague(league: TopMatch["league"]): "lower-tier" | "americas" | null {
+  if (ANY_LOWER_TIER.test(league.name.trim())) return "lower-tier";
+  const slug = String(league.id ?? "").toLowerCase();
+  const americas = AMERICAS.test(league.country ?? "") || AMERICAS_SLUGS.has(slug.split(".")[0]) || AMERICAS_NAMES.test(league.name);
+  if (americas && !AMERICAS_KEPT(league) && !AMERICAS_CUP.test(league.name)) return "americas";
+  return null;
 }

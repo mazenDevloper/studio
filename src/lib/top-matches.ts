@@ -3,7 +3,7 @@ import { S365_HEADERS, remember365Countries, s365Url } from "@/lib/scores365";
 import { leagueAlwaysListed, leagueTopClubs } from "@/lib/match-channels";
 import { EXTRA_SOURCES } from "@/lib/match-sources-extra";
 import {
-  BROWSER_HEADERS, build, getJson, sortMatches, favoriteOf, parseFavSpec, isYouthMatch, importanceOf, leagueWeightByName, num, pickTop, sameTeam, shiftedDash, shiftedYmd,
+  BROWSER_HEADERS, build, getJson, sortMatches, favoriteOf, parseFavSpec, isYouthMatch, isExcludedLeague, AMERICAS_CUP, importanceOf, leagueWeightByName, num, pickTop, sameTeam, shiftedDash, shiftedYmd,
   type SourceAttempt, type TopMatch, type TopMatchesResult,
 } from "@/lib/match-core";
 import { omanTime } from "@/lib/oman-time";
@@ -321,6 +321,8 @@ export function startMatchesWarmup() {
 /**
  * @param teams team names whose matches today must be included even if they aren't "important" (favourite teams)
  */
+const AMERICAS_BIG = ["Flamengo", "Palmeiras", "Boca Juniors", "River Plate"];
+
 export async function getTopMatchesToday(limit = 10, only?: string, includeAll = false, teams: string[] = [], dayOffset = 0, pins: string[] = []): Promise<TopMatchesResult> {
   if (!dayOffset) lastUsedAt = Date.now();
   // until 05:00 Oman time this is still yesterday's football day; -1 / +1 = yesterday's / tomorrow's matches
@@ -366,7 +368,12 @@ export async function getTopMatchesToday(limit = 10, only?: string, includeAll =
     // Favourite teams' matches are always included; order: live favourites, live, favourites, then the rest
     // Belgian, Dutch, Brazilian, Argentine leagues: only the two biggest clubs (and favourite teams)
     matches: sortMatches([...best.top, ...favExtra].filter(m => {
-      if (isYouthMatch(m) && !isFav(m)) return false; // no U18 / U21 / reserves
+      if (isYouthMatch(m) && !isFav(m)) return false; // no U18 / U21 / reserves / women
+      // never fetched: lower tiers (any country), the Americas except MLS / Brazil Série A / Argentina's top league
+      const excluded = isExcludedLeague(m.league);
+      if (excluded === "lower-tier" || (excluded === "americas" && !isFav(m))) return false;
+      // Libertadores & co.: only with the four big clubs kept from Brazil and Argentina (or a favourite)
+      if (AMERICAS_CUP.test(m.league.name) && !isFav(m) && !AMERICAS_BIG.some(t => sameTeam(t, m.home.name) || sameTeam(t, m.away.name))) return false;
       const clubs = isFav(m) || includeAll ? null : leagueTopClubs(m.league);
       return !clubs || clubs.some(t => sameTeam(t, m.home.name) || sameTeam(t, m.away.name));
     }).map(m => (isFav(m) ? { ...m, favorite: true } : m))),
