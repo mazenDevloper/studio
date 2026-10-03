@@ -81,6 +81,14 @@ public final class Widgets {
 
     public static class SearchWidget extends Base { }
 
+    public static class SavedWidget extends Base { }
+
+    public static class IptvWidget extends Base { }
+
+    public static class PrayerBarWidget extends Base { }
+
+    public static class ClockWidget extends Base { }
+
     public static class MapWidget extends Base { }
 
     public static class DayWidget extends Base { }
@@ -151,7 +159,11 @@ public final class Widgets {
         render(ctx, m, ScreensWidget.class, 250, 110, Widgets::screens);
         render(ctx, m, MoonWidget.class, 140, 140, Widgets::moon);
         render(ctx, m, ManuscriptWidget.class, 250, 140, Widgets::manuscript);
-        render(ctx, m, FoldersWidget.class, 250, 180, Widgets::folders);
+        renderBrowse(ctx, m, FoldersWidget.class);
+        renderBrowse(ctx, m, SavedWidget.class);
+        renderBrowse(ctx, m, IptvWidget.class);
+        render(ctx, m, PrayerBarWidget.class, 400, 100, Widgets::prayerBar);
+        render(ctx, m, ClockWidget.class, 250, 110, Widgets::clock);
         renderBrowse(ctx, m, ChannelsWidget.class);
         renderBrowse(ctx, m, RecitersWidget.class);
         renderBrowse(ctx, m, SearchWidget.class);
@@ -585,6 +597,47 @@ public final class Widgets {
             if (Build.VERSION.SDK_INT >= 24) v.setChronometerCountDown(R.id.day_countdown, true);
             v.setTextViewTextSize(R.id.day_countdown, TypedValue.COMPLEX_UNIT_PX, realH * 0.12f);
         }
+        return v;
+    }
+
+    // ---- the dashboard's prayer bar (all of today's prayers side by side) ----
+
+    private static RemoteViews prayerBar(Context ctx, int w, int h, int realH) {
+        JSONArray list = json(ctx, "config").optJSONArray("countdowns");
+        long now = System.currentTimeMillis();
+        String today = Cloud.day(now);
+        SimpleDateFormat hm = new SimpleDateFormat("H:mm", Locale.ROOT);
+        List<String[]> rows = new ArrayList<>(); // name, adhan, iqamah, state
+        List<long[]> times = new ArrayList<>();
+        for (int i = 0; list != null && i < list.length(); i++) {
+            JSONObject c = list.optJSONObject(i);
+            if (c == null || !"azan".equals(c.optString("kind")) || !today.equals(Cloud.day(c.optLong("at")))) continue;
+            long iq = 0;
+            for (int k = 0; k < list.length(); k++) {
+                JSONObject q = list.optJSONObject(k);
+                if (q != null && "iqamah".equals(q.optString("kind")) && q.optString("title").equals("إقامة " + c.optString("title"))
+                        && today.equals(Cloud.day(q.optLong("at")))) iq = q.optLong("at");
+            }
+            rows.add(new String[]{c.optString("title"), Art.to12h(hm.format(new Date(c.optLong("at")))), iq > 0 ? Art.to12h(hm.format(new Date(iq))) : ""});
+            times.add(new long[]{c.optLong("at"), iq});
+        }
+        // the active card: a prayer whose iqamah is running, otherwise the next one
+        int active = -1;
+        boolean inIqamah = false;
+        for (int i = 0; i < times.size(); i++) if (times.get(i)[0] <= now && times.get(i)[1] > now) { active = i; inIqamah = true; }
+        if (active < 0) for (int i = 0; i < times.size(); i++) if (times.get(i)[0] > now) { active = i; break; }
+        RemoteViews v = canvas(ctx, WidgetArt.prayerBar(ctx, w, h, rows, active, inIqamah));
+        v.setOnClickPendingIntent(R.id.widget_root, openApp(ctx, "/dashboard", 1501));
+        return v;
+    }
+
+    // ---- the dashboard's clock ----
+
+    private static RemoteViews clock(Context ctx, int w, int h, int realH) {
+        Calendar g = Calendar.getInstance();
+        int h12 = g.get(Calendar.HOUR) == 0 ? 12 : g.get(Calendar.HOUR);
+        RemoteViews v = canvas(ctx, WidgetArt.clock(ctx, w, h, h12 + ":" + String.format(Locale.ROOT, "%02d", g.get(Calendar.MINUTE))));
+        v.setOnClickPendingIntent(R.id.widget_root, openApp(ctx, "/dashboard", 1502));
         return v;
     }
 

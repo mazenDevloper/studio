@@ -173,9 +173,14 @@ public class FoldersWidgetService extends RemoteViewsService {
             float d = ctx.getResources().getDisplayMetrics().density;
             String kind = o.optString("kind");
             Bitmap card;
-            if ("video".equals(kind)) {
+            if ("playlist".equals(kind)) {
                 int w = Math.min(640, Math.round(200 * d)), h = Math.round(w * 0.6f);
-                card = WidgetArt.videoCard(ctx, w, h, o.optString("name"), o.optString("channel"), Images.get(ctx, o.optString("thumb", null), w), null, null);
+                card = WidgetArt.folderCard(ctx, w, h, o.optString("name"), o.optInt("count"), Images.get(ctx, o.optString("thumb", null), w));
+            } else if ("video".equals(kind)) {
+                int w = Math.min(640, Math.round(200 * d)), h = Math.round(w * 0.6f);
+                boolean top = o.optBoolean("badge");
+                Bitmap av = top ? Images.get(ctx, o.optString("avatar", null), Math.round(h * 0.2f)) : null;
+                card = WidgetArt.videoCard(ctx, w, h, o.optString("name"), o.optString("channel"), Images.get(ctx, o.optString("thumb", null), w), av, top ? "الأكثر مشاهدة" : null);
             } else if ("surah".equals(kind)) {
                 int w = Math.min(420, Math.round(120 * d)), h = Math.round(w * 0.62f);
                 card = WidgetArt.surahTile(ctx, w, h, o.optString("id"), o.optString("name"));

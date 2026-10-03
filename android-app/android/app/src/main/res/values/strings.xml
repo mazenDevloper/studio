@@ -34,6 +34,14 @@
     <string name="widget_reciters_label">DriveCast · القرّاء</string>
     <string name="widget_search_desc">ابحث في الوسائط (كتابة أو صوت) وتظهر النتائج داخل الودجت</string>
     <string name="widget_search_label">DriveCast · البحث</string>
+    <string name="widget_saved_desc">الفيديوهات المحفوظة فردياً، تُشغَّل بلمسة</string>
+    <string name="widget_saved_label">DriveCast · المحفوظات</string>
+    <string name="widget_iptv_desc">قنوات IPTV المفضلة، تُشغَّل في نافذة عائمة</string>
+    <string name="widget_iptv_label">DriveCast · IPTV</string>
+    <string name="widget_prayerbar_desc">شريط أوقات الصلوات العرضي كما في الرئيسية</string>
+    <string name="widget_prayerbar_label">DriveCast · شريط الصلوات</string>
+    <string name="widget_clock_desc">ساعة الرئيسية بالأرقام الزجاجية</string>
+    <string name="widget_clock_label">DriveCast · الساعة</string>
     <string name="goal_channel">أهداف فرقي</string>
     <string name="shortcut_dashboard">الرئيسية</string>
     <string name="shortcut_matches">المباريات</string>

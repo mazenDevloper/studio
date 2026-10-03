@@ -34,6 +34,8 @@ final class Cloud {
     private static final String CHANNELS = "68ef1b3dd0ea881f40a38bd1";
     private static final String PRAYERS = "69a00f6eae596e708f4b7291";
     private static final String RECITERS = "6909c1cd43b1c97be997b522";
+    private static final String IPTV = "69a87b8bd0ea881f40eeec0c";
+    private static long lastTop = 0;
     /** the board's background when the cloud settings don't name one (the site's default) */
     static final String DEFAULT_BG = "https://www.image2url.com/r2/default/images/1782382707952-d99447c6-bc60-475d-9406-5fd2ef320bd5.png";
 
@@ -74,6 +76,47 @@ final class Cloud {
                 e.putString("cloud_channels", out.toString());
             }
         } catch (Exception ignored) {
+        }
+        try {
+            Object o = fetch(IPTV);
+            JSONArray l = list(o, "iptv");
+            if (l == null && o instanceof JSONObject) l = ((JSONObject) o).optJSONArray("channels");
+            if (l != null) {
+                JSONArray out = new JSONArray();
+                for (int i = 0; i < l.length(); i++) {
+                    JSONObject c = l.optJSONObject(i);
+                    if (c == null) continue;
+                    String url = c.optString("url", "");
+                    // the app's own address for a channel saved by number (iptv-view.tsx)
+                    if (url.isEmpty() && !c.optString("stream_id").isEmpty() && !c.optString("stream_id").startsWith("m3u:"))
+                        url = "http://playstop.watch:2095/live/W87d737/Pd37qj34/" + c.optString("stream_id") + ".m3u8";
+                    if (url.isEmpty() && c.optString("stream_id").startsWith("m3u:")) url = c.optString("stream_id").substring(4);
+                    if (url.isEmpty()) continue;
+                    out.put(new JSONObject().put("id", url).put("name", c.optString("name")).put("image", c.optString("stream_icon")));
+                }
+                e.putString("cloud_iptv", out.toString());
+            }
+        } catch (Exception ignored) {
+        }
+        e.apply();
+        e = NativeIslandPlugin.prefs(ctx).edit();
+        // most viewed video of each starred channel (their public feeds carry view counts), every 6 hours
+        if (force || now - lastTop > 6 * 3_600_000L) {
+            lastTop = now;
+            try {
+                JSONArray ch = Widgets.array(ctx, "cloud_channels");
+                JSONArray tops = new JSONArray();
+                for (int i = 0; i < ch.length() && tops.length() < 12; i++) {
+                    JSONObject c = ch.optJSONObject(i);
+                    if (c == null || !c.optBoolean("starred")) continue;
+                    JSONArray v = MediaBrowser.channelVideos(c.optString("id"));
+                    JSONObject best = null;
+                    for (int k = 0; k < v.length(); k++) if (best == null || v.getJSONObject(k).optLong("views") > best.optLong("views")) best = v.getJSONObject(k);
+                    if (best != null) tops.put(best.put("badge", true).put("avatar", c.optString("image")));
+                }
+                if (tops.length() > 0) e.putString("cloud_top", tops.toString());
+            } catch (Exception ignored) {
+            }
         }
         try {
             JSONArray r = list(fetch(RECITERS), "reciters");
@@ -135,6 +178,8 @@ final class Cloud {
 
     private static JSONObject slimMaster(JSONObject m) throws Exception {
         JSONObject o = new JSONObject();
+        JSONArray sv = m.optJSONArray("savedVideos");
+        if (sv != null) o.put("savedVideos", slimVideos(sv, 80));
         for (String k : new String[]{"favoriteTeams", "pinnedMatches", "generalAzkar", "reminders", "prayerSettings"}) {
             if (m.optJSONArray(k) != null) o.put(k, m.getJSONArray(k));
         }
@@ -156,11 +201,23 @@ final class Cloud {
                 JSONArray v = p.optJSONArray("videos");
                 JSONObject first = v != null && v.length() > 0 ? v.optJSONObject(0) : null;
                 out.put(new JSONObject().put("id", p.optString("id")).put("name", p.optString("name"))
-                        .put("count", v != null ? v.length() : 0).put("thumb", first != null ? first.optString("thumbnail") : ""));
+                        .put("count", v != null ? v.length() : 0).put("thumb", first != null ? first.optString("thumbnail") : "")
+                        .put("videos", v != null ? slimVideos(v, 80) : new JSONArray()));
             }
             o.put("playlists", out);
         }
         return o;
+    }
+
+    private static JSONArray slimVideos(JSONArray v, int max) throws Exception {
+        JSONArray out = new JSONArray();
+        for (int i = 0; i < v.length() && out.length() < max; i++) {
+            JSONObject x = v.optJSONObject(i);
+            if (x == null || x.optString("id").isEmpty()) continue;
+            out.put(new JSONObject().put("kind", "video").put("id", x.optString("id")).put("name", x.optString("title"))
+                    .put("channel", x.optString("channelTitle")).put("thumb", x.optString("thumbnail")));
+        }
+        return out;
     }
 
     /** Manuscript pictures (data: URLs, often large) become files; the list keeps their file address. */

@@ -128,6 +128,10 @@ public class IslandService extends Service {
         String a = intent != null ? intent.getAction() : null;
         if (a != null && a.startsWith("com.drivecast.QURAN_")) quranAction(a);
         if (WidgetActionReceiver.MAP_TOGGLE.equals(a)) handler.post(this::toggleMap);
+        if (MediaBrowser.STREAM.equals(a) && intent.getStringExtra("url") != null) {
+            final String url = intent.getStringExtra("url"), title = intent.getStringExtra("title");
+            handler.post(() -> playStream(url, title));
+        }
         if (MediaBrowser.PLAY.equals(a) && intent.getStringExtra("id") != null) {
             final String vid = intent.getStringExtra("id"), title = intent.getStringExtra("title");
             handler.post(() -> playVideo(vid, title));
@@ -977,6 +981,27 @@ public class IslandService extends Service {
     }
 
     private android.widget.TextView windowTitleView;
+
+    /** An IPTV channel from the IPTV widget: the stream plays in the floating window (hls.js like the site). */
+    private void playStream(String url, String title) {
+        if (Build.VERSION.SDK_INT >= 23 && !Settings.canDrawOverlays(this)) return;
+        windowTitle = title == null || title.isEmpty() ? "IPTV" : title;
+        windowIsMap = false;
+        if (mapWindow == null) showMap();
+        else if (windowTitleView != null) windowTitleView.setText(windowTitle);
+        if (mapView == null) return;
+        mapView.getSettings().setMixedContentMode(android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+        String u = url.replace("'", "%27");
+        String html = "<!doctype html><html><head><meta name='viewport' content='width=device-width,initial-scale=1'>"
+                + "<style>html,body{margin:0;height:100%;background:#000}video{width:100%;height:100%;background:#000}</style>"
+                + "<script src='https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.13/hls.min.js'></script></head><body>"
+                + "<video id='v' autoplay playsinline controls></video><script>"
+                + "var v=document.getElementById('v'),s='" + u + "';"
+                + "if(s.indexOf('.m3u8')<0||v.canPlayType('application/vnd.apple.mpegurl')){v.src=s;}"
+                + "else if(window.Hls&&Hls.isSupported()){var h=new Hls();h.loadSource(s);h.attachMedia(v);}else{v.src=s;}"
+                + "v.play().catch(function(){});</script></body></html>";
+        mapView.loadDataWithBaseURL("http://localhost/", html, "text/html", "UTF-8", null);
+    }
 
     @SuppressLint({"SetJavaScriptEnabled", "ClickableViewAccessibility"})
     private void showMap() {

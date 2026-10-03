@@ -199,6 +199,46 @@
             android:theme="@android:style/Theme.DeviceDefault.Dialog.NoActionBar"
             android:windowSoftInputMode="stateAlwaysVisible|adjustResize" />
 
+        <receiver
+            android:name=".Widgets$SavedWidget"
+            android:exported="false"
+            android:label="@string/widget_saved_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_saved_info" />
+        </receiver>
+
+        <receiver
+            android:name=".Widgets$IptvWidget"
+            android:exported="false"
+            android:label="@string/widget_iptv_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_iptv_info" />
+        </receiver>
+
+        <receiver
+            android:name=".Widgets$PrayerBarWidget"
+            android:exported="false"
+            android:label="@string/widget_prayerbar_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_prayerbar_info" />
+        </receiver>
+
+        <receiver
+            android:name=".Widgets$ClockWidget"
+            android:exported="false"
+            android:label="@string/widget_clock_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_clock_info" />
+        </receiver>
+
         <!-- the folders widget's scrolling grid of cards -->
         <service
             android:name=".FoldersWidgetService"

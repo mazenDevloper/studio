@@ -838,4 +838,77 @@ final class WidgetArt {
         c.drawText(name, cx - cr - h * 0.12f, Art.baseline(t, cy), t);
         return b;
     }
+
+    // ============================================================================================ prayer bar
+
+    /** The dashboard's prayer bar: a card per prayer (name, time), the active one bright with a blue glow (green in iqamah). */
+    static Bitmap prayerBar(Context ctx, int w, int h, java.util.List<String[]> rows, int active, boolean inIqamah) {
+        Bitmap b = blank(w, h);
+        Canvas c = new Canvas(b);
+        float rad = Math.min(h * 0.32f, w * 0.06f);
+        RectF card = new RectF(0, 0, w, h);
+        Art.fill(c, card, rad, 0xB3000000);
+        Art.stroke(c, card, rad, Art.alpha(Art.WHITE, 0.1f), Math.max(1f, h / 120f));
+        int n = rows.size();
+        if (n == 0) {
+            TextPaint e = Art.text(Fonts.bold(ctx), h * 0.2f, Art.alpha(Art.WHITE, 0.4f));
+            Art.centerText(c, "افتح التطبيق مرة لتحميل المواقيت", w / 2f, h / 2f, e);
+            return b;
+        }
+        float pad = h * 0.1f, gap = h * 0.08f;
+        float cw = (w - pad * 2 - gap * (n - 1)) / n;
+        for (int i = 0; i < n; i++) {
+            float right = w - pad - i * (cw + gap); // right to left
+            RectF r = new RectF(right - cw, pad, right, h - pad);
+            boolean on = i == active;
+            float rr = Math.min(r.height() * 0.35f, cw * 0.2f);
+            if (on) {
+                Art.glow(c, r, rr, inIqamah ? 0x5934D399 : 0x4D0088FF, r.height() * 0.3f);
+                Art.fill(c, r, rr, Art.alpha(Art.WHITE, 0.15f));
+                Art.stroke(c, r, rr, Art.alpha(Art.WHITE, 0.3f), Math.max(1.5f, h / 60f));
+            } else {
+                Art.fill(c, r, rr, Art.alpha(Art.WHITE, 0.05f));
+                Art.stroke(c, r, rr, Art.alpha(Art.WHITE, 0.05f), Math.max(1.5f, h / 60f));
+            }
+            String[] p = rows.get(i);
+            boolean iq = on && inIqamah && !p[2].isEmpty();
+            TextPaint nm = Art.text(Fonts.black(ctx), r.height() * 0.22f, Art.WHITE);
+            nm.setTextAlign(Paint.Align.RIGHT);
+            Art.fit(nm, p[0], r.width() * 0.8f, r.height() * 0.12f);
+            c.drawText(p[0], r.right - r.width() * 0.1f, Art.baseline(nm, r.top + r.height() * 0.3f), nm);
+            TextPaint tp = Art.text(Fonts.medium(ctx), r.height() * 0.4f, iq ? Art.EMERALD : Art.WHITE);
+            tp.setTextAlign(Paint.Align.RIGHT);
+            String t = iq ? p[2] : p[1];
+            Art.fit(tp, t, r.width() * 0.8f, r.height() * 0.2f);
+            tp.setShadowLayer(r.height() * 0.08f, 0, r.height() * 0.04f, 0xCC000000);
+            c.drawText(t, r.right - r.width() * 0.1f, Art.baseline(tp, r.top + r.height() * 0.68f), tp);
+            if (iq) {
+                TextPaint l = Art.text(Fonts.black(ctx), r.height() * 0.13f, Art.EMERALD);
+                l.setTextAlign(Paint.Align.LEFT);
+                c.drawText("(الإقامة)", r.left + r.width() * 0.08f, Art.baseline(l, r.top + r.height() * 0.74f), l);
+            }
+        }
+        return b;
+    }
+
+    // ================================================================================================ clock
+
+    /** The dashboard's clock: big glass digits with the gradient outline, on a glass card. */
+    static Bitmap clock(Context ctx, int w, int h, String time) {
+        Bitmap b = blank(w, h);
+        Canvas c = new Canvas(b);
+        float rad = radius(w, h);
+        RectF card = new RectF(0, 0, w, h);
+        Art.card(c, card, rad);
+        TextPaint t = Art.text(Fonts.black(ctx), h * 0.78f, Art.WHITE);
+        t.setTextAlign(Paint.Align.CENTER);
+        t.setLetterSpacing(-0.03f);
+        Art.fit(t, time, w * 0.9f, h * 0.2f);
+        Paint sh = new Paint(t);
+        sh.setColor(0x00000000);
+        sh.setShadowLayer(h * 0.12f, 0, h * 0.06f, 0x99000000);
+        c.drawText(time, w / 2f, Art.baseline(sh, h / 2f), sh);
+        Art.glassOutlinedText(c, time, w / 2f, h / 2f, t);
+        return b;
+    }
 }

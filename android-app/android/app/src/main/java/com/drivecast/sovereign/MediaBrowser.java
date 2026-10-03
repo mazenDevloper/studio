@@ -34,6 +34,7 @@ final class MediaBrowser {
     static final String BROWSE = "com.drivecast.BROWSE";
     static final String BACK = "com.drivecast.BROWSE_BACK";
     static final String PLAY = "com.drivecast.PLAY_VIDEO";
+    static final String STREAM = "com.drivecast.PLAY_STREAM";
 
     // ---- YouTube (the site's key pool, rotated when one runs out) ----
 
@@ -142,7 +143,10 @@ final class MediaBrowser {
                     String e = m.group(1);
                     String id = first(e, "<yt:videoId>(.*?)</yt:videoId>");
                     if (id.isEmpty()) continue;
-                    out.put(video(id, unescape(first(e, "<title>(.*?)</title>")), unescape(author), "https://i.ytimg.com/vi/" + id + "/hqdefault.jpg"));
+                    JSONObject v = video(id, unescape(first(e, "<title>(.*?)</title>")), unescape(author), "https://i.ytimg.com/vi/" + id + "/hqdefault.jpg");
+                    String views = first(e, "views=\"(\\d+)\"");
+                    if (!views.isEmpty()) v.put("views", Long.parseLong(views));
+                    out.put(v);
                 }
             }
         } catch (Exception ignored) {
@@ -175,6 +179,9 @@ final class MediaBrowser {
         String cls = info != null && info.provider != null ? info.provider.getClassName() : "";
         if (cls.endsWith("RecitersWidget")) return "reciters";
         if (cls.endsWith("SearchWidget")) return "search";
+        if (cls.endsWith("FoldersWidget")) return "folders";
+        if (cls.endsWith("SavedWidget")) return "saved";
+        if (cls.endsWith("IptvWidget")) return "iptv";
         return "channels";
     }
 
@@ -205,6 +212,26 @@ final class MediaBrowser {
                     items.put(new JSONObject().put("kind", "reciter").put("id", x.optString("id")).put("name", x.optString("name")).put("thumb", x.optString("image")));
                 }
                 o.put("empty", "جاري تحميل القرّاء...");
+            } else if ("folders".equals(kind)) {
+                o.put("title", "المجلدات والترددات المجرسة");
+                JSONArray pl = Widgets.playlists(ctx);
+                for (int i = 0; i < pl.length(); i++) {
+                    JSONObject p = pl.optJSONObject(i);
+                    items.put(new JSONObject(p.toString()).put("kind", "playlist"));
+                }
+                JSONArray top = Widgets.array(ctx, "cloud_top");
+                for (int i = 0; i < top.length(); i++) items.put(top.get(i));
+                o.put("empty", "جاري تحميل المجلدات...");
+            } else if ("saved".equals(kind)) {
+                o.put("title", "المحتويات المحفوظة فردياً");
+                JSONArray sv = Cloud.master(ctx).optJSONArray("savedVideos");
+                if (sv != null) items = sv;
+                o.put("empty", "لا توجد فيديوهات محفوظة فردياً");
+            } else if ("iptv".equals(kind)) {
+                o.put("title", "IPTV");
+                JSONArray tv = Widgets.array(ctx, "cloud_iptv");
+                for (int i = 0; i < tv.length(); i++) items.put(new JSONObject(tv.getJSONObject(i).toString()).put("kind", "iptv"));
+                o.put("empty", "جاري تحميل القنوات المفضلة...");
             } else if ("search".equals(kind)) {
                 o.put("title", "البحث في الوسائط");
                 JSONArray last = Widgets.array(ctx, "search_last");
@@ -243,6 +270,29 @@ final class MediaBrowser {
             return;
         }
         final String kind = i.getStringExtra("kind"), id = i.getStringExtra("id"), name = i.getStringExtra("name");
+        if ("iptv".equals(kind)) {
+            Intent s = new Intent(ctx, IslandService.class).setAction(STREAM).putExtra("url", id).putExtra("title", name);
+            try { androidx.core.content.ContextCompat.startForegroundService(ctx, s); } catch (Exception ignored) { }
+            done.finish();
+            return;
+        }
+        if ("playlist".equals(kind)) {
+            // the folder's videos (kept from the cloud)
+            JSONArray pl = Widgets.playlists(ctx);
+            for (int k = 0; k < pl.length(); k++) {
+                JSONObject p = pl.optJSONObject(k);
+                if (p != null && id.equals(p.optString("id"))) {
+                    try {
+                        JSONArray v = p.optJSONArray("videos");
+                        push(ctx, wid, new JSONObject().put("view", "videos").put("title", name).put("items", v != null ? v : new JSONArray()).put("empty", "المجلد فارغ"));
+                    } catch (Exception ignored) {
+                    }
+                }
+            }
+            Widgets.updateAll(ctx);
+            done.finish();
+            return;
+        }
         if ("video".equals(kind)) {
             // plays in a floating player over whatever is on screen (drag it, enlarge it, close it)
             Intent s = new Intent(ctx, IslandService.class).setAction(PLAY).putExtra("id", id).putExtra("title", name);
@@ -312,7 +362,8 @@ final class MediaBrowser {
         JSONObject t = top(ctx, wid);
         JSONArray items = t.optJSONArray("items");
         if (items == null) items = new JSONArray();
-        boolean videos = "videos".equals(t.optString("view"));
+        String firstKind = items.length() > 0 && items.optJSONObject(0) != null ? items.optJSONObject(0).optString("kind") : "";
+        boolean videos = "videos".equals(t.optString("view")) || "video".equals(firstKind) || "playlist".equals(firstKind);
         boolean surahs = "surahs".equals(t.optString("view"));
         int layout = videos ? R.layout.widget_browse_wide : surahs ? R.layout.widget_browse_mid : R.layout.widget_browse;
         RemoteViews v = new RemoteViews(ctx.getPackageName(), layout);
