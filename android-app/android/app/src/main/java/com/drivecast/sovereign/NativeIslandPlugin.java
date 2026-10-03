@@ -29,6 +29,61 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 public class NativeIslandPlugin extends Plugin {
 
     static final String PREFS = "native_island";
+    private static NativeIslandPlugin instance;
+    /** commands that arrived before the page listened (a widget started the app) */
+    private static final java.util.List<JSObject> pending = new java.util.ArrayList<>();
+
+    @Override
+    public void load() {
+        instance = this;
+    }
+
+    /**
+     * Widget / notification / picture-in-picture event for the page: "media" (toggle, next, prev), "pip" (1 / 0).
+     * Kept until the page's listener takes it.
+     */
+    static void emitCommand(String cmd, String arg) {
+        JSObject data = new JSObject();
+        data.put("cmd", cmd);
+        data.put("arg", arg == null ? "" : arg);
+        NativeIslandPlugin p = instance;
+        if (p != null && p.hasListeners("command")) p.notifyListeners("command", data);
+        else synchronized (pending) { pending.add(data); }
+    }
+
+    /** The page is running and listening (a media command can be delivered right away). */
+    static boolean isPageAlive() {
+        NativeIslandPlugin p = instance;
+        return p != null && p.hasListeners("command");
+    }
+
+    /** The page's listener is ready: hand over what came before. */
+    @PluginMethod
+    public void takePendingCommands(PluginCall call) {
+        com.getcapacitor.JSArray list = new com.getcapacitor.JSArray();
+        synchronized (pending) {
+            for (JSObject o : pending) list.put(o);
+            pending.clear();
+        }
+        JSObject ret = new JSObject();
+        ret.put("commands", list);
+        call.resolve(ret);
+    }
+
+    /** What the home-screen widgets show (now playing, Quran surahs / reciters, the site's address). */
+    @PluginMethod
+    public void updateWidgets(PluginCall call) {
+        prefs(getContext()).edit().putString("widgets", call.getString("data", "{}")).apply();
+        Widgets.updateAll(getContext());
+        call.resolve();
+    }
+
+    /** A video is playing (leaving the app then goes picture-in-picture). */
+    @PluginMethod
+    public void setVideoPlaying(PluginCall call) {
+        MainActivity.videoPlaying = Boolean.TRUE.equals(call.getBoolean("playing", false));
+        call.resolve();
+    }
 
     @PluginMethod
     public void configure(PluginCall call) {

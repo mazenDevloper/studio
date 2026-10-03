@@ -63,6 +63,7 @@ public class IslandService extends Service {
     private JSONObject config = new JSONObject();
     private final List<String> matchLines = new ArrayList<>();
     private long lastPoll = 0;
+    private long lastWidgets = 0;
     private String lastNotificationText = "";
 
     // ---- static entry points (from MainActivity / the plugin) ----
@@ -111,7 +112,109 @@ public class IslandService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        String a = intent != null ? intent.getAction() : null;
+        if (a != null && a.startsWith("com.drivecast.QURAN_")) quranAction(a);
         return START_STICKY;
+    }
+
+    // ---- the Quran widget's player (plays here, app open or not) ----
+
+    private android.media.MediaPlayer quranPlayer;
+    /** "reciterId:surah" loaded in quranPlayer */
+    private String quranLoaded = "";
+
+    private void quranAction(String a) {
+        QuranState q = QuranState.load(this);
+        switch (a) {
+            case WidgetActionReceiver.QURAN_TOGGLE:
+                if (q.playing) pauseQuran(q); else playQuran(q);
+                break;
+            case WidgetActionReceiver.QURAN_NEXT:
+                q.surah = q.surah >= 114 ? 1 : q.surah + 1;
+                if (q.playing) playQuran(q); else { q.save(this); Widgets.updateAll(this); }
+                break;
+            case WidgetActionReceiver.QURAN_PREV:
+                q.surah = q.surah <= 1 ? 114 : q.surah - 1;
+                if (q.playing) playQuran(q); else { q.save(this); Widgets.updateAll(this); }
+                break;
+            case WidgetActionReceiver.QURAN_RECITER:
+                q.reciterIndex = (q.reciterIndex + 1) % Math.max(1, QuranState.reciters(this).length());
+                if (q.playing) playQuran(q); else { q.save(this); Widgets.updateAll(this); }
+                break;
+        }
+    }
+
+    private void pauseQuran(QuranState q) {
+        if (quranPlayer != null && quranPlayer.isPlaying()) quranPlayer.pause();
+        q.playing = false;
+        q.save(this);
+        Widgets.updateAll(this);
+        lastNotificationText = "";
+    }
+
+    private void playQuran(QuranState q) {
+        q.playing = true;
+        q.save(this);
+        Widgets.updateAll(this);
+        lastNotificationText = "";
+        final String key = q.reciterId(this) + ":" + q.surah;
+        if (key.equals(quranLoaded) && quranPlayer != null) {
+            quranPlayer.start();
+            return;
+        }
+        final String origin = siteOrigin();
+        final int reciter = q.reciterId(this), surah = q.surah;
+        new Thread(() -> {
+            String url = null;
+            try {
+                HttpURLConnection c = (HttpURLConnection) new URL(origin + "/api/quran?path=chapter_recitations/" + reciter + "/" + surah).openConnection();
+                c.setConnectTimeout(15_000);
+                c.setReadTimeout(30_000);
+                StringBuilder sb = new StringBuilder();
+                try (BufferedReader r = new BufferedReader(new InputStreamReader(c.getInputStream(), "UTF-8"))) {
+                    String line;
+                    while ((line = r.readLine()) != null) sb.append(line);
+                }
+                JSONObject f = new JSONObject(sb.toString()).optJSONObject("audio_file");
+                url = f != null ? f.optString("audio_url", null) : null;
+            } catch (Exception ignored) {
+            }
+            final String audio = url;
+            handler.post(() -> {
+                if (audio == null) { pauseQuran(QuranState.load(this)); return; }
+                try {
+                    if (quranPlayer != null) quranPlayer.release();
+                    quranPlayer = new android.media.MediaPlayer();
+                    quranPlayer.setAudioAttributes(new android.media.AudioAttributes.Builder()
+                            .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
+                            .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SPEECH).build());
+                    quranPlayer.setDataSource(audio);
+                    quranPlayer.setOnPreparedListener(android.media.MediaPlayer::start);
+                    // the surah ended: on to the next one
+                    quranPlayer.setOnCompletionListener(mp -> {
+                        QuranState n = QuranState.load(this);
+                        n.surah = n.surah >= 114 ? 1 : n.surah + 1;
+                        playQuran(n);
+                    });
+                    quranPlayer.prepareAsync();
+                    quranLoaded = key;
+                } catch (Exception e) {
+                    pauseQuran(QuranState.load(this));
+                }
+            });
+        }).start();
+    }
+
+    /** The site's address (for its API), from what the page sent. */
+    private String siteOrigin() {
+        String o = Widgets.json(this, "widgets").optString("origin", "");
+        if (!o.isEmpty()) return o;
+        try {
+            URL u = new URL(config.optString("apiUrl", ""));
+            return u.getProtocol() + "://" + u.getAuthority();
+        } catch (Exception e) {
+            return "https://cplay2.vercel.app";
+        }
     }
 
     @Override
@@ -122,6 +225,10 @@ public class IslandService extends Service {
     @Override
     public void onDestroy() {
         handler.removeCallbacksAndMessages(null);
+        if (quranPlayer != null) {
+            quranPlayer.release();
+            quranPlayer = null;
+        }
         removeIsland();
         if (instance == this) instance = null;
         super.onDestroy();
@@ -146,9 +253,14 @@ public class IslandService extends Service {
     /** Every second: refresh the scores when due, then show / update / hide the island. */
     private void tick() {
         long now = System.currentTimeMillis();
-        if (!appVisible && now - lastPoll > POLL_MS) {
+        // scores: every 30 s behind other apps (island), every 2 min while the app is open (widgets only)
+        if (now - lastPoll > (appVisible ? 4 * POLL_MS : POLL_MS)) {
             lastPoll = now;
             pollMatches();
+        }
+        if (now - lastWidgets > 60_000) {
+            lastWidgets = now;
+            Widgets.updateAll(this);
         }
         List<String> lines = new ArrayList<>(matchLines);
         lines.addAll(countdownLines(now));
@@ -171,6 +283,7 @@ public class IslandService extends Service {
         final JSONArray pins = config.optJSONArray("pins");
         new Thread(() -> {
             List<String> lines = new ArrayList<>();
+            JSONArray widgetLines = new JSONArray();
             try {
                 HttpURLConnection c = (HttpURLConnection) new URL(apiUrl).openConnection();
                 c.setConnectTimeout(15_000);
@@ -184,9 +297,18 @@ public class IslandService extends Service {
                 JSONArray matches = new JSONObject(sb.toString()).optJSONArray("matches");
                 for (int i = 0; matches != null && i < matches.length(); i++) {
                     JSONObject m = matches.getJSONObject(i);
-                    if (!"live".equals(m.optString("status"))) continue;
+                    String st = m.optString("status");
                     String home = m.getJSONObject("home").optString("name");
                     String away = m.getJSONObject("away").optString("name");
+                    // the matches widget: favourite / pinned teams' matches of the day, any state
+                    if ((m.optBoolean("favorite") || isPinned(pins, home, away)) && widgetLines.length() < 4) {
+                        JSONObject sc = m.optJSONObject("score");
+                        String score = sc != null && !sc.isNull("home") ? sc.optInt("home") + " - " + sc.optInt("away") : "×";
+                        String when = "live".equals(st) ? (m.isNull("elapsed") ? "مباشر" : "د" + m.optInt("elapsed"))
+                                : "finished".equals(st) ? "انتهت" : m.optString("omanTime", "");
+                        widgetLines.put(when + "   " + home + "  " + score + "  " + away);
+                    }
+                    if (!"live".equals(st)) continue;
                     if (!m.optBoolean("favorite") && !isPinned(pins, home, away)) continue;
                     JSONObject score = m.optJSONObject("score");
                     String sh = score != null && !score.isNull("home") ? String.valueOf(score.optInt("home")) : "0";
@@ -197,9 +319,11 @@ public class IslandService extends Service {
             } catch (Exception ignored) {
                 return; // keep the last scores on a network error
             }
+            NativeIslandPlugin.prefs(this).edit().putString("matchLines", widgetLines.toString()).apply();
             handler.post(() -> {
                 matchLines.clear();
                 matchLines.addAll(lines);
+                Widgets.updateAll(this);
                 tick();
             });
         }).start();
@@ -372,6 +496,8 @@ public class IslandService extends Service {
         // countdown seconds would update it every second: the shade shows minutes only
         StringBuilder sb = new StringBuilder();
         for (String l : lines) sb.append(sb.length() > 0 ? "\n" : "").append(l.replaceAll(":\\d\\d$", " د"));
+        QuranState q = QuranState.load(this);
+        if (q.playing) sb.insert(0, "📖 سورة " + q.surahName(this) + " · " + q.reciterName(this) + (sb.length() > 0 ? "\n" : ""));
         String text = sb.length() > 0 ? sb.toString() : "يعمل في الخلفية";
         if (text.equals(lastNotificationText)) return;
         lastNotificationText = text;

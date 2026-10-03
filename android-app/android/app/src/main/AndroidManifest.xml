@@ -16,12 +16,17 @@
             android:label="@string/title_activity_main"
             android:theme="@style/AppTheme.NoActionBarLaunch"
             android:launchMode="singleTask"
+            android:resizeableActivity="true"
+            android:supportsPictureInPicture="true"
             android:exported="true">
 
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
+            <!-- long-press the app icon: a shortcut per screen -->
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
 
         </activity>
 
@@ -30,6 +35,59 @@
             android:name=".IslandService"
             android:exported="false"
             android:foregroundServiceType="mediaPlayback" />
+
+        <!-- home-screen widgets (any launcher: Samsung One UI, Nova...) and their buttons -->
+        <receiver
+            android:name=".Widgets$PrayerWidget"
+            android:exported="false"
+            android:label="@string/widget_prayer_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_prayer_info" />
+        </receiver>
+
+        <receiver
+            android:name=".Widgets$MatchesWidget"
+            android:exported="false"
+            android:label="@string/widget_matches_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_matches_info" />
+        </receiver>
+
+        <receiver
+            android:name=".Widgets$MediaWidget"
+            android:exported="false"
+            android:label="@string/widget_media_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_media_info" />
+        </receiver>
+
+        <receiver
+            android:name=".Widgets$QuranWidget"
+            android:exported="false"
+            android:label="@string/widget_quran_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_quran_info" />
+        </receiver>
+
+        <receiver
+            android:name=".Widgets$ScreensWidget"
+            android:exported="false"
+            android:label="@string/widget_screens_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_screens_info" />
+        </receiver>
+
+        <receiver android:name=".WidgetActionReceiver" android:exported="false" />
 
         <provider
             android:name="androidx.core.content.FileProvider"

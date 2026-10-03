@@ -15,7 +15,14 @@ interface NativeIslandPlugin {
   requestBackground(): Promise<void>;
   requestNotifications(): Promise<void>;
   setTextZoom(o: { percent: number }): Promise<void>;
+  updateWidgets(o: { data: string }): Promise<void>;
+  setVideoPlaying(o: { playing: boolean }): Promise<void>;
+  takePendingCommands(): Promise<{ commands: NativeCommand[] }>;
+  addListener(event: "command", cb: (c: NativeCommand) => void): Promise<{ remove: () => void }> | { remove: () => void };
 }
+
+/** From a widget / picture-in-picture: "media" (toggle | next | prev), "pip" ("1" | "0"). */
+export interface NativeCommand { cmd: string; arg: string }
 
 export function nativeIsland(): NativeIslandPlugin | null {
   if (typeof window === "undefined") return null;
