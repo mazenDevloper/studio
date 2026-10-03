@@ -128,6 +128,10 @@ public class IslandService extends Service {
         String a = intent != null ? intent.getAction() : null;
         if (a != null && a.startsWith("com.drivecast.QURAN_")) quranAction(a);
         if (WidgetActionReceiver.MAP_TOGGLE.equals(a)) handler.post(this::toggleMap);
+        if (MediaBrowser.PLAY.equals(a) && intent.getStringExtra("id") != null) {
+            final String vid = intent.getStringExtra("id"), title = intent.getStringExtra("title");
+            handler.post(() -> playVideo(vid, title));
+        }
         return START_STICKY;
     }
 
@@ -918,7 +922,16 @@ public class IslandService extends Service {
     }
 
     private void toggleMap() {
-        if (mapWindow != null) { hideMap(); return; }
+        if (mapWindow != null && windowIsMap) { hideMap(); return; }
+        if (mapWindow != null) { // a video is playing there: switch it to the map
+            windowIsMap = true;
+            windowTitle = "رادار السيارة";
+            if (windowTitleView != null) windowTitleView.setText(windowTitle);
+            mapView.loadUrl(MAP_URL);
+            handler.removeCallbacks(mapSnapshot);
+            handler.postDelayed(mapSnapshot, 8_000);
+            return;
+        }
         if (Build.VERSION.SDK_INT >= 23 && !Settings.canDrawOverlays(this)) {
             // no "display over other apps" yet: open its settings page
             Intent i = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, android.net.Uri.parse("package:" + getPackageName()));
@@ -933,8 +946,37 @@ public class IslandService extends Service {
             i.putExtra("askLocation", true);
             try { startActivity(i); } catch (Exception ignored) { }
         }
+        windowTitle = "رادار السيارة";
+        windowIsMap = true;
         showMap();
+        if (mapView != null) mapView.loadUrl(MAP_URL);
     }
+
+    private String windowTitle = "رادار السيارة";
+    private boolean windowIsMap = true;
+
+    /** A video tapped in a browsing widget: plays in the same floating window (YouTube's player). */
+    private void playVideo(String id, String title) {
+        if (Build.VERSION.SDK_INT >= 23 && !Settings.canDrawOverlays(this)) {
+            Intent i = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, android.net.Uri.parse("package:" + getPackageName()));
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            try { startActivity(i); } catch (Exception ignored) { }
+            return;
+        }
+        windowTitle = title == null || title.isEmpty() ? "فيديو" : title;
+        windowIsMap = false;
+        if (mapWindow == null) showMap();
+        else if (windowTitleView != null) windowTitleView.setText(windowTitle);
+        if (mapView == null) return;
+        String html = "<!doctype html><html><head><meta name='viewport' content='width=device-width,initial-scale=1'>"
+                + "<style>html,body{margin:0;height:100%;background:#000}iframe{border:0;width:100%;height:100%}</style></head><body>"
+                + "<iframe src='https://www.youtube.com/embed/" + id + "?autoplay=1&playsinline=1&rel=0' allow='autoplay; encrypted-media; picture-in-picture; fullscreen' allowfullscreen></iframe>"
+                + "</body></html>";
+        // the site's address as the page origin: YouTube's player refuses pages without one
+        mapView.loadDataWithBaseURL(siteOrigin() + "/", html, "text/html", "UTF-8", null);
+    }
+
+    private android.widget.TextView windowTitleView;
 
     @SuppressLint({"SetJavaScriptEnabled", "ClickableViewAccessibility"})
     private void showMap() {
@@ -961,7 +1003,6 @@ public class IslandService extends Service {
                 callback.invoke(origin, true, false);
             }
         });
-        mapView.loadUrl(MAP_URL);
         FrameLayout.LayoutParams wl = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT);
         wl.topMargin = dp(30);
         mapWindow.addView(mapView, wl);
@@ -974,7 +1015,10 @@ public class IslandService extends Service {
         android.widget.TextView close = barButton("✕");
         android.widget.TextView size = barButton("⤢");
         android.widget.TextView title = new android.widget.TextView(this);
-        title.setText("رادار السيارة");
+        title.setText(windowTitle);
+        title.setSingleLine(true);
+        title.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        windowTitleView = title;
         title.setTextColor(0xCCFFFFFF);
         title.setTypeface(Fonts.bold(this));
         title.setTextSize(13);
@@ -1043,7 +1087,7 @@ public class IslandService extends Service {
     private final Runnable mapSnapshot = new Runnable() {
         @Override
         public void run() {
-            if (mapView == null || mapView.getWidth() == 0) return;
+            if (mapView == null || mapView.getWidth() == 0 || !windowIsMap) return;
             try {
                 Bitmap b = Bitmap.createBitmap(mapView.getWidth(), mapView.getHeight(), Bitmap.Config.ARGB_8888);
                 mapView.draw(new Canvas(b));
@@ -1069,6 +1113,8 @@ public class IslandService extends Service {
         if (mapView != null) mapView.destroy();
         mapWindow = null;
         mapView = null;
+        windowTitleView = null;
+        windowIsMap = true;
         Widgets.updateAll(this);
     }
 

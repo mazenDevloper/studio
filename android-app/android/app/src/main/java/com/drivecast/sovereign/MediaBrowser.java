@@ -33,6 +33,7 @@ final class MediaBrowser {
 
     static final String BROWSE = "com.drivecast.BROWSE";
     static final String BACK = "com.drivecast.BROWSE_BACK";
+    static final String PLAY = "com.drivecast.PLAY_VIDEO";
 
     // ---- YouTube (the site's key pool, rotated when one runs out) ----
 
@@ -243,12 +244,9 @@ final class MediaBrowser {
         }
         final String kind = i.getStringExtra("kind"), id = i.getStringExtra("id"), name = i.getStringExtra("name");
         if ("video".equals(kind)) {
-            // play it in the app (the page's player)
-            Intent open = new Intent(ctx, MainActivity.class);
-            open.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-            if (NativeIslandPlugin.isPageAlive()) NativeIslandPlugin.emitCommand("play", "v:" + id);
-            else NativeIslandPlugin.queueCommand("play", "v:" + id);
-            try { ctx.startActivity(open); } catch (Exception ignored) { }
+            // plays in a floating player over whatever is on screen (drag it, enlarge it, close it)
+            Intent s = new Intent(ctx, IslandService.class).setAction(PLAY).putExtra("id", id).putExtra("title", name);
+            try { androidx.core.content.ContextCompat.startForegroundService(ctx, s); } catch (Exception ignored) { }
             done.finish();
             return;
         }
