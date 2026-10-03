@@ -721,4 +721,39 @@ final class WidgetArt {
         Art.stroke(c, card, rad, Art.alpha(Art.WHITE, 0.1f), Math.max(1f, h / 250f));
         return b;
     }
+
+    // ================================================================================================== day
+
+    /** The dashboard's day card: Hijri date (top), the day name stretched with kashida (huge), "الآن 9:55" (bottom right). */
+    static Bitmap day(Context ctx, int w, int h, String hijri, String dayName, String now) {
+        Bitmap b = blank(w, h);
+        Canvas c = new Canvas(b);
+        float rad = radius(w, h);
+        RectF card = new RectF(0, 0, w, h);
+        Art.fill(c, card, rad, 0xF209090B);
+        Art.stroke(c, card, rad, Art.alpha(Art.WHITE, 0.1f), Math.max(1f, h / 250f));
+        TextPaint top = Art.text(Fonts.bold(ctx), h * 0.065f, Art.alpha(Art.WHITE, 0.4f));
+        Art.centerText(c, hijri, w / 2f, h * 0.13f, top);
+        TextPaint d = Art.text(Fonts.black(ctx), h * 0.4f, Art.WHITE);
+        Art.fit(d, dayName, w * 0.86f, h * 0.15f);
+        Art.centerText(c, dayName, w / 2f, h * 0.45f, d);
+        // bottom right: الآن + the time (the next prayer's countdown is the live view on the left)
+        float pad = w * 0.075f, cy = h * 0.82f;
+        TextPaint tm = Art.text(Fonts.medium(ctx), h * 0.12f, Art.alpha(Art.WHITE, 0.6f));
+        tm.setTextAlign(Paint.Align.RIGHT);
+        TextPaint lb = Art.text(Fonts.bold(ctx), h * 0.055f, Art.alpha(Art.WHITE, 0.4f));
+        lb.setTextAlign(Paint.Align.RIGHT);
+        c.drawText("الآن", w - pad, Art.baseline(lb, cy + h * 0.02f), lb);
+        c.drawText(now, w - pad - lb.measureText("الآن") - h * 0.03f, Art.baseline(tm, cy), tm);
+        return b;
+    }
+
+    /** The next prayer's name in blue (next to the live countdown). */
+    static Bitmap dayPrayerName(Context ctx, String name, int h) {
+        TextPaint t = Art.text(Fonts.black(ctx), h * 0.85f, 0xFF3B82F6);
+        int w = Math.max(1, Math.round(t.measureText(name) + h * 0.3f));
+        Bitmap b = blank(w, h);
+        Art.centerText(new Canvas(b), name, w / 2f, h / 2f, t);
+        return b;
+    }
 }

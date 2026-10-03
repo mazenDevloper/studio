@@ -79,6 +79,8 @@ public final class Widgets {
 
     public static class MapWidget extends Base { }
 
+    public static class DayWidget extends Base { }
+
     // ---- shared ----
 
     static JSONObject json(Context ctx, String key) {
@@ -148,6 +150,7 @@ public final class Widgets {
         render(ctx, m, FoldersWidget.class, 250, 180, Widgets::folders);
         render(ctx, m, ChannelsWidget.class, 250, 180, Widgets::channels);
         render(ctx, m, MapWidget.class, 250, 180, Widgets::map);
+        render(ctx, m, DayWidget.class, 300, 170, Widgets::day);
     }
 
     private static void render(Context ctx, AppWidgetManager m, Class<?> provider, int defW, int defH, Builder b) {
@@ -319,7 +322,7 @@ public final class Widgets {
             try {
                 android.icu.util.IslamicCalendar ic = new android.icu.util.IslamicCalendar();
                 ic.setCalculationType(android.icu.util.IslamicCalendar.CalculationType.ISLAMIC_UMALQURA);
-                return new int[]{ic.get(android.icu.util.Calendar.DAY_OF_MONTH), ic.get(android.icu.util.Calendar.MONTH)};
+                return new int[]{ic.get(android.icu.util.Calendar.DAY_OF_MONTH), ic.get(android.icu.util.Calendar.MONTH), ic.get(android.icu.util.Calendar.YEAR)};
             } catch (Throwable ignored) {
             }
         }
@@ -333,7 +336,7 @@ public final class Widgets {
         int j = ((10985 - l) / 5316) * ((50 * l) / 17719) + (l / 5670) * ((43 * l) / 15238);
         l = l - ((30 - j) / 15) * ((17719 * j) / 50) - (j / 16) * ((15238 * j) / 43) + 29;
         int m = (24 * l) / 709;
-        return new int[]{l - (709 * m) / 24, m - 1};
+        return new int[]{l - (709 * m) / 24, m - 1, 30 * n + j - 30};
     }
 
     private static RemoteViews moon(Context ctx, int w, int h, int realH) {
@@ -521,6 +524,42 @@ public final class Widgets {
         }
         RemoteViews v = canvas(ctx, WidgetArt.map(ctx, w, h, shot, IslandService.mapOpen()));
         v.setOnClickPendingIntent(R.id.widget_root, action(ctx, WidgetActionReceiver.MAP_TOGGLE, 901));
+        return v;
+    }
+
+    // ---- the day (the dashboard's day card): Hijri date, the day name stretched with kashida, now + next prayer ----
+
+    private static final String[] DAYS = {"الاحــــد", "الاثنيـــــن", "الثلاثــــاء", "الاربعــــاء", "الخميــــس", "الجمعــــة", "السبــــت"};
+
+    private static RemoteViews day(Context ctx, int w, int h, int realH) {
+        RemoteViews v = new RemoteViews(ctx.getPackageName(), R.layout.widget_day);
+        Calendar g = Calendar.getInstance();
+        int[] hj = hijri();
+        String hijriText = hj[0] + " " + HIJRI_MONTHS[Math.max(0, Math.min(11, hj[1]))] + "، " + hj[2] + " هـ";
+        int h12 = g.get(Calendar.HOUR) == 0 ? 12 : g.get(Calendar.HOUR);
+        String now = h12 + ":" + String.format(Locale.ROOT, "%02d", g.get(Calendar.MINUTE));
+        // the next adhan
+        JSONArray list = json(ctx, "config").optJSONArray("countdowns");
+        long t = System.currentTimeMillis(), nextAt = 0;
+        String next = null;
+        for (int i = 0; list != null && i < list.length(); i++) {
+            JSONObject c = list.optJSONObject(i);
+            if (c == null || !"azan".equals(c.optString("kind"))) continue;
+            long at = c.optLong("at");
+            if (at > t && (next == null || at < nextAt)) { next = c.optString("title"); nextAt = at; }
+        }
+        v.setImageViewBitmap(R.id.widget_canvas, WidgetArt.day(ctx, w, h, hijriText, DAYS[g.get(Calendar.DAY_OF_WEEK) - 1], now));
+        v.setOnClickPendingIntent(R.id.widget_root, openApp(ctx, "/dashboard", 1001));
+        if (next == null) {
+            v.setViewVisibility(R.id.day_next, View.GONE);
+        } else {
+            v.setViewVisibility(R.id.day_next, View.VISIBLE);
+            int nh = Math.max(1, Math.round(realH * 0.13f)); // real pixels: shown at its own size beside the countdown
+            v.setImageViewBitmap(R.id.day_next_name, WidgetArt.dayPrayerName(ctx, next, nh));
+            v.setChronometer(R.id.day_countdown, SystemClock.elapsedRealtime() + (nextAt - t), null, true);
+            if (Build.VERSION.SDK_INT >= 24) v.setChronometerCountDown(R.id.day_countdown, true);
+            v.setTextViewTextSize(R.id.day_countdown, TypedValue.COMPLEX_UNIT_PX, realH * 0.12f);
+        }
         return v;
     }
 
