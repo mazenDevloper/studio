@@ -290,7 +290,7 @@ function MatchCard({ m, hidden = false }: { m: TopMatch; hidden?: boolean }) {
             {live ? `مباشر ${m.elapsed ?? ""}'` : m.status === "finished" ? "انتهت" : "قريباً"}
           </span>
           <button
-            onClick={() => toggleGoalAlert(matchHideKey(m), !!m.favorite)}
+            onClick={() => toggleGoalAlert(matchHideKey(m), !!(m.favorite || m.followed))}
             title={alertOn ? "إيقاف تنبيه الأهداف (الأنيميشن)" : "تفعيل تنبيه الأهداف (الأنيميشن)"}
             data-nav-id={`match-bell-${m.id}`}
             className={cn("w-8 h-8 rounded-full border flex items-center justify-center focusable", alertOn ? "bg-yellow-400 text-black border-yellow-300 shadow-[0_0_12px_rgba(250,204,21,0.5)]" : "bg-black/40 text-white/50 border-white/10 hover:text-white")}

@@ -22,6 +22,8 @@ export interface TopMatch {
   importance: number;
   /** set when the match involves one of the user's favourite teams */
   favorite?: boolean;
+  /** in a followed competition: listed and goal alerts on by default (not a favourite) */
+  followed?: boolean;
 }
 
 export interface TopMatchesResult {
@@ -255,7 +257,7 @@ export function goalAlertOn(m: TopMatch, belled: string[] = []): boolean {
   const k = matchHideKey(m);
   if (belled.includes(`goal:${k}`)) return true;
   if (belled.includes(`mute:${k}`)) return false;
-  return !!m.favorite;
+  return !!(m.favorite || m.followed);
 }
 
 /**

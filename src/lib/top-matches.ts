@@ -378,7 +378,7 @@ export async function getTopMatchesToday(limit = 10, only?: string, includeAll =
       if (AMERICAS_CUP.test(m.league.name) && !isFav(m) && !AMERICAS_BIG.some(t => sameTeam(t, m.home.name) || sameTeam(t, m.away.name))) return false;
       const clubs = isFav(m) || includeAll || isFollowed(m) ? null : leagueTopClubs(m.league);
       return !clubs || clubs.some(t => sameTeam(t, m.home.name) || sameTeam(t, m.away.name));
-    }).map(m => (isFav(m) ? { ...m, favorite: true } : m))),
+    }).map(m => (isFav(m) ? { ...m, favorite: true } : isFollowed(m) ? { ...m, followed: true } : m))),
     attempts: runs.map(r => r.attempt),
     fetchedAt: new Date(day.at).toISOString(),
   };
@@ -479,7 +479,7 @@ export async function getLiveNow(teams: string[] = [], follow: string[] = []): P
       const excluded = isExcludedLeague(m.league);
       const followed = follow.some(k => leagueKeyMatches(k, m.league));
       if (!followed && (excluded === "lower-tier" || (excluded === "americas" && !fav))) continue;
-      out.push(fav ? { ...m, favorite: true } : m);
+      out.push(fav ? { ...m, favorite: true } : followed ? { ...m, followed: true } : m);
     }
   }
   out.sort((a, b) => Number(!!b.favorite) - Number(!!a.favorite) || b.importance - a.importance || a.timestamp - b.timestamp);
