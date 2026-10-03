@@ -30,7 +30,7 @@ export function GlobalQuranPlayer() {
         "fixed transition-all duration-0 ease-linear",
         isQuranPage 
           ? "inset-0 z-0 w-full h-full" 
-          : "top-[-9999px] left-[-9999px] w-1 h-1 opacity-0 pointer-events-none overflow-hidden"
+          : "offscreen-hidden w-1 h-1"
       )}
     >
       <SovereignIframe

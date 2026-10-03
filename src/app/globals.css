@@ -59,10 +59,13 @@
   @apply border-white z-50;
   box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.4), 0 0 80px rgba(0, 136, 255, 0.8), inset 0 0 10px rgba(255, 255, 255, 0.5);
   transform: scale(1.05) translateY(-2px) !important;
-  position: relative;
   outline: 2px solid white !important;
   outline-offset: 4px !important;
 }
+
+/* raise the focused element above its neighbours - but never move a button that is placed absolutely / fixed: it
+   used to jump on press (mousedown focuses it), the release then missed it and the first tap was lost */
+.focusable:focus:not(.absolute):not(.fixed):not(.sticky) { position: relative; }
 
 /* Text inputs must not jump/scale on focus (it made the first tap feel lost) */
 .focusable.no-focus-scale:focus { transform: none !important; }
@@ -251,4 +254,29 @@ input, textarea, select, button { font-weight: 700; }
 /* Bottom car dock (<968px): reversed button order when the direction is switched */
 @media (max-width: 968px) {
   [data-nav-zone="dock"].dock-reversed > div { flex-direction: row-reverse !important; }
+}
+
+/* hidden players (YouTube audio fallback, Quran engine...): invisible but inside the screen, so nothing ever
+   widens the page (a right-to-left page can be scrolled towards elements parked far to the left) */
+.offscreen-hidden {
+  position: fixed !important;
+  top: 0;
+  left: 0;
+  opacity: 0;
+  pointer-events: none;
+  overflow: hidden;
+  clip-path: inset(50%);
+  z-index: -1;
+}
+
+/* app-like phone: the page itself never pans sideways or bounces; only inner lists scroll */
+html, body {
+  max-width: 100%;
+  overflow-x: hidden;
+  overscroll-behavior: none;
+}
+body { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%; }
+/* iPhone zooms into any field under 16px (and the whole screen can then be dragged sideways) */
+@media (max-width: 968px) {
+  input, select, textarea { font-size: 16px !important; }
 }

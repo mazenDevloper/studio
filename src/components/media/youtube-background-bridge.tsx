@@ -23,6 +23,8 @@ export function YoutubeBackgroundBridge() {
   const timeRef = useRef(0);           // last position reported by the YouTube iframe
   const urlRef = useRef<string | null>(null);
   const bridgingRef = useRef(false);
+  /** the bridged audio ended while hidden: start the next video's audio as soon as its URL is known */
+  const continueHiddenRef = useRef(false);
   const videoId = activeVideo?.id;
 
   const iframe = () => (videoId ? document.querySelector<HTMLIFrameElement>(`iframe[src*="youtube.com/embed/${videoId}"]`) : null);
@@ -64,7 +66,17 @@ export function YoutubeBackgroundBridge() {
     urlRef.current = null;
     if (!videoId) return;
     let cancelled = false;
-    fetch(`/api/audio-url?id=${videoId}`).then(r => (r.ok ? r.json() : null)).then(j => { if (!cancelled && j?.url) urlRef.current = j.url; }).catch(() => {});
+    fetch(`/api/audio-url?id=${videoId}`).then(r => (r.ok ? r.json() : null)).then(j => {
+      if (cancelled || !j?.url) return;
+      urlRef.current = j.url;
+      // playlist moved on while the app is in the background: keep playing the next one as audio
+      const a = audioRef.current;
+      if (continueHiddenRef.current && document.hidden && a) {
+        continueHiddenRef.current = false;
+        a.src = j.url; a.currentTime = 0;
+        a.play().then(() => { bridgingRef.current = true; timeRef.current = 0; }).catch(() => {});
+      }
+    }).catch(() => {});
     return () => { cancelled = true; };
   }, [videoId]);
 
@@ -103,5 +115,12 @@ export function YoutubeBackgroundBridge() {
   // Stop the bridge when the video is closed or changed.
   useEffect(() => () => { audioRef.current?.pause(); bridgingRef.current = false; }, [videoId]);
 
-  return <audio ref={audioRef} preload="none" playsInline className="hidden" />;
+  // the bridged audio reached the end (app hidden): same rule as the player - 3 seconds, then the next video
+  const onEnded = () => {
+    if (!bridgingRef.current) return;
+    continueHiddenRef.current = document.hidden;
+    setTimeout(() => useMediaStore.getState().nextTrack(), 3000);
+  };
+
+  return <audio ref={audioRef} preload="none" playsInline className="hidden" onEnded={onEnded} />;
 }

@@ -6,11 +6,13 @@ export default function manifest(): MetadataRoute.Manifest {
     name: 'DriveCast Sovereign Hub',
     short_name: 'DriveCast',
     description: 'Unified System Hub for Car OS - Sovereign Edition',
+    id: '/',
     start_url: '/',
+    scope: '/',
     display: 'fullscreen',
     background_color: '#000000',
     theme_color: '#000000',
-    orientation: 'landscape',
+    orientation: 'any', // phone portrait, tablet / car / TV landscape
     icons: [
       {
         src: 'https://www.image2url.com/r2/default/images/1782382707952-d99447c6-bc60-475d-9406-5fd2ef320bd5.png',

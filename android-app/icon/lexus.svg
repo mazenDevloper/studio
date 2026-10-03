@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-60 -60 120 120">
+  <!-- Lexus-style emblem: a chrome ellipse with the slanted "L" whose base runs into the ring -->
+  <defs>
+    <linearGradient id="chrome" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.45" stop-color="#c9ced6"/>
+      <stop offset="0.55" stop-color="#8a919c"/>
+      <stop offset="1" stop-color="#e9ecf1"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="0" cy="0" rx="46" ry="32" fill="none" stroke="url(#chrome)" stroke-width="5.5"/>
+  <!-- the L: a stroke leaning right, then the base sweeping to the ring on the right -->
+  <path d="M -9 -24.5 L -19.5 17 Q -20.5 21 -16.5 21 L 41.5 21 L 44 15.5 L -12.5 15.5 L -3 -24.5 Z" fill="url(#chrome)"/>
+</svg>

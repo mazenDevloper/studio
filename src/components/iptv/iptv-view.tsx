@@ -16,6 +16,7 @@ import { IptvSource, LoadResult, loadSource } from "@/lib/m3u-loader";
 import { DEFAULT_IPTV_SOURCE } from "@/lib/iptv-defaults";
 import { M3uChannel } from "@/lib/m3u";
 import { useToast } from "@/hooks/use-toast";
+import { useIptvCatalog } from "@/lib/iptv-catalog";
 
 const SOURCE_KEY = "iptv_source_v1";
 const PAGE_SIZE = 120;
@@ -61,6 +62,8 @@ export function IptvView() {
   const applySource = (res: LoadResult) => {
     const list = res.channels.map(toIptvChannel);
     setSourceChannels(list);
+    // the match cards open channels from this same list
+    if (!res.single) useIptvCatalog.getState().setChannels(list);
     setGroup("all");
     setVisibleCount(PAGE_SIZE);
     return list;

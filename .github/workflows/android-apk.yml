@@ -1,0 +1,67 @@
+name: Android APK
+
+# Builds the DriveCast Android app (android-app/) and publishes it as the "android-latest" release:
+# open https://github.com/<owner>/<repo>/releases/tag/android-latest on the phone and install DriveCast.apk.
+on:
+  push:
+    branches: [main, claude/practical-mendel-feeiyn]
+    paths: ["android-app/**", ".github/workflows/android-apk.yml"]
+  workflow_dispatch:
+    inputs:
+      app_url:
+        description: "Site the app opens (empty = the one in capacitor.config.ts)"
+        required: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-apk
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Install Capacitor and sync the Android project
+        working-directory: android-app
+        env:
+          APP_URL: ${{ github.event.inputs.app_url }}
+        run: |
+          npm ci || npm install --no-audit --no-fund
+          npx cap sync android
+
+      - name: Build the APK
+        working-directory: android-app/android
+        env:
+          VERSION_CODE: ${{ github.run_number }}
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon --stacktrace
+          cp app/build/outputs/apk/release/app-release.apk "$GITHUB_WORKSPACE/DriveCast.apk"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DriveCast-apk
+          path: DriveCast.apk
+
+      - name: Publish as the "android-latest" release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete android-latest --yes --cleanup-tag || true
+          gh release create android-latest DriveCast.apk \
+            --target "$GITHUB_SHA" --prerelease \
+            --title "DriveCast Android (build ${{ github.run_number }})" \
+            --notes "Built from ${GITHUB_REF_NAME} @ ${GITHUB_SHA::7}. Install DriveCast.apk on the phone (allow installing from this source once)."

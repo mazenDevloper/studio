@@ -138,9 +138,22 @@ export const NAME_WEIGHTS: [RegExp, number][] = [
   [/friendl/i, 40],
 ];
 
+/** League names used in several countries: they only count in their own country ("Serie A" of Brazil / Ecuador,
+ * the Austrian "Bundesliga", the Algerian "Ligue 1", "Premier League" of Egypt / Russia...). */
+const COUNTRY_GATED: [RegExp, RegExp][] = [
+  [/^(english )?premier league$|^fa cup$|^championship$/i, /england/i],
+  [/serie a/i, /ital/i],
+  [/bundesliga/i, /german|deutschland/i],
+  [/ligue 1/i, /france/i],
+  [/la ?liga|primera divisi[oó]n|copa del rey/i, /spain|espa/i],
+];
+
+/** Second / third tiers ("LaLiga 2", "Serie B / C", "2. Bundesliga", "Ligue 2"...): never "important" by name. */
+const LOWER_TIER = /laliga ?2|hypermotion|segunda|serie [bc]\b|2\. ?bundesliga|3\. ?liga|ligue 2|\bliga 2\b|primera federaci|segunda federaci|tercera|league (one|two)\b|second division|third division|\bnational league\b|super league 2|premier league 2|\b(ii|b|c)$/i;
+
 export function leagueWeightByName(name: string, country?: string): number {
-  // "Premier League" also exists in Egypt, Russia, ...: only England counts.
-  if (/^premier league$/i.test(name.trim()) && country && !/england/i.test(country)) return 0;
+  if (LOWER_TIER.test(name.trim())) return 0;
+  if (country) for (const [re, home] of COUNTRY_GATED) if (re.test(name.trim()) && !home.test(country)) return 0;
   for (const [re, w] of NAME_WEIGHTS) if (re.test(name)) return w;
   return 0;
 }
@@ -181,7 +194,9 @@ export function teamKey(name: string): string {
   for (const [re, to] of TEAM_ALIASES) n = n.replace(re, to);
   return n.replace(/[^a-z0-9 ]/g, " ").replace(TEAM_NOISE, " ").replace(/\s+/g, " ").trim();
 }
-const DIFFERENT_SIDE = new Set(["tula", "montevideo", "castilla", "b", "ii", "u17", "u19", "u20", "u21", "u23", "women", "w", "reserves", "youth", "academy"]);
+const DIFFERENT_SIDE = new Set(["tula", "montevideo", "castilla", "b", "ii", "iii", "u15", "u16", "u17", "u18", "u19", "u20", "u21", "u23",
+  "women", "w", "femeni", "femenino", "feminin", "feminine", "fem", "ladies", "reserves", "reserve", "res", "youth", "academy", "atletic",
+  "jong", "juvenil", "primavera", "sub", "2", "c", "futuro", "next", "gen", "nextgen", "promesas", "mestalla"]);
 export function sameTeam(a: string, b: string): boolean {
   const x = teamKey(a), y = teamKey(b);
   if (!x || !y) return false;
@@ -230,4 +245,122 @@ export function matchDetailsUrl(m: TopMatch, fresh = false): string {
   const q = new URLSearchParams({ id: m.id, league: m.league.id, homeId: m.home.id, home: m.home.name, away: m.away.name });
   if (fresh) q.set("fresh", "1");
   return `/api/matches/details?${q}`;
+}
+
+/**
+ * Goal alerts (the goal animation) per match, from the bell on the match card. Stored in belledMatchIds as
+ * "goal:<key>" (turned on) or "mute:<key>" (a favourite team's match turned off); favourites are on by default.
+ */
+export function goalAlertOn(m: TopMatch, belled: string[] = []): boolean {
+  const k = matchHideKey(m);
+  if (belled.includes(`goal:${k}`)) return true;
+  if (belled.includes(`mute:${k}`)) return false;
+  return !!m.favorite;
+}
+
+/**
+ * Matches page / feed order: live favourites, live, favourites, then the rest - each group by importance, then
+ * kick-off (finished matches after the upcoming ones of the same group).
+ */
+export function sortMatches<T extends Pick<TopMatch, "status" | "importance" | "timestamp" | "favorite">>(list: T[]): T[] {
+  const rank = (m: T) => (m.status === "live" ? (m.favorite ? 0 : 1) : m.favorite ? 2 : 3);
+  return [...list].sort((a, b) => rank(a) - rank(b) || (a.status === "finished" ? 1 : 0) - (b.status === "finished" ? 1 : 0)
+    || (b.importance ?? 0) - (a.importance ?? 0) || a.timestamp - b.timestamp);
+}
+
+// ---- favourite teams: the club itself, not a namesake from another country or its youth / B side ----
+
+/** A favourite team as sent to the server: "Liverpool~England" (the country is optional). */
+export interface FavSpec { name: string; country?: string }
+export const favSpecString = (t: { name: string; country?: string }) => (t.country ? `${t.name}~${t.country}` : t.name);
+export function parseFavSpec(s: string): FavSpec {
+  const [name, country] = s.split("~");
+  return { name: name.trim(), country: country?.trim() || undefined };
+}
+
+/** Countries of well-known clubs, for favourites saved without one (keeps Liverpool of Uruguay out). */
+const FAMOUS_CLUBS: Record<string, string> = Object.fromEntries(Object.entries({
+  england: "liverpool|arsenal|chelsea|tottenham|manchester united|manchester city|newcastle united|aston villa|west ham united|everton",
+  spain: "barcelona|real madrid|atletico madrid|sevilla|valencia|villarreal|real betis|real sociedad|athletic bilbao",
+  italy: "juventus|inter|milan|ac milan|napoli|roma|lazio|atalanta|fiorentina",
+  germany: "bayern|dortmund|leverkusen|bayern munich|bayern munchen|borussia dortmund|bayer leverkusen|rb leipzig|eintracht frankfurt",
+  france: "paris saint germain|psg|marseille|lyon|monaco|lille",
+  portugal: "benfica|porto|sporting cp|sporting lisbon|braga",
+  netherlands: "ajax|psv|psv eindhoven|feyenoord",
+  "saudi arabia": "hilal|al hilal|nassr|al nassr|ittihad|al ittihad|ahli|al ahli|shabab|al shabab|ettifaq|al ettifaq|qadsiah|al qadsiah",
+  egypt: "zamalek",
+  oman: "dhofar|al nahda|sur|al seeb|seeb",
+  qatar: "al sadd|sadd|al duhail|duhail",
+  uae: "al ain|al wahda|shabab al ahli|al jazira|sharjah",
+  argentina: "boca juniors|river plate",
+  brazil: "flamengo|palmeiras|corinthians|santos",
+}).flatMap(([country, names]) => names.split("|").map(n => [n.trim(), country])));
+
+const SLUG_COUNTRIES: Record<string, string> = {
+  eng: "england", esp: "spain", ita: "italy", ger: "germany", fra: "france", por: "portugal", ned: "netherlands", bel: "belgium",
+  sco: "scotland", tur: "turkey", ksa: "saudi arabia", egy: "egypt", uae: "united arab emirates", qat: "qatar", uru: "uruguay",
+  ecu: "ecuador", arg: "argentina", bra: "brazil", mex: "mexico", usa: "usa", col: "colombia", chi: "chile", per: "peru",
+  par: "paraguay", bol: "bolivia", ven: "venezuela",
+};
+/** Competitions between countries / continents: any club can play there. */
+const INTERNATIONAL = /world|europe|international|intl|asia|africa|america|friendl|uefa|fifa|afc|caf|concacaf|conmebol|gulf|arab|champions|cup winners/i;
+
+const sameCountry = (a: string, b: string) => {
+  const x = a.toLowerCase().replace(/^the /, ""), y = b.toLowerCase().replace(/^the /, "");
+  const uae = (s: string) => (/united arab emirates|^uae$/.test(s) ? "uae" : s);
+  return x.includes(y) || y.includes(x) || uae(x) === uae(y);
+};
+
+/** Is this match one of the favourite team's (same club, same country when that is known)? */
+export function favoriteOf(fav: FavSpec, m: Pick<TopMatch, "home" | "away" | "league">): boolean {
+  const side = [m.home.name, m.away.name].find(n => sameTeam(fav.name, n));
+  if (!side) return false;
+  if (isExcludedLeague(m.league) === "lower-tier") return false;
+  const want = fav.country || FAMOUS_CLUBS[teamKey(fav.name)] || FAMOUS_CLUBS[normalizeTeamName(fav.name)];
+  const got = m.league.country || SLUG_COUNTRIES[String(m.league.id ?? "").split(".")[0]];
+  // a longer name ("Boca Juniors de Cali") is only trusted when the league's country can confirm it
+  if (teamKey(side) !== teamKey(fav.name) && !got) return false;
+  if (!want || !got || INTERNATIONAL.test(got) || INTERNATIONAL.test(m.league.name)) return true;
+  return sameCountry(want, got);
+}
+
+/** Youth / reserve / women's matches (U18, U21, Primavera, reserves, (W)...): never listed. */
+const WOMEN_LEAGUE = /women|female|feminin|femenin|ladies|\bwsl\b|nwsl|frauen|\bliga f\b|damallsvenskan|\(w\)/i;
+const WOMEN_TEAM = /\(w\)|\bw$|\bwomen\b|\bfem(enino|enina|inine|eni)?\b|\bladies\b|frauen|damen/i;
+const YOUTH = /\b(u-? ?(1[3-9]|2[0-3])|under[- ]?(1[3-9]|2[0-3])|sub-?(1[3-9]|2[0-3])|youth|juvenil|primavera|reserves?|academy|jong)\b/i;
+export function isYouthMatch(m: Pick<TopMatch, "home" | "away" | "league">): boolean {
+  return YOUTH.test(m.league.name) || YOUTH.test(m.home.name) || YOUTH.test(m.away.name)
+    || WOMEN_LEAGUE.test(m.league.name) || WOMEN_TEAM.test(m.home.name) || WOMEN_TEAM.test(m.away.name);
+}
+
+// ---- leagues that are never fetched into the lists ----
+
+/** Every second / third tier (any country, the Saudi Yelo league included). */
+const ANY_LOWER_TIER = /laliga ?2|hypermotion|segunda|serie [b-d]\b|2\. ?bundesliga|3\. ?liga|ligue [23]\b|\bliga [23]\b|primera federaci|segunda federaci|tercera|league (one|two)\b|second division|third division|\bnational league\b|super league 2|premier league 2|\bprimera [bc]\b|\bb nacional|federal a|yelo|first division league|championnat national|eerste divisie|challenger pro league|\bdivision 2\b|\b(ii|b|c)$/i;
+
+const AMERICAS = /united states|\busa\b|canada|mexico|colombia|peru|chile|uruguay|ecuador|paraguay|bolivia|venezuela|costa rica|honduras|guatemala|el salvador|panama|jamaica|haiti|trinidad|brazil|brasil|argentin|north america|south america|concacaf|conmebol/i;
+const AMERICAS_SLUGS = new Set(["usa", "can", "mex", "col", "per", "chi", "uru", "ecu", "par", "bol", "ven", "crc", "hon", "gua", "slv", "pan", "jam", "bra", "arg", "concacaf", "conmebol"]);
+const AMERICAS_NAMES = /liga mx|\bmls\b|major league soccer|usl|nwsl|canadian premier|brasileir|libertadores|sudamericana|recopa|concacaf|copa argentina|copa do brasil|campeonato (paulista|carioca|mineiro|gaucho)|liga betplay|primera a\b|liga 1 (peru|te apuesto)|liga auf|liga pro\b|torneo (apertura|clausura)/i;
+
+/** The Americas leagues that stay: MLS, Brazil's Série A and Argentina's top league (two clubs each, see
+ * leagueTopClubs), and the continental cups when one of those clubs plays (americasCupClubs). */
+const AMERICAS_KEPT = (l: TopMatch["league"]) => {
+  const slug = String(l.id ?? "").toLowerCase();
+  if (["usa.1", "bra.1", "arg.1"].includes(slug)) return true;
+  const n = l.name.trim(), c = (l.country ?? "").toLowerCase();
+  if (/^mls$|major league soccer/i.test(n)) return true;
+  if (/brazil|brasil/.test(c) || /brasileir/i.test(n)) return /^(brasileir[aã]o( betano)?( s[eé]rie a)?|s[eé]rie a|brazilian s[eé]rie a|campeonato brasileiro s[eé]rie a)$/i.test(n);
+  if (/argentin/.test(c) || /argentin/i.test(n)) return /liga profesional|^primera divisi[oó]n$|argentine (primera|liga)|^(torneo )?(apertura|clausura)$|copa de la liga/i.test(n);
+  return false;
+};
+
+export const AMERICAS_CUP = /libertadores|sudamericana|recopa|concacaf champions/i;
+
+/** Leagues left out of every list (unless a favourite team plays, for the Americas). */
+export function isExcludedLeague(league: TopMatch["league"]): "lower-tier" | "americas" | null {
+  if (ANY_LOWER_TIER.test(league.name.trim())) return "lower-tier";
+  const slug = String(league.id ?? "").toLowerCase();
+  const americas = AMERICAS.test(league.country ?? "") || AMERICAS_SLUGS.has(slug.split(".")[0]) || AMERICAS_NAMES.test(league.name);
+  if (americas && !AMERICAS_KEPT(league) && !AMERICAS_CUP.test(league.name)) return "americas";
+  return null;
 }

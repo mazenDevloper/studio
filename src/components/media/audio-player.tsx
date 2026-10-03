@@ -117,10 +117,10 @@ export function AudioPlayer() {
               switchToFallback();
             }}
             onEnded={() => setIsPlaying(false)}
-            className="fixed top-[-9999px] left-[-9999px] w-1 h-1 opacity-0 pointer-events-none"
+            className="offscreen-hidden w-1 h-1"
           />
         ) : (
-          <div className="fixed top-[-9999px] left-[-9999px] w-1 h-1 opacity-0 pointer-events-none">
+          <div className="offscreen-hidden w-1 h-1">
             <SovereignIframe 
               src={`https://www.youtube.com/embed/${activeAudio.id}?autoplay=1&mute=0&enablejsapi=1`}
               title="Hidden Fallback Engine"
