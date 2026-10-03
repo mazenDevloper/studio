@@ -59,26 +59,36 @@ function DayTabs({ tab, setTab }: { tab: DayTab; setTab: (t: DayTab) => void }) 
   const shown = dated ? (tab as number) : dateDay;
   const go = (n: number) => { if ([-1, 0, 1].includes(n)) setTab(n); else { setDateDay(n); setTab(n); } };
   const step = (d: number) => go((typeof tab === "number" ? tab : 0) + d);
-  const openPicker = () => { const el = picker.current; if (!el) return; try { el.showPicker(); } catch { el.click(); } };
-  const btn = (active: boolean) => cn("focusable no-focus-scale h-9 px-4 rounded-full text-sm font-black transition-colors whitespace-nowrap",
+  // remote / keyboard: Enter on the date tab opens the picker (a tap lands on the date input itself, below)
+  const openPicker = () => { const el = picker.current; if (!el) return; try { el.showPicker(); } catch { el.focus(); el.click(); } };
+  const btn = (active: boolean) => cn("focusable no-focus-scale h-10 px-4 rounded-full text-sm font-black transition-colors whitespace-nowrap",
     active ? "bg-emerald-500 text-black" : "text-white/60 hover:bg-white/10");
+  const group = "inline-flex items-center rounded-full bg-white/5 border border-white/10 p-1 gap-1 max-w-full";
   return (
     <div className="mt-3 flex flex-wrap items-center gap-2">
-      <div className="inline-flex items-center rounded-full bg-white/5 border border-white/10 p-1 gap-1" role="tablist">
-        <button onClick={() => step(-1)} title="اليوم السابق" data-nav-id="matches-day-prev" className={cn(btn(false), "px-2")}><ChevronRight className="w-5 h-5" /></button>
+      <div className={group} role="tablist">
         {[-1, 0, 1].map(d => (
           <button key={d} role="tab" aria-selected={tab === d} onClick={() => setTab(d)} data-nav-id={`matches-day-${d + 1}`} className={btn(tab === d)}>{DAY_NAMES[d]}</button>
         ))}
-        {/* the date tab: first press opens it, a press while open shows the date picker */}
+      </div>
+      {/* previous day · the date (tap = date picker) · next day */}
+      <div className={group}>
+        <button onClick={() => step(-1)} title="اليوم السابق" data-nav-id="matches-day-prev" className={cn(btn(false), "px-3 flex items-center gap-1 text-white/80")}>
+          <ChevronRight className="w-5 h-5" /><span className="text-xs">السابق</span>
+        </button>
         <span className="relative">
-          <button role="tab" aria-selected={dated} onClick={() => (dated ? openPicker() : go(shown))} data-nav-id="matches-day-date" className={cn(btn(dated), "flex items-center gap-1.5")}>
-            <CalendarDays className="w-4 h-4" /> {DAY_NAMES[shown] && shown === 2 ? `${DAY_NAMES[2]} · ` : ""}{shortDate(shown)}
+          <button role="tab" aria-selected={dated} onClick={openPicker} tabIndex={0} data-nav-id="matches-day-date" className={cn(btn(dated), "flex items-center gap-1.5")}>
+            <CalendarDays className="w-4 h-4" /> {shown === 2 ? `${DAY_NAMES[2]} · ` : ""}{shortDate(shown)}
           </button>
-          <input ref={picker} type="date" aria-hidden tabIndex={-1} className="absolute inset-0 opacity-0 pointer-events-none"
+          {/* the real date input covers the tab, so a tap opens the phone's own date picker */}
+          <input ref={picker} type="date" aria-label="اختر التاريخ" tabIndex={-1}
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer"
             value={dayDate(shown).toISOString().slice(0, 10)}
             onChange={e => { if (!e.target.value) return; const [y, m, d] = e.target.value.split("-").map(Number); go(Math.round((Date.UTC(y, m - 1, d, 12) - dayDate(0).getTime()) / DAY_MS)); }} />
         </span>
-        <button onClick={() => step(1)} title="اليوم التالي" data-nav-id="matches-day-next" className={cn(btn(false), "px-2")}><ChevronLeft className="w-5 h-5" /></button>
+        <button onClick={() => step(1)} title="اليوم التالي" data-nav-id="matches-day-next" className={cn(btn(false), "px-3 flex items-center gap-1 text-white/80")}>
+          <span className="text-xs">التالي</span><ChevronLeft className="w-5 h-5" />
+        </button>
       </div>
       <button role="tab" aria-selected={tab === "fav"} onClick={() => setTab("fav")} data-nav-id="matches-day-fav"
         className={cn(btn(tab === "fav"), "flex items-center gap-1.5 border border-yellow-400/30", tab !== "fav" && "text-yellow-300")}>
