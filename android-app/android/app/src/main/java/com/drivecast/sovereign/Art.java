@@ -252,7 +252,7 @@ final class Art {
         for (int y = 0; y < h; y += step) {
             for (int x = 0; x < w; x += step) {
                 boolean light = ((x / step) + (y / step)) % 2 == 0;
-                t.setColor(light ? 0x59FFF0B4 : 0x59785010);
+                t.setColor(light ? 0x26FFF0B4 : 0x26785010);
                 c.drawRect(x, y, x + step, y + step, t);
             }
         }
@@ -427,6 +427,8 @@ final class Art {
         if (words.length > 1) {
             String main = words[0];
             for (String x : PREFIXES) if (words[0].equalsIgnoreCase(x)) main = words[1];
+            // a number or a tiny word is not a name ("15 De Agosto"): cut the full name instead
+            if (main.length() < 3 || main.matches("\\d+.*")) return ellipsize(p, k, maxW);
             if (p.measureText(main) <= maxW) return main;
             return ellipsize(p, main, maxW);
         }

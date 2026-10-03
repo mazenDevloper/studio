@@ -79,9 +79,8 @@ final class WidgetArt {
         sub.setTextAlign(Paint.Align.RIGHT);
         c.drawText("الأذان · " + nextTime, textRight, Art.baseline(sub, iconBox.top + icon * 0.86f), sub);
         // "متبقي" over the live countdown (the countdown itself is the widget's own ticking view)
-        TextPaint left = Art.text(bold, icon * 0.26f, Art.alpha(Art.EMERALD, 0.7f));
-        left.setTextAlign(Paint.Align.LEFT);
-        c.drawText("متبقي", pad, Art.baseline(left, iconBox.centerY()), left);
+        TextPaint left = Art.text(bold, Math.min(icon * 0.26f, h * 0.045f), Art.alpha(Art.EMERALD, 0.7f));
+        Art.centerText(c, "متبقي", w / 2f, h * PRAYER_HEADER, left);
 
         // the day's prayers
         float listTop = h * (PRAYER_HEADER + PRAYER_COUNT);
@@ -196,6 +195,11 @@ final class WidgetArt {
         }
         float minRow = Math.max(unit * 0.2f, h * 0.15f);
         int rows = Math.max(1, Math.min(list.length(), (int) (avail / minRow)));
+        if (rows < list.length()) {
+            // keep a line for "+n أخرى" under the rows
+            avail -= headH * 0.45f;
+            rows = Math.max(1, Math.min(list.length(), (int) (avail / minRow)));
+        }
         float rowH = Math.min(avail / rows, unit * 0.34f);
         float gap = rowH * 0.1f;
         for (int i = 0; i < rows; i++) {
@@ -206,7 +210,7 @@ final class WidgetArt {
         if (list.length() > rows) {
             TextPaint more = Art.text(bold, headH * 0.3f, Art.alpha(Art.WHITE, 0.35f));
             more.setTextAlign(Paint.Align.LEFT);
-            c.drawText("+" + (list.length() - rows) + " أخرى", pad, Art.baseline(more, h - pad * 0.45f), more);
+            c.drawText("+" + (list.length() - rows), pad, Art.baseline(more, top + avail + headH * 0.25f), more);
         }
         return b;
     }

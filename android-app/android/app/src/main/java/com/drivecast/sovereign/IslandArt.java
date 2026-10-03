@@ -203,7 +203,7 @@ final class IslandArt {
     }
 
     /**
-     * The goal card (island celebration and notification picture): gold ring, "⚽ هدف!", the two logos with the new
+     * The goal card (island celebration and notification picture): gold ring, "⚽ هدف", the two logos with the new
      * score (the scoring side bright), and the scorer with photo and minute when known. Logos can be passed in (the
      * notification loads them blocking); otherwise the cached ones are used.
      */
@@ -230,7 +230,7 @@ final class IslandArt {
         float mid = r.centerX();
         TextPaint g = Art.text(black, topH * 0.2f, Art.YELLOW);
         g.setShadowLayer(topH * 0.08f, 0, 0, 0xAAFACC15);
-        Art.centerText(c, "⚽ هدف!", mid, cy - topH * 0.24f, g);
+        Art.centerText(c, "⚽ هدف", mid, cy - topH * 0.24f, g);
         TextPaint s = Art.text(black, topH * 0.36f, Art.WHITE);
         String hs = String.valueOf(it.sh), as = String.valueOf(it.sa), dash = " - ";
         float wh = s.measureText(hs), wd = s.measureText(dash), wa = s.measureText(as);

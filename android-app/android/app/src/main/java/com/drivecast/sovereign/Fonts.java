@@ -25,7 +25,11 @@ final class Fonts {
     private Fonts() {
     }
 
-    private static final String BASE = "https://cdn.jsdelivr.net/gh/engdawood/thmanyah-font-web@4266a9d/fonts/thmanyah-sans/otf/thmanyah-sans-";
+    /** the repository commit that ships the OTF files (Android can't read the site's woff2), CDN first then GitHub */
+    private static final String[] BASES = {
+            "https://cdn.jsdelivr.net/gh/engdawood/thmanyah-font-web@451a047/fonts/thmanyah-sans/otf/thmanyah-sans-",
+            "https://raw.githubusercontent.com/engdawood/thmanyah-font-web/451a047/fonts/thmanyah-sans/otf/thmanyah-sans-",
+    };
 
     private static final Map<String, Typeface> loaded = new HashMap<>();
     private static final Set<String> downloading = new HashSet<>();
@@ -122,15 +126,23 @@ final class Fonts {
             try {
                 //noinspection ResultOfMethodCallIgnored
                 out.getParentFile().mkdirs();
-                HttpURLConnection c = (HttpURLConnection) new URL(BASE + weight + ".otf").openConnection();
-                c.setConnectTimeout(15_000);
-                c.setReadTimeout(30_000);
-                try (InputStream in = c.getInputStream(); OutputStream o = new FileOutputStream(tmp)) {
-                    byte[] buf = new byte[16_384];
-                    int n;
-                    while ((n = in.read(buf)) > 0) o.write(buf, 0, n);
+                for (String base : BASES) {
+                    try {
+                        HttpURLConnection c = (HttpURLConnection) new URL(base + weight + ".otf").openConnection();
+                        c.setConnectTimeout(15_000);
+                        c.setReadTimeout(30_000);
+                        if (c.getResponseCode() != 200) continue;
+                        try (InputStream in = c.getInputStream(); OutputStream o = new FileOutputStream(tmp)) {
+                            byte[] buf = new byte[16_384];
+                            int n;
+                            while ((n = in.read(buf)) > 0) o.write(buf, 0, n);
+                        }
+                        Typeface.createFromFile(tmp); // a real font, not an error page
+                        ok = tmp.length() > 20_000 && tmp.renameTo(out);
+                        if (ok) break;
+                    } catch (Exception ignored) {
+                    }
                 }
-                ok = tmp.length() > 20_000 && tmp.renameTo(out);
             } catch (Exception ignored) {
             } finally {
                 //noinspection ResultOfMethodCallIgnored
