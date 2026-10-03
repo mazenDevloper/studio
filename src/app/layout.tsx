@@ -1,6 +1,7 @@
 
 "use client";
 
+import { NativeIslandBridge } from "@/components/native/native-island-bridge";
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { GlobalVideoPlayer } from "@/components/media/global-player";
@@ -161,6 +162,7 @@ export default function RootLayout({
         <FirebaseClientProvider>
           <RootLayoutWrapper>
             <LiveMatchIsland />
+            <NativeIslandBridge />
             <GoalCelebration />
             <RemotePointer />
             <CarDock />

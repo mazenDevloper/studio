@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FootballSettings } from "@/components/settings/football-settings";
+import { NativePermissions } from "@/components/native/native-permissions";
 import { Trophy as TabTrophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -487,6 +488,9 @@ export function SettingsView() {
           <Button onClick={async () => { setIsSyncing(true); await syncMasterBin(); setIsSyncing(false); toast({ title: "تم الحفظ سحابياً بنجاح" }); }} disabled={isSyncing} className="bg-primary text-white rounded-full h-14 px-8 font-black shadow-glow focusable">{isSyncing ? <Loader2 className="w-5 h-5 animate-spin ml-2" /> : <Zap className="w-5 h-5 ml-2" />} تخزين سحابي (JSONBin)</Button>
         </div>
       </header>
+
+      {/* Android app only: permissions (over other apps, background, notifications) */}
+      <NativePermissions />
 
       <Tabs defaultValue="reminders" className="w-full">
         <TabsList className="bg-white/5 p-1.5 rounded-full border border-white/10 h-16 mb-10 flex justify-start min-[1200px]:justify-around gap-1 overflow-x-auto no-scrollbar shadow-2xl w-full">
