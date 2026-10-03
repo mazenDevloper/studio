@@ -20,6 +20,7 @@ import { Card, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FootballSettings } from "@/components/settings/football-settings";
 import { NativePermissions } from "@/components/native/native-permissions";
+import { ManuscriptInkSettings } from "@/components/manuscript/manuscript-ink-settings";
 import { Trophy as TabTrophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -507,6 +508,7 @@ export function SettingsView() {
         </TabsList>
 
         <TabsContent value="manuscripts" className="space-y-8 animate-in fade-in duration-0">
+          <ManuscriptInkSettings />
           <Card className={cn( "bg-white/5 border-white/10 p-10 rounded-[3.5rem] relative shadow-2xl transition-all duration-500", isFullscreenEditor && "fixed inset-0 z-[100000] bg-black p-12 rounded-none overflow-hidden" )}>
             <div className="flex items-center justify-between mb-8 relative z-10">
               <CardTitle className="text-4xl font-black text-white flex items-center gap-6"><Type className="w-12 h-12 text-primary" /> استوديو التجميد 190</CardTitle>
@@ -1079,7 +1081,7 @@ export function SettingsView() {
                     <div key={idx} className="relative aspect-video rounded-[2.5rem] overflow-hidden border-4 border-white/5 group shadow-2xl transition-all hover:border-pink-500/20">
                        <img src={url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="" />
                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
-                          <Button onClick={async () => { updateMapSettings({ manuscriptBgUrl: url }); await syncMasterBin(); toast({ title: "تم تعيين الخلفية سحابياً" }); }} className="bg-white text-black font-black rounded-xl focusable">تطبيق كخلفية</Button>
+                          <Button onClick={async () => { updateMapSettings({ manuscriptBgUrl: url, showManuscriptBg: true }); await syncMasterBin(); toast({ title: "تم تعيين الخلفية سحابياً" }); }} className="bg-white text-black font-black rounded-xl focusable">تطبيق كخلفية</Button>
                           <Button onClick={() => removeCustomWallBackground(url)} variant="ghost" className="w-12 h-12 rounded-full bg-red-600 text-white"><Trash2 className="w-6 h-6" /></Button>
                        </div>
                     </div>

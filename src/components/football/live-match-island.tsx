@@ -58,6 +58,22 @@ export function LiveMatchIsland() {
   const { data: liveFeed, celebrating } = useLiveMatches(favoriteNames);
   const pinned = useMediaStore(s => s.pinnedMatches) || [];
   const togglePin = useMediaStore(s => s.togglePinnedMatch);
+  // the islands' real height becomes --island-space, so every screen starts its content below them (0 when hidden)
+  const islandRootRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const root = document.documentElement;
+    let last = -1;
+    const measure = () => {
+      const el = islandRootRef.current;
+      const shown = !!el && getComputedStyle(el).opacity !== "0" && !!el.querySelector("[class*='premium-glass']:not(.w-12)");
+      const space = shown ? Math.ceil(el!.getBoundingClientRect().bottom) + 8 : 0;
+      if (space !== last) { last = space; root.style.setProperty("--island-space", `${space}px`); }
+    };
+    measure();
+    const t = setInterval(measure, 700); // islands come and go with the data and the clock
+    window.addEventListener("resize", measure);
+    return () => { clearInterval(t); window.removeEventListener("resize", measure); root.style.setProperty("--island-space", "0px"); };
+  }, []);
 
   useEffect(() => {
     setMounted(true);
@@ -282,7 +298,7 @@ export function LiveMatchIsland() {
   const visibleAlerts = playerCovers && hasOnTop ? activeAlerts.filter(onTop) : activeAlerts;
 
   return (
-    <div className={cn("fixed top-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3 pointer-events-none scale-[0.7] min-[968px]:scale-[0.80] dir-rtl transition-all duration-700", hasOnTop ? "z-[100002]" : "z-[10001]", (showIslands || activeAlerts.length) ? "translate-y-0 opacity-100" : "-translate-y-20 opacity-0")}>
+    <div ref={islandRootRef} className={cn("fixed top-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3 pointer-events-none scale-[0.7] min-[968px]:scale-[0.80] dir-rtl transition-all duration-700", hasOnTop ? "z-[100002]" : "z-[10001]", (showIslands || activeAlerts.length) ? "translate-y-0 opacity-100" : "-translate-y-20 opacity-0")}>
       <div className="flex items-start gap-3">
         <div onClick={toggleShowIslands} className="pointer-events-auto shadow-2xl w-12 h-12 rounded-full flex items-center justify-center premium-glass cursor-pointer border border-white/10 active:scale-90 transition-all">{showIslands ? <Eye className="w-5 h-5 text-accent" /> : <EyeOff className="w-5 h-5 text-white/20" />}</div>
         {showIslands && (

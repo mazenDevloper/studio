@@ -21,7 +21,8 @@ export function MainLayoutShell({ children }: { children: React.ReactNode }) {
       "flex-1 h-full overflow-hidden transition-all duration-0 bg-black relative",
       dockSide === 'left' ? "pl-16 min-[980px]:pl-20" : "pr-16 min-[980px]:pr-20"
     )}>
-      <div className="w-full h-full overflow-y-auto overflow-x-hidden relative no-scrollbar" style={{ zoom: zoomFactor, willChange: 'transform, opacity' }}>{children}</div>
+      {/* content starts below the floating islands (--island-space is their measured height, 0 when none) */}
+      <div className="w-full h-full overflow-y-auto overflow-x-hidden relative no-scrollbar transition-[padding] duration-300" style={{ zoom: zoomFactor, willChange: 'transform, opacity', paddingTop: `calc(var(--island-space, 0px) / ${zoomFactor})` }}>{children}</div>
     </div>
   );
 }

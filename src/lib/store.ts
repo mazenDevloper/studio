@@ -80,6 +80,12 @@ export interface MapSettings {
   omanUrl?: string; bein1Url?: string; mbc1Url?: string;
   invertJoystickX?: boolean; invertJoystickY?: boolean;
   autoRotateNav90?: boolean;
+  /** board: the manuscript tapped on the widget (shown first, rotation paused) */
+  pinnedManuscriptId?: string | null;
+  /** board ink: white (default), a colour, gold mosaic, or an uploaded / linked texture */
+  manuscriptInk?: "white" | "color" | "gold" | "texture";
+  manuscriptInkColor?: string;
+  manuscriptTexture?: string;
 }
 
 export interface IptvChannel {
@@ -567,7 +573,13 @@ export const useMediaStore = create<MediaState>()(
         setTimeout(() => get().syncMasterBin(), 100);
       },
       toggleBelledMatch: (matchId) => set((s) => ({ belledMatchIds: s.belledMatchIds.includes(matchId) ? s.belledMatchIds.filter(i => i !== matchId) : [...s.belledMatchIds, matchId] })),
-      updateMapSettings: (s) => set((st) => { const n = { ...st.mapSettings, ...s }; if (s.manuscriptBgUrl || s.winwinUrl || s.beinUrl || s.omanUrl || s.bein1Url || s.mbc1Url) setTimeout(() => get().syncMasterBin(), 100); return { mapSettings: n }; }),
+      // every change is saved to the cloud (debounced: sliders send many changes)
+      updateMapSettings: (s) => set((st) => {
+        const n = { ...st.mapSettings, ...s };
+        clearTimeout((globalThis as any).__mapSettingsSync);
+        (globalThis as any).__mapSettingsSync = setTimeout(() => get().syncMasterBin(), 800);
+        return { mapSettings: n };
+      }),
       setKeyMapping: (ctx, act, key) => set((s) => { const m = { ...s.keyMappings }; if (!m[ctx]) m[ctx] = {}; let k = Array.isArray(m[ctx][act]) ? [...m[ctx][act]] : []; if (k.includes(key)) return s; k.push(key); m[ctx][act] = k.slice(-3); return { keyMappings: m }; }),
       removeSpecificKeyMapping: (ctx, act, key) => set((s) => { const m = { ...s.keyMappings }; if (m[ctx] && m[ctx][act]) { m[ctx][act] = m[ctx][act].filter(v => v !== key); return { keyMappings: m }; } return s; }),
       setActiveVideo: (v, ctx) => set({ playlist: ctx || (v ? [v] : []), playlistIndex: ctx ? ctx.findIndex(i => i.id === v?.id) : 0, activeVideo: v, lastPlayedVideo: v || get().lastPlayedVideo, activeIptv: null, activeAudio: null, isPlaying: !!v, isMinimized: false, isFullScreen: !!v, isPlayerPlaylistOpen: false }),

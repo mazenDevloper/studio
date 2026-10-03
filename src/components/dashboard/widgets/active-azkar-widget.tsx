@@ -3,9 +3,10 @@
 
 import { useMediaStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { Maximize2, ChevronLeft, ChevronRight, CloudDownload, Type } from "lucide-react";
+import { Maximize2, ChevronLeft, ChevronRight, CloudDownload, Pin } from "lucide-react";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { ManuscriptArt } from "@/components/manuscript/manuscript-art";
 import { JSONBIN_MANUSCRIPTS_BIN_ID, JSONBIN_FONTS_BIN_ID } from "@/lib/constants";
 
 /**
@@ -19,18 +20,32 @@ export function ActiveAzkarWidget() {
   const mapSettings = useMediaStore(state => state.mapSettings);
   const fetchSpecificBin = useMediaStore(state => state.fetchSpecificBin);
   
+  const updateMapSettings = useMediaStore(state => state.updateMapSettings);
+  const pinnedId = mapSettings.pinnedManuscriptId || null;
+  // the pinned manuscript (tapped on the board) comes first and stays; otherwise they rotate every 15 s
+  const ordered = useMemo(() => {
+    const list = customManuscripts || [];
+    const pin = list.find(m => m.id === pinnedId);
+    return pin ? [pin, ...list.filter(m => m.id !== pin.id)] : list;
+  }, [customManuscripts, pinnedId]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  useEffect(() => { if (pinnedId) setActiveIndex(0); }, [pinnedId]);
   useEffect(() => {
-    if (!customManuscripts?.length) return;
+    if (!ordered.length || pinnedId) return;
     const interval = setInterval(() => {
-      setActiveIndex(prev => (prev + 1) % customManuscripts.length);
-    }, 15000); 
+      setActiveIndex(prev => (prev + 1) % ordered.length);
+    }, 15000);
     return () => clearInterval(interval);
-  }, [customManuscripts]);
+  }, [ordered, pinnedId]);
 
-  const activeItem = customManuscripts?.[activeIndex];
+  const activeItem = ordered[activeIndex % Math.max(1, ordered.length)];
+  // tap the manuscript: pin it (stops the rotation, shown first, saved); tap again: back to rotating
+  const togglePin = () => {
+    if (!activeItem) return;
+    updateMapSettings({ pinnedManuscriptId: pinnedId === activeItem.id ? null : activeItem.id });
+  };
 
   const handleManualSync = async () => {
     setIsRefreshing(true);
@@ -43,7 +58,7 @@ export function ActiveAzkarWidget() {
 
   return (
     <div className="h-full w-full rounded-[2.5rem] border border-white/10 flex flex-col relative overflow-hidden group focusable outline-none bg-black p-0 m-0" tabIndex={0}>
-      {mapSettings.showManuscriptBg && mapSettings.manuscriptBgUrl && (
+      {mapSettings.showManuscriptBg !== false && mapSettings.manuscriptBgUrl && (
         <div className="absolute inset-0 z-0">
           <Image src={mapSettings.manuscriptBgUrl} alt="Bg" fill className="object-cover opacity-40" unoptimized />
         </div>
@@ -51,24 +66,13 @@ export function ActiveAzkarWidget() {
       
       <div className="relative z-20 w-full h-full overflow-hidden flex items-center justify-center p-4">
         {activeItem ? (
-          <div className="w-full h-full flex items-center justify-center">
-            {activeItem.pngDataUrl ? (
-              <img 
-                src={activeItem.pngDataUrl} 
-                className="w-full h-full object-contain drop-shadow-[0_0_60px_rgba(255,255,255,0.4)]" 
-                style={{ 
-                  transform: `scale(${(activeItem.scale || 1.0) * (manuscriptScales[activeItem.id] || 1.0)})`,
-                  // brightness(0) makes it black, invert(1) makes it pure white regardless of source
-                  filter: 'brightness(0) invert(1)'
-                }}
-                alt="Manuscript" 
-              />
-            ) : (
-              <p className="text-3xl font-black text-white text-center leading-relaxed drop-shadow-2xl" style={{ fontFamily: activeItem.fontFamily }}>
-                {activeItem.content}
-              </p>
+          <button type="button" onClick={togglePin} title={pinnedId === activeItem.id ? "إلغاء التثبيت (تعود المخطوطات للتبديل)" : "تثبيت هذه المخطوطة أولاً وإيقاف التبديل"}
+            className="w-full h-full flex items-center justify-center relative cursor-pointer">
+            <ManuscriptArt item={activeItem} scale={(activeItem.scale || 1.0) * (manuscriptScales[activeItem.id] || 1.0)} textClassName="text-3xl" />
+            {pinnedId === activeItem.id && (
+              <span className="absolute top-1 left-1 w-8 h-8 rounded-full bg-primary/80 text-white flex items-center justify-center shadow-glow"><Pin className="w-4 h-4" /></span>
             )}
-          </div>
+          </button>
         ) : (
           <p className="text-white/20 font-black uppercase tracking-widest text-[10px]">نظام المخطوطات السيادي</p>
         )}
@@ -81,8 +85,8 @@ export function ActiveAzkarWidget() {
       </div>
 
       <div className="absolute bottom-4 left-4 flex items-center gap-2 z-50 opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-none">
-        <button className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/40 focusable" onClick={() => setActiveIndex(p => (p - 1 + customManuscripts.length) % customManuscripts.length)}><ChevronRight className="w-5 h-5" /></button>
-        <button className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/40 focusable" onClick={() => setActiveIndex(p => (p + 1) % customManuscripts.length)}><ChevronLeft className="w-5 h-5" /></button>
+        <button className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/40 focusable" onClick={() => { if (pinnedId) updateMapSettings({ pinnedManuscriptId: null }); setActiveIndex(p => (p - 1 + ordered.length) % ordered.length); }}><ChevronRight className="w-5 h-5" /></button>
+        <button className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/40 focusable" onClick={() => { if (pinnedId) updateMapSettings({ pinnedManuscriptId: null }); setActiveIndex(p => (p + 1) % ordered.length); }}><ChevronLeft className="w-5 h-5" /></button>
         <div className="w-px h-5 bg-white/10 mx-1" />
         <button className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/40 focusable" onClick={() => activeItem && setWallPlate('manuscript', activeItem)}><Maximize2 className="w-5 h-5" /></button>
       </div>
