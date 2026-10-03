@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Layers, BatteryCharging, BellRing, Check, Smartphone, Type } from "lucide-react";
+import { Layers, BatteryCharging, BellRing, Check, Smartphone, Type, Sparkles } from "lucide-react";
 import { nativeIsland, type NativeStatus } from "@/lib/native-app";
 import { cn } from "@/lib/utils";
 
@@ -32,6 +32,7 @@ export function NativePermissions() {
 
   const rows = [
     { key: "overlay", icon: Layers, title: "الظهور فوق التطبيقات", hint: "الجزيرة العائمة (المباريات المباشرة وعدّاد الصلاة) فوق أي تطبيق", ok: status.overlay, ask: () => plugin.requestOverlay() },
+    { key: "accessibility", icon: Sparkles, title: "جزيرة فوق شريط الحالة", hint: "مثل تطبيقات Dynamic Island: فوق شريط الحالة وشاشة القفل ولا يوقفها توفير البطارية (فعّل DriveCast في إمكانية الوصول)", ok: !!status.accessibility, ask: () => plugin.requestAccessibility() },
     { key: "background", icon: BatteryCharging, title: "العمل في الخلفية بلا قيود", hint: "الصوت والنتائج تستمر والشاشة مغلقة أو في تطبيق آخر", ok: status.background, ask: () => plugin.requestBackground() },
     { key: "notifications", icon: BellRing, title: "الإشعارات", hint: "النتيجة والعدّاد في شريط الإشعارات وشاشة القفل", ok: status.notifications, ask: () => plugin.requestNotifications() },
   ];
@@ -39,7 +40,7 @@ export function NativePermissions() {
   return (
     <section className="rounded-[2.5rem] bg-white/5 border border-white/10 p-6 md:p-8 space-y-4">
       <h2 className="text-2xl font-black text-white flex items-center gap-3"><Smartphone className="w-7 h-7 text-emerald-400" /> صلاحيات التطبيق</h2>
-      <div className="grid gap-3 md:grid-cols-3">
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         {rows.map(r => (
           <button key={r.key} onClick={() => { r.ask().finally(() => setTimeout(refresh, 800)); }} disabled={r.ok} data-nav-id={`native-perm-${r.key}`}
             className={cn("focusable no-focus-scale text-right rounded-3xl border p-4 flex items-start gap-3",

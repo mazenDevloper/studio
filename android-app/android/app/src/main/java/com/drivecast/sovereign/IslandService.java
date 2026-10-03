@@ -86,6 +86,12 @@ public class IslandService extends Service {
         });
     }
 
+    /** The accessibility service connected / disconnected: redraw the island in the right window host. */
+    static void hostChanged() {
+        IslandService s = instance;
+        if (s != null) s.handler.post(() -> { s.removeIsland(); s.tick(); });
+    }
+
     static void reloadConfig() {
         IslandService s = instance;
         if (s != null) s.handler.post(() -> {
@@ -104,7 +110,8 @@ public class IslandService extends Service {
         windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
         createChannel();
         Notification n = buildNotification("يعمل في الخلفية");
-        if (Build.VERSION.SDK_INT >= 29) startForeground(NOTIFICATION_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK);
+        if (Build.VERSION.SDK_INT >= 34) startForeground(NOTIFICATION_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK | ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
+        else if (Build.VERSION.SDK_INT >= 29) startForeground(NOTIFICATION_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK);
         else startForeground(NOTIFICATION_ID, n);
         loadConfig();
         handler.post(loop);
@@ -272,7 +279,7 @@ public class IslandService extends Service {
     }
 
     private boolean canDraw() {
-        return Build.VERSION.SDK_INT < 23 || Settings.canDrawOverlays(this);
+        return IslandAccessibilityService.instance != null || Build.VERSION.SDK_INT < 23 || Settings.canDrawOverlays(this);
     }
 
     // ---- data ----
@@ -362,32 +369,53 @@ public class IslandService extends Service {
 
     // ---- the floating island ----
 
+    /** true = all lines shown (tap the pill); false = the compact pill with the first line */
+    private boolean expanded = false;
+    /** which window host the island is in: accessibility service (over the status bar / lock screen) or app overlay */
+    private boolean islandOnAccessibility = false;
+
+    /**
+     * Dynamic-island style: a black pill at the top centre, over the status bar (around the camera). Compact = the
+     * most important line; tap = expand to every line; long press = open the app; drag = move it (remembered).
+     * Drawn by the accessibility service when it is on (works over the status bar and the lock screen), otherwise
+     * as an app overlay ("display over other apps").
+     */
     @SuppressLint("ClickableViewAccessibility")
     private void showIsland(List<String> lines) {
+        IslandAccessibilityService acc = IslandAccessibilityService.instance;
+        boolean useAcc = acc != null;
+        if (island != null && useAcc != islandOnAccessibility) removeIsland();
         if (island == null) {
+            WindowManager wm = useAcc ? acc.windowManager() : windowManager;
             island = new LinearLayout(this);
             island.setOrientation(LinearLayout.VERTICAL);
-            int pad = dp(12);
-            island.setPadding(dp(20), pad, dp(20), pad);
+            island.setGravity(Gravity.CENTER);
+            island.setPadding(dp(22), dp(9), dp(22), dp(9));
             GradientDrawable bg = new GradientDrawable();
-            bg.setColor(Color.argb(235, 10, 10, 12));
-            bg.setCornerRadius(dp(28));
-            bg.setStroke(dp(1), Color.argb(90, 250, 204, 21));
+            bg.setColor(Color.BLACK);
+            bg.setCornerRadius(dp(26));
             island.setBackground(bg);
-            island.setElevation(dp(8));
+            island.setElevation(dp(10));
+            island.setMinimumHeight(dp(36));
 
-            int type = Build.VERSION.SDK_INT >= 26 ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY : WindowManager.LayoutParams.TYPE_PHONE;
-            params = new WindowManager.LayoutParams(WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT,
-                    type, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, PixelFormat.TRANSLUCENT);
+            int type = useAcc ? WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY
+                    : Build.VERSION.SDK_INT >= 26 ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY : WindowManager.LayoutParams.TYPE_PHONE;
+            params = new WindowManager.LayoutParams(WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT, type,
+                    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
+                            | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS | WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED,
+                    PixelFormat.TRANSLUCENT);
+            if (Build.VERSION.SDK_INT >= 28) params.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
             params.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
-            params.y = NativeIslandPlugin.prefs(this).getInt("islandY", dp(36));
-            params.x = NativeIslandPlugin.prefs(this).getInt("islandX", 0);
+            // default: on the status bar, around the front camera
+            params.y = NativeIslandPlugin.prefs(this).getInt("islandY2", dp(6));
+            params.x = NativeIslandPlugin.prefs(this).getInt("islandX2", 0);
 
-            // drag to move (remembered), tap to open the app
+            final WindowManager host = wm;
             island.setOnTouchListener(new View.OnTouchListener() {
                 float downX, downY;
                 int startX, startY;
-                boolean moved;
+                boolean moved, longPressed;
+                final Runnable longPress = () -> { longPressed = true; openApp(); };
 
                 @Override
                 public boolean onTouch(View v, MotionEvent e) {
@@ -398,19 +426,26 @@ public class IslandService extends Service {
                             startX = params.x;
                             startY = params.y;
                             moved = false;
+                            longPressed = false;
+                            handler.postDelayed(longPress, 550);
                             return true;
                         case MotionEvent.ACTION_MOVE:
                             float dx = e.getRawX() - downX, dy = e.getRawY() - downY;
-                            if (Math.abs(dx) > dp(6) || Math.abs(dy) > dp(6)) moved = true;
-                            params.x = startX + (int) dx;
-                            params.y = Math.max(0, startY + (int) dy);
-                            if (island != null) windowManager.updateViewLayout(island, params);
+                            if (Math.abs(dx) > dp(8) || Math.abs(dy) > dp(8)) { moved = true; handler.removeCallbacks(longPress); }
+                            if (moved) {
+                                params.x = startX + (int) dx;
+                                params.y = Math.max(0, startY + (int) dy);
+                                if (island != null) try { host.updateViewLayout(island, params); } catch (Exception ignored) { }
+                            }
                             return true;
                         case MotionEvent.ACTION_UP:
+                        case MotionEvent.ACTION_CANCEL:
+                            handler.removeCallbacks(longPress);
                             if (moved) {
-                                NativeIslandPlugin.prefs(IslandService.this).edit().putInt("islandX", params.x).putInt("islandY", params.y).apply();
-                            } else {
-                                openApp();
+                                NativeIslandPlugin.prefs(IslandService.this).edit().putInt("islandX2", params.x).putInt("islandY2", params.y).apply();
+                            } else if (!longPressed && e.getAction() == MotionEvent.ACTION_UP) {
+                                expanded = !expanded; // tap: expand / collapse like a dynamic island
+                                tick();
                             }
                             return true;
                     }
@@ -418,15 +453,17 @@ public class IslandService extends Service {
                 }
             });
             try {
-                windowManager.addView(island, params);
+                wm.addView(island, params);
+                islandOnAccessibility = useAcc;
             } catch (Exception e) {
                 island = null;
                 return;
             }
         }
-        // one line per item: the first (most important) bigger
-        while (island.getChildCount() > lines.size()) island.removeViewAt(island.getChildCount() - 1);
-        for (int i = 0; i < lines.size(); i++) {
+        // compact: the first line only; expanded: every line, the first bigger
+        List<String> shown = expanded ? lines : lines.subList(0, Math.min(1, lines.size()));
+        while (island.getChildCount() > shown.size()) island.removeViewAt(island.getChildCount() - 1);
+        for (int i = 0; i < shown.size(); i++) {
             TextView t;
             if (i < island.getChildCount()) {
                 t = (TextView) island.getChildAt(i);
@@ -438,15 +475,20 @@ public class IslandService extends Service {
                 t.setSingleLine(true);
                 island.addView(t);
             }
-            t.setTextSize(TypedValue.COMPLEX_UNIT_SP, i == 0 ? 17 : 14);
-            t.setText(lines.get(i));
+            t.setTextSize(TypedValue.COMPLEX_UNIT_SP, i == 0 ? (expanded ? 16 : 14) : 13);
+            t.setTextColor(i == 0 ? Color.WHITE : Color.argb(210, 255, 255, 255));
+            // more than one item while compact: a small "+n" hint
+            String text = shown.get(i);
+            if (!expanded && i == 0 && lines.size() > 1) text = text + "   +" + (lines.size() - 1);
+            t.setText(text);
         }
     }
 
     private void removeIsland() {
         if (island != null) {
             try {
-                windowManager.removeView(island);
+                IslandAccessibilityService acc = IslandAccessibilityService.instance;
+                (islandOnAccessibility && acc != null ? acc.windowManager() : windowManager).removeView(island);
             } catch (Exception ignored) {
             }
             island = null;

@@ -18,4 +18,6 @@
     <string name="shortcut_matches">المباريات</string>
     <string name="shortcut_iptv">IPTV</string>
     <string name="shortcut_quran">القرآن</string>
+    <string name="island_accessibility_label">DriveCast · الجزيرة العائمة</string>
+    <string name="island_accessibility_desc">يرسم الجزيرة العائمة (المباريات المباشرة وعدّاد الصلاة) فوق شريط الحالة وشاشة القفل مثل تطبيقات Dynamic Island. لا يقرأ أي محتوى من الشاشة.</string>
 </resources>

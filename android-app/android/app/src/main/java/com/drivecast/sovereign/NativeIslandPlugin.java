@@ -122,6 +122,7 @@ public class NativeIslandPlugin extends Plugin {
         ret.put("overlayEnabled", prefs(ctx).getBoolean("overlayEnabled", true));
         ret.put("version", BuildConfig.VERSION_NAME);
         ret.put("textZoom", prefs(ctx).getInt("textZoom", 100));
+        ret.put("accessibility", IslandAccessibilityService.instance != null);
         call.resolve(ret);
     }
 
@@ -132,6 +133,15 @@ public class NativeIslandPlugin extends Plugin {
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             getContext().startActivity(intent);
         }
+        call.resolve();
+    }
+
+    /** The island over the status bar / lock screen: turn on "DriveCast" in the accessibility settings. */
+    @PluginMethod
+    public void requestAccessibility(PluginCall call) {
+        Intent intent = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        getContext().startActivity(intent);
         call.resolve();
     }
 
