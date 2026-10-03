@@ -14,6 +14,14 @@
     <string name="widget_media_label">DriveCast · المشغل</string>
     <string name="widget_quran_label">DriveCast · القرآن</string>
     <string name="widget_screens_label">DriveCast · الشاشات</string>
+    <string name="widget_moon_desc">القمر بطوره الحالي مع التاريخ الهجري والميلادي والطقس</string>
+    <string name="widget_manuscript_desc">المخطوطات بحبر اللوحة (أبيض، ذهبي، لون أو نقش) فوق خلفيتها</string>
+    <string name="widget_folders_desc">مجلداتك والفيديوهات الأكثر مشاهدة من قنواتك المميزة</string>
+    <string name="widget_moon_label">DriveCast · القمر</string>
+    <string name="widget_manuscript_label">DriveCast · المخطوطة</string>
+    <string name="widget_folders_label">DriveCast · المجلدات</string>
+    <string name="widget_folders_empty">افتح الرئيسية في التطبيق مرة لتحميل المجلدات</string>
+    <string name="goal_channel">أهداف فرقي</string>
     <string name="shortcut_dashboard">الرئيسية</string>
     <string name="shortcut_matches">المباريات</string>
     <string name="shortcut_iptv">IPTV</string>

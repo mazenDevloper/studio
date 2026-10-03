@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useMediaStore } from "@/lib/store";
+import { useMediaStore, isDoneToday } from "@/lib/store";
 import { favSpecString } from "@/lib/match-core";
 import { MATCHES_LIMIT } from "@/lib/live-matches";
 import { prayerDayFor, localYmd } from "@/lib/prayer-day";
@@ -20,6 +20,7 @@ export function NativeIslandBridge() {
   const pinned = useMediaStore(s => s.pinnedMatches);
   const prayerTimes = useMediaStore(s => s.prayerTimes);
   const prayerSettings = useMediaStore(s => s.prayerSettings);
+  const generalAzkar = useMediaStore(s => s.generalAzkar);
   // the day changes at midnight: rebuild the prayer list then
   const [day, setDay] = useState(() => localYmd());
 
@@ -55,9 +56,11 @@ export function NativeIslandBridge() {
       apiUrl: `${location.origin}/api/matches?${q}`,
       pins: (pinned || []).map(p => ({ home: p.home, away: p.away })),
       countdowns: countdowns.filter(c => c.at > Date.now() - 60_000),
+      // the day's dhikr reminders: islands like on the site (shown when the native island is expanded)
+      azkar: (generalAzkar || []).map(a => ({ id: a.id, label: a.label, done: isDoneToday(a) })),
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [native, favoriteTeams, pinned, prayerTimes, prayerSettings, day]);
+  }, [native, favoriteTeams, pinned, prayerTimes, prayerSettings, generalAzkar, day]);
 
   useEffect(() => {
     if (config) nativeIsland()?.configure({ config }).catch(() => {});

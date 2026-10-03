@@ -1,36 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- the card is one picture drawn by WidgetArt.prayer(); the live countdown ticks on top of it (header 30 / countdown 26 / list 44) -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_root"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="@drawable/widget_bg"
-    android:gravity="center"
-    android:layoutDirection="rtl"
-    android:orientation="vertical"
-    android:padding="12dp">
+    android:layout_height="match_parent">
 
-    <TextView
-        android:id="@+id/prayer_name"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textColor="#FFFFFFFF"
-        android:textSize="16sp"
-        android:textStyle="bold" />
-
-    <Chronometer
-        android:id="@+id/prayer_countdown"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textColor="#FF34D399"
-        android:textSize="30sp"
-        android:textStyle="bold" />
-
-    <TextView
-        android:id="@+id/prayer_times"
+    <ImageView
+        android:id="@+id/widget_canvas"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:gravity="center"
-        android:maxLines="2"
-        android:textColor="#B3FFFFFF"
-        android:textSize="11sp" />
-</LinearLayout>
+        android:layout_height="match_parent"
+        android:contentDescription="@string/widget_prayer_label"
+        android:scaleType="fitXY" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <FrameLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="30" />
+
+        <FrameLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="26">
+
+            <Chronometer
+                android:id="@+id/prayer_countdown"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:fontFamily="sans-serif-black"
+                android:includeFontPadding="false"
+                android:shadowColor="#9934D399"
+                android:shadowRadius="18"
+                android:textColor="#FF34D399"
+                android:textSize="30sp" />
+        </FrameLayout>
+
+        <FrameLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="44" />
+    </LinearLayout>
+</FrameLayout>

@@ -1,25 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- picture by WidgetArt.media(); touch areas left to right: next 12 / play-pause 12 / previous 12 / info 64 -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="@drawable/widget_bg"
-    android:gravity="center_vertical"
-    android:layoutDirection="rtl"
-    android:orientation="horizontal"
-    android:padding="10dp">
+    android:layout_height="match_parent">
+
+    <ImageView
+        android:id="@+id/widget_canvas"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:contentDescription="@string/widget_media_label"
+        android:scaleType="fitXY" />
 
     <LinearLayout
-        android:id="@+id/media_info"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:orientation="vertical">
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layoutDirection="ltr"
+        android:orientation="horizontal">
 
-        <TextView android:id="@+id/media_title" android:layout_width="match_parent" android:layout_height="wrap_content" android:singleLine="true" android:ellipsize="end" android:textColor="#FFFFFFFF" android:textSize="14sp" android:textStyle="bold" />
-        <TextView android:id="@+id/media_subtitle" android:layout_width="match_parent" android:layout_height="wrap_content" android:singleLine="true" android:ellipsize="end" android:textColor="#99FFFFFF" android:textSize="11sp" />
+        <FrameLayout android:id="@+id/media_next" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="12" />
+        <FrameLayout android:id="@+id/media_toggle" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="12" />
+        <FrameLayout android:id="@+id/media_prev" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="12" />
+        <FrameLayout android:id="@+id/media_info" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="64" />
     </LinearLayout>
-
-    <TextView android:id="@+id/media_prev" android:layout_width="42dp" android:layout_height="42dp" android:layout_marginStart="6dp" android:background="@drawable/widget_btn" android:gravity="center" android:text="⏭" android:textColor="#FFFFFFFF" android:textSize="18sp" />
-    <TextView android:id="@+id/media_toggle" android:layout_width="48dp" android:layout_height="48dp" android:layout_marginStart="6dp" android:background="@drawable/widget_btn_accent" android:gravity="center" android:textColor="#FF000000" android:textSize="20sp" />
-    <TextView android:id="@+id/media_next" android:layout_width="42dp" android:layout_height="42dp" android:layout_marginStart="6dp" android:background="@drawable/widget_btn" android:gravity="center" android:text="⏮" android:textColor="#FFFFFFFF" android:textSize="18sp" />
-</LinearLayout>
+</FrameLayout>
