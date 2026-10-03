@@ -80,7 +80,7 @@ export interface IptvChannel {
   matchAliases?: string[];
 }
 
-export interface FavoriteTeam { id: number; name: string; logo: string; }
+export interface FavoriteTeam { id: number; name: string; logo: string; /** the club's country (tells Liverpool of England from Liverpool of Uruguay) */ country?: string; }
 /** A video saved to resume later from where it was stopped (synced with the master bin). */
 export interface ContinueItem { video: YouTubeVideo; progress: number; savedAt: number; }
 /** A match pinned as a floating island (synced to the cloud with the master bin). */

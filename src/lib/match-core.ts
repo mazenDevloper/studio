@@ -138,9 +138,18 @@ export const NAME_WEIGHTS: [RegExp, number][] = [
   [/friendl/i, 40],
 ];
 
+/** League names used in several countries: they only count in their own country ("Serie A" of Brazil / Ecuador,
+ * the Austrian "Bundesliga", the Algerian "Ligue 1", "Premier League" of Egypt / Russia...). */
+const COUNTRY_GATED: [RegExp, RegExp][] = [
+  [/^(english )?premier league$|^fa cup$|^championship$/i, /england/i],
+  [/serie a/i, /ital/i],
+  [/bundesliga/i, /german|deutschland/i],
+  [/ligue 1/i, /france/i],
+  [/la ?liga|primera divisi[oó]n|copa del rey/i, /spain|espa/i],
+];
+
 export function leagueWeightByName(name: string, country?: string): number {
-  // "Premier League" also exists in Egypt, Russia, ...: only England counts.
-  if (/^premier league$/i.test(name.trim()) && country && !/england/i.test(country)) return 0;
+  if (country) for (const [re, home] of COUNTRY_GATED) if (re.test(name.trim()) && !home.test(country)) return 0;
   for (const [re, w] of NAME_WEIGHTS) if (re.test(name)) return w;
   return 0;
 }
@@ -181,7 +190,9 @@ export function teamKey(name: string): string {
   for (const [re, to] of TEAM_ALIASES) n = n.replace(re, to);
   return n.replace(/[^a-z0-9 ]/g, " ").replace(TEAM_NOISE, " ").replace(/\s+/g, " ").trim();
 }
-const DIFFERENT_SIDE = new Set(["tula", "montevideo", "castilla", "b", "ii", "u17", "u19", "u20", "u21", "u23", "women", "w", "reserves", "youth", "academy"]);
+const DIFFERENT_SIDE = new Set(["tula", "montevideo", "castilla", "b", "ii", "iii", "u15", "u16", "u17", "u18", "u19", "u20", "u21", "u23",
+  "women", "w", "femeni", "femenino", "feminin", "feminine", "fem", "ladies", "reserves", "reserve", "res", "youth", "academy", "atletic",
+  "jong", "juvenil", "primavera", "sub", "2"]);
 export function sameTeam(a: string, b: string): boolean {
   const x = teamKey(a), y = teamKey(b);
   if (!x || !y) return false;
@@ -251,4 +262,61 @@ export function sortMatches<T extends Pick<TopMatch, "status" | "importance" | "
   const rank = (m: T) => (m.status === "live" ? (m.favorite ? 0 : 1) : m.favorite ? 2 : 3);
   return [...list].sort((a, b) => rank(a) - rank(b) || (a.status === "finished" ? 1 : 0) - (b.status === "finished" ? 1 : 0)
     || (b.importance ?? 0) - (a.importance ?? 0) || a.timestamp - b.timestamp);
+}
+
+// ---- favourite teams: the club itself, not a namesake from another country or its youth / B side ----
+
+/** A favourite team as sent to the server: "Liverpool~England" (the country is optional). */
+export interface FavSpec { name: string; country?: string }
+export const favSpecString = (t: { name: string; country?: string }) => (t.country ? `${t.name}~${t.country}` : t.name);
+export function parseFavSpec(s: string): FavSpec {
+  const [name, country] = s.split("~");
+  return { name: name.trim(), country: country?.trim() || undefined };
+}
+
+/** Countries of well-known clubs, for favourites saved without one (keeps Liverpool of Uruguay out). */
+const FAMOUS_CLUBS: Record<string, string> = Object.fromEntries(Object.entries({
+  england: "liverpool|arsenal|chelsea|tottenham|manchester united|manchester city|newcastle united|aston villa|west ham united|everton",
+  spain: "barcelona|real madrid|atletico madrid|sevilla|valencia|villarreal|real betis|real sociedad|athletic bilbao",
+  italy: "juventus|inter|milan|ac milan|napoli|roma|lazio|atalanta|fiorentina",
+  germany: "bayern munich|bayern munchen|borussia dortmund|bayer leverkusen|rb leipzig|eintracht frankfurt",
+  france: "paris saint germain|psg|marseille|lyon|monaco|lille",
+  portugal: "benfica|porto|sporting cp|sporting lisbon|braga",
+  netherlands: "ajax|psv|psv eindhoven|feyenoord",
+  "saudi arabia": "hilal|al hilal|nassr|al nassr|ittihad|al ittihad|ahli|al ahli|shabab|al shabab|ettifaq|al ettifaq|qadsiah|al qadsiah",
+  egypt: "zamalek",
+  oman: "dhofar|al nahda|sur|al seeb|seeb",
+  qatar: "al sadd|sadd|al duhail|duhail",
+  uae: "al ain|al wahda|shabab al ahli|al jazira|sharjah",
+  argentina: "boca juniors|river plate",
+  brazil: "flamengo|palmeiras|corinthians|santos",
+}).flatMap(([country, names]) => names.split("|").map(n => [n.trim(), country])));
+
+const SLUG_COUNTRIES: Record<string, string> = {
+  eng: "england", esp: "spain", ita: "italy", ger: "germany", fra: "france", por: "portugal", ned: "netherlands", bel: "belgium",
+  sco: "scotland", tur: "turkey", ksa: "saudi arabia", egy: "egypt", uae: "united arab emirates", qat: "qatar", uru: "uruguay",
+  ecu: "ecuador", arg: "argentina", bra: "brazil", mex: "mexico", usa: "usa", col: "colombia", chi: "chile",
+};
+/** Competitions between countries / continents: any club can play there. */
+const INTERNATIONAL = /world|europe|international|intl|asia|africa|america|friendl|uefa|fifa|afc|caf|concacaf|conmebol|gulf|arab|champions|cup winners/i;
+
+const sameCountry = (a: string, b: string) => {
+  const x = a.toLowerCase().replace(/^the /, ""), y = b.toLowerCase().replace(/^the /, "");
+  const uae = (s: string) => (/united arab emirates|^uae$/.test(s) ? "uae" : s);
+  return x.includes(y) || y.includes(x) || uae(x) === uae(y);
+};
+
+/** Is this match one of the favourite team's (same club, same country when that is known)? */
+export function favoriteOf(fav: FavSpec, m: Pick<TopMatch, "home" | "away" | "league">): boolean {
+  if (!sameTeam(fav.name, m.home.name) && !sameTeam(fav.name, m.away.name)) return false;
+  const want = fav.country || FAMOUS_CLUBS[teamKey(fav.name)] || FAMOUS_CLUBS[normalizeTeamName(fav.name)];
+  const got = m.league.country || SLUG_COUNTRIES[String(m.league.id ?? "").split(".")[0]];
+  if (!want || !got || INTERNATIONAL.test(got) || INTERNATIONAL.test(m.league.name)) return true;
+  return sameCountry(want, got);
+}
+
+/** Youth / reserve matches (U18, U21, Primavera, reserves...): never listed. */
+const YOUTH = /\b(u-? ?(1[3-9]|2[0-3])|under[- ]?(1[3-9]|2[0-3])|sub-?(1[3-9]|2[0-3])|youth|juvenil|primavera|reserves?|academy|jong)\b/i;
+export function isYouthMatch(m: Pick<TopMatch, "home" | "away" | "league">): boolean {
+  return YOUTH.test(m.league.name) || YOUTH.test(m.home.name) || YOUTH.test(m.away.name);
 }

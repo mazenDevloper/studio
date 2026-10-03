@@ -4,6 +4,7 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useLiveMatches } from "@/lib/live-matches";
 import { sameTeam, matchHideKey } from "@/lib/match-core";
+import { favSpecString } from "@/lib/match-core";
 import { useMediaStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { X, Eye, EyeOff, Bell, Clock, Timer, Check, Trophy, Play, ChevronDown, ChevronUp, Zap, Cloud, Bookmark } from "lucide-react";
@@ -49,7 +50,7 @@ export function LiveMatchIsland() {
   const [isMatchCollapsed, setIsMatchCollapsed] = useState(true);
   const [showSyncIsland, setShowSyncIsland] = useState(true);
   // Live scores for today's matches; favourite teams' matches are always included in the feed.
-  const favoriteNames = useMemo(() => (favoriteTeams || []).map(t => t?.name).filter(Boolean) as string[], [favoriteTeams]);
+  const favoriteNames = useMemo(() => (favoriteTeams || []).filter(t => t?.name).map(favSpecString), [favoriteTeams]);
   const { data: liveFeed, celebrating } = useLiveMatches(favoriteNames);
   const pinned = useMediaStore(s => s.pinnedMatches) || [];
   const togglePin = useMediaStore(s => s.togglePinnedMatch);
@@ -192,7 +193,7 @@ export function LiveMatchIsland() {
       // hiding works by a key built from the football day + both teams, so it survives a change of data source
       // and (being in skippedMatchIds, synced with the master bin) applies on every device
       // the eye on the match card hides it from the island even when pinned
-      if ((!m.favorite && !isPinned) || skippedMatchIds.includes(matchHideKey(m)) || skippedMatchIds.includes(id)) continue;
+      if ((!m.favorite && !isPinned) || skippedMatchIds.includes(matchHideKey(m)) || skippedMatchIds.includes(`del:${matchHideKey(m)}`) || skippedMatchIds.includes(id)) continue;
       if (m.status === "finished" && nowSecs - m.timestamp > 3.5 * 3600) continue; // drop long-finished games
       const started = m.status !== "upcoming";
       // never show the same fixture twice: a live island replaces an older reminder-based match island

@@ -70,7 +70,10 @@ export const useLiveMatchesStore = create<LiveMatchesState>((set, get) => ({
       let json = await (takePrefetch(teams) ?? Promise.resolve(null));
       if (!json || json.error || !Array.isArray(json.matches)) {
         const q = new URLSearchParams({ limit: String(MATCHES_LIMIT) });
-        if (teams.length) q.set("teams", teams.join("|"));
+        // "pin:" entries are pinned matches' teams: listed, but not favourites
+        const fav = teams.filter(t => !t.startsWith("pin:")), pins = teams.filter(t => t.startsWith("pin:")).map(t => t.slice(4));
+        if (fav.length) q.set("teams", fav.join("|"));
+        if (pins.length) q.set("pins", pins.join("|"));
         const res = await fetch(`/api/matches?${q}`, { cache: "no-store" });
         json = await res.json();
         if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
@@ -96,12 +99,13 @@ export const useLiveMatchesStore = create<LiveMatchesState>((set, get) => ({
 let subscribers = 0;
 let timer: ReturnType<typeof setInterval> | null = null;
 
-/** Subscribe to the shared feed. Pass `teams` (favourite team names) to always include their matches. */
+/** Subscribe to the shared feed. Pass `teams` (favourite teams as favSpecString: "Liverpool~England") to always
+ * include their matches. */
 export function useLiveMatches(teams?: string[]) {
   const state = useLiveMatchesStore();
-  // both sides of every pinned match (cloud-synced) are always included, like favourite teams
+  // both sides of every pinned match (cloud-synced) are always included - as "pin:" entries, not favourites
   const pins = useMediaStore(s => s.pinnedMatches) || [];
-  const allTeams = teams ? Array.from(new Set([...teams, ...pins.flatMap(p => [p.home, p.away])])) : undefined;
+  const allTeams = teams ? Array.from(new Set([...teams, ...pins.flatMap(p => [`pin:${p.home}`, `pin:${p.away}`])])) : undefined;
   const teamsKey = allTeams?.join("|");
 
   // teams first (same effect order as before), so the first request already carries them
@@ -134,14 +138,15 @@ export function useLiveMatches(teams?: string[]) {
 
 /**
  * Inline script for <head>: starts /api/matches with the user's teams (read from the persisted store) while the
- * page is still loading. Must build the same team list as useLiveMatches: favourite team names, then both sides
- * of each pinned match, without duplicates.
+ * page is still loading. Must build the same team list as useLiveMatches: favourite teams ("name~country"), then
+ * both sides of each pinned match ("pin:name"), without duplicates.
  */
 export const MATCHES_PREFETCH_SCRIPT = `(function(){try{
 var s=(JSON.parse(localStorage.getItem('drivecast-sovereign-v143')||'{}')||{}).state||{};var t=[];
 function add(n){if(n&&t.indexOf(n)<0)t.push(n)}
-(s.favoriteTeams||[]).forEach(function(x){add(x&&x.name)});
-(s.pinnedMatches||[]).forEach(function(p){if(p){add(p.home);add(p.away)}});
-var q='limit=${MATCHES_LIMIT}'+(t.length?'&teams='+encodeURIComponent(t.join('|')):'');
+(s.favoriteTeams||[]).forEach(function(x){if(x&&x.name)add(x.country?x.name+'~'+x.country:x.name)});
+(s.pinnedMatches||[]).forEach(function(p){if(p){add('pin:'+p.home);add('pin:'+p.away)}});
+var f=t.filter(function(x){return x.indexOf('pin:')!==0}),pn=t.filter(function(x){return x.indexOf('pin:')===0}).map(function(x){return x.slice(4)});
+var q='limit=${MATCHES_LIMIT}'+(f.length?'&teams='+encodeURIComponent(f.join('|')):'')+(pn.length?'&pins='+encodeURIComponent(pn.join('|')):'');
 window.__matchesPrefetch={teams:t,at:Date.now(),p:fetch('/api/matches?'+q,{cache:'no-store'}).then(function(r){return r.ok?r.json():null}).catch(function(){return null})};
 }catch(e){}})();`;

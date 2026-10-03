@@ -1,10 +1,11 @@
 "use client";
 
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Loader2, RefreshCw, Trophy, AlertTriangle, Star, PartyPopper, Pin, Eye, EyeOff, Tv, MapPin, Flag, LayoutGrid, Server, BellRing, BellOff, Pencil, CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
+import { Loader2, RefreshCw, Trophy, AlertTriangle, Star, PartyPopper, Pin, Eye, EyeOff, Tv, MapPin, Flag, LayoutGrid, Server, BellRing, BellOff, Pencil, X, RotateCcw, CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import { useLiveMatches, useLiveMatchesStore, MATCHES_LIMIT } from "@/lib/live-matches";
 import type { MatchDetails } from "@/lib/match-details";
 import { sameTeam, matchHideKey, matchDetailsUrl, goalAlertOn, sortMatches } from "@/lib/match-core";
+import { favSpecString } from "@/lib/match-core";
 import { useMediaStore } from "@/lib/store";
 import { GOAL_TEST_EVENT } from "@/components/football/goal-celebration";
 import { MatchChannelChips } from "@/components/football/match-channel-chips";
@@ -101,18 +102,22 @@ function DayTabs({ tab, setTab }: { tab: DayTab; setTab: (t: DayTab) => void }) 
 /** Today's most important matches, kick-off in Oman time (GMT+4). Auto-refreshes every 30s from the shared live feed. */
 export default function MatchesTestPage() {
   const { favoriteTeams } = useMediaStore();
-  const favoriteNames = useMemo(() => (favoriteTeams || []).map(t => t?.name).filter(Boolean) as string[], [favoriteTeams]);
+  const favoriteNames = useMemo(() => (favoriteTeams || []).filter(t => t?.name).map(favSpecString), [favoriteTeams]);
   const today = useLiveMatches(favoriteNames);
   const [tab, setTab] = useState<DayTab>(0);
   const other = useOtherDay(tab, favoriteNames);
   const { data, error, loading, refresh } = tab !== 0 ? other : today;
   const updatedAt = tab !== 0 ? null : today.updatedAt;
   // live favourites, live, favourites, then the rest (my teams' upcoming matches: by kick-off)
-  const matches = useMemo(() => tab === "fav" ? ((data?.matches ?? []) as TopMatch[]) : sortMatches<TopMatch>((data?.matches ?? []) as TopMatch[]), [data, tab]);
+  const allMatches = useMemo(() => tab === "fav" ? ((data?.matches ?? []) as TopMatch[]) : sortMatches<TopMatch>((data?.matches ?? []) as TopMatch[]), [data, tab]);
   const title = tab === "fav" ? "مباريات فرقي القادمة" : `أهم مباريات ${DAY_NAMES[tab] ?? shortDate(tab)}`;
   const [showJson, setShowJson] = useState(false);
   const skipped = useMediaStore(s => s.skippedMatchIds) || [];
   const isHidden = (m: TopMatch) => skipped.includes(matchHideKey(m));
+  const isRemoved = (m: TopMatch) => skipped.includes(`del:${matchHideKey(m)}`);
+  const unskipMatch = useMediaStore(s => s.unskipMatch);
+  const removed = allMatches.filter(isRemoved);
+  const matches = removed.length ? allMatches.filter(m => !isRemoved(m)) : allMatches;
   const [, tick] = useState(0);
   useEffect(() => { const t = setInterval(() => tick(n => n + 1), 5000); return () => clearInterval(t); }, []);
   const ago = updatedAt ? Math.round((Date.now() - updatedAt) / 1000) : null;
@@ -167,6 +172,13 @@ export default function MatchesTestPage() {
                 })}
               </div>
             </>
+          )}
+
+          {removed.length > 0 && (
+            <button onClick={() => removed.forEach(m => unskipMatch(`del:${matchHideKey(m)}`))} data-nav-id="matches-restore"
+              className="focusable no-focus-scale h-10 px-5 rounded-full bg-white/5 border border-white/10 text-xs font-black text-white/60 hover:text-white flex items-center gap-2">
+              <RotateCcw className="w-4 h-4" /> إظهار المحذوفة ({removed.length})
+            </button>
           )}
 
           {/* data sources (APIs) at the bottom: the matches come first */}
@@ -271,6 +283,12 @@ function MatchCard({ m, hidden = false }: { m: TopMatch; hidden?: boolean }) {
           </button>
           <button onClick={toggleHidden} title={hidden ? "إظهار في الجزيرة العائمة" : "إخفاء من الجزيرة العائمة (في كل الأجهزة)"} className={cn("w-8 h-8 rounded-full bg-black/40 border border-white/10 text-white/60 hover:text-white flex items-center justify-center focusable", hidden && "text-red-300 border-red-400/50 bg-red-500/10")}>
             {hidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+          </button>
+          {/* remove the card from the list (and the island), on every device; "show removed" at the bottom undoes it */}
+          <button onClick={() => { skipMatch(`del:${matchHideKey(m)}`); setTimeout(() => syncMasterBin(), 100); }} title="حذف من القائمة"
+            data-nav-id={`match-del-${m.id}`}
+            className="w-8 h-8 rounded-full bg-black/40 border border-white/10 text-white/50 hover:text-red-300 hover:border-red-400/50 flex items-center justify-center focusable">
+            <X className="w-4 h-4" />
           </button>
         </span>
       </div>

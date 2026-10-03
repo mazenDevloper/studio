@@ -3,7 +3,7 @@ import { S365_HEADERS, remember365Countries, s365Url } from "@/lib/scores365";
 import { leagueAlwaysListed, leagueTopClubs } from "@/lib/match-channels";
 import { EXTRA_SOURCES } from "@/lib/match-sources-extra";
 import {
-  BROWSER_HEADERS, build, getJson, sortMatches, importanceOf, leagueWeightByName, num, pickTop, sameTeam, shiftedDash, shiftedYmd,
+  BROWSER_HEADERS, build, getJson, sortMatches, favoriteOf, parseFavSpec, isYouthMatch, importanceOf, leagueWeightByName, num, pickTop, sameTeam, shiftedDash, shiftedYmd,
   type SourceAttempt, type TopMatch, type TopMatchesResult,
 } from "@/lib/match-core";
 import { omanTime } from "@/lib/oman-time";
@@ -321,7 +321,7 @@ export function startMatchesWarmup() {
 /**
  * @param teams team names whose matches today must be included even if they aren't "important" (favourite teams)
  */
-export async function getTopMatchesToday(limit = 10, only?: string, includeAll = false, teams: string[] = [], dayOffset = 0): Promise<TopMatchesResult> {
+export async function getTopMatchesToday(limit = 10, only?: string, includeAll = false, teams: string[] = [], dayOffset = 0, pins: string[] = []): Promise<TopMatchesResult> {
   if (!dayOffset) lastUsedAt = Date.now();
   // until 05:00 Oman time this is still yesterday's football day; -1 / +1 = yesterday's / tomorrow's matches
   const date = dayOffset ? shiftedDash(footballDay(), dayOffset) : footballDay();
@@ -341,11 +341,15 @@ export async function getTopMatchesToday(limit = 10, only?: string, includeAll =
   const s365 = working.find(r => r.attempt.source === "365scores" && r.top.length > 0);
   const bestOther = byQuality.find(r => r !== s365);
   const best = s365 && (!bestOther || s365.top.length >= Math.min(limit, Math.ceil(bestOther.top.length * 0.7))) ? s365 : byQuality[0];
-  const isFav = (m: TopMatch) => teams.some(t => sameTeam(t, m.home.name) || sameTeam(t, m.away.name));
+  // favourites: the club itself ("Liverpool~England"), not a namesake abroad or its youth / B side
+  const specs = teams.map(parseFavSpec);
+  const isFav = (m: TopMatch) => specs.some(f => favoriteOf(f, m));
+  // pinned matches' teams: always listed, but not favourites (no goal alerts, no island unless pinned)
+  const isPin = (m: TopMatch) => pins.some(t => sameTeam(t, m.home.name) || sameTeam(t, m.away.name));
   // always shown besides the top list: favourite teams' matches, and every match of a league that has a regional
   // channel (Saudi -> Thmanyah, UAE -> AD Sports / Sharjah, Bundesliga -> MBC Action, Serie A -> STARZPLAY, Oman...)
   // (yesterday / tomorrow: only the favourites besides the important matches)
-  const isExtra = (m: TopMatch) => isFav(m) || (!includeAll && !dayOffset && leagueAlwaysListed(m.league));
+  const isExtra = (m: TopMatch) => isFav(m) || isPin(m) || (!includeAll && !dayOffset && leagueAlwaysListed(m.league));
   const favExtra: TopMatch[] = [];
   for (const r of [best, ...working.filter(w => w !== best)]) {
     for (const m of r.day) {
@@ -362,6 +366,7 @@ export async function getTopMatchesToday(limit = 10, only?: string, includeAll =
     // Favourite teams' matches are always included; order: live favourites, live, favourites, then the rest
     // Belgian, Dutch, Brazilian, Argentine leagues: only the two biggest clubs (and favourite teams)
     matches: sortMatches([...best.top, ...favExtra].filter(m => {
+      if (isYouthMatch(m) && !isFav(m)) return false; // no U18 / U21 / reserves
       const clubs = isFav(m) || includeAll ? null : leagueTopClubs(m.league);
       return !clubs || clubs.some(t => sameTeam(t, m.home.name) || sameTeam(t, m.away.name));
     }).map(m => (isFav(m) ? { ...m, favorite: true } : m))),
@@ -372,14 +377,18 @@ export async function getTopMatchesToday(limit = 10, only?: string, includeAll =
 
 /** 365Scores competitor id per team name (search once, kept for a day). */
 const teamIds365 = new Map<string, { id: number | null; at: number }>();
-async function find365TeamId(name: string): Promise<number | null> {
-  const key = name.trim().toLowerCase();
+async function find365TeamId(name: string, country?: string): Promise<number | null> {
+  const key = `${name.trim().toLowerCase()}~${(country ?? "").toLowerCase()}`;
   const hit = teamIds365.get(key);
   if (hit && Date.now() - hit.at < 86_400_000) return hit.id;
   try {
     const json = await getJson(await s365Url("search", { query: name, filter: "competitors" }), S365_HEADERS, 86_400);
-    const list = ((json?.competitors ?? []) as any[]).filter(c => (c.sportId ?? 1) === 1 && c.name);
-    const best = list.find(c => String(c.name).toLowerCase() === key) ?? list.find(c => sameTeam(name, c.name)) ?? null;
+    const countries = new Map<number, string>(((json?.countries ?? []) as any[]).map(c => [Number(c.id), String(c.name)]));
+    // the same club in its own country (Liverpool of England, not of Uruguay)
+    const list = ((json?.competitors ?? []) as any[]).filter(c => (c.sportId ?? 1) === 1 && c.name)
+      .filter(c => favoriteOf({ name, country }, { home: { id: "", name: c.name }, away: { id: "", name: "" }, league: { id: "", name: "", country: countries.get(Number(c.countryId)) } }));
+    const lower = name.trim().toLowerCase();
+    const best = list.find(c => String(c.name).toLowerCase() === lower) ?? list[0] ?? null;
     teamIds365.set(key, { id: best ? Number(best.id) : null, at: Date.now() });
     return best ? Number(best.id) : null;
   } catch {
@@ -394,7 +403,8 @@ async function find365TeamId(name: string): Promise<number | null> {
  */
 export async function getFavoriteUpcoming(teams: string[], days = 14): Promise<{ matches: TopMatch[]; days: string[] }> {
   if (!teams.length) return { matches: [], days: [] };
-  const isFav = (m: TopMatch) => teams.some(t => sameTeam(t, m.home.name) || sameTeam(t, m.away.name));
+  const specs = teams.map(parseFavSpec);
+  const isFav = (m: TopMatch) => specs.some(f => favoriteOf(f, m)) && !isYouthMatch(m);
   const dates = Array.from({ length: days }, (_, i) => shiftedDash(footballDay(), i + 1));
   const inRange = (m: TopMatch) => { const d = footballDay(new Date(m.timestamp * 1000)); return d >= dates[0] && d <= dates[dates.length - 1]; };
   const found: TopMatch[] = [];
@@ -406,7 +416,7 @@ export async function getFavoriteUpcoming(teams: string[], days = 14): Promise<{
 
   // 1) 365Scores fixtures, all teams in one call
   const ids: (number | null)[] = [];
-  for (let i = 0; i < teams.length; i += 8) ids.push(...await Promise.all(teams.slice(i, i + 8).map(find365TeamId)));
+  for (let i = 0; i < teams.length; i += 8) ids.push(...await Promise.all(specs.slice(i, i + 8).map(f => find365TeamId(f.name, f.country))));
   const known = [...new Set(ids.filter((x): x is number => !!x))];
   let fixturesOk = false;
   if (known.length) {
@@ -423,7 +433,8 @@ export async function getFavoriteUpcoming(teams: string[], days = 14): Promise<{
   const rest = fixturesOk ? teams.filter((_, i) => !ids[i]) : teams;
   if (rest.length) {
     const deadline = Date.now() + 20_000;
-    const restFav = (m: TopMatch) => rest.some(t => sameTeam(t, m.home.name) || sameTeam(t, m.away.name));
+    const restSpecs = rest.map(parseFavSpec);
+    const restFav = (m: TopMatch) => restSpecs.some(f => favoriteOf(f, m));
     for (let i = 0; i < Math.min(dates.length, 7) && Date.now() < deadline; i += 3) {
       await Promise.race([
         Promise.all(dates.slice(i, i + 3).map(async date => {
