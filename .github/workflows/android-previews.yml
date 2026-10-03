@@ -49,7 +49,7 @@ jobs:
         run: |
           chmod +x gradlew
           set -o pipefail
-          ./gradlew assembleDebug assembleDebugAndroidTest --no-daemon --stacktrace 2>&1 | tee build.txt
+          ./gradlew :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon --stacktrace 2>&1 | tee build.txt
 
       - name: Publish the build log (on failure)
         if: failure()
