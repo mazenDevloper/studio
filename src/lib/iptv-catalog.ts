@@ -156,3 +156,15 @@ const SLUG_COUNTRY: Record<string, string> = {
 export function leagueCountry(league: { id: string; country?: string }): string | undefined {
   return league.country || SLUG_COUNTRY[String(league.id ?? "").split(".")[0]] || undefined;
 }
+
+/** Playlist groups (categories) with their channel counts, in playlist order. */
+export function catalogGroups(): { name: string; count: number }[] {
+  const counts = new Map<string, number>();
+  for (const e of entries) { const g = e.ch.group || "بدون تصنيف"; counts.set(g, (counts.get(g) ?? 0) + 1); }
+  return [...counts].map(([name, count]) => ({ name, count }));
+}
+
+/** Channels of one playlist group. */
+export function channelsInGroup(group: string): IptvChannel[] {
+  return entries.filter(e => (e.ch.group || "بدون تصنيف") === group).map(e => e.ch);
+}

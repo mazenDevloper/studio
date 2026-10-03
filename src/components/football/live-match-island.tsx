@@ -257,11 +257,15 @@ export function LiveMatchIsland() {
   if (celebrating) return null; // the goal island takes the stage, then everything comes back as it was
 
   // a favourite team's live match goes above everything, the player included; over a full-screen player only those show
-  const hasFavLive = activeAlerts.some(a => a.favLive);
-  const visibleAlerts = playerCovers && hasFavLive ? activeAlerts.filter(a => a.favLive) : activeAlerts;
+  // a countdown about to end also goes above the player: the iqamah under 10 minutes, the others under 5
+  const urgent = (a: (typeof activeAlerts)[number]) => a.type !== 'match' && !a.completed && a.diff > 0
+    && a.diff <= (a.type === 'iqamah' ? 600 : 300);
+  const onTop = (a: (typeof activeAlerts)[number]) => !!a.favLive || urgent(a);
+  const hasOnTop = activeAlerts.some(onTop);
+  const visibleAlerts = playerCovers && hasOnTop ? activeAlerts.filter(onTop) : activeAlerts;
 
   return (
-    <div className={cn("fixed top-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3 pointer-events-none scale-[0.7] min-[968px]:scale-[0.80] dir-rtl transition-all duration-700", hasFavLive ? "z-[100002]" : "z-[10001]", (showIslands || activeAlerts.length) ? "translate-y-0 opacity-100" : "-translate-y-20 opacity-0")}>
+    <div className={cn("fixed top-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3 pointer-events-none scale-[0.7] min-[968px]:scale-[0.80] dir-rtl transition-all duration-700", hasOnTop ? "z-[100002]" : "z-[10001]", (showIslands || activeAlerts.length) ? "translate-y-0 opacity-100" : "-translate-y-20 opacity-0")}>
       <div className="flex items-start gap-3">
         <div onClick={toggleShowIslands} className="pointer-events-auto shadow-2xl w-12 h-12 rounded-full flex items-center justify-center premium-glass cursor-pointer border border-white/10 active:scale-90 transition-all">{showIslands ? <Eye className="w-5 h-5 text-accent" /> : <EyeOff className="w-5 h-5 text-white/20" />}</div>
         {showIslands && (

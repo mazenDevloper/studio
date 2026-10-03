@@ -7,6 +7,7 @@ import { defaultLeagueChannels, findLeagueOverride, leagueKey } from "@/lib/matc
 import type { TopMatch } from "@/lib/match-core";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { IptvChannelSelect } from "@/components/iptv/iptv-channel-select";
 
 /**
  * Edit / add the default channels of a league: they are shown first on every match card of that league (and
@@ -21,12 +22,11 @@ export function LeagueChannelsEditor({ league, onClose }: { league: TopMatch["le
   const setLeagueChannels = useMediaStore(s => s.setLeagueChannels);
   const defaults = defaultLeagueChannels(league);
   const [list, setList] = useState<string[]>(saved ?? defaults);
-  const [name, setName] = useState("");
+  const [picking, setPicking] = useState(false);
 
-  const add = () => {
-    const n = name.trim();
-    if (n && !list.some(c => c.toLowerCase() === n.toLowerCase())) setList([...list, n]);
-    setName("");
+  const addName = (n: string) => {
+    n = n.trim();
+    if (n && !list.some(c => c.toLowerCase() === n.toLowerCase())) setList(l => [...l, n]);
   };
   const up = (i: number) => { if (i <= 0) return; const l = [...list]; [l[i - 1], l[i]] = [l[i], l[i - 1]]; setList(l); };
   const save = () => { setLeagueChannels(key, list); onClose(); };
@@ -34,7 +34,7 @@ export function LeagueChannelsEditor({ league, onClose }: { league: TopMatch["le
 
   return (
     <Dialog open onOpenChange={o => { if (!o) onClose(); }}>
-      <DialogContent className="max-w-md bg-zinc-950 text-white border-white/10 rounded-[2rem]" dir="rtl">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto bg-zinc-950 text-white border-white/10 rounded-[2rem]" dir="rtl">
         <DialogHeader>
           <DialogTitle className="text-right font-black leading-relaxed">
             قنوات <span className="text-emerald-400" dir="auto">{league.name}</span>
@@ -59,13 +59,15 @@ export function LeagueChannelsEditor({ league, onClose }: { league: TopMatch["le
           {list.length === 0 && <p className="py-3 text-center text-xs text-white/40">لا قنوات · ستظهر قنوات المصادر فقط</p>}
         </div>
 
-        <form onSubmit={e => { e.preventDefault(); add(); }} className="flex items-center gap-2">
-          <input value={name} onChange={e => setName(e.target.value)} placeholder="اسم القناة، مثلاً beIN SPORTS 1" dir="auto"
-            className="flex-1 h-11 px-4 rounded-full bg-white/5 border border-white/10 outline-none text-sm" />
-          <button type="submit" disabled={!name.trim()} data-nav-id="league-ch-add" className="focusable no-focus-scale h-11 px-4 rounded-full bg-white/10 text-sm font-black flex items-center gap-1.5 disabled:opacity-40">
-            <Plus className="w-4 h-4" /> إضافة
+        {/* add: categories first, then the category's channels (search filters both), or a typed name */}
+        {picking ? (
+          <IptvChannelSelect onPick={ch => { addName(ch.name); setPicking(false); }} />
+        ) : (
+          <button onClick={() => setPicking(true)} data-nav-id="league-ch-add"
+            className="focusable no-focus-scale w-full h-11 rounded-full bg-white/10 text-sm font-black flex items-center justify-center gap-1.5">
+            <Plus className="w-4 h-4" /> إضافة قناة
           </button>
-        </form>
+        )}
 
         <div className="flex items-center gap-2 pt-1">
           <button onClick={save} data-nav-id="league-ch-save" className="focusable no-focus-scale flex-1 h-11 rounded-full bg-emerald-500 text-black text-sm font-black flex items-center justify-center gap-1.5">

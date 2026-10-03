@@ -7,6 +7,7 @@ import { useLiveMatchesStore } from "@/lib/live-matches";
 import type { TopMatch } from "@/lib/match-core";
 import { LEAGUE_CHANNEL_RULES, leagueKey } from "@/lib/match-channels";
 import { LeagueChannelsEditor } from "@/components/football/league-channels-editor";
+import { IptvChannelSelect } from "@/components/iptv/iptv-channel-select";
 import { cn } from "@/lib/utils";
 
 interface TeamHit { id: number; name: string; logo: string; country?: string }
@@ -135,7 +136,7 @@ function LeagueChannelsSection() {
   const known = useKnownLeagues();
   const [name, setName] = useState("");
   const [country, setCountry] = useState("");
-  const [channel, setChannel] = useState("");
+  const [picked, setPicked] = useState<string[]>([]);
   const [editing, setEditing] = useState<TopMatch["league"] | null>(null);
 
   const entries = Object.entries(overrides).map(([k, v]) => {
@@ -151,11 +152,11 @@ function LeagueChannelsSection() {
     if (l?.country) setCountry(l.country);
   };
   const add = () => {
-    const n = name.trim(), ch = channel.split(/[,،]/).map(c => c.trim()).filter(Boolean);
+    const n = name.trim(), ch = picked;
     if (!n || !ch.length) return;
     const key = leagueKey({ id: "", name: n, country: country.trim() || undefined });
     setLeagueChannels(key, Array.from(new Set([...(overrides[key] ?? []), ...ch])));
-    setName(""); setCountry(""); setChannel("");
+    setName(""); setCountry(""); setPicked([]);
   };
 
   return (
@@ -171,16 +172,25 @@ function LeagueChannelsSection() {
           </datalist>
           <input value={country} onChange={e => setCountry(e.target.value)} placeholder="الدولة (اختياري)" dir="auto" className={cn(input, "max-w-[11rem]")} data-nav-id="league-add-country" />
         </div>
-        <div className="flex gap-2">
-          <label className="relative flex-1 min-w-0 flex">
-            <Tv className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30" />
-            <input value={channel} onChange={e => setChannel(e.target.value)} placeholder="القناة، مثلاً beIN SPORTS 1 (أكثر من قناة: افصل بفاصلة)" dir="auto" className={cn(input, "pr-12")} data-nav-id="league-add-channel" />
-          </label>
-          <button type="submit" disabled={!name.trim() || !channel.trim()} data-nav-id="league-add-save"
-            className="focusable no-focus-scale h-12 px-6 rounded-full bg-emerald-500 text-black font-black flex items-center gap-2 disabled:opacity-40 shrink-0">
-            <Plus className="w-5 h-5" /> ربط
-          </button>
+        {/* channels: pick a category, then its channels (the search box filters both) */}
+        <div className="rounded-3xl bg-black/30 border border-white/10 p-3 space-y-2">
+          <p className="text-xs font-black text-white/50 flex items-center gap-2"><Tv className="w-4 h-4" /> القنوات</p>
+          {picked.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {picked.map(c => (
+                <span key={c} className="flex items-center gap-1 h-8 pr-3 pl-1 rounded-full bg-emerald-500/15 border border-emerald-400/40 text-emerald-200 text-xs font-black">
+                  <span dir="auto">{c}</span>
+                  <button type="button" onClick={() => setPicked(picked.filter(x => x !== c))} className="w-6 h-6 rounded-full hover:bg-white/10 flex items-center justify-center"><X className="w-3.5 h-3.5" /></button>
+                </span>
+              ))}
+            </div>
+          )}
+          <IptvChannelSelect onPick={ch => setPicked(p => p.includes(ch.name) ? p : [...p, ch.name])} />
         </div>
+        <button type="submit" disabled={!name.trim() || !picked.length} data-nav-id="league-add-save"
+          className="focusable no-focus-scale w-full h-12 px-6 rounded-full bg-emerald-500 text-black font-black flex items-center justify-center gap-2 disabled:opacity-40">
+          <Plus className="w-5 h-5" /> ربط الدوري بالقنوات المختارة{picked.length ? ` (${picked.length})` : ""}
+        </button>
       </form>
 
       <div className="space-y-2">
