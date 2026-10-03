@@ -5,7 +5,7 @@ import { Loader2, RefreshCw, Trophy, AlertTriangle, Star, PartyPopper, Pin, Eye,
 import { useLiveMatches, useLiveMatchesStore, MATCHES_LIMIT } from "@/lib/live-matches";
 import type { MatchDetails } from "@/lib/match-details";
 import { sameTeam, matchHideKey, matchDetailsUrl, goalAlertOn, sortMatches } from "@/lib/match-core";
-import { favSpecString } from "@/lib/match-core";
+import { favSpecString, favoriteOf, type FavSpec } from "@/lib/match-core";
 import { useMediaStore } from "@/lib/store";
 import { GOAL_TEST_EVENT } from "@/components/football/goal-celebration";
 import { MatchChannelChips } from "@/components/football/match-channel-chips";
@@ -307,14 +307,14 @@ function MatchCard({ m, hidden = false }: { m: TopMatch; hidden?: boolean }) {
       </div>
       {/* LTR so the home team sits on the left of "home - away" (in RTL it ended up on the right, reversing the score) */}
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3" dir="ltr">
-        <Team name={m.home.name} logo={m.home.logo} />
+        <Team team={m.home} league={m.league} navId={`match-star-home-${m.id}`} />
         <div className="text-center min-w-[72px]">
           {started
             ? <div className="text-2xl font-black tabular-nums" dir="ltr">{m.score.home ?? 0} - {m.score.away ?? 0}</div>
             : <div className="text-2xl font-black tabular-nums text-emerald-400" dir="ltr">{m.omanTime}</div>}
           <div className="text-[10px] text-white/40 mt-1" dir="ltr">{m.omanTime} عُمان</div>
         </div>
-        <Team name={m.away.name} logo={m.away.logo} />
+        <Team team={m.away} league={m.league} navId={`match-star-away-${m.id}`} />
       </div>
 
       <div className="mt-3 flex items-center justify-center gap-2 text-xs font-bold">
@@ -359,11 +359,35 @@ function MatchCard({ m, hidden = false }: { m: TopMatch; hidden?: boolean }) {
   );
 }
 
-function Team({ name, logo }: { name: string; logo?: string }) {
+const favSpecFromTeam = (t: { name: string; country?: string }): FavSpec => ({ name: t.name, country: t.country });
+
+/** A team with its star: tap to add it to my favourite teams, tap again to remove it (by id, else by full name). */
+function Team({ team, league, navId }: { team: TopMatch["home"]; league: TopMatch["league"]; navId: string }) {
+  const favorites = useMediaStore(s => s.favoriteTeams) || [];
+  const setFavoriteTeam = useMediaStore(s => s.setFavoriteTeam);
+  const id = Number(team.id);
+  // the same id from another data source can be another club: the name has to agree as well
+  const fav = favorites.find(f => (Number.isFinite(id) && f.id === id && sameTeam(f.name, team.name)) || f.name.trim().toLowerCase() === team.name.trim().toLowerCase())
+    ?? favorites.find(f => favoriteOf(favSpecFromTeam(f), { home: team, away: { id: "", name: "" }, league }));
+  const toggle = () => {
+    if (fav) setFavoriteTeam(fav, false);
+    else {
+      // the league's country tells this club from namesakes abroad (none for international competitions)
+      const country = league.country && !/world|europe|international|asia|africa|america/i.test(league.country) ? league.country : undefined;
+      setFavoriteTeam({ id: Number.isFinite(id) && id > 0 ? id : -Date.now(), name: team.name, logo: team.logo || "", country }, true);
+    }
+  };
   return (
     <div className="flex flex-col items-center gap-2 min-w-0">
-      {logo ? <img src={logo} alt="" className="w-12 h-12 object-contain" loading="lazy" /> : <div className="w-12 h-12 rounded-full bg-white/10" />}
-      <span className="text-xs font-black text-center truncate w-full" dir="ltr">{name}</span>
+      <div className="relative">
+        {team.logo ? <img src={team.logo} alt="" className="w-12 h-12 object-contain" loading="lazy" /> : <div className="w-12 h-12 rounded-full bg-white/10" />}
+        <button onClick={toggle} title={fav ? "إزالة من فرقي المفضلة" : "إضافة إلى فرقي المفضلة"} data-nav-id={navId}
+          className={cn("focusable no-focus-scale absolute -top-2 -right-3 w-7 h-7 rounded-full border flex items-center justify-center",
+            fav ? "bg-yellow-400 border-yellow-300 text-black shadow-[0_0_10px_rgba(250,204,21,0.5)]" : "bg-black/70 border-white/15 text-white/40 hover:text-yellow-300")}>
+          <Star className={cn("w-3.5 h-3.5", fav && "fill-current")} />
+        </button>
+      </div>
+      <span className="text-xs font-black text-center truncate w-full" dir="ltr">{team.name}</span>
     </div>
   );
 }

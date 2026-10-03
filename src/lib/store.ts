@@ -153,6 +153,8 @@ interface MediaState {
   addCustomFont: (name: string, url: string) => void; removeCustomFont: (name: string, url: string) => void;
   addCustomWallBackground: (url: string) => void; removeCustomWallBackground: (url: string) => void;
   toggleFavoriteTeam: (team: FavoriteTeam) => void; toggleBelledMatch: (matchId: string) => void;
+  /** star on a match card: add the team, or remove it (by id, else by its full name); synced to the cloud */
+  setFavoriteTeam: (team: FavoriteTeam, on: boolean) => void;
   /** bell on a match card: goal animation on/off for that match (favourites default on); synced to the cloud */
   toggleGoalAlert: (matchKey: string, defaultOn: boolean) => void;
   setLeagueChannels: (leagueKey: string, channels: string[] | null) => void;
@@ -489,6 +491,17 @@ export const useMediaStore = create<MediaState>()(
       addAzkar: (a) => set((s) => { const n = [...s.generalAzkar, a]; setTimeout(() => get().syncMasterBin(), 100); return { generalAzkar: n }; }),
       updateAzkar: (id, u) => set((s) => { const n = s.generalAzkar.map(a => a.id === id ? { ...a, ...u } : a); setTimeout(() => get().syncMasterBin(), 100); return { generalAzkar: n }; }),
       removeAzkar: (id) => set((s) => { const n = s.generalAzkar.filter(a => a.id !== id); setTimeout(() => get().syncMasterBin(), 100); return { generalAzkar: n }; }),
+      setFavoriteTeam: (t, on) => {
+        const full = (n: string) => n.trim().toLowerCase();
+        set((s) => {
+          const list = s.favoriteTeams || [];
+          if (on) return list.some(i => i.id === t.id || full(i.name) === full(t.name)) ? {} : { favoriteTeams: [...list, t] };
+          // remove by id; when no favourite has that id (saved from another source), by the full name
+          const byId = list.filter(i => i.id !== t.id);
+          return { favoriteTeams: byId.length < list.length ? byId : list.filter(i => full(i.name) !== full(t.name)) };
+        });
+        setTimeout(() => get().syncMasterBin(), 100);
+      },
       toggleFavoriteTeam: (t) => set((s) => ({ favoriteTeams: s.favoriteTeams.some(i => i.id === t.id) ? s.favoriteTeams.filter(i => i.id !== t.id) : [...s.favoriteTeams, t] })),
       toggleGoalAlert: (key, defaultOn) => {
         set((s) => {
