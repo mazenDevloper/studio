@@ -1,6 +1,6 @@
 import { footballDay } from "@/lib/oman-time";
 import { S365_HEADERS, remember365Countries, s365Url } from "@/lib/scores365";
-import { leagueAlwaysListed, leagueTopClubs } from "@/lib/match-channels";
+import { leagueAlwaysListed, leagueTopClubs, leagueKeyMatches } from "@/lib/match-channels";
 import { EXTRA_SOURCES } from "@/lib/match-sources-extra";
 import {
   BROWSER_HEADERS, build, getJson, sortMatches, favoriteOf, parseFavSpec, isYouthMatch, isExcludedLeague, AMERICAS_CUP, importanceOf, leagueWeightByName, num, pickTop, sameTeam, shiftedDash, shiftedYmd,
@@ -323,7 +323,7 @@ export function startMatchesWarmup() {
  */
 const AMERICAS_BIG = ["Flamengo", "Palmeiras", "Boca Juniors", "River Plate"];
 
-export async function getTopMatchesToday(limit = 10, only?: string, includeAll = false, teams: string[] = [], dayOffset = 0, pins: string[] = []): Promise<TopMatchesResult> {
+export async function getTopMatchesToday(limit = 10, only?: string, includeAll = false, teams: string[] = [], dayOffset = 0, pins: string[] = [], follow: string[] = []): Promise<TopMatchesResult> {
   if (!dayOffset) lastUsedAt = Date.now();
   // until 05:00 Oman time this is still yesterday's football day; -1 / +1 = yesterday's / tomorrow's matches
   const date = dayOffset ? shiftedDash(footballDay(), dayOffset) : footballDay();
@@ -351,7 +351,9 @@ export async function getTopMatchesToday(limit = 10, only?: string, includeAll =
   // always shown besides the top list: favourite teams' matches, and every match of a league that has a regional
   // channel (Saudi -> Thmanyah, UAE -> AD Sports / Sharjah, Bundesliga -> MBC Action, Serie A -> STARZPLAY, Oman...)
   // (yesterday / tomorrow: only the favourites besides the important matches)
-  const isExtra = (m: TopMatch) => isFav(m) || isPin(m) || (!includeAll && !dayOffset && leagueAlwaysListed(m.league));
+  // followed competitions: every match listed (not favourites: no bell, no island)
+  const isFollowed = (m: TopMatch) => follow.some(k => leagueKeyMatches(k, m.league));
+  const isExtra = (m: TopMatch) => isFav(m) || isPin(m) || isFollowed(m) || (!includeAll && !dayOffset && leagueAlwaysListed(m.league));
   const favExtra: TopMatch[] = [];
   for (const r of [best, ...working.filter(w => w !== best)]) {
     for (const m of r.day) {
@@ -371,12 +373,12 @@ export async function getTopMatchesToday(limit = 10, only?: string, includeAll =
       if (isYouthMatch(m) && !isFav(m)) return false; // no U18 / U21 / reserves / women
       // never fetched: lower tiers (any country), the Americas except MLS / Brazil Série A / Argentina's top league
       const excluded = isExcludedLeague(m.league);
-      if (excluded === "lower-tier" || (excluded === "americas" && !isFav(m))) return false;
+      if (!isFollowed(m) && (excluded === "lower-tier" || (excluded === "americas" && !isFav(m)))) return false;
       // Libertadores & co.: only with the four big clubs kept from Brazil and Argentina (or a favourite)
       if (AMERICAS_CUP.test(m.league.name) && !isFav(m) && !AMERICAS_BIG.some(t => sameTeam(t, m.home.name) || sameTeam(t, m.away.name))) return false;
-      const clubs = isFav(m) || includeAll ? null : leagueTopClubs(m.league);
+      const clubs = isFav(m) || includeAll || isFollowed(m) ? null : leagueTopClubs(m.league);
       return !clubs || clubs.some(t => sameTeam(t, m.home.name) || sameTeam(t, m.away.name));
-    }).map(m => (isFav(m) ? { ...m, favorite: true } : m))),
+    }).map(m => (isFav(m) ? { ...m, favorite: true } : isFollowed(m) ? { ...m, followed: true } : m))),
     attempts: runs.map(r => r.attempt),
     fetchedAt: new Date(day.at).toISOString(),
   };
@@ -462,7 +464,7 @@ export async function getFavoriteUpcoming(teams: string[], days = 14): Promise<{
  * importance (league + big clubs), favourites on top. Same exclusions as the lists (lower tiers, the Americas
  * outside MLS / Brazil / Argentina, youth and women's matches).
  */
-export async function getLiveNow(teams: string[] = []): Promise<{ date: string; matches: TopMatch[]; fetchedAt: string }> {
+export async function getLiveNow(teams: string[] = [], follow: string[] = []): Promise<{ date: string; matches: TopMatch[]; fetchedAt: string }> {
   const date = footballDay();
   const day = await getDay(date);
   const specs = teams.map(parseFavSpec);
@@ -475,8 +477,9 @@ export async function getLiveNow(teams: string[] = []): Promise<{ date: string; 
       const fav = isFav(m);
       if (isYouthMatch(m) && !fav) continue;
       const excluded = isExcludedLeague(m.league);
-      if (excluded === "lower-tier" || (excluded === "americas" && !fav)) continue;
-      out.push(fav ? { ...m, favorite: true } : m);
+      const followed = follow.some(k => leagueKeyMatches(k, m.league));
+      if (!followed && (excluded === "lower-tier" || (excluded === "americas" && !fav))) continue;
+      out.push(fav ? { ...m, favorite: true } : followed ? { ...m, followed: true } : m);
     }
   }
   out.sort((a, b) => Number(!!b.favorite) - Number(!!a.favorite) || b.importance - a.importance || a.timestamp - b.timestamp);

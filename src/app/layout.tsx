@@ -2,6 +2,7 @@
 "use client";
 
 import { NativeIslandBridge } from "@/components/native/native-island-bridge";
+import { NativeWidgetsBridge } from "@/components/native/native-widgets-bridge";
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { GlobalVideoPlayer } from "@/components/media/global-player";
@@ -163,6 +164,7 @@ export default function RootLayout({
           <RootLayoutWrapper>
             <LiveMatchIsland />
             <NativeIslandBridge />
+            <NativeWidgetsBridge />
             <GoalCelebration />
             <RemotePointer />
             <CarDock />

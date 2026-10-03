@@ -29,6 +29,61 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 public class NativeIslandPlugin extends Plugin {
 
     static final String PREFS = "native_island";
+    private static NativeIslandPlugin instance;
+    /** commands that arrived before the page listened (a widget started the app) */
+    private static final java.util.List<JSObject> pending = new java.util.ArrayList<>();
+
+    @Override
+    public void load() {
+        instance = this;
+    }
+
+    /**
+     * Widget / notification / picture-in-picture event for the page: "media" (toggle, next, prev), "pip" (1 / 0).
+     * Kept until the page's listener takes it.
+     */
+    static void emitCommand(String cmd, String arg) {
+        JSObject data = new JSObject();
+        data.put("cmd", cmd);
+        data.put("arg", arg == null ? "" : arg);
+        NativeIslandPlugin p = instance;
+        if (p != null && p.hasListeners("command")) p.notifyListeners("command", data);
+        else synchronized (pending) { pending.add(data); }
+    }
+
+    /** The page is running and listening (a media command can be delivered right away). */
+    static boolean isPageAlive() {
+        NativeIslandPlugin p = instance;
+        return p != null && p.hasListeners("command");
+    }
+
+    /** The page's listener is ready: hand over what came before. */
+    @PluginMethod
+    public void takePendingCommands(PluginCall call) {
+        com.getcapacitor.JSArray list = new com.getcapacitor.JSArray();
+        synchronized (pending) {
+            for (JSObject o : pending) list.put(o);
+            pending.clear();
+        }
+        JSObject ret = new JSObject();
+        ret.put("commands", list);
+        call.resolve(ret);
+    }
+
+    /** What the home-screen widgets show (now playing, Quran surahs / reciters, the site's address). */
+    @PluginMethod
+    public void updateWidgets(PluginCall call) {
+        prefs(getContext()).edit().putString("widgets", call.getString("data", "{}")).apply();
+        Widgets.updateAll(getContext());
+        call.resolve();
+    }
+
+    /** A video is playing (leaving the app then goes picture-in-picture). */
+    @PluginMethod
+    public void setVideoPlaying(PluginCall call) {
+        MainActivity.videoPlaying = Boolean.TRUE.equals(call.getBoolean("playing", false));
+        call.resolve();
+    }
 
     @PluginMethod
     public void configure(PluginCall call) {
@@ -46,6 +101,16 @@ public class NativeIslandPlugin extends Plugin {
         call.resolve();
     }
 
+    /** The app's font size, in percent of normal (WebView text zoom); kept on this phone. */
+    @PluginMethod
+    public void setTextZoom(PluginCall call) {
+        Integer p = call.getInt("percent", 100);
+        int percent = Math.max(70, Math.min(200, p == null ? 100 : p));
+        prefs(getContext()).edit().putInt("textZoom", percent).apply();
+        getActivity().runOnUiThread(() -> getBridge().getWebView().getSettings().setTextZoom(percent));
+        call.resolve();
+    }
+
     @PluginMethod
     public void getStatus(PluginCall call) {
         Context ctx = getContext();
@@ -56,6 +121,8 @@ public class NativeIslandPlugin extends Plugin {
         ret.put("notifications", NotificationManagerCompat.from(ctx).areNotificationsEnabled());
         ret.put("overlayEnabled", prefs(ctx).getBoolean("overlayEnabled", true));
         ret.put("version", BuildConfig.VERSION_NAME);
+        ret.put("textZoom", prefs(ctx).getInt("textZoom", 100));
+        ret.put("accessibility", IslandAccessibilityService.instance != null);
         call.resolve(ret);
     }
 
@@ -66,6 +133,15 @@ public class NativeIslandPlugin extends Plugin {
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             getContext().startActivity(intent);
         }
+        call.resolve();
+    }
+
+    /** The island over the status bar / lock screen: turn on "DriveCast" in the accessibility settings. */
+    @PluginMethod
+    public void requestAccessibility(PluginCall call) {
+        Intent intent = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        getContext().startActivity(intent);
         call.resolve();
     }
 

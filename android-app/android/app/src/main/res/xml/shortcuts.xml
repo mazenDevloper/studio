@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutId="dashboard"
+        android:shortcutShortLabel="@string/shortcut_dashboard">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetClass="com.drivecast.sovereign.MainActivity"
+            android:targetPackage="com.drivecast.sovereign">
+            <extra android:name="route" android:value="/dashboard" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutId="matches"
+        android:shortcutShortLabel="@string/shortcut_matches">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetClass="com.drivecast.sovereign.MainActivity"
+            android:targetPackage="com.drivecast.sovereign">
+            <extra android:name="route" android:value="/matches" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutId="iptv"
+        android:shortcutShortLabel="@string/shortcut_iptv">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetClass="com.drivecast.sovereign.MainActivity"
+            android:targetPackage="com.drivecast.sovereign">
+            <extra android:name="route" android:value="/iptv" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutId="quran"
+        android:shortcutShortLabel="@string/shortcut_quran">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetClass="com.drivecast.sovereign.MainActivity"
+            android:targetPackage="com.drivecast.sovereign">
+            <extra android:name="route" android:value="/quran" />
+        </intent>
+    </shortcut>
+</shortcuts>

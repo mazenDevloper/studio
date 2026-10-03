@@ -1,5 +1,7 @@
 "use client";
 
+import { isNativeApp } from "@/lib/native-app";
+
 import { useEffect, useRef } from "react";
 import { useMediaStore } from "@/lib/store";
 
@@ -86,6 +88,8 @@ export function YoutubeBackgroundBridge() {
       const a = audioRef.current;
       if (!a) return;
       if (document.hidden) {
+        // the Android app keeps the YouTube embed itself playing in the background: no audio copy there
+        if (isNativeApp()) return;
         if (!videoId || !isPlaying || !urlRef.current) return;
         a.src = urlRef.current;
         a.currentTime = timeRef.current || 0;

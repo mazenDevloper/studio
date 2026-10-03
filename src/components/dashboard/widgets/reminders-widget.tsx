@@ -2,6 +2,7 @@
 "use client";
 
 import { useMediaStore } from "@/lib/store";
+import { isDoneToday } from "@/lib/store";
 import { Play, Bell, Circle, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -57,7 +58,7 @@ export function RemindersWidget() {
                 onClick={() => toggleReminder(reminder.id)}
                 className={cn(
                   "relative flex items-center justify-between px-5 py-3 rounded-2xl border transition-all duration-300 group overflow-hidden animate-in fade-in slide-in-from-right-4",
-                  reminder.completed 
+                  isDoneToday(reminder) 
                     ? "bg-primary/20 border-primary/40" 
                     : "bg-white/5 border-white/5 hover:bg-white/10"
                 )}
@@ -65,9 +66,9 @@ export function RemindersWidget() {
                 <div className="flex items-center gap-3 z-10">
                   <div className={cn(
                     "w-8 h-8 rounded-full flex items-center justify-center transition-transform group-active:scale-90",
-                    reminder.completed ? "bg-primary text-white" : "bg-black/20"
+                    isDoneToday(reminder) ? "bg-primary text-white" : "bg-black/20"
                   )}>
-                    {reminder.completed ? (
+                    {isDoneToday(reminder) ? (
                       <CheckCircle2 className="w-5 h-5" />
                     ) : reminder.iconType === 'play' ? (
                       <Play className={cn("w-4 h-4 fill-current", reminder.color)} />
@@ -79,13 +80,13 @@ export function RemindersWidget() {
                   </div>
                   <span className={cn(
                     "text-sm font-bold font-headline transition-colors",
-                    reminder.completed ? "text-white" : "text-white/60"
+                    isDoneToday(reminder) ? "text-white" : "text-white/60"
                   )}>
                     {reminder.label}
                   </span>
                 </div>
                 
-                {reminder.completed && (
+                {isDoneToday(reminder) && (
                   <div className="h-1.5 w-1.5 rounded-full bg-primary shadow-glow" />
                 )}
               </button>

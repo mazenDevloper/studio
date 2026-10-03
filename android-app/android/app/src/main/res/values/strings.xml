@@ -4,4 +4,20 @@
     <string name="title_activity_main">DriveCast</string>
     <string name="package_name">com.drivecast.sovereign</string>
     <string name="custom_url_scheme">com.drivecast.sovereign</string>
+    <string name="widget_prayer_desc">الصلاة القادمة مع عدّاد ومواقيت اليوم</string>
+    <string name="widget_matches_desc">مباريات فرقك المفضلة اليوم</string>
+    <string name="widget_media_desc">ما يعمل الآن في المشغل مع أزرار التحكم</string>
+    <string name="widget_quran_desc">القرآن: اختر السورة والقارئ واستمع</string>
+    <string name="widget_screens_desc">أيقونة لكل شاشة في التطبيق</string>
+    <string name="widget_prayer_label">DriveCast · الصلاة</string>
+    <string name="widget_matches_label">DriveCast · المباريات</string>
+    <string name="widget_media_label">DriveCast · المشغل</string>
+    <string name="widget_quran_label">DriveCast · القرآن</string>
+    <string name="widget_screens_label">DriveCast · الشاشات</string>
+    <string name="shortcut_dashboard">الرئيسية</string>
+    <string name="shortcut_matches">المباريات</string>
+    <string name="shortcut_iptv">IPTV</string>
+    <string name="shortcut_quran">القرآن</string>
+    <string name="island_accessibility_label">DriveCast · الجزيرة العائمة</string>
+    <string name="island_accessibility_desc">يرسم الجزيرة العائمة (المباريات المباشرة وعدّاد الصلاة) فوق شريط الحالة وشاشة القفل مثل تطبيقات Dynamic Island. لا يقرأ أي محتوى من الشاشة.</string>
 </resources>

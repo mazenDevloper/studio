@@ -4,7 +4,8 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useLiveMatches } from "@/lib/live-matches";
 import { sameTeam, matchHideKey } from "@/lib/match-core";
-import { favSpecString } from "@/lib/match-core";
+import { favSpecString, favoriteOf } from "@/lib/match-core";
+import { isDoneToday } from "@/lib/store";
 import { useMediaStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { X, Eye, EyeOff, Bell, Clock, Timer, Check, Trophy, Play, ChevronDown, ChevronUp, Zap, Cloud, Bookmark } from "lucide-react";
@@ -37,6 +38,9 @@ interface AlertItem {
  * LiveMatchIsland v1702.0 - Sovereign Precision Engine
  * Features: Fixed Local Date Sync | General Azkar Support | Robust Manual Visibility.
  */
+/** A reminder marked done stays on the island (as done) for this long, then hides until the next day. */
+const DONE_SHOWN_MS = 60 * 60_000;
+
 export function LiveMatchIsland() {
   const { 
     favoriteTeams, prayerTimes, prayerSettings, reminders, generalAzkar, belledMatchIds, 
@@ -54,6 +58,22 @@ export function LiveMatchIsland() {
   const { data: liveFeed, celebrating } = useLiveMatches(favoriteNames);
   const pinned = useMediaStore(s => s.pinnedMatches) || [];
   const togglePin = useMediaStore(s => s.togglePinnedMatch);
+  // the islands' real height becomes --island-space, so every screen starts its content below them (0 when hidden)
+  const islandRootRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const root = document.documentElement;
+    let last = -1;
+    const measure = () => {
+      const el = islandRootRef.current;
+      const shown = !!el && getComputedStyle(el).opacity !== "0" && !!el.querySelector("[class*='premium-glass']:not(.w-12)");
+      const space = shown ? Math.ceil(el!.getBoundingClientRect().bottom) + 8 : 0;
+      if (space !== last) { last = space; root.style.setProperty("--island-space", `${space}px`); }
+    };
+    measure();
+    const t = setInterval(measure, 700); // islands come and go with the data and the clock
+    window.addEventListener("resize", measure);
+    return () => { clearInterval(t); window.removeEventListener("resize", measure); root.style.setProperty("--island-space", "0px"); };
+  }, []);
 
   useEffect(() => {
     setMounted(true);
@@ -106,6 +126,9 @@ export function LiveMatchIsland() {
 
       for (const rem of reminders) {
         if (skippedReminderIds.includes(rem.id) || skippedMatchIds.includes(rem.id)) continue;
+        // done today: shown as done for an hour, then hidden until tomorrow (the state resets each day)
+        const doneToday = isDoneToday(rem);
+        if (doneToday && now.getTime() - (rem.completedAt ?? 0) > DONE_SHOWN_MS) continue;
         if (rem.iconType === 'match' && rem.matchDate && rem.matchDate !== dateStr) continue;
 
         let startSecs = -1;
@@ -153,7 +176,7 @@ export function LiveMatchIsland() {
               color: rem.color, 
               isExpired: sDiff <= 0, 
               isEnding: eDiff > 0 && eDiff <= 600,
-              completed: rem.completed,
+              completed: doneToday,
               homeLogo: rem.homeLogo,
               awayLogo: rem.awayLogo,
               homeName: rem.homeName,
@@ -167,20 +190,23 @@ export function LiveMatchIsland() {
       // Add General Azkar to Island
       if (generalAzkar && generalAzkar.length > 0) {
         generalAzkar.forEach(az => {
-          if (!az.completed) {
-            list.push({ 
-              id: az.id, 
-              name: az.label, 
-              diff: 0, 
-              type: 'azkar', 
-              iconType: 'circle', 
-              color: 'text-emerald-400', 
-              completed: false 
-            });
-          }
+          const done = isDoneToday(az);
+          if (done && now.getTime() - (az.completedAt ?? 0) > DONE_SHOWN_MS) return;
+          list.push({
+            id: az.id,
+            name: az.label,
+            diff: 0,
+            type: 'azkar',
+            iconType: 'circle',
+            color: 'text-emerald-400',
+            completed: done,
+          });
         });
       }
     }
+    // a favourite whose island switch is off shows on the matches page only
+    const islandTeams = (favoriteTeams || []).filter(t => t?.name && t.island !== false).map(t => ({ name: t.name, country: t.country }));
+    const onIsland = (m: NonNullable<typeof liveFeed>["matches"][number]) => islandTeams.some(f => favoriteOf(f, m));
     // Today's matches of my favourite teams and the matches I pinned, with live scores
     const nowSecs = Math.floor(now.getTime() / 1000);
     const seenLive = new Set<string>();
@@ -193,7 +219,7 @@ export function LiveMatchIsland() {
       // hiding works by a key built from the football day + both teams, so it survives a change of data source
       // and (being in skippedMatchIds, synced with the master bin) applies on every device
       // the eye on the match card hides it from the island even when pinned
-      if ((!m.favorite && !isPinned) || skippedMatchIds.includes(matchHideKey(m)) || skippedMatchIds.includes(`del:${matchHideKey(m)}`) || skippedMatchIds.includes(id)) continue;
+      if ((!(m.favorite && onIsland(m)) && !isPinned) || skippedMatchIds.includes(matchHideKey(m)) || skippedMatchIds.includes(`del:${matchHideKey(m)}`) || skippedMatchIds.includes(id)) continue;
       if (m.status === "finished" && nowSecs - m.timestamp > 3.5 * 3600) continue; // drop long-finished games
       const started = m.status !== "upcoming";
       // never show the same fixture twice: a live island replaces an older reminder-based match island
@@ -219,7 +245,7 @@ export function LiveMatchIsland() {
 
     // favourite teams' live matches first, then by time
     return list.sort((a, b) => Number(!!b.favLive) - Number(!!a.favLive) || Math.abs(a.diff) - Math.abs(b.diff));
-  }, [now, prayerTimes, prayerSettings, reminders, generalAzkar, skippedReminderIds, skippedMatchIds, showSyncIsland, isInitialLoading, liveFeed, pinned]);
+  }, [now, prayerTimes, prayerSettings, reminders, generalAzkar, skippedReminderIds, skippedMatchIds, showSyncIsland, isInitialLoading, liveFeed, pinned, favoriteTeams]);
 
   const handleAction = async (id: string, type: 'match' | 'reminder' | 'sync' | 'azkar') => {
     if (type === 'match') {
@@ -272,7 +298,7 @@ export function LiveMatchIsland() {
   const visibleAlerts = playerCovers && hasOnTop ? activeAlerts.filter(onTop) : activeAlerts;
 
   return (
-    <div className={cn("fixed top-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3 pointer-events-none scale-[0.7] min-[968px]:scale-[0.80] dir-rtl transition-all duration-700", hasOnTop ? "z-[100002]" : "z-[10001]", (showIslands || activeAlerts.length) ? "translate-y-0 opacity-100" : "-translate-y-20 opacity-0")}>
+    <div ref={islandRootRef} className={cn("fixed top-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3 pointer-events-none scale-[0.7] min-[968px]:scale-[0.80] dir-rtl transition-all duration-700", hasOnTop ? "z-[100002]" : "z-[10001]", (showIslands || activeAlerts.length) ? "translate-y-0 opacity-100" : "-translate-y-20 opacity-0")}>
       <div className="flex items-start gap-3">
         <div onClick={toggleShowIslands} className="pointer-events-auto shadow-2xl w-12 h-12 rounded-full flex items-center justify-center premium-glass cursor-pointer border border-white/10 active:scale-90 transition-all">{showIslands ? <Eye className="w-5 h-5 text-accent" /> : <EyeOff className="w-5 h-5 text-white/20" />}</div>
         {showIslands && (
