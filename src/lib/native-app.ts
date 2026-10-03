@@ -5,7 +5,7 @@
  * browser none of this exists and every helper is a no-op.
  */
 
-export interface NativeStatus { overlay: boolean; background: boolean; notifications: boolean; overlayEnabled: boolean; version?: string }
+export interface NativeStatus { overlay: boolean; background: boolean; notifications: boolean; overlayEnabled: boolean; version?: string; textZoom?: number }
 
 interface NativeIslandPlugin {
   configure(o: { config: string }): Promise<void>;
@@ -14,6 +14,7 @@ interface NativeIslandPlugin {
   requestOverlay(): Promise<void>;
   requestBackground(): Promise<void>;
   requestNotifications(): Promise<void>;
+  setTextZoom(o: { percent: number }): Promise<void>;
 }
 
 export function nativeIsland(): NativeIslandPlugin | null {

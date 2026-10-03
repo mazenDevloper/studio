@@ -16,7 +16,11 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(NativeIslandPlugin.class);
         super.onCreate(savedInstanceState);
         WebView webView = getBridge() != null ? getBridge().getWebView() : null;
-        if (webView != null) webView.getSettings().setMediaPlaybackRequiresUserGesture(false);
+        if (webView != null) {
+            webView.getSettings().setMediaPlaybackRequiresUserGesture(false);
+            // the font size chosen in the app's settings
+            webView.getSettings().setTextZoom(NativeIslandPlugin.prefs(this).getInt("textZoom", 100));
+        }
         IslandService.start(this);
     }
 

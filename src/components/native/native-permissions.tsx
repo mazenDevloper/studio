@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Layers, BatteryCharging, BellRing, Check, Smartphone } from "lucide-react";
+import { Layers, BatteryCharging, BellRing, Check, Smartphone, Type } from "lucide-react";
 import { nativeIsland, type NativeStatus } from "@/lib/native-app";
 import { cn } from "@/lib/utils";
 
@@ -21,6 +21,12 @@ export function NativePermissions() {
     document.addEventListener("visibilitychange", onVis);
     return () => document.removeEventListener("visibilitychange", onVis);
   }, [refresh]);
+
+  const zoom = (v: number) => {
+    const percent = Math.max(70, Math.min(200, Math.round(v)));
+    setStatus(s => (s ? { ...s, textZoom: percent } : s));
+    nativeIsland()?.setTextZoom({ percent }).catch(() => {});
+  };
 
   if (!plugin || !status) return null;
 
@@ -52,6 +58,15 @@ export function NativePermissions() {
           onChange={e => plugin.setOverlayEnabled({ enabled: e.target.checked }).then(refresh)} />
         إظهار الجزيرة العائمة فوق التطبيقات الأخرى
       </label>
+      {/* the app's font size (Android text zoom) */}
+      <div className="flex items-center gap-4 pt-2">
+        <span className="text-sm font-black text-white/80 shrink-0 flex items-center gap-2"><Type className="w-5 h-5 text-emerald-400" /> حجم الخط</span>
+        <button onClick={() => zoom((status.textZoom ?? 100) - 10)} className="focusable no-focus-scale w-11 h-11 rounded-full bg-white/10 text-white font-black text-lg" data-nav-id="native-zoom-minus">أ-</button>
+        <input type="range" min={70} max={200} step={5} value={status.textZoom ?? 100} onChange={e => zoom(Number(e.target.value))} className="flex-1 accent-emerald-500" />
+        <button onClick={() => zoom((status.textZoom ?? 100) + 10)} className="focusable no-focus-scale w-11 h-11 rounded-full bg-white/10 text-white font-black text-xl" data-nav-id="native-zoom-plus">أ+</button>
+        <span className="w-14 text-center text-sm font-black text-emerald-300 tabular-nums">{status.textZoom ?? 100}%</span>
+        <button onClick={() => zoom(100)} className="focusable no-focus-scale h-11 px-4 rounded-full bg-white/5 border border-white/10 text-xs font-black text-white/60" data-nav-id="native-zoom-reset">افتراضي</button>
+      </div>
       {status.version && <p className="text-[11px] text-white/30 font-bold">إصدار التطبيق {status.version}</p>}
     </section>
   );

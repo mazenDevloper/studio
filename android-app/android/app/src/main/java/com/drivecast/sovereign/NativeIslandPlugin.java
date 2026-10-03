@@ -46,6 +46,16 @@ public class NativeIslandPlugin extends Plugin {
         call.resolve();
     }
 
+    /** The app's font size, in percent of normal (WebView text zoom); kept on this phone. */
+    @PluginMethod
+    public void setTextZoom(PluginCall call) {
+        Integer p = call.getInt("percent", 100);
+        int percent = Math.max(70, Math.min(200, p == null ? 100 : p));
+        prefs(getContext()).edit().putInt("textZoom", percent).apply();
+        getActivity().runOnUiThread(() -> getBridge().getWebView().getSettings().setTextZoom(percent));
+        call.resolve();
+    }
+
     @PluginMethod
     public void getStatus(PluginCall call) {
         Context ctx = getContext();
@@ -56,6 +66,7 @@ public class NativeIslandPlugin extends Plugin {
         ret.put("notifications", NotificationManagerCompat.from(ctx).areNotificationsEnabled());
         ret.put("overlayEnabled", prefs(ctx).getBoolean("overlayEnabled", true));
         ret.put("version", BuildConfig.VERSION_NAME);
+        ret.put("textZoom", prefs(ctx).getInt("textZoom", 100));
         call.resolve(ret);
     }
 
