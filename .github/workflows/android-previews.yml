@@ -48,7 +48,18 @@ jobs:
         working-directory: android-app/android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug assembleDebugAndroidTest --no-daemon --stacktrace
+          set -o pipefail
+          ./gradlew assembleDebug assembleDebugAndroidTest --no-daemon --stacktrace 2>&1 | tee build.txt
+
+      - name: Publish the build log (on failure)
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        working-directory: android-app/android
+        run: |
+          tail -c 200000 build.txt > build-tail.txt
+          gh release delete android-preview-shots --yes --cleanup-tag || true
+          gh release create android-preview-shots build-tail.txt --target "$GITHUB_SHA" --prerelease --title "Widget previews: build failed" --notes "see build-tail.txt"
 
       - name: Draw the previews on an emulator
         uses: reactivecircus/android-emulator-runner@v2
