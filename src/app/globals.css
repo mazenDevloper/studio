@@ -252,3 +252,28 @@ input, textarea, select, button { font-weight: 700; }
 @media (max-width: 968px) {
   [data-nav-zone="dock"].dock-reversed > div { flex-direction: row-reverse !important; }
 }
+
+/* hidden players (YouTube audio fallback, Quran engine...): invisible but inside the screen, so nothing ever
+   widens the page (a right-to-left page can be scrolled towards elements parked far to the left) */
+.offscreen-hidden {
+  position: fixed !important;
+  top: 0;
+  left: 0;
+  opacity: 0;
+  pointer-events: none;
+  overflow: hidden;
+  clip-path: inset(50%);
+  z-index: -1;
+}
+
+/* app-like phone: the page itself never pans sideways or bounces; only inner lists scroll */
+html, body {
+  max-width: 100%;
+  overflow-x: hidden;
+  overscroll-behavior: none;
+}
+body { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%; }
+/* iPhone zooms into any field under 16px (and the whole screen can then be dragged sideways) */
+@media (max-width: 968px) {
+  input, select, textarea { font-size: 16px !important; }
+}

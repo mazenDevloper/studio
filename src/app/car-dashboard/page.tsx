@@ -121,7 +121,7 @@ export default function CarDashboardPage() {
   return (
     <main className="w-full h-full bg-black flex overflow-hidden">
       {/* Hidden Shortcut Controller for Auto-Sync Engine */}
-      <div className="fixed top-[-9999px] left-[-9999px] opacity-0 pointer-events-none">
+      <div className="offscreen-hidden w-px h-px">
          <SovereignShortcutsWidget />
       </div>
 

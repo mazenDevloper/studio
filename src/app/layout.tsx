@@ -132,6 +132,8 @@ function RootLayoutWrapper({ children }: { children: React.ReactNode }) {
   );
 }
 
+const VIEWPORT = "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -142,6 +144,11 @@ export default function RootLayout({
       <head>
         {/* starts today's matches request while the page is still loading (before the stylesheets, which would delay it) */}
         <script dangerouslySetInnerHTML={{ __html: MATCHES_PREFETCH_SCRIPT }} />
+        {/* app-like on phones and tablets: exact device width, no zoom (so the screen never drags sideways), edge to
+            edge under the notch. Next.js adds its own plain viewport tag: the script makes every copy say the same. */}
+        <meta name="viewport" content={VIEWPORT} />
+        <script dangerouslySetInnerHTML={{ __html: `(function(){function f(){document.querySelectorAll('meta[name=viewport]').forEach(function(m){m.setAttribute('content',${JSON.stringify(VIEWPORT)})})}f();document.addEventListener('DOMContentLoaded',function(){f();new MutationObserver(f).observe(document.head,{childList:true})})})()` }} />
+        <meta name="theme-color" content="#000000" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
