@@ -21,15 +21,19 @@ public class FoldersWidgetService extends RemoteViewsService {
 
     @Override
     public RemoteViewsFactory onGetViewFactory(Intent intent) {
-        return new Factory(getApplicationContext());
+        boolean channels = intent.getData() != null && "channels".equals(intent.getData().getHost());
+        return new Factory(getApplicationContext(), channels);
     }
 
     static final class Factory implements RemoteViewsFactory {
         private final Context ctx;
         private final List<JSONObject> items = new ArrayList<>();
+        /** the subscriptions widget (channel tiles) instead of the folders */
+        private final boolean channels;
 
-        Factory(Context ctx) {
+        Factory(Context ctx, boolean channels) {
             this.ctx = ctx;
+            this.channels = channels;
         }
 
         @Override
@@ -39,8 +43,20 @@ public class FoldersWidgetService extends RemoteViewsService {
         @Override
         public void onDataSetChanged() {
             items.clear();
+            if (channels) {
+                // starred channels first, like the site's sidebar
+                JSONArray ch = Cloud.array(ctx, "cloud_channels");
+                List<JSONObject> rest = new ArrayList<>();
+                for (int i = 0; i < ch.length(); i++) {
+                    JSONObject o = ch.optJSONObject(i);
+                    if (o == null) continue;
+                    if (o.optBoolean("starred")) items.add(o); else rest.add(o);
+                }
+                items.addAll(rest);
+                return;
+            }
             JSONObject wd = Widgets.json(ctx, "widgets");
-            JSONArray pl = wd.optJSONArray("playlists"), tv = wd.optJSONArray("topVideos");
+            JSONArray pl = Widgets.playlists(ctx), tv = wd.optJSONArray("topVideos");
             for (int i = 0; pl != null && i < pl.length(); i++) {
                 JSONObject o = pl.optJSONObject(i);
                 if (o != null) try { items.add(new JSONObject(o.toString()).put("_kind", "pl")); } catch (Exception ignored) { }
@@ -66,6 +82,18 @@ public class FoldersWidgetService extends RemoteViewsService {
             RemoteViews v = new RemoteViews(ctx.getPackageName(), R.layout.widget_folders_item);
             if (position < 0 || position >= items.size()) return v;
             JSONObject o = items.get(position);
+            if (channels) {
+                float dd = ctx.getResources().getDisplayMetrics().density;
+                int cw = Math.min(400, Math.round(110 * dd)), chh = Math.round(cw * 1.05f);
+                Bitmap avatar = Images.get(ctx, o.optString("image", null), cw);
+                v.setImageViewBitmap(R.id.folder_card, WidgetArt.channelTile(ctx, cw, chh, o.optString("name"), avatar, o.optBoolean("starred")));
+                Intent fill = new Intent();
+                fill.putExtra("route", "/media");
+                fill.putExtra("command", "channel");
+                fill.putExtra("arg", o.optString("id"));
+                v.setOnClickFillInIntent(R.id.folder_item, fill);
+                return v;
+            }
             // 16:10 cards at a size that stays sharp on tablets
             float d = ctx.getResources().getDisplayMetrics().density;
             int w = Math.min(640, Math.round(200 * d)), h = Math.round(w * 0.6f);

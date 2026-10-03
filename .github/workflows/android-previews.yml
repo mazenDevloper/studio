@@ -4,9 +4,7 @@ name: Android widget previews
 # real matches) and publishes the pictures as the "android-preview-shots" release, so the native look can be compared
 # with the site without a phone.
 on:
-  push:
-    branches: ["claude/**"]
-    paths: ["android-app/**", ".github/workflows/android-previews.yml"]
+  # run it by hand from the Actions tab when the look needs checking
   workflow_dispatch:
 
 permissions:

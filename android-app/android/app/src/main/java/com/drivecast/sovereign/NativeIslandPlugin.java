@@ -54,6 +54,14 @@ public class NativeIslandPlugin extends Plugin {
         else synchronized (pending) { pending.add(data); }
     }
 
+    /** Keep a command for the next page that loads (a widget opened a screen: the current page is about to go). */
+    static void queueCommand(String cmd, String arg) {
+        JSObject data = new JSObject();
+        data.put("cmd", cmd);
+        data.put("arg", arg == null ? "" : arg);
+        synchronized (pending) { pending.add(data); }
+    }
+
     /** The page is running and listening (a media command can be delivered right away). */
     static boolean isPageAlive() {
         NativeIslandPlugin p = instance;

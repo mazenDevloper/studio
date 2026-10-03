@@ -615,4 +615,110 @@ final class WidgetArt {
         c.drawText(Art.ellipsize(chp, channel == null ? "" : channel, nameRight - br.right - h * 0.05f), nameRight, Art.baseline(chp, ay), chp);
         return b;
     }
+
+    // ======================================================================================= subscriptions
+
+    /** Header of the subscriptions widget: red icon square + "الاشتراكات" + count. */
+    static Bitmap channelsHeader(Context ctx, int w, int h, int count) {
+        Bitmap b = blank(w, h);
+        Canvas c = new Canvas(b);
+        float icon = h * 0.8f;
+        RectF ib = new RectF(w - icon - h * 0.1f, (h - icon) / 2, w - h * 0.1f, (h + icon) / 2);
+        Art.glow(c, ib, icon * 0.3f, Art.alpha(Art.RED, 0.5f), icon * 0.25f);
+        Art.fill(c, ib, icon * 0.3f, Art.RED);
+        Art.playIcon(c, ib.centerX() + icon * 0.03f, ib.centerY(), icon * 0.2f, Art.WHITE, false);
+        TextPaint t = Art.text(Fonts.black(ctx), h * 0.46f, Art.WHITE);
+        t.setTextAlign(Paint.Align.RIGHT);
+        c.drawText("الاشتراكات", ib.left - h * 0.3f, Art.baseline(t, h / 2f), t);
+        if (count > 0) {
+            TextPaint n = Art.text(Fonts.bold(ctx), h * 0.3f, Art.alpha(Art.WHITE, 0.3f));
+            n.setTextAlign(Paint.Align.LEFT);
+            c.drawText(String.valueOf(count), h * 0.2f, Art.baseline(n, h / 2f), n);
+        }
+        return b;
+    }
+
+    /** The red search pill (opens the media screen with the search box ready). */
+    static Bitmap searchButton(Context ctx, int w, int h) {
+        Bitmap b = blank(w, h);
+        Canvas c = new Canvas(b);
+        RectF r = new RectF(h * 0.06f, h * 0.08f, w - h * 0.06f, h * 0.92f);
+        Art.glow(c, r, r.height() / 2, Art.alpha(Art.RED, 0.45f), h * 0.12f);
+        Art.fill(c, r, r.height() / 2, Art.RED);
+        // magnifier
+        float cx = r.right - r.height() * 0.55f, cy = r.centerY(), rr = r.height() * 0.17f;
+        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeWidth(rr * 0.42f);
+        p.setStrokeCap(Paint.Cap.ROUND);
+        p.setColor(Art.WHITE);
+        c.drawCircle(cx - rr * 0.2f, cy - rr * 0.2f, rr, p);
+        c.drawLine(cx + rr * 0.55f, cy + rr * 0.55f, cx + rr * 1.15f, cy + rr * 1.15f, p);
+        TextPaint t = Art.text(Fonts.black(ctx), r.height() * 0.4f, Art.WHITE);
+        t.setTextAlign(Paint.Align.CENTER);
+        c.drawText("بحث", (r.left + cx - rr * 1.4f) / 2, Art.baseline(t, cy), t);
+        return b;
+    }
+
+    /** A channel: round avatar (gold ring when starred) and its name, like the media sidebar. */
+    static Bitmap channelTile(Context ctx, int w, int h, String name, Bitmap avatar, boolean starred) {
+        Bitmap b = blank(w, h);
+        Canvas c = new Canvas(b);
+        RectF r = new RectF(0, 0, w, h);
+        Art.fill(c, r, w * 0.18f, Art.alpha(Art.WHITE, 0.05f));
+        Art.stroke(c, r, w * 0.18f, Art.alpha(Art.WHITE, 0.07f), Math.max(1f, w / 120f));
+        float ar = w * 0.3f, cx = w / 2f, cy = h * 0.4f;
+        if (starred) Art.glow(c, new RectF(cx - ar, cy - ar, cx + ar, cy + ar), ar, Art.alpha(Art.YELLOW, 0.4f), ar * 0.25f);
+        Paint bg = new Paint(Paint.ANTI_ALIAS_FLAG);
+        bg.setColor(0xFF27272A);
+        c.drawCircle(cx, cy, ar, bg);
+        if (avatar != null) Art.circleImage(c, avatar, cx, cy, ar);
+        Paint ring = new Paint(Paint.ANTI_ALIAS_FLAG);
+        ring.setStyle(Paint.Style.STROKE);
+        ring.setStrokeWidth(Math.max(1.5f, w / 45f));
+        ring.setColor(starred ? Art.YELLOW : Art.alpha(Art.WHITE, 0.15f));
+        c.drawCircle(cx, cy, ar, ring);
+        TextPaint t = Art.text(Fonts.bold(ctx), h * 0.11f, Art.WHITE);
+        Art.centerText(c, Art.ellipsize(t, name, w * 0.9f), cx, h * 0.83f, t);
+        return b;
+    }
+
+    // ================================================================================================= map
+
+    /** The car dashboard's radar map: the last picture of the floating map (or a radar drawing) and what a tap does. */
+    static Bitmap map(Context ctx, int w, int h, Bitmap snapshot, boolean open) {
+        Bitmap b = blank(w, h);
+        Canvas c = new Canvas(b);
+        float rad = radius(w, h);
+        RectF card = new RectF(0, 0, w, h);
+        Art.card(c, card, rad);
+        if (snapshot != null) {
+            Art.cover(c, snapshot, card, rad, 0.85f);
+        } else {
+            // a radar: rings and a sweep
+            float cx = w / 2f, cy = h / 2f, R = Math.min(w, h) * 0.42f;
+            Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(Math.max(1f, R / 90f));
+            for (int i = 1; i <= 3; i++) {
+                p.setColor(Art.alpha(Art.EMERALD, 0.12f + 0.06f * i));
+                c.drawCircle(cx, cy, R * i / 3f, p);
+            }
+            c.drawLine(cx - R, cy, cx + R, cy, p);
+            c.drawLine(cx, cy - R, cx, cy + R, p);
+            Paint sweep = new Paint(Paint.ANTI_ALIAS_FLAG);
+            sweep.setShader(new android.graphics.SweepGradient(cx, cy, new int[]{0x0034D399, 0x0034D399, 0x6634D399}, new float[]{0f, 0.75f, 1f}));
+            c.drawCircle(cx, cy, R, sweep);
+        }
+        Art.bottomFade(c, card, rad);
+        TextPaint t = Art.text(Fonts.black(ctx), Math.min(h * 0.11f, w * 0.07f), Art.WHITE);
+        t.setTextAlign(Paint.Align.RIGHT);
+        float pad = Math.min(w, h) * 0.08f;
+        c.drawText("رادار السيارة", w - pad, Art.baseline(t, h - pad - t.getTextSize() * 1.1f), t);
+        TextPaint s = Art.text(Fonts.bold(ctx), t.getTextSize() * 0.55f, open ? Art.RED_SOFT : Art.EMERALD);
+        s.setTextAlign(Paint.Align.RIGHT);
+        c.drawText(open ? "اضغط لإغلاق النافذة العائمة" : "اضغط لفتح الخريطة عائمة فوق التطبيقات", w - pad, Art.baseline(s, h - pad), s);
+        Art.stroke(c, card, rad, Art.alpha(Art.WHITE, 0.1f), Math.max(1f, h / 250f));
+        return b;
+    }
 }

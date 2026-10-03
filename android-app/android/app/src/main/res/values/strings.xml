@@ -21,6 +21,12 @@
     <string name="widget_manuscript_label">DriveCast · المخطوطة</string>
     <string name="widget_folders_label">DriveCast · المجلدات</string>
     <string name="widget_folders_empty">افتح الرئيسية في التطبيق مرة لتحميل المجلدات</string>
+    <string name="widget_channels_desc">قنواتك المشتركة للتمرير، مع زر البحث في الوسائط</string>
+    <string name="widget_channels_label">DriveCast · الاشتراكات</string>
+    <string name="widget_channels_search">بحث في الوسائط</string>
+    <string name="widget_channels_empty">جاري تحميل القنوات...</string>
+    <string name="widget_map_desc">رادار السيارة من لوحة السيارة: يفتح خريطة عائمة فوق التطبيقات</string>
+    <string name="widget_map_label">DriveCast · الرادار</string>
     <string name="goal_channel">أهداف فرقي</string>
     <string name="shortcut_dashboard">الرئيسية</string>
     <string name="shortcut_matches">المباريات</string>

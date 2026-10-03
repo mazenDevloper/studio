@@ -89,9 +89,18 @@ public class MainActivity extends BridgeActivity {
                 webView.postDelayed(() -> webView.loadUrl(url), coldStart ? 600 : 0);
             }
         }
-        if (command != null) NativeIslandPlugin.emitCommand(command, intent.getStringExtra("arg"));
+        // with a screen to open, the command waits for that screen's page (the current page is about to be replaced)
+        if (command != null) {
+            if (route != null && route.startsWith("/")) NativeIslandPlugin.queueCommand(command, intent.getStringExtra("arg"));
+            else NativeIslandPlugin.emitCommand(command, intent.getStringExtra("arg"));
+        }
+        // the radar map asked for the location permission (a service can't ask)
+        if (intent.getBooleanExtra("askLocation", false) && Build.VERSION.SDK_INT >= 23) {
+            requestPermissions(new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.ACCESS_COARSE_LOCATION}, 7101);
+        }
         intent.removeExtra("route");
         intent.removeExtra("command");
+        intent.removeExtra("askLocation");
     }
 
     @Override

@@ -1,0 +1,192 @@
+package com.drivecast.sovereign;
+
+import android.content.Context;
+import android.content.SharedPreferences;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
+
+/**
+ * The app's cloud bins (JSONBin, the same ones the site syncs with), read directly by the phone: manuscripts and the
+ * board's ink / background, fonts, folders, subscribed channels, favourite teams (all of them) and pinned matches,
+ * dhikr and reminders, prayer settings and times. The widgets and the islands work from these even when the app has
+ * not been opened. Large data (manuscript pictures) is saved as files; only a slim copy is kept in the settings.
+ */
+final class Cloud {
+
+    private Cloud() {
+    }
+
+    private static final String KEY = "$2a$10$SYrYv.ct8hiMU9YeUxEQ.ecRkOrTqs.TDchJRV3wW.aKJnDXy2oVy";
+    private static final String MASTER = "69c782cbb7ec241ddcb0b99a";
+    private static final String MANUSCRIPTS = "69b63c5cc3097a1dd5278b25";
+    private static final String FONTS = "6a573cdbf5f4af5e29915034";
+    private static final String CHANNELS = "68ef1b3dd0ea881f40a38bd1";
+    private static final String PRAYERS = "69a00f6eae596e708f4b7291";
+    /** the board's background when the cloud settings don't name one (the site's default) */
+    static final String DEFAULT_BG = "https://www.image2url.com/r2/default/images/1782382707952-d99447c6-bc60-475d-9406-5fd2ef320bd5.png";
+
+    private static final long EVERY_MS = 10 * 60_000L;
+    private static long lastRefresh = 0;
+
+    /** Fetch the bins again if the last read is older than 10 minutes (or forced). Blocking: call off the main thread. */
+    static synchronized void refresh(Context ctx, boolean force) {
+        long now = System.currentTimeMillis();
+        if (!force && now - lastRefresh < EVERY_MS) return;
+        lastRefresh = now;
+        SharedPreferences.Editor e = NativeIslandPlugin.prefs(ctx).edit();
+        try {
+            Object m = fetch(MASTER);
+            if (m instanceof JSONObject) e.putString("cloud_master", slimMaster((JSONObject) m).toString());
+        } catch (Exception ignored) {
+        }
+        try {
+            JSONArray ms = list(fetch(MANUSCRIPTS), "manuscripts");
+            if (ms != null) e.putString("cloud_manuscripts", slimManuscripts(ctx, ms).toString());
+        } catch (Exception ignored) {
+        }
+        try {
+            JSONArray f = list(fetch(FONTS), "fonts");
+            if (f != null) e.putString("cloud_fonts", f.toString());
+        } catch (Exception ignored) {
+        }
+        try {
+            JSONArray ch = list(fetch(CHANNELS), "channels");
+            if (ch != null) {
+                JSONArray out = new JSONArray();
+                for (int i = 0; i < ch.length(); i++) {
+                    JSONObject c = ch.optJSONObject(i);
+                    if (c == null || c.optString("channelid").isEmpty()) continue;
+                    out.put(new JSONObject().put("id", c.optString("channelid")).put("name", c.optString("name", c.optString("channeltitle")))
+                            .put("image", c.optString("image")).put("starred", c.optBoolean("starred")));
+                }
+                e.putString("cloud_channels", out.toString());
+            }
+        } catch (Exception ignored) {
+        }
+        try {
+            JSONArray p = list(fetch(PRAYERS), "prayers");
+            if (p != null) {
+                // a week around today is all that's needed
+                String from = day(now - 2 * 86_400_000L), to = day(now + 5 * 86_400_000L);
+                JSONArray out = new JSONArray();
+                for (int i = 0; i < p.length(); i++) {
+                    JSONObject r = p.optJSONObject(i);
+                    String d = r != null ? r.optString("date") : "";
+                    if (d.compareTo(from) >= 0 && d.compareTo(to) <= 0) out.put(r);
+                }
+                if (out.length() > 0) e.putString("cloud_prayers", out.toString());
+            }
+        } catch (Exception ignored) {
+        }
+        e.apply();
+    }
+
+    static String day(long ms) {
+        return new SimpleDateFormat("yyyy-MM-dd", Locale.ROOT).format(new Date(ms));
+    }
+
+    private static Object fetch(String bin) throws Exception {
+        HttpURLConnection c = (HttpURLConnection) new URL("https://api.jsonbin.io/v3/b/" + bin + "/latest?v=" + System.currentTimeMillis()).openConnection();
+        c.setConnectTimeout(12_000);
+        c.setReadTimeout(30_000);
+        c.setRequestProperty("X-Master-Key", KEY);
+        c.setRequestProperty("X-Bin-Meta", "false");
+        if (c.getResponseCode() != 200) return null;
+        StringBuilder sb = new StringBuilder();
+        try (BufferedReader r = new BufferedReader(new InputStreamReader(c.getInputStream(), "UTF-8"))) {
+            String line;
+            while ((line = r.readLine()) != null) sb.append(line);
+        }
+        String s = sb.toString().trim();
+        return s.startsWith("[") ? new JSONArray(s) : new JSONObject(s);
+    }
+
+    /** {key: [...]} or a bare array, like the site's arr(data?.key, data). */
+    private static JSONArray list(Object o, String key) {
+        if (o instanceof JSONArray) return (JSONArray) o;
+        if (o instanceof JSONObject) return ((JSONObject) o).optJSONArray(key);
+        return null;
+    }
+
+    private static JSONObject slimMaster(JSONObject m) throws Exception {
+        JSONObject o = new JSONObject();
+        for (String k : new String[]{"favoriteTeams", "pinnedMatches", "generalAzkar", "reminders", "prayerSettings"}) {
+            if (m.optJSONArray(k) != null) o.put(k, m.getJSONArray(k));
+        }
+        if (m.optJSONObject("manuscriptScales") != null) o.put("manuscriptScales", m.getJSONObject("manuscriptScales"));
+        JSONObject ms = m.optJSONObject("mapSettings");
+        if (ms != null) {
+            JSONObject s = new JSONObject();
+            for (String k : new String[]{"manuscriptInk", "manuscriptInkColor", "manuscriptTexture", "manuscriptBgUrl", "showManuscriptBg", "pinnedManuscriptId"}) {
+                if (ms.has(k)) s.put(k, ms.get(k));
+            }
+            o.put("mapSettings", s);
+        }
+        JSONArray pl = m.optJSONArray("playlists");
+        if (pl != null) {
+            JSONArray out = new JSONArray();
+            for (int i = 0; i < pl.length(); i++) {
+                JSONObject p = pl.optJSONObject(i);
+                if (p == null) continue;
+                JSONArray v = p.optJSONArray("videos");
+                JSONObject first = v != null && v.length() > 0 ? v.optJSONObject(0) : null;
+                out.put(new JSONObject().put("id", p.optString("id")).put("name", p.optString("name"))
+                        .put("count", v != null ? v.length() : 0).put("thumb", first != null ? first.optString("thumbnail") : ""));
+            }
+            o.put("playlists", out);
+        }
+        return o;
+    }
+
+    /** Manuscript pictures (data: URLs, often large) become files; the list keeps their file address. */
+    private static JSONArray slimManuscripts(Context ctx, JSONArray ms) throws Exception {
+        File dir = new File(ctx.getFilesDir(), "manuscripts");
+        //noinspection ResultOfMethodCallIgnored
+        dir.mkdirs();
+        JSONArray out = new JSONArray();
+        for (int i = 0; i < ms.length(); i++) {
+            JSONObject m = ms.optJSONObject(i);
+            if (m == null) continue;
+            String src = m.optString("pngDataUrl", "");
+            if (src.startsWith("data:")) {
+                File f = new File(dir, Images.sha1(src) + ".png");
+                if (!f.exists()) {
+                    byte[] bytes = android.util.Base64.decode(src.substring(src.indexOf(',') + 1), android.util.Base64.DEFAULT);
+                    try (FileOutputStream o = new FileOutputStream(f)) {
+                        o.write(bytes);
+                    }
+                }
+                src = "file://" + f.getAbsolutePath();
+            }
+            out.put(new JSONObject().put("id", m.optString("id")).put("src", src)
+                    .put("content", src.isEmpty() ? m.optString("content") : "")
+                    .put("fontFamily", m.optString("fontFamily")).put("scale", m.optDouble("scale", 1.0)));
+        }
+        return out;
+    }
+
+    static JSONObject master(Context ctx) {
+        return Widgets.json(ctx, "cloud_master");
+    }
+
+    static JSONArray array(Context ctx, String key) {
+        return Widgets.array(ctx, key);
+    }
+
+    /** "name~country" like the site's favSpecString */
+    static String favSpec(JSONObject t) {
+        String c = t.optString("country", "");
+        return c.isEmpty() ? t.optString("name") : t.optString("name") + "~" + c;
+    }
+}

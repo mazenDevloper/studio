@@ -75,6 +75,10 @@ public final class Widgets {
 
     public static class FoldersWidget extends Base { }
 
+    public static class ChannelsWidget extends Base { }
+
+    public static class MapWidget extends Base { }
+
     // ---- shared ----
 
     static JSONObject json(Context ctx, String key) {
@@ -133,6 +137,7 @@ public final class Widgets {
 
     private static void renderAll(Context ctx) {
         AppWidgetManager m = AppWidgetManager.getInstance(ctx);
+        Cloud.refresh(ctx, false);
         render(ctx, m, PrayerWidget.class, 250, 110, Widgets::prayer);
         render(ctx, m, MatchesWidget.class, 250, 110, Widgets::matches);
         render(ctx, m, MediaWidget.class, 250, 80, Widgets::media);
@@ -141,6 +146,8 @@ public final class Widgets {
         render(ctx, m, MoonWidget.class, 140, 140, Widgets::moon);
         render(ctx, m, ManuscriptWidget.class, 250, 140, Widgets::manuscript);
         render(ctx, m, FoldersWidget.class, 250, 180, Widgets::folders);
+        render(ctx, m, ChannelsWidget.class, 250, 180, Widgets::channels);
+        render(ctx, m, MapWidget.class, 250, 180, Widgets::map);
     }
 
     private static void render(Context ctx, AppWidgetManager m, Class<?> provider, int defW, int defH, Builder b) {
@@ -155,7 +162,7 @@ public final class Widgets {
             try {
                 int[] s = sizePx(ctx, m, id, defW, defH);
                 m.updateAppWidget(id, b.build(ctx, s[0], s[1], s[2]));
-                if (provider == FoldersWidget.class) m.notifyAppWidgetViewDataChanged(id, R.id.folders_grid);
+                if (provider == FoldersWidget.class || provider == ChannelsWidget.class) m.notifyAppWidgetViewDataChanged(id, R.id.folders_grid);
             } catch (Throwable ignored) {
                 // never let one widget (or a big picture) stop the others
             }
@@ -394,8 +401,13 @@ public final class Widgets {
 
     private static RemoteViews manuscript(Context ctx, int w, int h, int realH) {
         JSONObject wd = json(ctx, "widgets");
-        JSONArray items = wd.optJSONArray("manuscripts");
-        String pinnedId = wd.optString("pinnedManuscriptId", "");
+        JSONObject master = Cloud.master(ctx);
+        JSONObject ms = master.optJSONObject("mapSettings");
+        JSONObject scales = master.optJSONObject("manuscriptScales");
+        JSONArray cloudItems = Cloud.array(ctx, "cloud_manuscripts");
+        JSONArray items = cloudItems.length() > 0 ? cloudItems : wd.optJSONArray("manuscripts");
+        String pinnedId = ms != null ? ms.optString("pinnedManuscriptId", "") : wd.optString("pinnedManuscriptId", "");
+        if ("null".equals(pinnedId)) pinnedId = "";
         List<JSONObject> ordered = new ArrayList<>();
         for (int i = 0; items != null && i < items.length(); i++) {
             JSONObject o = items.optJSONObject(i);
@@ -410,6 +422,13 @@ public final class Widgets {
 
         Art.Ink ink = new Art.Ink();
         JSONObject inkJ = wd.optJSONObject("ink");
+        if (ms != null) {
+            try {
+                inkJ = new JSONObject().put("mode", ms.optString("manuscriptInk", "white")).put("color", ms.optString("manuscriptInkColor", ""))
+                        .put("texture", ms.optString("manuscriptTexture", ""));
+            } catch (Exception ignored) {
+            }
+        }
         if (inkJ != null) {
             ink.mode = inkJ.optString("mode", "white");
             try {
@@ -419,13 +438,89 @@ public final class Widgets {
             if ("texture".equals(ink.mode)) ink.texture = Images.get(ctx, inkJ.optString("texture", null), 1024);
         }
         JSONObject bg = wd.optJSONObject("board");
+        if (ms != null || bg == null) {
+            try {
+                String url = ms != null ? ms.optString("manuscriptBgUrl", "") : "";
+                bg = new JSONObject().put("bg", url.isEmpty() ? Cloud.DEFAULT_BG : url).put("show", ms == null || ms.optBoolean("showManuscriptBg", true));
+            } catch (Exception ignored) {
+            }
+        }
         Bitmap bgImage = bg != null && bg.optBoolean("show", true) ? Images.get(ctx, bg.optString("bg", null), 1024) : null;
         Bitmap art = item != null ? Images.get(ctx, item.optString("src", null), 1400) : null;
-        Typeface font = item != null && art == null ? Fonts.fromUrl(ctx, item.optString("fontUrl", null)) : null;
-        float scale = item != null ? (float) item.optDouble("scale", 1.0) : 1f;
+        String fontUrl = item != null ? item.optString("fontUrl", "") : "";
+        if (item != null && fontUrl.isEmpty()) fontUrl = fontUrlFor(ctx, item.optString("fontFamily", ""));
+        Typeface font = item != null && art == null ? Fonts.fromUrl(ctx, fontUrl) : null;
+        float scale = item != null ? (float) (item.optDouble("scale", 1.0) * (scales != null ? scales.optDouble(item.optString("id"), 1.0) : 1.0)) : 1f;
         RemoteViews v = canvas(ctx, WidgetArt.manuscript(ctx, w, h, bgImage, art, item != null ? item.optString("content", "") : null,
                 font, scale, ink, pinned && idx == 0));
         v.setOnClickPendingIntent(R.id.widget_root, action(ctx, WidgetActionReceiver.MANU_NEXT, 601));
+        return v;
+    }
+
+    private static String fontUrlFor(Context ctx, String family) {
+        if (family == null || family.isEmpty()) return null;
+        JSONArray fonts = Cloud.array(ctx, "cloud_fonts");
+        for (int i = 0; i < fonts.length(); i++) {
+            JSONObject f = fonts.optJSONObject(i);
+            if (f != null && family.equals(f.optString("name"))) return f.optString("url", null);
+        }
+        return null;
+    }
+
+    /** Folders: from the cloud (the master bin), or what the page sent. */
+    static JSONArray playlists(Context ctx) {
+        JSONArray cloud = Cloud.master(ctx).optJSONArray("playlists");
+        if (cloud != null && cloud.length() > 0) return cloud;
+        JSONArray web = json(ctx, "widgets").optJSONArray("playlists");
+        return web != null ? web : new JSONArray();
+    }
+
+    // ---- subscriptions (channels) + search ----
+
+    private static RemoteViews channels(Context ctx, int w, int h, int realH) {
+        RemoteViews v = new RemoteViews(ctx.getPackageName(), R.layout.widget_channels);
+        float d = ctx.getResources().getDisplayMetrics().density;
+        float k = h / (float) Math.max(1, realH);
+        JSONArray ch = Cloud.array(ctx, "cloud_channels");
+        int hh = Math.max(1, Math.round(40 * d * k));
+        int sw = Math.max(1, Math.round(110 * d * k)), hw = Math.max(1, Math.round(w - 20 * d * k - 116 * d * k));
+        v.setImageViewBitmap(R.id.channels_header, WidgetArt.channelsHeader(ctx, hw, hh, ch.length()));
+        v.setImageViewBitmap(R.id.channels_search, WidgetArt.searchButton(ctx, sw, hh));
+        v.setOnClickPendingIntent(R.id.channels_header, openApp(ctx, "/media", 801));
+        v.setOnClickPendingIntent(R.id.channels_search, openCommand(ctx, "/media", "search", "", 802));
+        Intent svc = new Intent(ctx, FoldersWidgetService.class);
+        svc.setData(Uri.parse("drivecast://channels/" + ch.length() + "/" + ch.toString().hashCode()));
+        v.setRemoteAdapter(R.id.folders_grid, svc);
+        v.setEmptyView(R.id.folders_grid, R.id.folders_empty);
+        Intent tpl = new Intent(ctx, MainActivity.class);
+        tpl.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        int flags = PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= 31 ? PendingIntent.FLAG_MUTABLE : 0);
+        v.setPendingIntentTemplate(R.id.folders_grid, PendingIntent.getActivity(ctx, 803, tpl, flags));
+        return v;
+    }
+
+    /** Open the app on a screen and hand the page a command once that screen has loaded. */
+    static PendingIntent openCommand(Context ctx, String route, String cmd, String arg, int requestCode) {
+        Intent i = new Intent(ctx, MainActivity.class);
+        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        if (route != null) i.putExtra("route", route);
+        i.putExtra("command", cmd);
+        i.putExtra("arg", arg);
+        return PendingIntent.getActivity(ctx, requestCode, i, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+    }
+
+    // ---- the car dashboard's radar map (opens as a floating window over other apps) ----
+
+    private static RemoteViews map(Context ctx, int w, int h, int realH) {
+        java.io.File snap = new java.io.File(ctx.getFilesDir(), "map-snapshot.png");
+        Bitmap shot = null;
+        if (snap.exists()) {
+            android.graphics.BitmapFactory.Options o = new android.graphics.BitmapFactory.Options();
+            o.inSampleSize = 2;
+            shot = android.graphics.BitmapFactory.decodeFile(snap.getAbsolutePath(), o);
+        }
+        RemoteViews v = canvas(ctx, WidgetArt.map(ctx, w, h, shot, IslandService.mapOpen()));
+        v.setOnClickPendingIntent(R.id.widget_root, action(ctx, WidgetActionReceiver.MAP_TOGGLE, 901));
         return v;
     }
 
@@ -435,7 +530,7 @@ public final class Widgets {
         RemoteViews v = new RemoteViews(ctx.getPackageName(), R.layout.widget_folders);
         float d = ctx.getResources().getDisplayMetrics().density;
         JSONObject wd = json(ctx, "widgets");
-        JSONArray pl = wd.optJSONArray("playlists"), tv = wd.optJSONArray("topVideos");
+        JSONArray pl = playlists(ctx), tv = wd.optJSONArray("topVideos");
         int count = (pl != null ? pl.length() : 0) + (tv != null ? tv.length() : 0);
         // the header strip: the widget's width minus its 10dp padding each side, 34dp high (at the picture's scale)
         float k = h / (float) Math.max(1, realH);

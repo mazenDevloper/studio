@@ -21,6 +21,7 @@ public class WidgetActionReceiver extends BroadcastReceiver {
     static final String QURAN_RECITER = "com.drivecast.QURAN_RECITER";
     static final String MOON_NEXT = "com.drivecast.MOON_NEXT";
     static final String MANU_NEXT = "com.drivecast.MANU_NEXT";
+    static final String MAP_TOGGLE = "com.drivecast.MAP_TOGGLE";
 
     @Override
     public void onReceive(Context ctx, Intent intent) {
@@ -43,6 +44,11 @@ public class WidgetActionReceiver extends BroadcastReceiver {
             android.content.SharedPreferences p = NativeIslandPlugin.prefs(ctx);
             p.edit().putInt("moonMode", (p.getInt("moonMode", 0) + 1) % 3).apply();
             Widgets.updateAll(ctx);
+        } else if (MAP_TOGGLE.equals(a)) {
+            // the radar map: a floating window drawn by the service
+            Intent s = new Intent(ctx, IslandService.class);
+            s.setAction(a);
+            ContextCompat.startForegroundService(ctx, s);
         } else if (MANU_NEXT.equals(a)) {
             android.content.SharedPreferences p = NativeIslandPlugin.prefs(ctx);
             p.edit().putInt("manuIdx", p.getInt("manuIdx", 0) + 1).apply();

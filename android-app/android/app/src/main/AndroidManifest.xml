@@ -140,6 +140,26 @@
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_folders_info" />
         </receiver>
 
+        <receiver
+            android:name=".Widgets$ChannelsWidget"
+            android:exported="false"
+            android:label="@string/widget_channels_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_channels_info" />
+        </receiver>
+
+        <receiver
+            android:name=".Widgets$MapWidget"
+            android:exported="false"
+            android:label="@string/widget_map_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_map_info" />
+        </receiver>
+
         <!-- the folders widget's scrolling grid of cards -->
         <service
             android:name=".FoldersWidgetService"
@@ -173,4 +193,7 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- the radar map (car dashboard) shows the car's position -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 </manifest>

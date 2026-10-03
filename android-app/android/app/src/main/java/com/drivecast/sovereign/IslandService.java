@@ -22,6 +22,7 @@ import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 
 import androidx.core.app.NotificationCompat;
@@ -126,6 +127,7 @@ public class IslandService extends Service {
     public int onStartCommand(Intent intent, int flags, int startId) {
         String a = intent != null ? intent.getAction() : null;
         if (a != null && a.startsWith("com.drivecast.QURAN_")) quranAction(a);
+        if (WidgetActionReceiver.MAP_TOGGLE.equals(a)) handler.post(this::toggleMap);
         return START_STICKY;
     }
 
@@ -242,6 +244,7 @@ public class IslandService extends Service {
             quranPlayer = null;
         }
         removeIsland();
+        hideMap();
         if (instance == this) instance = null;
         super.onDestroy();
     }
@@ -294,12 +297,33 @@ public class IslandService extends Service {
     private final List<JSONObject> matches = new ArrayList<>();
 
     private void pollMatches() {
-        final String apiUrl = config.optString("apiUrl", "");
-        if (apiUrl.isEmpty()) return;
-        final JSONArray pins = config.optJSONArray("pins");
+        final String configUrl = config.optString("apiUrl", "");
+        final JSONArray configPins = config.optJSONArray("pins");
         final String origin = siteOrigin();
         final boolean alert = !appVisible; // inside the app the page plays its own goal animation
         new Thread(() -> {
+            // every favourite team (the widget shows them all); the island only those whose island switch is on
+            Cloud.refresh(this, false);
+            JSONObject master = Cloud.master(this);
+            JSONArray teams = master.optJSONArray("favoriteTeams");
+            JSONArray pins = master.optJSONArray("pinnedMatches") != null ? master.optJSONArray("pinnedMatches") : configPins;
+            List<String> islandTeams = new ArrayList<>();
+            String apiUrl = configUrl;
+            if (teams != null && teams.length() > 0) {
+                StringBuilder t = new StringBuilder(), p = new StringBuilder();
+                for (int i = 0; i < teams.length(); i++) {
+                    JSONObject f = teams.optJSONObject(i);
+                    if (f == null || f.optString("name").isEmpty()) continue;
+                    t.append(t.length() > 0 ? "|" : "").append(Cloud.favSpec(f));
+                    if (f.optBoolean("island", true)) islandTeams.add(f.optString("name"));
+                }
+                for (int i = 0; pins != null && i < pins.length(); i++) {
+                    JSONObject pn = pins.optJSONObject(i);
+                    if (pn != null) p.append(p.length() > 0 ? "|" : "").append(pn.optString("home")).append("|").append(pn.optString("away"));
+                }
+                apiUrl = origin + "/api/matches?limit=12&teams=" + enc(t.toString()) + (p.length() > 0 ? "&pins=" + enc(p.toString()) : "");
+            }
+            if (apiUrl.isEmpty()) return;
             List<JSONObject> mine = new ArrayList<>();
             JSONArray widgetData = new JSONArray();
             try {
@@ -320,6 +344,9 @@ public class IslandService extends Service {
                     boolean pinned = isPinned(pins, h.optString("name"), a.optString("name"));
                     if (!m.optBoolean("favorite") && !pinned) continue;
                     m.put("pinned", pinned);
+                    boolean onIsland = pinned || (m.optBoolean("favorite") && (islandTeams.isEmpty() && teams == null
+                            || involves(islandTeams, h.optString("name"), a.optString("name"))));
+                    m.put("island", onIsland);
                     mine.add(m);
                     widgetData.put(m);
                 }
@@ -445,6 +472,11 @@ public class IslandService extends Service {
         }
     }
 
+    private static boolean involves(List<String> names, String home, String away) {
+        for (String n : names) if (same(n, home) || same(n, away)) return true;
+        return false;
+    }
+
     private static boolean isPinned(JSONArray pins, String home, String away) {
         if (pins == null) return false;
         for (int i = 0; i < pins.length(); i++) {
@@ -490,6 +522,7 @@ public class IslandService extends Service {
     private List<IslandArt.Item> islandItems(long now) {
         List<IslandArt.Item> out = new ArrayList<>();
         for (JSONObject m : matches) {
+            if (!m.optBoolean("island", true)) continue; // a favourite whose island switch is off: widget only
             IslandArt.Item it = matchItem(m, now);
             if (it.finished()) {
                 // the API has no end time: about 2 hours after kick-off, shown for half an hour
@@ -515,11 +548,15 @@ public class IslandService extends Service {
             it.ckind = c.optString("kind");
             out.add(it);
         }
-        if (expanded) {
-            JSONArray az = config.optJSONArray("azkar");
+        reminderItems(out, now);
+        {
+            // the day's dhikr: always shown, like the site (hidden once marked done today)
+            JSONArray az = Cloud.master(this).optJSONArray("generalAzkar");
+            if (az == null) az = config.optJSONArray("azkar");
+            String today = Cloud.day(now);
             for (int i = 0; az != null && i < az.length(); i++) {
                 JSONObject a = az.optJSONObject(i);
-                if (a == null || a.optBoolean("done")) continue;
+                if (a == null || a.optBoolean("done") || today.equals(a.optString("completedOn"))) continue;
                 IslandArt.Item it = new IslandArt.Item();
                 it.kind = "azkar";
                 it.id = "az-" + a.optString("id");
@@ -533,6 +570,93 @@ public class IslandService extends Service {
             return Long.compare(Math.abs(distance(x, now)), Math.abs(distance(y, now)));
         });
         return out;
+    }
+
+    /**
+     * The site's reminders (start at a set time or around a prayer, end at a time / after a duration / at a prayer):
+     * shown from their countdown window until they end (an hour after the start when no end), hidden once done today.
+     * Match reminders show as a match island.
+     */
+    private void reminderItems(List<IslandArt.Item> out, long now) {
+        JSONObject master = Cloud.master(this);
+        JSONArray rems = master.optJSONArray("reminders");
+        if (rems == null || rems.length() == 0) return;
+        String today = Cloud.day(now);
+        JSONObject row = null;
+        JSONArray days = Cloud.array(this, "cloud_prayers");
+        for (int i = 0; i < days.length(); i++) if (today.equals(days.optJSONObject(i).optString("date"))) row = days.optJSONObject(i);
+        JSONArray settings = master.optJSONArray("prayerSettings");
+        java.util.Calendar mid = java.util.Calendar.getInstance();
+        mid.set(java.util.Calendar.HOUR_OF_DAY, 0);
+        mid.set(java.util.Calendar.MINUTE, 0);
+        mid.set(java.util.Calendar.SECOND, 0);
+        mid.set(java.util.Calendar.MILLISECOND, 0);
+        long day0 = mid.getTimeInMillis();
+        for (int i = 0; i < rems.length(); i++) {
+            JSONObject r = rems.optJSONObject(i);
+            if (r == null || today.equals(r.optString("completedOn"))) continue;
+            boolean isMatch = "match".equals(r.optString("iconType"));
+            if (isMatch && !r.optString("matchDate").isEmpty() && !today.equals(r.optString("matchDate"))) continue;
+            long start = -1;
+            if ("manual".equals(r.optString("startType")) && !r.optString("manualStartTime").isEmpty()) {
+                start = day0 + minutes(r.optString("manualStartTime")) * 60_000L;
+            } else if (row != null && !r.optString("startReference").isEmpty() && !row.optString(r.optString("startReference")).isEmpty()) {
+                int base = minutes(row.optString(r.optString("startReference")));
+                if ("iqamah".equals(r.optString("startType"))) base += iqamah(settings, r.optString("startReference"));
+                start = day0 + (base + r.optInt("startOffset")) * 60_000L;
+            }
+            if (start < 0) continue;
+            long end = start + 60 * 60_000L;
+            String et = r.optString("endType");
+            if ("manual".equals(et) && !r.optString("manualEndTime").isEmpty()) end = day0 + minutes(r.optString("manualEndTime")) * 60_000L;
+            else if ("duration".equals(et)) end = start + Math.max(1, r.optInt("durationMinutes", 30)) * 60_000L;
+            else if (row != null && ("azan".equals(et) || "iqamah".equals(et) || "prayer".equals(et)) && !row.optString(r.optString("endReference")).isEmpty()) {
+                int base = minutes(row.optString(r.optString("endReference")));
+                if ("iqamah".equals(et)) base += iqamah(settings, r.optString("endReference"));
+                end = day0 + (base + r.optInt("endOffset")) * 60_000L;
+            }
+            long window = Math.max(1, r.optInt("countdownWindow", 15)) * 60_000L;
+            boolean visible = isMatch || (now >= start - window && now < Math.max(end, start + 60 * 60_000L));
+            if (!visible) continue;
+            IslandArt.Item it = new IslandArt.Item();
+            it.id = "rem-" + r.optString("id");
+            if (isMatch && !r.optString("homeName").isEmpty()) {
+                boolean dup = false;
+                for (IslandArt.Item o : out) if ("match".equals(o.kind) && same(o.home, r.optString("homeName")) && same(o.away, r.optString("awayName"))) dup = true;
+                if (dup) continue;
+                it.kind = "match";
+                it.status = "upcoming";
+                it.home = r.optString("homeName");
+                it.away = r.optString("awayName");
+                it.homeLogo = r.optString("homeLogo", null);
+                it.awayLogo = r.optString("awayLogo", null);
+                it.kickoff = start;
+                it.kickoffText = Art.to12h(r.optString("manualStartTime"));
+            } else {
+                it.kind = "countdown";
+                it.title = r.optString("label");
+                it.at = start;
+                it.ckind = "reminder";
+            }
+            out.add(it);
+        }
+    }
+
+    private static int minutes(String hhmm) {
+        try {
+            String[] p = hhmm.split(":");
+            return Integer.parseInt(p[0].trim()) * 60 + Integer.parseInt(p[1].trim().substring(0, 2));
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    private static int iqamah(JSONArray settings, String id) {
+        for (int i = 0; settings != null && i < settings.length(); i++) {
+            JSONObject s = settings.optJSONObject(i);
+            if (s != null && id.equals(s.optString("id"))) return s.optInt("iqamahDuration");
+        }
+        return 0;
     }
 
     private static long distance(IslandArt.Item it, long now) {
@@ -694,12 +818,13 @@ public class IslandService extends Service {
         } else if (expanded) {
             shown.addAll(items.subList(0, Math.min(items.size(), 8)));
         } else {
-            shown.addAll(items.subList(0, Math.min(items.size(), 3)));
-            if (items.size() > 3) {
+            int max = 5;
+            shown.addAll(items.subList(0, Math.min(items.size(), max)));
+            if (items.size() > max) {
                 IslandArt.Item more = new IslandArt.Item();
                 more.kind = "more";
                 more.id = "more";
-                more.more = items.size() - 3;
+                more.more = items.size() - max;
                 shown.add(more);
             }
         }
@@ -777,6 +902,174 @@ public class IslandService extends Service {
 
     private int dp(int v) {
         return Math.round(v * getResources().getDisplayMetrics().density);
+    }
+
+    // ---- the radar map: the car dashboard's iframe as a floating window over other apps ----
+
+    private static final String MAP_URL = "https://dmusera.netlify.app/amap";
+    private FrameLayout mapWindow;
+    private android.webkit.WebView mapView;
+    private WindowManager.LayoutParams mapParams;
+    private boolean mapBig = false;
+
+    static boolean mapOpen() {
+        IslandService s = instance;
+        return s != null && s.mapWindow != null;
+    }
+
+    private void toggleMap() {
+        if (mapWindow != null) { hideMap(); return; }
+        if (Build.VERSION.SDK_INT >= 23 && !Settings.canDrawOverlays(this)) {
+            // no "display over other apps" yet: open its settings page
+            Intent i = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, android.net.Uri.parse("package:" + getPackageName()));
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            try { startActivity(i); } catch (Exception ignored) { }
+            return;
+        }
+        if (Build.VERSION.SDK_INT >= 23 && checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            // the map shows the car's position: ask once (through the app, a service can't ask)
+            Intent i = new Intent(this, MainActivity.class);
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            i.putExtra("askLocation", true);
+            try { startActivity(i); } catch (Exception ignored) { }
+        }
+        showMap();
+    }
+
+    @SuppressLint({"SetJavaScriptEnabled", "ClickableViewAccessibility"})
+    private void showMap() {
+        android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
+        mapWindow = new FrameLayout(this);
+        android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
+        bg.setColor(0xFF000000);
+        bg.setCornerRadius(dp(22));
+        bg.setStroke(dp(1), 0x33FFFFFF);
+        mapWindow.setBackground(bg);
+        mapWindow.setClipToOutline(true);
+        mapWindow.setElevation(dp(12));
+
+        mapView = new android.webkit.WebView(this);
+        android.webkit.WebSettings ws = mapView.getSettings();
+        ws.setJavaScriptEnabled(true);
+        ws.setDomStorageEnabled(true);
+        ws.setGeolocationEnabled(true);
+        ws.setMediaPlaybackRequiresUserGesture(false);
+        mapView.setWebViewClient(new android.webkit.WebViewClient());
+        mapView.setWebChromeClient(new android.webkit.WebChromeClient() {
+            @Override
+            public void onGeolocationPermissionsShowPrompt(String origin, android.webkit.GeolocationPermissions.Callback callback) {
+                callback.invoke(origin, true, false);
+            }
+        });
+        mapView.loadUrl(MAP_URL);
+        FrameLayout.LayoutParams wl = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT);
+        wl.topMargin = dp(30);
+        mapWindow.addView(mapView, wl);
+
+        // top bar: drag to move · ⤢ bigger / smaller · ✕ close
+        LinearLayout bar = new LinearLayout(this);
+        bar.setOrientation(LinearLayout.HORIZONTAL);
+        bar.setGravity(Gravity.CENTER_VERTICAL);
+        bar.setBackgroundColor(0xF20A0A0F);
+        android.widget.TextView close = barButton("✕");
+        android.widget.TextView size = barButton("⤢");
+        android.widget.TextView title = new android.widget.TextView(this);
+        title.setText("رادار السيارة");
+        title.setTextColor(0xCCFFFFFF);
+        title.setTypeface(Fonts.bold(this));
+        title.setTextSize(13);
+        title.setGravity(Gravity.CENTER);
+        bar.addView(close, new LinearLayout.LayoutParams(dp(40), LinearLayout.LayoutParams.MATCH_PARENT));
+        bar.addView(size, new LinearLayout.LayoutParams(dp(40), LinearLayout.LayoutParams.MATCH_PARENT));
+        bar.addView(title, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1));
+        mapWindow.addView(bar, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, dp(30)));
+        close.setOnClickListener(v -> hideMap());
+        size.setOnClickListener(v -> {
+            mapBig = !mapBig;
+            mapParams.width = mapBig ? Math.min(dm.widthPixels - dp(16), dp(640)) : dp(340);
+            mapParams.height = mapBig ? Math.min(dm.heightPixels - dp(80), dp(460)) : dp(250);
+            try { windowManager.updateViewLayout(mapWindow, mapParams); } catch (Exception ignored) { }
+        });
+
+        int type = Build.VERSION.SDK_INT >= 26 ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY : WindowManager.LayoutParams.TYPE_PHONE;
+        mapParams = new WindowManager.LayoutParams(dp(340), dp(250), type,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN, PixelFormat.TRANSLUCENT);
+        mapParams.gravity = Gravity.TOP | Gravity.START;
+        mapParams.x = NativeIslandPlugin.prefs(this).getInt("mapX", dp(12));
+        mapParams.y = NativeIslandPlugin.prefs(this).getInt("mapY", dp(90));
+        title.setOnTouchListener(new View.OnTouchListener() {
+            float dx, dy;
+            int sx, sy;
+
+            @Override
+            public boolean onTouch(View v, MotionEvent e) {
+                switch (e.getAction()) {
+                    case MotionEvent.ACTION_DOWN:
+                        dx = e.getRawX(); dy = e.getRawY(); sx = mapParams.x; sy = mapParams.y;
+                        return true;
+                    case MotionEvent.ACTION_MOVE:
+                        mapParams.x = sx + (int) (e.getRawX() - dx);
+                        mapParams.y = Math.max(0, sy + (int) (e.getRawY() - dy));
+                        try { windowManager.updateViewLayout(mapWindow, mapParams); } catch (Exception ignored) { }
+                        return true;
+                    case MotionEvent.ACTION_UP:
+                        NativeIslandPlugin.prefs(IslandService.this).edit().putInt("mapX", mapParams.x).putInt("mapY", mapParams.y).apply();
+                        return true;
+                }
+                return false;
+            }
+        });
+        try {
+            windowManager.addView(mapWindow, mapParams);
+        } catch (Exception e) {
+            mapWindow = null;
+            mapView = null;
+            return;
+        }
+        Widgets.updateAll(this);
+        handler.postDelayed(mapSnapshot, 8_000);
+    }
+
+    private android.widget.TextView barButton(String s) {
+        android.widget.TextView t = new android.widget.TextView(this);
+        t.setText(s);
+        t.setTextColor(0xFFFFFFFF);
+        t.setTextSize(15);
+        t.setGravity(Gravity.CENTER);
+        return t;
+    }
+
+    /** While the map is open: its picture every minute, for the widget. */
+    private final Runnable mapSnapshot = new Runnable() {
+        @Override
+        public void run() {
+            if (mapView == null || mapView.getWidth() == 0) return;
+            try {
+                Bitmap b = Bitmap.createBitmap(mapView.getWidth(), mapView.getHeight(), Bitmap.Config.ARGB_8888);
+                mapView.draw(new Canvas(b));
+                // a blank picture (some maps draw with the GPU only) is not kept
+                int c0 = b.getPixel(b.getWidth() / 2, b.getHeight() / 2), c1 = b.getPixel(b.getWidth() / 4, b.getHeight() / 3);
+                if (!(c0 == c1 && c0 == b.getPixel(b.getWidth() * 3 / 4, b.getHeight() * 2 / 3))) {
+                    try (java.io.FileOutputStream o = new java.io.FileOutputStream(new java.io.File(getFilesDir(), "map-snapshot.png"))) {
+                        b.compress(Bitmap.CompressFormat.PNG, 90, o);
+                    }
+                    Widgets.updateAll(IslandService.this);
+                }
+            } catch (Throwable ignored) {
+            }
+            handler.postDelayed(this, 60_000);
+        }
+    };
+
+    private void hideMap() {
+        handler.removeCallbacks(mapSnapshot);
+        if (mapWindow != null) {
+            try { windowManager.removeView(mapWindow); } catch (Exception ignored) { }
+        }
+        if (mapView != null) mapView.destroy();
+        mapWindow = null;
+        mapView = null;
+        Widgets.updateAll(this);
     }
 
     // ---- goal notification ----
@@ -886,7 +1179,7 @@ public class IslandService extends Service {
                 String state = it.live() ? IslandArt.minuteText(it) : it.finished() ? "انتهت" : it.kickoffText;
                 String mid = it.live() || it.finished() ? it.sh + " - " + it.sa : "×";
                 line = state + "   " + it.home + "  " + mid + "  " + it.away;
-            } else if ("countdown".equals(it.kind)) {
+            } else if ("countdown".equals(it.kind) && it.at > now) {
                 line = it.title + "   " + Math.max(1, (it.at - now + 59_999) / 60_000) + " د";
             } else {
                 continue;
