@@ -251,6 +251,29 @@ export function MediaView() {
   };
 
   // offline / quran.com down: keep the empty list instead of an unhandled rejection
+  // the Android subscriptions widget: open the search box ready to type, or the tapped channel
+  useEffect(() => {
+    const run = () => {
+      const act = (window as any).__nativeMediaAction as { type: string; id?: string } | undefined;
+      if (!act) return;
+      if (act.type === "search") {
+        (window as any).__nativeMediaAction = undefined;
+        setSelectedChannel(null); setSelectedPlaylist(null);
+        setIsSearchLocked(false);
+        setTimeout(() => searchInputRef.current?.focus(), 150);
+      } else if (act.type === "channel") {
+        const ch = (favoriteChannels || []).find(c => c.channelid === act.id);
+        if (!ch) return; // channels still loading: tried again when they arrive
+        (window as any).__nativeMediaAction = undefined;
+        setSelectedChannel(ch); setSelectedPlaylist(null); setSearchResults([]); setIsSidebarShrinked(true);
+      }
+    };
+    run();
+    window.addEventListener("native-media-action", run);
+    return () => window.removeEventListener("native-media-action", run);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [favoriteChannels]);
+
   useEffect(() => { fetch("https://api.quran.com/api/v4/chapters?language=ar").then(r => r.json()).then(d => { setSurahs(d.chapters || []); setAllSurahs(d.chapters || []); }).catch(() => {}); }, []);
 
   const resetView = () => { setSelectedChannel(null); setSelectedPlaylist(null); setSearchResults([]); setSearch(""); setIsSidebarShrinked(false); setSelectedReciter(null); setSelectedSurah(null); setSelectedJuz(null); setSurahs(allSurahs); };

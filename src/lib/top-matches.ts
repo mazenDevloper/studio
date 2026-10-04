@@ -281,7 +281,9 @@ async function collectDay(date: string, only?: string): Promise<DayData> {
   if (!raws.some(r => r.attempt.ok)) {
     throw new Error(`تعذر الوصول لأي مصدر / no source reachable: ${raws.map(r => `${r.attempt.source}: ${r.attempt.error}`).join(" | ")}`);
   }
-  const live = raws.some(r => r.matches.some(m => m.status === "live" && footballDay(new Date(m.timestamp * 1000)) === date));
+  // "live" = a match that would be listed (important, a favourite...) is being played; hundreds of minor matches are
+  // live on any football day, and counting them kept today on the fastest refresh all day long
+  const live = raws.some(r => r.matches.some(m => m.status === "live" && m.importance > 0 && footballDay(new Date(m.timestamp * 1000)) === date));
   return { date, at: Date.now(), raws, live };
 }
 
@@ -300,7 +302,12 @@ async function getDay(date: string, only?: string): Promise<DayData> {
   if (hit) {
     const age = Date.now() - hit.at;
     if (age < (hit.live ? LIVE_FRESH_MS : FRESH_MS)) return hit;
-    if (age < (hit.live ? LIVE_STALE_OK_MS : STALE_OK_MS)) { refresh().catch(() => {}); return hit; }
+    // Today with matches live used to wait for every source again after one minute: each request then blocked on
+    // 14 sources (up to 25 s each), and when they rate-limited the frequent calls ("no source reachable") the
+    // request failed - yesterday / tomorrow (never live) were served from the cache and didn't fail. Now any answer
+    // under an hour old comes back at once and is refreshed in the background; a failed refresh keeps it.
+    if (age < (hit.live ? LIVE_STALE_OK_MS : STALE_OK_MS) || age < 60 * 60_000) { refresh().catch(() => {}); return hit; }
+    return refresh().catch(() => hit);
   }
   return refresh();
 }
@@ -312,7 +319,15 @@ async function getDay(date: string, only?: string): Promise<DayData> {
 export function startMatchesWarmup() {
   const g = globalThis as any;
   if (g.__matchesWarmup) return;
-  const tick = () => { if (Date.now() - lastUsedAt < 10 * 60_000 || !dayCache.size) getDay(footballDay()).catch(() => {}); };
+  // every 30 s while something is live, every 5 minutes otherwise (fewer calls = no rate limiting by the sources)
+  let last = 0;
+  const tick = () => {
+    if (!(Date.now() - lastUsedAt < 10 * 60_000 || !dayCache.size)) return;
+    const hit = dayCache.get(`${footballDay()}|`);
+    if (hit && Date.now() - last < (hit.live ? 30_000 : 5 * 60_000)) return;
+    last = Date.now();
+    getDay(footballDay()).catch(() => {});
+  };
   tick();
   g.__matchesWarmup = setInterval(tick, 15_000);
   g.__matchesWarmup.unref?.();

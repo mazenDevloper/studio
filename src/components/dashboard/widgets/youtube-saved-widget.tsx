@@ -8,6 +8,7 @@ import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { fetchChannelVideos } from "@/lib/youtube";
+import { nativeIsland } from "@/lib/native-app";
 
 /**
  * YouTubeSavedWidget v1700.0 - Frequencies & Saved Items
@@ -37,6 +38,9 @@ export function YouTubeSavedWidget() {
           }
         }
         setTopVideos(tops);
+        // the Android folders widget shows these too (and plays them when tapped)
+        (window as any).__nativeTopVideos = tops;
+        nativeIsland()?.updateWidgets({ data: JSON.stringify({ topVideos: tops.map(v => ({ id: v.id, title: v.title, channel: v.channelTitle || "", avatar: v.channelAvatar || "", thumb: v.thumbnail })) }) }).catch(() => {});
       } catch (e) {
         console.error("Dashboard Frequencies Error:", e);
       } finally {

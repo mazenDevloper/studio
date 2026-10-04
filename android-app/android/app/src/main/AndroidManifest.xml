@@ -110,6 +110,161 @@
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_screens_info" />
         </receiver>
 
+        <receiver
+            android:name=".Widgets$MoonWidget"
+            android:exported="false"
+            android:label="@string/widget_moon_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_moon_info" />
+        </receiver>
+
+        <receiver
+            android:name=".Widgets$ManuscriptWidget"
+            android:exported="false"
+            android:label="@string/widget_manuscript_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_manuscript_info" />
+        </receiver>
+
+        <receiver
+            android:name=".Widgets$FoldersWidget"
+            android:exported="false"
+            android:label="@string/widget_folders_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_folders_info" />
+        </receiver>
+
+        <receiver
+            android:name=".Widgets$ChannelsWidget"
+            android:exported="false"
+            android:label="@string/widget_channels_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_channels_info" />
+        </receiver>
+
+        <receiver
+            android:name=".Widgets$MapWidget"
+            android:exported="false"
+            android:label="@string/widget_map_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_map_info" />
+        </receiver>
+
+        <receiver
+            android:name=".Widgets$DayWidget"
+            android:exported="false"
+            android:label="@string/widget_day_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_day_info" />
+        </receiver>
+
+        <receiver
+            android:name=".Widgets$RecitersWidget"
+            android:exported="false"
+            android:label="@string/widget_reciters_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_reciters_info" />
+        </receiver>
+
+        <receiver
+            android:name=".Widgets$SearchWidget"
+            android:exported="false"
+            android:label="@string/widget_search_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_search_info" />
+        </receiver>
+
+        <!-- the search box of the browsing widgets (a small dialog with the keyboard / voice) -->
+        <activity
+            android:name=".SearchActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:taskAffinity=".search"
+            android:theme="@android:style/Theme.DeviceDefault.Dialog.NoActionBar"
+            android:windowSoftInputMode="stateAlwaysVisible|adjustResize" />
+
+        <receiver
+            android:name=".Widgets$SavedWidget"
+            android:exported="false"
+            android:label="@string/widget_saved_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_saved_info" />
+        </receiver>
+
+        <receiver
+            android:name=".Widgets$IptvWidget"
+            android:exported="false"
+            android:label="@string/widget_iptv_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_iptv_info" />
+        </receiver>
+
+        <receiver
+            android:name=".Widgets$PrayerBarWidget"
+            android:exported="false"
+            android:label="@string/widget_prayerbar_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_prayerbar_info" />
+        </receiver>
+
+        <receiver
+            android:name=".Widgets$ClockWidget"
+            android:exported="false"
+            android:label="@string/widget_clock_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_clock_info" />
+        </receiver>
+
+        <receiver
+            android:name=".Widgets$MediaHomeWidget"
+            android:exported="false"
+            android:label="@string/widget_media_home_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_media_home_info" />
+        </receiver>
+
+        <!-- the full-screen player of the widgets (videos and IPTV) -->
+        <activity
+            android:name=".PlayerActivity"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|screenLayout|uiMode"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:taskAffinity=".player"
+            android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen" />
+
+        <!-- the folders widget's scrolling grid of cards -->
+        <service
+            android:name=".FoldersWidgetService"
+            android:exported="false"
+            android:permission="android.permission.BIND_REMOTEVIEWS" />
+
         <receiver android:name=".WidgetActionReceiver" android:exported="false" />
 
         <provider
@@ -137,4 +292,7 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- the radar map (car dashboard) shows the car's position -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 </manifest>
