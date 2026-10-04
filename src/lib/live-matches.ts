@@ -98,6 +98,22 @@ export const useLiveMatchesStore = create<LiveMatchesState>((set, get) => ({
   },
 }));
 
+/**
+ * Refresh only when it can change something: every 30 s while one of the listed matches is live (or about to start),
+ * otherwise not until 5 minutes before the next kick-off (checked again at least every 30 minutes, and after a
+ * failed request on the normal 30 s rhythm).
+ */
+function pollDue(data: TopMatchesResult | null, updatedAt: number | null): boolean {
+  if (!data || !updatedAt || useLiveMatchesStore.getState().error) return true;
+  const now = Date.now();
+  const list = data.matches || [];
+  if (list.some(m => m.status === "live")) return true;
+  const next = list.filter(m => m.status === "upcoming").map(m => m.timestamp * 1000).filter(t => t > now - 15 * 60_000).sort((a, b) => a - b)[0];
+  if (next && next - now < 5 * 60_000) return true; // starting (or late to start): watch it
+  const wakeAt = Math.min(updatedAt + 30 * 60_000, next ? next - 5 * 60_000 : Infinity);
+  return now >= wakeAt;
+}
+
 let subscribers = 0;
 let timer: ReturnType<typeof setInterval> | null = null;
 
@@ -127,7 +143,10 @@ export function useLiveMatches(teams?: string[]) {
         if (!loading && (!updatedAt || Date.now() - updatedAt > 5_000)) refresh();
       }, 0);
       timer = setInterval(() => {
-        if (document.visibilityState === "visible") useLiveMatchesStore.getState().refresh();
+        if (document.visibilityState !== "visible") return;
+        const { data, updatedAt } = useLiveMatchesStore.getState();
+        if (!pollDue(data, updatedAt)) return;
+        useLiveMatchesStore.getState().refresh();
       }, POLL_MS);
     }
     return () => {

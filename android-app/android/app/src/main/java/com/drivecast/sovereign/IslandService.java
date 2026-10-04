@@ -291,7 +291,7 @@ public class IslandService extends Service {
     private void tick() {
         long now = System.currentTimeMillis();
         // scores: every 30 s behind other apps (islands, goals), every 2 min while the app is open (widgets only)
-        if (now - lastPoll > (appVisible ? 4 * POLL_MS : POLL_MS)) {
+        if (now - lastPoll > (appVisible ? 4 * POLL_MS : POLL_MS) && pollDue(now)) {
             lastPoll = now;
             pollMatches();
         }
@@ -317,6 +317,29 @@ public class IslandService extends Service {
 
     /** today's favourite / pinned matches (any state), as the API sent them */
     private final List<JSONObject> matches = new ArrayList<>();
+
+    /** set when a request fails: try again on the normal rhythm */
+    private boolean pollFailed = false;
+
+    /**
+     * Ask for scores only when they can change: every 30 s while a match is live or about to start; otherwise not
+     * until 5 minutes before the next kick-off (and at least every 30 minutes).
+     */
+    private boolean pollDue(long now) {
+        if (pollFailed || lastPollOk == 0) return true;
+        long next = Long.MAX_VALUE;
+        for (JSONObject m : matches) {
+            String st = m.optString("status");
+            if ("live".equals(st)) return true;
+            long k = m.optLong("timestamp") * 1000L;
+            if ("upcoming".equals(st) && k > now - 15 * 60_000L) next = Math.min(next, k);
+        }
+        if (next != Long.MAX_VALUE && next - now < 5 * 60_000L) return true;
+        long wake = Math.min(lastPollOk + 30 * 60_000L, next == Long.MAX_VALUE ? Long.MAX_VALUE : next - 5 * 60_000L);
+        return now >= wake;
+    }
+
+    private long lastPollOk = 0;
 
     private void pollMatches() {
         final String configUrl = config.optString("apiUrl", "");
@@ -373,8 +396,11 @@ public class IslandService extends Service {
                     widgetData.put(m);
                 }
             } catch (Exception ignored) {
+                pollFailed = true;
                 return; // keep the last scores on a network error
             }
+            pollFailed = false;
+            lastPollOk = System.currentTimeMillis();
             List<IslandArt.Item> goals = detectGoals(mine);
             for (IslandArt.Item g : goals) findScorer(origin, g);
             NativeIslandPlugin.prefs(this).edit().putString("matchesData", widgetData.toString()).apply();
