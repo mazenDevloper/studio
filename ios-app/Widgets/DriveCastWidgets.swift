@@ -3,10 +3,6 @@ import WidgetKit
 
 @main
 struct DriveCastWidgets: WidgetBundle {
-    init() {
-        DC.registerFonts()
-    }
-
     var body: some Widget {
         IslandLiveActivity()
         PrayerWidget()
@@ -33,7 +29,6 @@ struct PrayerProvider: TimelineProvider {
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<PrayerEntry>) -> Void) {
-        DC.registerFonts()
         let list = entries(from: Date())
         completion(Timeline(entries: list.isEmpty ? [placeholder(in: context)] : list, policy: .after(Date().addingTimeInterval(6 * 3600))))
     }

@@ -50,6 +50,10 @@ final class WebViewController: UIViewController, WKScriptMessageHandler, WKUIDel
         ])
         view = root
         Bridge.shared.web = web
+        // the site is laid out for the car's big screen: on a phone it is shown a bit smaller so everything fits
+        // (the font size in the app's settings changes it)
+        let saved = UserDefaults.standard.integer(forKey: "textZoom")
+        web.pageZoom = CGFloat(saved > 0 ? saved : (UIDevice.current.userInterfaceIdiom == .phone ? 80 : 100)) / 100
         web.load(URLRequest(url: Self.siteURL))
     }
 

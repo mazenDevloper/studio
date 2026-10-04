@@ -28,7 +28,7 @@ struct IslandLiveActivity: Widget {
                         TeamView(name: s.away, logo: s.awayLogo, size: 44, bright: s.scored == "away")
                     } else {
                         Text(s.timeText)
-                            .font(DC.font(15, "Bold"))
+                            .font(LA.font(15, "Bold"))
                             .foregroundColor(.white.opacity(0.5))
                             .padding(.top, 12)
                     }
@@ -38,11 +38,11 @@ struct IslandLiveActivity: Widget {
                         VStack(spacing: 2) {
                             ScoreText(s: s, size: 34)
                             if s.status == "live" { MinuteBadge(text: s.minute, size: 13) }
-                            else if s.status == "finished" { Text("انتهت").font(DC.font(12, "Bold")).foregroundColor(.white.opacity(0.5)) }
+                            else if s.status == "finished" { Text("انتهت").font(LA.font(12, "Bold")).foregroundColor(.white.opacity(0.5)) }
                         }
                     } else {
                         VStack(spacing: 0) {
-                            Text(s.title).font(DC.font(15, "Bold")).foregroundColor(.white.opacity(0.8)).lineLimit(1)
+                            Text(s.title).font(LA.font(15, "Bold")).foregroundColor(.white.opacity(0.8)).lineLimit(1)
                             CountdownText(s: s, stale: stale, size: 34)
                         }
                     }
@@ -50,7 +50,7 @@ struct IslandLiveActivity: Widget {
                 DynamicIslandExpandedRegion(.bottom) {
                     if match {
                         if !s.league.isEmpty {
-                            Text(s.league).font(DC.font(11, "Bold")).foregroundColor(.white.opacity(0.4)).lineLimit(1)
+                            Text(s.league).font(LA.font(11, "Bold")).foregroundColor(.white.opacity(0.4)).lineLimit(1)
                         }
                     } else if !stale && s.end > Date() && s.start < s.end {
                         ProgressView(timerInterval: s.start...s.end, countsDown: true) { EmptyView() } currentValueLabel: { EmptyView() }
@@ -91,6 +91,13 @@ struct IslandLiveActivity: Widget {
 
 // MARK: - pieces
 
+/// Live Activity fonts: the system's rounded heavy font (custom fonts are not reliable in the island).
+enum LA {
+    static func font(_ size: CGFloat, _ weight: String = "Black") -> Font {
+        .system(size: size, weight: weight == "Black" ? .heavy : weight == "Bold" ? .bold : .semibold, design: .rounded)
+    }
+}
+
 /// "-04:59" counting down by itself; "الآن" once it is due.
 struct CountdownText: View {
     let s: IslandAttributes.ContentState
@@ -101,10 +108,10 @@ struct CountdownText: View {
         let color = DC.color(for: s.kind)
         Group {
             if stale || s.end <= Date() {
-                Text("الآن").font(DC.font(size))
+                Text("الآن").font(LA.font(size))
             } else {
                 Text(timerInterval: min(Date(), s.end)...s.end, countsDown: true)
-                    .font(DC.font(size))
+                    .font(LA.font(size))
                     .monospacedDigit()
             }
         }
@@ -146,7 +153,7 @@ struct Logo: View {
             if let img = DCShared.logo(file) {
                 Image(uiImage: img).resizable().scaledToFit().frame(width: size * 0.78, height: size * 0.78)
             } else {
-                Text(initials(name)).font(DC.font(size * 0.38)).foregroundColor(.white.opacity(0.6))
+                Text(initials(name)).font(LA.font(size * 0.38)).foregroundColor(.white.opacity(0.6))
             }
         }
         .frame(width: size, height: size)
@@ -169,7 +176,7 @@ struct TeamView: View {
         VStack(spacing: 3) {
             Logo(file: logo, name: name, size: size)
                 .shadow(color: bright ? DC.emerald.opacity(0.8) : .clear, radius: 8)
-            Text(name).font(DC.font(10, "Bold")).foregroundColor(.white.opacity(0.85)).lineLimit(1).frame(maxWidth: size * 1.9)
+            Text(name).font(LA.font(10, "Bold")).foregroundColor(.white.opacity(0.85)).lineLimit(1).frame(maxWidth: size * 1.9)
         }
     }
 }
@@ -181,7 +188,7 @@ struct MinuteBadge: View {
 
     var body: some View {
         Text(text.isEmpty ? "مباشر" : text)
-            .font(DC.font(size))
+            .font(LA.font(size))
             .foregroundColor(.white)
             .padding(.horizontal, size * 0.55)
             .padding(.vertical, size * 0.18)
@@ -207,7 +214,7 @@ struct ScoreText: View {
                         : LinearGradient(colors: [.white, .white.opacity(0.5)], startPoint: .topLeading, endPoint: .bottomTrailing))
             }
         }
-        .font(DC.font(size))
+        .font(LA.font(size))
         .monospacedDigit()
         .environment(\.layoutDirection, .leftToRight)
         .lineLimit(1)
@@ -226,11 +233,11 @@ struct LockScreenView: View {
             HStack(spacing: 10) {
                 if s.status == "live" { MinuteBadge(text: s.minute, size: 14) }
                 Logo(file: s.homeLogo, name: s.home, size: 40)
-                Text(s.home).font(DC.font(14, "Bold")).foregroundColor(.white).lineLimit(1).minimumScaleFactor(0.7)
+                Text(s.home).font(LA.font(14, "Bold")).foregroundColor(.white).lineLimit(1).minimumScaleFactor(0.7)
                 Spacer(minLength: 4)
                 ScoreText(s: s, size: 28)
                 Spacer(minLength: 4)
-                Text(s.away).font(DC.font(14, "Bold")).foregroundColor(.white).lineLimit(1).minimumScaleFactor(0.7)
+                Text(s.away).font(LA.font(14, "Bold")).foregroundColor(.white).lineLimit(1).minimumScaleFactor(0.7)
                 Logo(file: s.awayLogo, name: s.away, size: 40)
             }
             .environment(\.layoutDirection, .leftToRight)
@@ -244,9 +251,9 @@ struct LockScreenView: View {
             HStack(spacing: 14) {
                 IconSquare(kind: s.kind, size: 46)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(s.title).font(DC.font(18)).foregroundColor(.white).lineLimit(1)
+                    Text(s.title).font(LA.font(18)).foregroundColor(.white).lineLimit(1)
                     Text((s.kind == "azan" ? "الأذان · " : s.kind == "iqamah" ? "الإقامة · " : "التذكير · ") + s.timeText)
-                        .font(DC.font(12, "Bold")).foregroundColor(.white.opacity(0.45))
+                        .font(LA.font(12, "Bold")).foregroundColor(.white.opacity(0.45))
                 }
                 Spacer()
                 CountdownText(s: s, stale: stale, size: 36)

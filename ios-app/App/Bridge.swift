@@ -38,7 +38,7 @@ final class Bridge {
                     "prayerIsland": UserDefaults.standard.bool(forKey: "prayerIsland"),
                     "matchesIsland": UserDefaults.standard.bool(forKey: "matchesIsland"),
                     "version": (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String) ?? "1.0",
-                    "textZoom": 100,
+                    "textZoom": Int(((self.web?.pageZoom ?? 1) * 100).rounded()),
                 ])
             }
         case "requestNotifications":
@@ -59,6 +59,11 @@ final class Bridge {
             DispatchQueue.main.async {
                 if let u = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(u) }
             }
+            reply([:])
+        case "setTextZoom":
+            let p = max(50, min(200, (args["percent"] as? NSNumber)?.intValue ?? 100))
+            UserDefaults.standard.set(p, forKey: "textZoom")
+            DispatchQueue.main.async { self.web?.pageZoom = CGFloat(p) / 100 }
             reply([:])
         case "takePendingCommands":
             reply(["commands": []])

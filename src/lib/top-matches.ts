@@ -287,13 +287,36 @@ async function collectDay(date: string, only?: string): Promise<DayData> {
   return { date, at: Date.now(), raws, live };
 }
 
-/** Day data with stale-while-revalidate: fresh -> cached; a bit old -> cached now + refreshed in the background. */
+const inflightAt = new Map<string, number>();
+const okSources = (d?: DayData) => (d ? d.raws.filter(r => r.attempt.ok && r.matches.length > 0).length : 0);
+
+/**
+ * Day data: fresh -> cached; older -> refreshed, waiting at most a few seconds before answering with the old one.
+ *
+ * Why today failed (and not yesterday / tomorrow): on Vercel a function is frozen as soon as it has answered, so a
+ * refresh left running "in the background" stopped mid-way and was picked up, frozen, by the next request - its
+ * timers then fired all at once ("failed" after 24 s, fotmob after 124 s) and the near-empty result (one source, 0
+ * matches) was cached. Only today is refreshed that way (the warm-up, live scores). Now a refresh older than 45 s is
+ * dropped and started again, and a result worse than the one we have (fewer working sources, no matches) never
+ * replaces it - nor is cached at all when there is nothing better.
+ */
 async function getDay(date: string, only?: string): Promise<DayData> {
   const key = `${date}|${only ?? ""}`;
   const refresh = () => {
     let p = inflight.get(key);
+    if (p && Date.now() - (inflightAt.get(key) ?? 0) > 45_000) { inflight.delete(key); p = undefined; }
     if (!p) {
-      p = collectDay(date, only).then(d => { dayCache.set(key, d); return d; }).finally(() => inflight.delete(key));
+      inflightAt.set(key, Date.now());
+      p = collectDay(date, only).then(d => {
+        const prev = dayCache.get(key);
+        const bad = okSources(d) === 0 || (prev && okSources(d) < Math.min(2, okSources(prev)));
+        if (bad) {
+          if (prev) return prev;
+          throw new Error(`no source answered: ${d.raws.map(r => `${r.attempt.source}: ${r.attempt.error || "0"}`).join(" | ")}`);
+        }
+        dayCache.set(key, d);
+        return d;
+      }).finally(() => { inflight.delete(key); inflightAt.delete(key); });
       inflight.set(key, p);
     }
     return p;
@@ -302,12 +325,8 @@ async function getDay(date: string, only?: string): Promise<DayData> {
   if (hit) {
     const age = Date.now() - hit.at;
     if (age < (hit.live ? LIVE_FRESH_MS : FRESH_MS)) return hit;
-    // Today with matches live used to wait for every source again after one minute: each request then blocked on
-    // 14 sources (up to 25 s each), and when they rate-limited the frequent calls ("no source reachable") the
-    // request failed - yesterday / tomorrow (never live) were served from the cache and didn't fail. Now any answer
-    // under an hour old comes back at once and is refreshed in the background; a failed refresh keeps it.
-    if (age < (hit.live ? LIVE_STALE_OK_MS : STALE_OK_MS) || age < 60 * 60_000) { refresh().catch(() => {}); return hit; }
-    return refresh().catch(() => hit);
+    // refresh, but answer with what we have if the sources are slow or fail
+    return Promise.race([refresh(), new Promise<DayData>(res => setTimeout(() => res(hit), age < STALE_OK_MS ? 4000 : 12000))]).catch(() => hit);
   }
   return refresh();
 }
