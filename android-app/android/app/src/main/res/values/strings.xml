@@ -42,6 +42,8 @@
     <string name="widget_prayerbar_label">DriveCast · شريط الصلوات</string>
     <string name="widget_clock_desc">ساعة الرئيسية بالأرقام الزجاجية</string>
     <string name="widget_clock_label">DriveCast · الساعة</string>
+    <string name="widget_media_home_desc">شاشة الوسائط كاملة: استكمال المشاهدة، المفضلات، القرّاء، الاشتراكات وأحدث التلاوات</string>
+    <string name="widget_media_home_label">DriveCast · الوسائط</string>
     <string name="goal_channel">أهداف فرقي</string>
     <string name="shortcut_dashboard">الرئيسية</string>
     <string name="shortcut_matches">المباريات</string>

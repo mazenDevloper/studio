@@ -106,15 +106,22 @@ final class Cloud {
             try {
                 JSONArray ch = Widgets.array(ctx, "cloud_channels");
                 JSONArray tops = new JSONArray();
+                java.util.List<JSONObject> latest = new java.util.ArrayList<>();
                 for (int i = 0; i < ch.length() && tops.length() < 12; i++) {
                     JSONObject c = ch.optJSONObject(i);
                     if (c == null || !c.optBoolean("starred")) continue;
                     JSONArray v = MediaBrowser.channelVideos(c.optString("id"));
+                    for (int k = 0; k < Math.min(4, v.length()); k++) latest.add(new JSONObject(v.getJSONObject(k).toString()));
                     JSONObject best = null;
                     for (int k = 0; k < v.length(); k++) if (best == null || v.getJSONObject(k).optLong("views") > best.optLong("views")) best = v.getJSONObject(k);
                     if (best != null) tops.put(best.put("badge", true).put("avatar", c.optString("image")));
                 }
                 if (tops.length() > 0) e.putString("cloud_top", tops.toString());
+                // the media screen's "latest recitations": newest first across the starred channels
+                java.util.Collections.sort(latest, (a, b) -> b.optString("published").compareTo(a.optString("published")));
+                JSONArray lt = new JSONArray();
+                for (int k = 0; k < Math.min(16, latest.size()); k++) lt.put(latest.get(k));
+                if (lt.length() > 0) e.putString("cloud_latest", lt.toString());
             } catch (Exception ignored) {
             }
         }
@@ -178,6 +185,12 @@ final class Cloud {
 
     private static JSONObject slimMaster(JSONObject m) throws Exception {
         JSONObject o = new JSONObject();
+        JSONArray cw = m.optJSONArray("continueWatching");
+        if (cw != null) {
+            JSONArray vids = new JSONArray();
+            for (int i = 0; i < cw.length(); i++) if (cw.optJSONObject(i) != null && cw.getJSONObject(i).optJSONObject("video") != null) vids.put(cw.getJSONObject(i).getJSONObject("video"));
+            o.put("continueWatching", slimVideos(vids, 12));
+        }
         JSONArray sv = m.optJSONArray("savedVideos");
         if (sv != null) o.put("savedVideos", slimVideos(sv, 80));
         for (String k : new String[]{"favoriteTeams", "pinnedMatches", "generalAzkar", "reminders", "prayerSettings"}) {

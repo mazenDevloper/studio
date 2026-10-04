@@ -911,4 +911,45 @@ final class WidgetArt {
         Art.glassOutlinedText(c, time, w / 2f, h / 2f, t);
         return b;
     }
+
+    /** A section title of the media screen: a coloured bar + the title, right aligned. */
+    static Bitmap sectionHeader(Context ctx, int w, int h, String title) {
+        Bitmap b = blank(w, h);
+        Canvas c = new Canvas(b);
+        float bh = h * 0.56f;
+        RectF bar = new RectF(w - h * 0.16f, (h - bh) / 2, w - h * 0.04f, (h + bh) / 2);
+        Art.fill(c, bar, bar.width(), Art.BLUE);
+        TextPaint t = Art.text(Fonts.black(ctx), h * 0.5f, Art.WHITE);
+        t.setTextAlign(Paint.Align.RIGHT);
+        c.drawText(Art.ellipsize(t, title, w * 0.9f), bar.left - h * 0.3f, Art.baseline(t, h / 2f), t);
+        return b;
+    }
+
+    /** An IPTV favourite like the app's IPTV screen: a rounded light card with the logo, a gold star, the name under it. */
+    static Bitmap iptvTile(Context ctx, int w, int h, String name, Bitmap logo) {
+        Bitmap b = blank(w, h);
+        Canvas c = new Canvas(b);
+        float side = w * 0.94f;
+        RectF r = new RectF((w - side) / 2, 0, (w + side) / 2, side * 0.92f);
+        float rad = side * 0.18f;
+        Art.fill(c, r, rad, logo != null ? 0xFFC7CBD8 : Art.alpha(Art.WHITE, 0.08f));
+        if (logo != null) {
+            float s = Math.min(r.width() * 0.84f / logo.getWidth(), r.height() * 0.6f / logo.getHeight());
+            float lw = logo.getWidth() * s, lh = logo.getHeight() * s;
+            c.drawBitmap(logo, null, new RectF(r.centerX() - lw / 2, r.centerY() - lh / 2, r.centerX() + lw / 2, r.centerY() + lh / 2),
+                    new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG));
+        } else {
+            TextPaint tp = Art.text(Typeface.DEFAULT, r.height() * 0.3f, Art.WHITE);
+            Art.centerText(c, "📺", r.centerX(), r.centerY(), tp);
+        }
+        float sr = side * 0.1f, sx = r.right - sr * 1.5f, sy = r.top + sr * 1.5f;
+        Paint sp = new Paint(Paint.ANTI_ALIAS_FLAG);
+        sp.setColor(0xFFEAB308);
+        c.drawCircle(sx, sy, sr, sp);
+        TextPaint star = Art.text(Typeface.DEFAULT_BOLD, sr * 1.2f, 0xFF111111);
+        Art.centerText(c, "★", sx, sy, star);
+        TextPaint t = Art.text(Fonts.black(ctx), h * 0.075f, Art.WHITE);
+        Art.centerText(c, Art.ellipsize(t, name, w * 0.95f), w / 2f, r.bottom + (h - r.bottom) / 2, t);
+        return b;
+    }
 }

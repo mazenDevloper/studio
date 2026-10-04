@@ -83,6 +83,8 @@ public final class Widgets {
 
     public static class SavedWidget extends Base { }
 
+    public static class MediaHomeWidget extends Base { }
+
     public static class IptvWidget extends Base { }
 
     public static class PrayerBarWidget extends Base { }
@@ -161,6 +163,7 @@ public final class Widgets {
         render(ctx, m, ManuscriptWidget.class, 250, 140, Widgets::manuscript);
         renderBrowse(ctx, m, FoldersWidget.class);
         renderBrowse(ctx, m, SavedWidget.class);
+        renderBrowse(ctx, m, MediaHomeWidget.class);
         renderBrowse(ctx, m, IptvWidget.class);
         render(ctx, m, PrayerBarWidget.class, 400, 100, Widgets::prayerBar);
         render(ctx, m, ClockWidget.class, 250, 110, Widgets::clock);

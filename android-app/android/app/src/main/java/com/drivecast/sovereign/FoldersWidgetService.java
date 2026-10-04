@@ -165,10 +165,59 @@ public class FoldersWidgetService extends RemoteViewsService {
 
         @Override public int getCount() { return items.length(); }
 
+        private static final int[] TILES = {R.id.tile_0, R.id.tile_1, R.id.tile_2, R.id.tile_3};
+
+        /** A media-screen row: a section title, or up to 4 circles / 2 cards, each its own tap. */
+        private RemoteViews row(JSONObject o) {
+            RemoteViews v = new RemoteViews(ctx.getPackageName(), R.layout.widget_row);
+            float d = ctx.getResources().getDisplayMetrics().density;
+            if ("header".equals(o.optString("row"))) {
+                v.setViewVisibility(R.id.row_tiles, android.view.View.GONE);
+                v.setViewVisibility(R.id.row_header, android.view.View.VISIBLE);
+                v.setImageViewBitmap(R.id.row_header, WidgetArt.sectionHeader(ctx, Math.round(360 * d), Math.round(34 * d), o.optString("title")));
+                return v;
+            }
+            v.setViewVisibility(R.id.row_header, android.view.View.GONE);
+            v.setViewVisibility(R.id.row_tiles, android.view.View.VISIBLE);
+            JSONArray it = o.optJSONArray("items");
+            boolean circle = "circle".equals(o.optString("style"));
+            int per = circle ? 4 : 2;
+            for (int i = 0; i < 4; i++) {
+                JSONObject x = it != null && i < it.length() ? it.optJSONObject(i) : null;
+                if (i >= per) { v.setViewVisibility(TILES[i], android.view.View.GONE); continue; }
+                v.setViewVisibility(TILES[i], android.view.View.VISIBLE);
+                if (x == null) { v.setImageViewBitmap(TILES[i], WidgetArt.blank(4, circle ? 4 : 3)); continue; }
+                Bitmap b;
+                if (circle) {
+                    int w = Math.round(100 * d), h = Math.round(w * 1.05f);
+                    b = WidgetArt.channelTile(ctx, w, h, x.optString("name"), Images.get(ctx, x.optString("thumb", null), w), x.optBoolean("starred"));
+                } else if ("playlist".equals(x.optString("kind"))) {
+                    int w = Math.round(200 * d), h = Math.round(w * 0.6f);
+                    b = WidgetArt.folderCard(ctx, w, h, x.optString("name"), x.optInt("count"), Images.get(ctx, x.optString("thumb", null), w));
+                } else {
+                    int w = Math.round(200 * d), h = Math.round(w * 0.6f);
+                    b = WidgetArt.videoCard(ctx, w, h, x.optString("name"), x.optString("channel"), Images.get(ctx, x.optString("thumb", null), w), null, null);
+                }
+                v.setImageViewBitmap(TILES[i], b);
+                v.setOnClickFillInIntent(TILES[i], fill(x));
+            }
+            return v;
+        }
+
+        private static Intent fill(JSONObject o) {
+            Intent f = new Intent();
+            f.putExtra("kind", o.optString("kind"));
+            f.putExtra("id", o.optString("id"));
+            f.putExtra("name", o.optString("name"));
+            if (o.has("reciter")) f.putExtra("reciter", o.optString("reciter"));
+            return f;
+        }
+
         @Override
         public RemoteViews getViewAt(int position) {
-            RemoteViews v = new RemoteViews(ctx.getPackageName(), R.layout.widget_folders_item);
             JSONObject o = items.optJSONObject(position);
+            if (o != null && o.has("row")) return row(o);
+            RemoteViews v = new RemoteViews(ctx.getPackageName(), R.layout.widget_folders_item);
             if (o == null) return v;
             float d = ctx.getResources().getDisplayMetrics().density;
             String kind = o.optString("kind");
@@ -181,6 +230,9 @@ public class FoldersWidgetService extends RemoteViewsService {
                 boolean top = o.optBoolean("badge");
                 Bitmap av = top ? Images.get(ctx, o.optString("avatar", null), Math.round(h * 0.2f)) : null;
                 card = WidgetArt.videoCard(ctx, w, h, o.optString("name"), o.optString("channel"), Images.get(ctx, o.optString("thumb", null), w), av, top ? "الأكثر مشاهدة" : null);
+            } else if ("iptv".equals(kind)) {
+                int w = Math.min(420, Math.round(130 * d)), h = Math.round(w * 1.12f);
+                card = WidgetArt.iptvTile(ctx, w, h, o.optString("name"), Images.get(ctx, o.optString("image", null), w));
             } else if ("surah".equals(kind)) {
                 int w = Math.min(420, Math.round(120 * d)), h = Math.round(w * 0.62f);
                 card = WidgetArt.surahTile(ctx, w, h, o.optString("id"), o.optString("name"));
@@ -200,7 +252,7 @@ public class FoldersWidgetService extends RemoteViewsService {
 
         @Override public RemoteViews getLoadingView() { return null; }
 
-        @Override public int getViewTypeCount() { return 1; }
+        @Override public int getViewTypeCount() { return 2; }
 
         @Override public long getItemId(int position) { return position; }
 

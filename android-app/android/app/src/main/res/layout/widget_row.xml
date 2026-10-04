@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- a row of the media widget: a section title, or up to four tiles side by side (right to left) -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <ImageView
+        android:id="@+id/row_header"
+        android:layout_width="match_parent"
+        android:layout_height="30dp"
+        android:layout_marginTop="6dp"
+        android:contentDescription="@string/widget_media_home_label"
+        android:scaleType="fitEnd" />
+
+    <LinearLayout
+        android:id="@+id/row_tiles"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layoutDirection="rtl"
+        android:orientation="horizontal">
+
+        <ImageView android:id="@+id/tile_0" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_margin="3dp" android:adjustViewBounds="true" android:contentDescription="@string/widget_media_home_label" android:scaleType="fitCenter" />
+        <ImageView android:id="@+id/tile_1" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_margin="3dp" android:adjustViewBounds="true" android:contentDescription="@string/widget_media_home_label" android:scaleType="fitCenter" />
+        <ImageView android:id="@+id/tile_2" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_margin="3dp" android:adjustViewBounds="true" android:contentDescription="@string/widget_media_home_label" android:scaleType="fitCenter" />
+        <ImageView android:id="@+id/tile_3" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_margin="3dp" android:adjustViewBounds="true" android:contentDescription="@string/widget_media_home_label" android:scaleType="fitCenter" />
+    </LinearLayout>
+</FrameLayout>
