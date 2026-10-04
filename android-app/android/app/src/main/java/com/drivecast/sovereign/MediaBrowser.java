@@ -184,6 +184,7 @@ final class MediaBrowser {
         if (cls.endsWith("SavedWidget")) return "saved";
         if (cls.endsWith("IptvWidget")) return "iptv";
         if (cls.endsWith("MediaHomeWidget")) return "media";
+        if (cls.endsWith("AzkarWidget")) return "azkar";
         return "channels";
     }
 
@@ -234,6 +235,22 @@ final class MediaBrowser {
                 JSONArray tv = Widgets.array(ctx, "cloud_iptv");
                 for (int i = 0; i < tv.length(); i++) items.put(new JSONObject(tv.getJSONObject(i).toString()).put("kind", "iptv"));
                 o.put("empty", "جاري تحميل القنوات المفضلة...");
+            } else if ("azkar".equals(kind)) {
+                // the azkar of now: morning from Fajr until Asr, evening from Asr until the next Fajr (like the site)
+                String period = azkarPeriod(ctx);
+                JSONObject counts = azkarCounts(ctx);
+                int done = 0, total = 0;
+                for (String[] z : AzkarData.ITEMS) {
+                    if (!period.equals(z[3])) continue;
+                    int need = Integer.parseInt(z[2]), have = Math.min(need, counts.optInt(z[0]));
+                    total++;
+                    if (have >= need) done++;
+                    items.put(new JSONObject().put("kind", "zikr").put("id", z[0]).put("name", z[1]).put("text", z[4])
+                            .put("count", need).put("done", have));
+                }
+                o.put("title", ("morning".equals(period) ? "أذكار الصباح" : "أذكار المساء") + "  " + done + "/" + total);
+                o.put("rows", true);
+                o.put("empty", "");
             } else if ("media".equals(kind)) {
                 // the media screen: its sections one under the other (rows built by the list factory)
                 o.put("title", "الوسائط");
@@ -278,6 +295,52 @@ final class MediaBrowser {
         return o;
     }
 
+    /** "morning" from Fajr until Asr (today's cloud prayer times), "evening" otherwise. */
+    static String azkarPeriod(Context ctx) {
+        java.util.Calendar c = java.util.Calendar.getInstance();
+        int now = c.get(java.util.Calendar.HOUR_OF_DAY) * 60 + c.get(java.util.Calendar.MINUTE);
+        String today = Cloud.day(System.currentTimeMillis());
+        JSONArray days = Widgets.array(ctx, "cloud_prayers");
+        for (int i = 0; i < days.length(); i++) {
+            JSONObject r = days.optJSONObject(i);
+            if (r == null || !today.equals(r.optString("date"))) continue;
+            int f = hm(r.optString("fajr")), a = hm(r.optString("asr"));
+            if (f >= 0 && a >= 0) return now >= f && now < a ? "morning" : "evening";
+        }
+        int h = c.get(java.util.Calendar.HOUR_OF_DAY);
+        return h >= 4 && h < 15 ? "morning" : "evening";
+    }
+
+    private static int hm(String t) {
+        try {
+            String[] p = t.split(":");
+            return Integer.parseInt(p[0].trim()) * 60 + Integer.parseInt(p[1].trim().substring(0, 2));
+        } catch (Exception e) {
+            return -1;
+        }
+    }
+
+    /** today's counts (a new day starts from zero) */
+    static JSONObject azkarCounts(Context ctx) {
+        JSONObject o = Widgets.json(ctx, "azkarCounts");
+        return Cloud.day(System.currentTimeMillis()).equals(o.optString("day")) ? o : new JSONObject();
+    }
+
+    /** The videos of a screen (flat, or inside the media screen's rows), for previous / next. */
+    private static void collectVideos(JSONArray its, JSONArray out) {
+        for (int k = 0; its != null && k < its.length() && out.length() < 60; k++) {
+            JSONObject x = its.optJSONObject(k);
+            if (x == null) continue;
+            if ("video".equals(x.optString("kind"))) {
+                try {
+                    out.put(new JSONObject().put("id", x.optString("id")).put("name", x.optString("name")));
+                } catch (Exception ignored) {
+                }
+            }
+            else if (x.has("items")) collectVideos(x.optJSONArray("items"), out);
+        }
+    }
+
     /** A section of the media screen: a header row, then rows of 4 circles or 2 cards. */
     private static void section(JSONArray rows, String title, String style, JSONArray list, String kind, int max) throws Exception {
         if (list == null || list.length() == 0) return;
@@ -296,9 +359,9 @@ final class MediaBrowser {
     }
 
     /** Play a video (YouTube id) or a stream (an address) full screen. */
-    static void play(Context ctx, String type, String id, String title) {
+    static void play(Context ctx, String type, String id, String title, JSONArray queue) {
         Intent p = new Intent(ctx, PlayerActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                .putExtra("type", type).putExtra("id", id).putExtra("title", title);
+                .putExtra("type", type).putExtra("id", id).putExtra("title", title).putExtra("queue", queue.toString());
         try { ctx.startActivity(p); } catch (Exception ignored) { }
     }
 
@@ -316,8 +379,29 @@ final class MediaBrowser {
             return;
         }
         final String kind = i.getStringExtra("kind"), id = i.getStringExtra("id"), name = i.getStringExtra("name");
+        if ("zikr".equals(kind)) {
+            // one more: the counter goes down, the card turns green when done
+            JSONObject counts = azkarCounts(ctx);
+            int need = 1;
+            for (String[] z : AzkarData.ITEMS) if (z[0].equals(id)) need = Integer.parseInt(z[2]);
+            try {
+                counts.put("day", Cloud.day(System.currentTimeMillis()));
+                counts.put(id, Math.min(need, counts.optInt(id) + 1));
+            } catch (Exception ignored) {
+            }
+            NativeIslandPlugin.prefs(ctx).edit().putString("azkarCounts", counts.toString()).apply();
+            Widgets.updateAll(ctx);
+            done.finish();
+            return;
+        }
         if ("iptv".equals(kind)) {
-            play(ctx, "stream", id, name);
+            JSONArray q = new JSONArray();
+            JSONArray its = top(ctx, wid).optJSONArray("items");
+            for (int k = 0; its != null && k < its.length(); k++) {
+                JSONObject x = its.optJSONObject(k);
+                if (x != null && "iptv".equals(x.optString("kind"))) q.put(x);
+            }
+            play(ctx, "stream", id, name, q);
             done.finish();
             return;
         }
@@ -339,8 +423,11 @@ final class MediaBrowser {
             return;
         }
         if ("video".equals(kind)) {
-            // full screen player
-            play(ctx, "youtube", id, name);
+            // full screen player, with the screen's other videos as previous / next
+            JSONArray q = new JSONArray();
+            JSONArray its = top(ctx, wid).optJSONArray("items");
+            collectVideos(its, q);
+            play(ctx, "youtube", id, name, q);
             done.finish();
             return;
         }
@@ -428,7 +515,9 @@ final class MediaBrowser {
         Intent s = new Intent(ctx, SearchActivity.class).putExtra("wid", wid).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         s.setData(Uri.parse("drivecast://search/" + wid));
         v.setOnClickPendingIntent(R.id.browse_search, PendingIntent.getActivity(ctx, 1200 + wid, s, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT));
-        v.setOnClickPendingIntent(R.id.browse_header, Widgets.openApp(ctx, "/media", 1300 + wid));
+        boolean azkar = "azkar".equals(rootKind(ctx, wid));
+        v.setOnClickPendingIntent(R.id.browse_header, Widgets.openApp(ctx, azkar ? "/football" : "/media", 1300 + wid));
+        if (azkar) v.setViewVisibility(R.id.browse_search, View.GONE);
         Intent svc = new Intent(ctx, FoldersWidgetService.class);
         svc.setData(Uri.parse("drivecast://browse/" + wid + "/" + items.toString().hashCode() + "/" + layout));
         v.setRemoteAdapter(R.id.folders_grid, svc);

@@ -38,6 +38,7 @@ final class IslandArt {
         // goal
         String side = "";    // home | away
         String scorer = "", minute = "", photo;
+        String league = "";
         int more;
 
         boolean live() { return "live".equals(status); }
@@ -242,66 +243,106 @@ final class IslandArt {
     }
 
     /**
-     * The goal card (island celebration and notification picture): gold ring, "⚽ هدف", the two logos with the new
-     * score (the scoring side bright), and the scorer with photo and minute when known. Logos can be passed in (the
-     * notification loads them blocking); otherwise the cached ones are used.
+     * The goal card like the site's: a purple-to-magenta card with a green ring, the green "GOAL ⚽" pill and
+     * "league · minute", a dark pill with both logos and the big score (the scoring side green), and the scorer -
+     * photo and name, large - under it. Logos can be passed in (the notification loads them blocking).
      */
     static void drawGoal(Context ctx, Canvas c, RectF r, Item it, Bitmap homeLogo, Bitmap awayLogo) {
         fonts(ctx);
-        float h = r.height();
-        float rad = Math.min(h / 2, r.width() * 0.12f);
-        Art.glow(c, r, rad, 0x80FACC15, h * 0.18f);
-        Art.fill(c, r, rad, 0xF7000000);
-        Paint gold = new Paint(Paint.ANTI_ALIAS_FLAG);
-        gold.setShader(new android.graphics.LinearGradient(r.left, r.top, r.right, r.bottom, 0x33FACC15, 0x00FACC15, android.graphics.Shader.TileMode.CLAMP));
-        c.drawRoundRect(r, rad, rad, gold);
-        Art.stroke(c, r, rad, Art.alpha(Art.YELLOW, 0.8f), Math.max(2f, h / 40f));
-        boolean withScorer = it.scorer != null && !it.scorer.isEmpty();
-        float topH = withScorer ? h * 0.62f : h;
-        float cy = r.top + topH / 2;
-        float lr = Math.min(topH * 0.34f, r.width() * 0.1f);
-        int px = Math.round(lr * 2.2f);
-        if (homeLogo == null) homeLogo = Images.cached(ctx, it.homeLogo, px);
-        if (awayLogo == null) awayLogo = Images.cached(ctx, it.awayLogo, px);
-        float hcx = r.left + rad * 0.6f + lr, acx = r.right - rad * 0.6f - lr;
-        Art.logo(c, homeLogo, hcx, cy, lr, it.home, bold);
-        Art.logo(c, awayLogo, acx, cy, lr, it.away, bold);
-        float mid = r.centerX();
-        TextPaint g = Art.text(black, topH * 0.2f, Art.YELLOW);
-        g.setShadowLayer(topH * 0.08f, 0, 0, 0xAAFACC15);
-        Art.centerText(c, "⚽ هدف", mid, cy - topH * 0.24f, g);
-        TextPaint s = Art.text(black, topH * 0.36f, Art.WHITE);
-        String hs = String.valueOf(it.sh), as = String.valueOf(it.sa), dash = " - ";
-        float wh = s.measureText(hs), wd = s.measureText(dash), wa = s.measureText(as);
-        float sx = mid - (wh + wd + wa) / 2;
-        float base = Art.baseline(s, cy + topH * 0.14f);
-        s.setColor("home".equals(it.side) ? Art.EMERALD : Art.alpha(Art.WHITE, 0.75f));
-        c.drawText(hs, sx, base, s);
-        s.setColor(Art.alpha(Art.WHITE, 0.5f));
-        c.drawText(dash, sx + wh, base, s);
-        s.setColor("away".equals(it.side) ? Art.EMERALD : Art.alpha(Art.WHITE, 0.75f));
-        c.drawText(as, sx + wh + wd, base, s);
-        TextPaint names = Art.text(bold, topH * 0.13f, Art.alpha(Art.WHITE, 0.6f));
-        float nameW = (acx - lr) - (hcx + lr) - topH * 0.2f;
-        String line = Art.teamName(names, it.home, nameW / 2.2f) + "  ·  " + Art.teamName(names, it.away, nameW / 2.2f);
-        Art.centerText(c, Art.ellipsize(names, line, nameW), mid, cy + topH * 0.4f, names);
-        if (withScorer) {
-            float sh2 = h - topH;
-            RectF strip = new RectF(r.left + rad * 0.5f, r.top + topH, r.right - rad * 0.5f, r.bottom - sh2 * 0.15f);
-            Art.fill(c, strip, strip.height() / 2, Art.alpha(Art.WHITE, 0.07f));
-            float pr = strip.height() * 0.38f;
-            Bitmap photo = Images.cached(ctx, it.photo, Math.round(pr * 2.4f));
-            TextPaint sc = Art.text(black, strip.height() * 0.42f, Art.WHITE);
-            String text = it.scorer + (it.minute.isEmpty() ? "" : "  د" + it.minute.replace("'", ""));
-            float tw = Math.min(sc.measureText(text), strip.width() * 0.8f);
-            float total = tw + (photo != null ? pr * 2 + strip.height() * 0.2f : 0);
-            float sx2 = strip.centerX() + total / 2;
-            if (photo != null) {
-                Art.circleImage(c, photo, sx2 - pr, strip.centerY(), pr);
-                sx2 -= pr * 2 + strip.height() * 0.2f;
+        float w = r.width(), h = r.height();
+        boolean compact = h < w * 0.24f; // the notification's small view: the score pill only
+        float rad = Math.min(h * 0.18f, w * 0.09f);
+        Art.glow(c, r, rad, 0x6634D399, Math.min(w, h) * 0.06f);
+        Paint bg = new Paint(Paint.ANTI_ALIAS_FLAG);
+        bg.setShader(new android.graphics.LinearGradient(r.left, r.bottom, r.right, r.top,
+                new int[]{0xFF1C2347, 0xFF2D1846, 0xFF4A0E35}, new float[]{0f, 0.5f, 1f}, android.graphics.Shader.TileMode.CLAMP));
+        c.drawRoundRect(r, rad, rad, bg);
+        Art.stroke(c, r, rad, 0xFF5BD38A, Math.max(2f, Math.min(w, h) / 60f));
+        float pad = Math.min(w, h) * (compact ? 0.08f : 0.07f);
+        if (homeLogo == null) homeLogo = Images.cached(ctx, it.homeLogo, 200);
+        if (awayLogo == null) awayLogo = Images.cached(ctx, it.awayLogo, 200);
+
+        // top row: GOAL pill + league · minute
+        float y = r.top + pad;
+        if (!compact) {
+            float ph = h * 0.13f;
+            TextPaint gp = Art.text(black, ph * 0.62f, 0xFF0B0B10);
+            gp.setTextSkewX(-0.18f);
+            String g = "GOAL ⚽";
+            float pw = gp.measureText(g) + ph * 1.1f;
+            RectF pill = new RectF(r.left + pad, y, r.left + pad + pw, y + ph);
+            Art.fill(c, pill, ph / 2, 0xFF5BF08C);
+            Art.centerText(c, g, pill.centerX(), pill.centerY(), gp);
+            String meta = (it.league == null || it.league.isEmpty() ? "" : it.league) + (it.minute.isEmpty() ? "" : (it.league == null || it.league.isEmpty() ? "" : " · ") + it.minute);
+            if (!meta.isEmpty()) {
+                TextPaint mp = Art.text(bold, ph * 0.52f, Art.alpha(Art.WHITE, 0.72f));
+                mp.setTextAlign(android.graphics.Paint.Align.LEFT);
+                c.drawText(Art.ellipsize(mp, meta, r.right - pill.right - pad * 2), pill.right + pad * 0.7f, Art.baseline(mp, pill.centerY()), mp);
             }
-            sc.setTextAlign(Paint.Align.RIGHT);
-            c.drawText(Art.ellipsize(sc, text, strip.width() * 0.8f), sx2, Art.baseline(sc, strip.centerY()), sc);
+            y = pill.bottom + pad * 0.9f;
         }
+
+        // the score pill
+        boolean withScorer = !compact && it.scorer != null && !it.scorer.isEmpty();
+        float bottom = withScorer ? r.bottom - h * 0.24f : r.bottom - pad;
+        RectF sp = compact ? new RectF(r.left + pad, r.top + pad, r.right - pad, r.bottom - pad) : new RectF(r.left + pad * 1.2f, y, r.right - pad * 1.2f, bottom);
+        Art.fill(c, sp, sp.height() / 2, 0xF20A0A0F);
+        Art.stroke(c, sp, sp.height() / 2, Art.alpha(Art.WHITE, 0.1f), Math.max(1f, sp.height() / 90f));
+        float lr = sp.height() * 0.33f;
+        float hcx = sp.left + sp.height() * 0.62f, acx = sp.right - sp.height() * 0.62f;
+        drawPlainLogo(c, homeLogo, hcx, sp.centerY(), lr, it.home);
+        drawPlainLogo(c, awayLogo, acx, sp.centerY(), lr, it.away);
+        TextPaint num = Art.text(black, sp.height() * 0.78f, Art.WHITE);
+        String hs = String.valueOf(it.sh), as = String.valueOf(it.sa);
+        float wh = num.measureText(hs), wa = num.measureText(as), dash = sp.height() * 0.32f, gap = sp.height() * 0.14f;
+        float total = wh + gap + dash + gap + wa, sx = sp.centerX() - total / 2;
+        float base = Art.baseline(num, sp.centerY());
+        num.setColor("home".equals(it.side) ? 0xFF5BF08C : Art.WHITE);
+        c.drawText(hs, sx, base, num);
+        Paint dp = new Paint(Paint.ANTI_ALIAS_FLAG);
+        dp.setColor(0xFF6E6E78);
+        float dx = sx + wh + gap;
+        c.drawRect(dx, sp.centerY() - sp.height() * 0.05f, dx + dash, sp.centerY() + sp.height() * 0.05f, dp);
+        num.setColor("away".equals(it.side) ? 0xFF5BF08C : Art.WHITE);
+        c.drawText(as, dx + dash + gap, base, num);
+
+        // the scorer, large
+        if (withScorer) {
+            float rowH = r.bottom - sp.bottom - pad * 0.6f, cy = sp.bottom + (r.bottom - sp.bottom) / 2;
+            TextPaint np = Art.text(black, rowH * 0.5f, Art.WHITE);
+            String name = it.scorer;
+            String minute = it.minute.isEmpty() ? "" : "  " + it.minute;
+            TextPaint mp = Art.text(bold, rowH * 0.36f, 0xFF5BF08C);
+            float pr = rowH * 0.38f;
+            Bitmap photo = Images.cached(ctx, it.photo, Math.round(pr * 2.4f));
+            float nameW = Math.min(np.measureText(name), w * 0.62f);
+            float tw = nameW + mp.measureText(minute) + (photo != null ? pr * 2 + rowH * 0.25f : 0);
+            float x = r.centerX() + tw / 2;
+            if (photo != null) {
+                Art.circleImage(c, photo, x - pr, cy, pr);
+                Paint ring = new Paint(Paint.ANTI_ALIAS_FLAG);
+                ring.setStyle(Paint.Style.STROKE);
+                ring.setStrokeWidth(Math.max(1.5f, pr / 10f));
+                ring.setColor(0xFF5BF08C);
+                c.drawCircle(x - pr, cy, pr, ring);
+                x -= pr * 2 + rowH * 0.25f;
+            }
+            np.setTextAlign(Paint.Align.RIGHT);
+            np.setShadowLayer(rowH * 0.12f, 0, 0, 0x99000000);
+            c.drawText(Art.ellipsize(np, name, w * 0.62f), x, Art.baseline(np, cy), np);
+            mp.setTextAlign(Paint.Align.RIGHT);
+            c.drawText(minute, x - nameW, Art.baseline(mp, cy), mp);
+        }
+    }
+
+    /** A logo without a plate (the goal card shows them bare, like the site). */
+    private static void drawPlainLogo(Canvas c, Bitmap b, float cx, float cy, float r, String name) {
+        if (b == null) {
+            Art.logo(c, null, cx, cy, r, name, bold);
+            return;
+        }
+        float s = Math.min(r * 2 / b.getWidth(), r * 2 / b.getHeight());
+        float lw = b.getWidth() * s, lh = b.getHeight() * s;
+        c.drawBitmap(b, null, new RectF(cx - lw / 2, cy - lh / 2, cx + lw / 2, cy + lh / 2), new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG));
     }
 }

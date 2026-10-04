@@ -42,20 +42,16 @@ public class PlayerActivity extends Activity {
         web.setWebViewClient(new WebViewClient());
         web.setWebChromeClient(new WebChromeClient());
         root.addView(web, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
-        // three ways to watch: full screen (here), a floating window, or sound only in the floating island
-        float d = getResources().getDisplayMetrics().density;
-        android.widget.LinearLayout modes = new android.widget.LinearLayout(this);
-        modes.setOrientation(android.widget.LinearLayout.HORIZONTAL);
-        android.widget.TextView popup = modeButton("⧉ نافذة عائمة"), island = modeButton("🎧 صوت في الجزيرة");
-        popup.setOnClickListener(v -> switchTo("popup"));
-        island.setOnClickListener(v -> switchTo("audio"));
-        android.widget.LinearLayout.LayoutParams bl = new android.widget.LinearLayout.LayoutParams(android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, Math.round(36 * d));
-        bl.setMarginEnd(Math.round(8 * d));
-        modes.addView(island, bl);
-        modes.addView(popup, new android.widget.LinearLayout.LayoutParams(android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, Math.round(36 * d)));
-        FrameLayout.LayoutParams ml = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT, android.view.Gravity.TOP | android.view.Gravity.START);
-        ml.setMargins(Math.round(14 * d), Math.round(14 * d), 0, 0);
-        root.addView(modes, ml);
+        // the site's player bar: round glass buttons along the bottom (it hides after a few seconds; touch to show it)
+        controls = buildControls();
+        FrameLayout.LayoutParams cl = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT,
+                android.view.Gravity.BOTTOM | android.view.Gravity.CENTER_HORIZONTAL);
+        cl.bottomMargin = Math.round(22 * getResources().getDisplayMetrics().density);
+        root.addView(controls, cl);
+        web.setOnTouchListener((v, e) -> {
+            if (e.getAction() == android.view.MotionEvent.ACTION_DOWN) showControls();
+            return false;
+        });
         setContentView(root);
         hideBars();
         load(getIntent());
@@ -68,13 +64,105 @@ public class PlayerActivity extends Activity {
     }
 
     private String type, id, title;
+    /** what was around the video when it was tapped (the widget's list): previous / next */
+    private org.json.JSONArray queue = new org.json.JSONArray();
+    private int index = 0;
+    private android.widget.LinearLayout controls;
+    private android.widget.TextView titleView;
+    private final android.os.Handler ui = new android.os.Handler(android.os.Looper.getMainLooper());
+    private final Runnable hide = () -> { if (controls != null) controls.animate().alpha(0f).setDuration(300).withEndAction(() -> controls.setVisibility(android.view.View.GONE)).start(); };
 
     private void load(Intent i) {
         type = i.getStringExtra("type");
         id = i.getStringExtra("id");
         title = i.getStringExtra("title");
         if (id == null) { finish(); return; }
+        try {
+            queue = new org.json.JSONArray(i.getStringExtra("queue") == null ? "[]" : i.getStringExtra("queue"));
+        } catch (Exception e) {
+            queue = new org.json.JSONArray();
+        }
+        index = 0;
+        for (int k = 0; k < queue.length(); k++) if (id.equals(queue.optJSONObject(k).optString("id"))) index = k;
+        play();
+    }
+
+    private void play() {
         web.loadDataWithBaseURL(base(this, type), html(type, id), "text/html", "UTF-8", null);
+        if (titleView != null) titleView.setText(title == null ? "" : title);
+        showControls();
+    }
+
+    private void step(int d) {
+        if (queue.length() == 0) return;
+        index = (index + d + queue.length()) % queue.length();
+        org.json.JSONObject o = queue.optJSONObject(index);
+        if (o == null) return;
+        id = o.optString("id");
+        title = o.optString("name");
+        play();
+    }
+
+    private void showControls() {
+        if (controls == null) return;
+        controls.setVisibility(android.view.View.VISIBLE);
+        controls.animate().alpha(1f).setDuration(200).start();
+        ui.removeCallbacks(hide);
+        ui.postDelayed(hide, 5000);
+    }
+
+    /** One round glass button like the site's player bar. */
+    private android.widget.TextView round(String glyph, int bg, int ring, Runnable onTap) {
+        float d = getResources().getDisplayMetrics().density;
+        android.widget.TextView t = new android.widget.TextView(this);
+        t.setText(glyph);
+        t.setTextColor(Color.WHITE);
+        t.setTextSize(22);
+        t.setGravity(android.view.Gravity.CENTER);
+        android.graphics.drawable.GradientDrawable g = new android.graphics.drawable.GradientDrawable();
+        g.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+        g.setColor(bg);
+        if (ring != 0) g.setStroke(Math.round(2.5f * d), ring);
+        t.setBackground(g);
+        t.setOnClickListener(v -> { onTap.run(); showControls(); });
+        android.widget.LinearLayout.LayoutParams lp = new android.widget.LinearLayout.LayoutParams(Math.round(58 * d), Math.round(58 * d));
+        lp.setMargins(Math.round(6 * d), 0, Math.round(6 * d), 0);
+        t.setLayoutParams(lp);
+        return t;
+    }
+
+    private android.widget.LinearLayout buildControls() {
+        float d = getResources().getDisplayMetrics().density;
+        android.widget.LinearLayout col = new android.widget.LinearLayout(this);
+        col.setOrientation(android.widget.LinearLayout.VERTICAL);
+        col.setGravity(android.view.Gravity.CENTER_HORIZONTAL);
+        titleView = new android.widget.TextView(this);
+        titleView.setTextColor(0xE6FFFFFF);
+        titleView.setTypeface(Fonts.bold(this));
+        titleView.setTextSize(15);
+        titleView.setSingleLine(true);
+        titleView.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        titleView.setMaxWidth(Math.round(520 * d));
+        titleView.setShadowLayer(8, 0, 0, Color.BLACK);
+        titleView.setPadding(0, 0, 0, Math.round(10 * d));
+        col.addView(titleView);
+        android.widget.LinearLayout bar = new android.widget.LinearLayout(this);
+        bar.setOrientation(android.widget.LinearLayout.HORIZONTAL);
+        bar.setLayoutDirection(android.view.View.LAYOUT_DIRECTION_LTR);
+        int p = Math.round(10 * d);
+        bar.setPadding(p, p, p, p);
+        android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
+        bg.setColor(0x660A1A3A);
+        bg.setCornerRadius(40 * d);
+        bar.setBackground(bg);
+        int glass = 0x40FFFFFF;
+        bar.addView(round("›", glass, 0xFFFFFFFF, () -> step(1)));                        // next (ringed, like the site)
+        bar.addView(round("⧉", 0xFF2F80ED, 0, () -> switchTo("popup")));                 // floating window
+        bar.addView(round("🎧", glass, 0, () -> switchTo("audio")));                      // sound in the island
+        bar.addView(round("‹", glass, 0, () -> step(-1)));                                // previous
+        bar.addView(round("✕", 0xFFE53935, 0, this::finish));                            // close
+        col.addView(bar);
+        return col;
     }
 
     /** The player page: YouTube's embed, or a stream through hls.js (like the site). */

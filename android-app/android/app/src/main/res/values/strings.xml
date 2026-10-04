@@ -44,6 +44,8 @@
     <string name="widget_clock_label">DriveCast · الساعة</string>
     <string name="widget_media_home_desc">شاشة الوسائط كاملة: استكمال المشاهدة، المفضلات، القرّاء، الاشتراكات وأحدث التلاوات</string>
     <string name="widget_media_home_label">DriveCast · الوسائط</string>
+    <string name="widget_azkar_desc">أذكار الصباح أو المساء حسب الوقت، مع عدّاد لكل ذكر</string>
+    <string name="widget_azkar_label">DriveCast · الأذكار</string>
     <string name="goal_channel">أهداف فرقي</string>
     <string name="shortcut_dashboard">الرئيسية</string>
     <string name="shortcut_matches">المباريات</string>

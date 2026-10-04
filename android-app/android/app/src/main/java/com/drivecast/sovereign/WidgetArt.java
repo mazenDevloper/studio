@@ -952,4 +952,44 @@ final class WidgetArt {
         Art.centerText(c, Art.ellipsize(t, name, w * 0.95f), w / 2f, r.bottom + (h - r.bottom) / 2, t);
         return b;
     }
+
+    // ================================================================================================ azkar
+
+    /** A dhikr: its name (emerald), the text, and the counter circle (remaining, ✓ when done). Height fits the text. */
+    static Bitmap zikrCard(Context ctx, int w, String name, String text, int count, int done) {
+        float pad = w * 0.045f, circle = w * 0.13f;
+        TextPaint tp = Art.text(Fonts.bold(ctx), w * 0.042f, Art.alpha(Art.WHITE, done >= count ? 0.45f : 0.9f));
+        int textW = Math.round(w - pad * 3 - circle);
+        StaticLayout sl = new StaticLayout(text, tp, textW, Layout.Alignment.ALIGN_NORMAL, 1.25f, 0f, false);
+        float titleH = w * 0.07f;
+        int h = Math.round(Math.max(circle + pad * 2, pad * 1.6f + titleH + sl.getHeight()));
+        Bitmap b = blank(w, h);
+        Canvas c = new Canvas(b);
+        RectF r = new RectF(0, 0, w, h);
+        boolean finished = done >= count;
+        float rad = w * 0.05f;
+        Art.fill(c, r, rad, finished ? Art.alpha(Art.EMERALD, 0.1f) : Art.alpha(Art.WHITE, 0.05f));
+        Art.stroke(c, r, rad, finished ? Art.alpha(Art.EMERALD, 0.45f) : Art.alpha(Art.WHITE, 0.1f), Math.max(1f, w / 300f));
+        TextPaint np = Art.text(Fonts.black(ctx), titleH * 0.62f, Art.EMERALD);
+        np.setTextAlign(Paint.Align.RIGHT);
+        c.drawText(name, w - pad, Art.baseline(np, pad * 0.8f + titleH / 2), np);
+        c.save();
+        c.translate(w - pad - textW, pad * 0.8f + titleH);
+        sl.draw(c);
+        c.restore();
+        // the counter
+        float cx = pad + circle / 2, cy = h / 2f;
+        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        p.setColor(finished ? Art.EMERALD : Art.alpha(Art.WHITE, 0.08f));
+        c.drawCircle(cx, cy, circle / 2, p);
+        Paint ring = new Paint(Paint.ANTI_ALIAS_FLAG);
+        ring.setStyle(Paint.Style.STROKE);
+        ring.setStrokeWidth(circle * 0.07f);
+        ring.setStrokeCap(Paint.Cap.ROUND);
+        ring.setColor(Art.EMERALD);
+        if (!finished && done > 0) c.drawArc(new RectF(cx - circle / 2, cy - circle / 2, cx + circle / 2, cy + circle / 2), -90, 360f * done / count, false, ring);
+        TextPaint cp = Art.text(Fonts.black(ctx), circle * 0.42f, finished ? 0xFF04140D : Art.WHITE);
+        Art.centerText(c, finished ? "✓" : Art.arabicDigits(String.valueOf(count - done)), cx, cy, cp);
+        return b;
+    }
 }

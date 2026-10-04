@@ -558,6 +558,8 @@ public class IslandService extends Service {
         it.kickoff = m.optLong("timestamp") * 1000L;
         it.kickoffText = Art.to12h(m.optString("omanTime"));
         it.fav = m.optBoolean("favorite");
+        JSONObject lg = m.optJSONObject("league");
+        it.league = lg != null ? lg.optString("name") : "";
         return it;
     }
 
@@ -760,14 +762,14 @@ public class IslandService extends Service {
         }
 
         float heightPx() {
-            if ("goal".equals(item.kind)) return dp(item.scorer.isEmpty() ? 72 : 96);
+            if ("goal".equals(item.kind)) return dp(item.scorer.isEmpty() ? 150 : 200);
             return dp(big ? 60 : 44);
         }
 
         @Override
         protected void onMeasure(int wSpec, int hSpec) {
             float h = heightPx();
-            float w = "goal".equals(item.kind) ? Math.min(dp(380), getResources().getDisplayMetrics().widthPixels - dp(24))
+            float w = "goal".equals(item.kind) ? Math.min(dp(420), getResources().getDisplayMetrics().widthPixels - dp(24))
                     : IslandArt.measure(getContext(), item, h, big, now);
             // room for the glow around the pill
             int g = Math.round(dp(8));
@@ -817,7 +819,8 @@ public class IslandService extends Service {
                 float downX, downY;
                 int startX, startY;
                 boolean moved, longPressed;
-                final Runnable longPress = () -> { longPressed = true; openApp(); };
+                // long press: expand / collapse like a dynamic island
+                final Runnable longPress = () -> { longPressed = true; expanded = !expanded; islandSignature = ""; tick(); };
 
                 @Override
                 public boolean onTouch(View v, MotionEvent e) {
@@ -856,9 +859,14 @@ public class IslandService extends Service {
                                     return true;
                                 }
                                 if (celebration != null) {
-                                    celebration = null; // tap the goal card: back to the islands
+                                    // tap the goal card: the matches screen
+                                    celebration = null;
+                                    openRoute("/matches");
+                                } else if (hit != null && !"more".equals(hit.item.kind)) {
+                                    // tap an island: its screen (dhikr -> the azkar, match -> matches, prayer -> home)
+                                    openRoute(routeFor(hit.item));
                                 } else {
-                                    expanded = !expanded; // tap: expand / collapse like a dynamic island
+                                    expanded = !expanded; // "+n": show them all
                                 }
                                 islandSignature = "";
                                 tick();
@@ -1037,6 +1045,22 @@ public class IslandService extends Service {
             pills.clear();
             islandSignature = "";
         }
+    }
+
+    private static String routeFor(IslandArt.Item it) {
+        if ("match".equals(it.kind)) return "/matches";
+        if ("azkar".equals(it.kind)) return "/football";
+        String t = it.title == null ? "" : it.title;
+        if (t.contains("ذكار") || t.contains("ذكر")) return "/football";
+        return "/dashboard";
+    }
+
+    /** Open the app on a screen (the page navigates there). */
+    private void openRoute(String route) {
+        Intent intent = new Intent(this, MainActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        intent.putExtra("route", route);
+        try { startActivity(intent); } catch (Exception ignored) { }
     }
 
     private void openApp() {

@@ -222,7 +222,9 @@ public class FoldersWidgetService extends RemoteViewsService {
             float d = ctx.getResources().getDisplayMetrics().density;
             String kind = o.optString("kind");
             Bitmap card;
-            if ("playlist".equals(kind)) {
+            if ("zikr".equals(kind)) {
+                card = WidgetArt.zikrCard(ctx, Math.min(900, Math.round(340 * d)), o.optString("name"), o.optString("text"), o.optInt("count"), o.optInt("done"));
+            } else if ("playlist".equals(kind)) {
                 int w = Math.min(640, Math.round(200 * d)), h = Math.round(w * 0.6f);
                 card = WidgetArt.folderCard(ctx, w, h, o.optString("name"), o.optInt("count"), Images.get(ctx, o.optString("thumb", null), w));
             } else if ("video".equals(kind)) {

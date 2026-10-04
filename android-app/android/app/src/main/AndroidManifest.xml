@@ -259,6 +259,16 @@
             android:taskAffinity=".player"
             android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen" />
 
+        <receiver
+            android:name=".Widgets$AzkarWidget"
+            android:exported="false"
+            android:label="@string/widget_azkar_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_azkar_info" />
+        </receiver>
+
         <!-- the folders widget's scrolling grid of cards -->
         <service
             android:name=".FoldersWidgetService"
