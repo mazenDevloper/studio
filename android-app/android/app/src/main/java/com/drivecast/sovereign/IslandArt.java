@@ -68,6 +68,11 @@ final class IslandArt {
                 }
                 return w + h * 0.25f;
             }
+            case "audio": {
+                TextPaint n = Art.text(bold, h * (expanded ? 0.3f : 0.28f), Art.WHITE);
+                float tw = Math.min(n.measureText(it.title), h * (expanded ? 6f : 3.4f));
+                return h * 0.25f + h * 0.66f + h * 0.25f + tw + h * 0.35f + (expanded ? h * 0.9f : 0);
+            }
             case "countdown":
             case "azkar": {
                 TextPaint n = Art.text(bold, h * 0.24f, Art.WHITE);
@@ -104,6 +109,7 @@ final class IslandArt {
         fonts(ctx);
         switch (it.kind) {
             case "match": drawMatch(ctx, c, r, it, expanded, now); break;
+            case "audio": drawAudio(c, r, it, expanded, now); break;
             case "countdown":
             case "azkar": drawCountdown(c, r, it, now); break;
             case "goal": drawGoal(ctx, c, r, it, null, null); break;
@@ -194,6 +200,39 @@ final class IslandArt {
         TextPaint tp = Art.text(black, h * 0.46f, color);
         tp.setTextAlign(Paint.Align.CENTER);
         Art.glassText(c, t, mid, r.top + h * 0.66f, tp, color, Art.alpha(color, 0.55f));
+    }
+
+    /** Sound only: an emerald disc with play / pause, moving equaliser bars while playing, the title; expanded adds ✕. */
+    private static void drawAudio(Canvas c, RectF r, Item it, boolean expanded, long now) {
+        float h = r.height();
+        boolean playing = it.fav;
+        pillBase(c, r, Art.alpha(Art.EMERALD, playing ? 0.55f : 0.2f), playing ? 0x3334D399 : 0);
+        float icon = h * 0.66f;
+        RectF ib = new RectF(r.right - h * 0.25f - icon, r.centerY() - icon / 2, r.right - h * 0.25f, r.centerY() + icon / 2);
+        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        p.setColor(Art.EMERALD);
+        c.drawCircle(ib.centerX(), ib.centerY(), icon / 2, p);
+        Art.playIcon(c, ib.centerX() + (playing ? 0 : icon * 0.04f), ib.centerY(), icon * 0.22f, 0xFF000000, playing);
+        float textR = ib.left - h * 0.25f, textL = r.left + h * 0.35f + (expanded ? h * 0.9f : 0);
+        // equaliser
+        float bx = textL, bw = h * 0.07f;
+        for (int i = 0; i < 3 && playing; i++) {
+            float amp = 0.25f + 0.25f * (float) Math.abs(Math.sin(now / 180.0 + i * 1.7));
+            RectF bar = new RectF(bx + i * bw * 1.7f, r.centerY() - h * amp, bx + i * bw * 1.7f + bw, r.centerY() + h * amp);
+            Art.fill(c, bar, bw / 2, Art.alpha(Art.EMERALD, 0.85f));
+        }
+        if (playing) textL += bw * 5.5f;
+        TextPaint t = Art.text(bold, h * (expanded ? 0.3f : 0.28f), Art.WHITE);
+        t.setTextAlign(Paint.Align.RIGHT);
+        c.drawText(Art.ellipsize(t, it.title, Math.max(h, textR - textL)), textR, Art.baseline(t, r.centerY()), t);
+        if (expanded) {
+            float cx = r.left + h * 0.55f;
+            Paint x = new Paint(Paint.ANTI_ALIAS_FLAG);
+            x.setColor(Art.alpha(Art.RED, 0.85f));
+            c.drawCircle(cx, r.centerY(), h * 0.28f, x);
+            TextPaint xp = Art.text(bold, h * 0.3f, Art.WHITE);
+            Art.centerText(c, "✕", cx, r.centerY(), xp);
+        }
     }
 
     private static void drawMore(Canvas c, RectF r, Item it) {

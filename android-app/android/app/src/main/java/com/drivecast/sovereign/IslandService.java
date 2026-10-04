@@ -49,6 +49,8 @@ import java.util.Locale;
  */
 public class IslandService extends Service {
 
+    static final String POPUP = "com.drivecast.PLAY_POPUP";
+    static final String AUDIO = "com.drivecast.PLAY_AUDIO";
     private static final String CHANNEL = "drivecast_island";
     private static final int NOTIFICATION_ID = 4101;
     private static final long POLL_MS = 30_000;
@@ -128,6 +130,17 @@ public class IslandService extends Service {
         String a = intent != null ? intent.getAction() : null;
         if (a != null && a.startsWith("com.drivecast.QURAN_")) quranAction(a);
         if (WidgetActionReceiver.MAP_TOGGLE.equals(a)) handler.post(this::toggleMap);
+        if ((POPUP.equals(a) || AUDIO.equals(a)) && intent.getStringExtra("id") != null) {
+            final String t = intent.getStringExtra("type"), id = intent.getStringExtra("id"), title = intent.getStringExtra("title");
+            final boolean audio = AUDIO.equals(a);
+            handler.post(() -> {
+                if (audio) playAudio(t, id, title);
+                else {
+                    stopAudio();
+                    if ("stream".equals(t)) playStream(id, title); else playVideo(id, title);
+                }
+            });
+        }
         if (MediaBrowser.STREAM.equals(a) && intent.getStringExtra("url") != null) {
             final String url = intent.getStringExtra("url"), title = intent.getStringExtra("title");
             handler.post(() -> playStream(url, title));
@@ -253,6 +266,7 @@ public class IslandService extends Service {
         }
         removeIsland();
         hideMap();
+        stopAudio();
         if (instance == this) instance = null;
         super.onDestroy();
     }
@@ -289,7 +303,7 @@ public class IslandService extends Service {
         }
         List<IslandArt.Item> items = islandItems(now);
         updateNotification(items, now);
-        boolean show = !appVisible && (!items.isEmpty() || celebration != null) && canDraw()
+        boolean show = (!appVisible || audioView != null) && (!items.isEmpty() || celebration != null) && canDraw()
                 && NativeIslandPlugin.prefs(this).getBoolean("overlayEnabled", true);
         if (show) showIsland(items, now);
         else removeIsland();
@@ -529,6 +543,14 @@ public class IslandService extends Service {
      */
     private List<IslandArt.Item> islandItems(long now) {
         List<IslandArt.Item> out = new ArrayList<>();
+        if (audioView != null) {
+            IslandArt.Item it = new IslandArt.Item();
+            it.kind = "audio";
+            it.id = "audio";
+            it.title = audioTitle;
+            it.fav = audioPlaying;
+            out.add(it);
+        }
         for (JSONObject m : matches) {
             if (!m.optBoolean("island", true)) continue; // a favourite whose island switch is off: widget only
             IslandArt.Item it = matchItem(m, now);
@@ -573,6 +595,7 @@ public class IslandService extends Service {
             }
         }
         Collections.sort(out, (x, y) -> {
+            if ("audio".equals(x.kind) != "audio".equals(y.kind)) return "audio".equals(x.kind) ? -1 : 1;
             boolean fx = x.fav && x.live(), fy = y.fav && y.live();
             if (fx != fy) return fx ? -1 : 1;
             return Long.compare(Math.abs(distance(x, now)), Math.abs(distance(y, now)));
@@ -797,6 +820,15 @@ public class IslandService extends Service {
                             if (moved) {
                                 NativeIslandPlugin.prefs(IslandService.this).edit().putInt("islandX2", params.x).putInt("islandY2", params.y).apply();
                             } else if (!longPressed && e.getAction() == MotionEvent.ACTION_UP) {
+                                PillView hit = pillAt(e.getRawX(), e.getRawY());
+                                if (hit != null && "audio".equals(hit.item.kind) && celebration == null) {
+                                    // the sound island: tap = pause / resume (expanded: the ✕ part stops it)
+                                    if (expanded && e.getRawX() < hitLeft(hit) + hit.getHeight() * 0.9f) stopAudio();
+                                    else toggleAudio();
+                                    islandSignature = "";
+                                    tick();
+                                    return true;
+                                }
                                 if (celebration != null) {
                                     celebration = null; // tap the goal card: back to the islands
                                 } else {
@@ -887,6 +919,85 @@ public class IslandService extends Service {
             }
             first = false;
         }
+    }
+
+    private PillView pillAt(float x, float y) {
+        int[] loc = new int[2];
+        for (PillView p : pills) {
+            p.getLocationOnScreen(loc);
+            if (x >= loc[0] && x <= loc[0] + p.getWidth() && y >= loc[1] && y <= loc[1] + p.getHeight()) return p;
+        }
+        return null;
+    }
+
+    private int hitLeft(View v) {
+        int[] loc = new int[2];
+        v.getLocationOnScreen(loc);
+        return loc[0];
+    }
+
+    // ---- sound only, in the island ----
+
+    private FrameLayout audioWindow;
+    private android.webkit.WebView audioView;
+    private String audioTitle = "";
+    private boolean audioPlaying = false;
+
+    /** Plays the video / stream with no picture: a tiny invisible window keeps the player alive, the island shows it. */
+    @SuppressLint("SetJavaScriptEnabled")
+    private void playAudio(String type, String id, String title) {
+        hideMap();
+        stopAudio();
+        audioTitle = title == null || title.isEmpty() ? "يعمل الآن" : title;
+        audioWindow = new FrameLayout(this);
+        audioView = new android.webkit.WebView(this);
+        android.webkit.WebSettings ws = audioView.getSettings();
+        ws.setJavaScriptEnabled(true);
+        ws.setDomStorageEnabled(true);
+        ws.setMediaPlaybackRequiresUserGesture(false);
+        ws.setMixedContentMode(android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+        audioView.setWebViewClient(new android.webkit.WebViewClient());
+        audioWindow.addView(audioView, new FrameLayout.LayoutParams(dp(160), dp(90)));
+        int type2 = Build.VERSION.SDK_INT >= 26 ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY : WindowManager.LayoutParams.TYPE_PHONE;
+        WindowManager.LayoutParams lp = new WindowManager.LayoutParams(1, 1, type2,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE, PixelFormat.TRANSLUCENT);
+        lp.gravity = Gravity.TOP | Gravity.START;
+        lp.alpha = 0f;
+        try {
+            windowManager.addView(audioWindow, lp);
+        } catch (Exception e) {
+            audioWindow = null;
+        }
+        audioView.loadDataWithBaseURL(PlayerActivity.base(this, type), PlayerActivity.html(type, id), "text/html", "UTF-8", null);
+        audioView.onResume();
+        audioView.resumeTimers();
+        audioPlaying = true;
+        expanded = false;
+        islandSignature = "";
+        lastNotificationText = "";
+        tick();
+    }
+
+    private void toggleAudio() {
+        if (audioView == null) return;
+        audioView.evaluateJavascript("window.dcToggle&&dcToggle()", v -> {
+            audioPlaying = !"false".equals(v);
+            islandSignature = "";
+            tick();
+        });
+    }
+
+    private void stopAudio() {
+        if (audioWindow != null) {
+            try { windowManager.removeView(audioWindow); } catch (Exception ignored) { }
+        }
+        if (audioView != null) {
+            audioView.loadUrl("about:blank");
+            audioView.destroy();
+        }
+        audioWindow = null;
+        audioView = null;
+        audioPlaying = false;
     }
 
     private void removeIsland() {
@@ -1250,6 +1361,8 @@ public class IslandService extends Service {
                 String state = it.live() ? IslandArt.minuteText(it) : it.finished() ? "انتهت" : it.kickoffText;
                 String mid = it.live() || it.finished() ? it.sh + " - " + it.sa : "×";
                 line = state + "   " + it.home + "  " + mid + "  " + it.away;
+            } else if ("audio".equals(it.kind)) {
+                line = "🎧 " + it.title;
             } else if ("countdown".equals(it.kind) && it.at > now) {
                 line = it.title + "   " + Math.max(1, (it.at - now + 59_999) / 60_000) + " د";
             } else {
