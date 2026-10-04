@@ -1,0 +1,73 @@
+name: iOS IPA
+
+# Builds the iPhone app (ios-app/, XcodeGen) unsigned and publishes it as the "ios-latest" release (DriveCast.ipa).
+# Install it with Sideloadly or AltStore (they sign it with your Apple ID; a free Apple ID needs re-signing every 7
+# days). The app and its widget extension are ad-hoc signed with their App Group entitlement so the installer keeps it.
+on:
+  push:
+    branches: [main, "claude/**"]
+    paths: ["ios-app/**", ".github/workflows/ios-ipa.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ios-ipa-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Generate the Xcode project
+        working-directory: ios-app
+        run: |
+          brew install xcodegen
+          xcodegen generate
+
+      - name: Build (unsigned)
+        working-directory: ios-app
+        run: |
+          set -o pipefail
+          xcodebuild -project DriveCast.xcodeproj -target DriveCast -configuration Release -sdk iphoneos \
+            CURRENT_PROJECT_VERSION=${{ github.run_number }} \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" SYMROOT="$PWD/build" build 2>&1 | tee build.log | grep -E "error:|warning: .*deprecated|BUILD" || true
+          test -d build/Release-iphoneos/DriveCast.app
+
+      - name: Package the IPA
+        working-directory: ios-app
+        run: |
+          APP=build/Release-iphoneos/DriveCast.app
+          ls -la "$APP" "$APP/PlugIns" || true
+          for ex in "$APP"/PlugIns/*.appex; do codesign --force --sign - --entitlements Widgets/DriveCastWidgets.entitlements "$ex"; done
+          codesign --force --sign - --entitlements App/DriveCast.entitlements "$APP"
+          mkdir -p Payload && cp -R "$APP" Payload/
+          zip -qry DriveCast.ipa Payload
+          ls -la DriveCast.ipa
+
+      - name: Publish the build log (on failure)
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        working-directory: ios-app
+        run: |
+          grep -n -B2 -A6 "error:" build.log | head -300 > errors.txt || true
+          tail -c 150000 build.log > build-tail.txt || true
+          gh release delete ios-build-log --yes --cleanup-tag || true
+          gh release create ios-build-log errors.txt build-tail.txt --target "$GITHUB_SHA" --prerelease --title "iOS build failed" --notes "see errors.txt"
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        working-directory: ios-app
+        run: |
+          TAG=ios-latest
+          case "$GITHUB_REF_NAME" in main) ;; *) TAG=ios-preview ;; esac
+          gh release delete "$TAG" --yes --cleanup-tag || true
+          gh release create "$TAG" DriveCast.ipa --target "$GITHUB_SHA" --prerelease \
+            --title "DriveCast iPhone (build ${{ github.run_number }})" \
+            --notes "Built from ${GITHUB_REF_NAME} @ ${GITHUB_SHA::7}. Unsigned: install with Sideloadly or AltStore (iOS 16.2+; the Dynamic Island needs iPhone 14 Pro or newer)."

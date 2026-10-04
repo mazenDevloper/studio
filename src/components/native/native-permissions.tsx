@@ -30,6 +30,43 @@ export function NativePermissions() {
 
   if (!plugin || !status) return null;
 
+  // the iPhone app: the Dynamic Island (prayers and reminders on by default, matches from here)
+  if (status.platform === "ios") {
+    const toggles = [
+      { key: "prayer", title: "جزيرة الصلوات والتذكيرات", hint: "عدّاد الأذان والإقامة والتذكير القادم في الجزيرة الديناميكية، مع تنبيه عند كل وقت", on: status.prayerIsland !== false, set: (v: boolean) => plugin.setPrayerIsland({ enabled: v }) },
+      { key: "matches", title: "جزيرة المباريات", hint: "مباريات فرقك المفضلة المباشرة: الشعارات والنتيجة والدقيقة، وتنفتح الجزيرة عند الهدف", on: !!status.matchesIsland, set: (v: boolean) => plugin.setMatchesIsland({ enabled: v }) },
+    ];
+    return (
+      <section className="rounded-[2.5rem] bg-white/5 border border-white/10 p-6 md:p-8 space-y-4">
+        <h2 className="text-2xl font-black text-white flex items-center gap-3"><Smartphone className="w-7 h-7 text-emerald-400" /> الجزيرة الديناميكية</h2>
+        {!status.liveActivities && (
+          <button onClick={() => plugin.requestOverlay()} className="focusable no-focus-scale w-full text-right rounded-3xl border border-yellow-400/40 bg-black/30 p-4 text-sm font-bold text-yellow-300">
+            الأنشطة المباشرة متوقفة لهذا التطبيق - اضغط لفتح الإعدادات وتفعيل «الأنشطة المباشرة»
+          </button>
+        )}
+        {!status.notifications && (
+          <button onClick={() => { plugin.requestNotifications().finally(() => setTimeout(refresh, 800)); }} className="focusable no-focus-scale w-full text-right rounded-3xl border border-yellow-400/40 bg-black/30 p-4 flex items-center gap-3">
+            <BellRing className="w-6 h-6 text-yellow-300" />
+            <span className="flex-1 text-base font-black text-white">تفعيل التنبيهات (الأذان والإقامة والتذكيرات والأهداف)</span>
+          </button>
+        )}
+        <div className="grid gap-3 md:grid-cols-2">
+          {toggles.map(t => (
+            <label key={t.key} className={cn("rounded-3xl border p-4 flex items-start gap-3 cursor-pointer", t.on ? "bg-emerald-500/10 border-emerald-400/30" : "bg-black/30 border-white/10")}>
+              <input type="checkbox" checked={t.on} className="w-6 h-6 mt-0.5 accent-emerald-500 shrink-0"
+                onChange={e => { const v = e.target.checked; setStatus(s => (s ? { ...s, [t.key === "prayer" ? "prayerIsland" : "matchesIsland"]: v } : s)); t.set(v).then(refresh); }} />
+              <span className="flex-1 min-w-0">
+                <span className="block text-base font-black text-white">{t.title}</span>
+                <span className="block text-xs text-white/50 font-bold mt-1">{t.hint}</span>
+              </span>
+            </label>
+          ))}
+        </div>
+        {status.version && <p className="text-[11px] text-white/30 font-bold">إصدار التطبيق {status.version}</p>}
+      </section>
+    );
+  }
+
   const rows = [
     { key: "overlay", icon: Layers, title: "الظهور فوق التطبيقات", hint: "الجزيرة العائمة (المباريات المباشرة وعدّاد الصلاة) فوق أي تطبيق", ok: status.overlay, ask: () => plugin.requestOverlay() },
     { key: "accessibility", icon: Sparkles, title: "جزيرة فوق شريط الحالة", hint: "مثل تطبيقات Dynamic Island: فوق شريط الحالة وشاشة القفل ولا يوقفها توفير البطارية (فعّل DriveCast في إمكانية الوصول)", ok: !!status.accessibility, ask: () => plugin.requestAccessibility() },

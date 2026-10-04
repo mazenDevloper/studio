@@ -5,7 +5,8 @@
  * browser none of this exists and every helper is a no-op.
  */
 
-export interface NativeStatus { overlay: boolean; background: boolean; notifications: boolean; overlayEnabled: boolean; version?: string; textZoom?: number; accessibility?: boolean }
+export interface NativeStatus { overlay: boolean; background: boolean; notifications: boolean; overlayEnabled: boolean; version?: string; textZoom?: number; accessibility?: boolean;
+  /** the iPhone app: Dynamic Island switches */ platform?: "ios"; liveActivities?: boolean; prayerIsland?: boolean; matchesIsland?: boolean }
 
 interface NativeIslandPlugin {
   configure(o: { config: string }): Promise<void>;
@@ -17,6 +18,8 @@ interface NativeIslandPlugin {
   requestAccessibility(): Promise<void>;
   setTextZoom(o: { percent: number }): Promise<void>;
   updateWidgets(o: { data: string }): Promise<void>;
+  setMatchesIsland(o: { enabled: boolean }): Promise<void>;
+  setPrayerIsland(o: { enabled: boolean }): Promise<void>;
   setVideoPlaying(o: { playing: boolean }): Promise<void>;
   takePendingCommands(): Promise<{ commands: NativeCommand[] }>;
   addListener(event: "command", cb: (c: NativeCommand) => void): Promise<{ remove: () => void }> | { remove: () => void };
