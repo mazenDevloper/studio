@@ -403,7 +403,7 @@ public class IslandService extends Service {
             lastPollOk = System.currentTimeMillis();
             List<IslandArt.Item> goals = detectGoals(mine);
             for (IslandArt.Item g : goals) findScorer(origin, g);
-            NativeIslandPlugin.prefs(this).edit().putString("matchesData", widgetData.toString()).apply();
+            NativeIslandPlugin.prefs(this).edit().putString("matchesData", widgetData.toString()).putLong("matchesAt", System.currentTimeMillis()).apply();
             // the logos, so the islands draw them right away
             List<String> logos = new ArrayList<>();
             for (JSONObject m : mine) {
@@ -589,7 +589,7 @@ public class IslandService extends Service {
             }
             out.add(it);
         }
-        JSONArray list = config.optJSONArray("countdowns");
+        JSONArray list = Widgets.countdowns(this);
         for (int i = 0; list != null && i < list.length(); i++) {
             JSONObject c = list.optJSONObject(i);
             if (c == null) continue;

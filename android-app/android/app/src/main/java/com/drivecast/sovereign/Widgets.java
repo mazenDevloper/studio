@@ -147,13 +147,69 @@ public final class Widgets {
         });
     }
 
+    private static long lastEmptyFetch = 0;
+
+    /**
+     * Today's and tomorrow's adhan / iqamah times: what the page sent, or - the app never opened, or not today -
+     * worked out here from the cloud prayer times and settings, like the page does.
+     */
+    static JSONArray countdowns(Context ctx) {
+        JSONArray sent = json(ctx, "config").optJSONArray("countdowns");
+        long now = System.currentTimeMillis();
+        boolean fresh = false;
+        for (int i = 0; sent != null && i < sent.length(); i++) if (sent.optJSONObject(i) != null && sent.optJSONObject(i).optLong("at") > now) fresh = true;
+        if (fresh) return sent;
+        JSONArray out = new JSONArray();
+        JSONArray days = Cloud.array(ctx, "cloud_prayers");
+        JSONArray settings = Cloud.master(ctx).optJSONArray("prayerSettings");
+        if (settings == null || settings.length() == 0) {
+            settings = new JSONArray();
+            String[][] d = {{"fajr", "الفجر", "25"}, {"sunrise", "الشروق", "0"}, {"dhuhr", "الظهر", "20"}, {"asr", "العصر", "20"}, {"maghrib", "المغرب", "10"}, {"isha", "العشاء", "20"}};
+            try {
+                for (String[] x : d) settings.put(new JSONObject().put("id", x[0]).put("name", x[1]).put("iqamahDuration", Integer.parseInt(x[2])));
+            } catch (Exception ignored) {
+            }
+        }
+        for (int off = 0; off <= 1; off++) {
+            Calendar c = Calendar.getInstance();
+            c.add(Calendar.DAY_OF_MONTH, off);
+            c.set(Calendar.HOUR_OF_DAY, 0);
+            c.set(Calendar.MINUTE, 0);
+            c.set(Calendar.SECOND, 0);
+            c.set(Calendar.MILLISECOND, 0);
+            String date = Cloud.day(c.getTimeInMillis());
+            JSONObject row = null;
+            for (int i = 0; i < days.length(); i++) if (date.equals(days.optJSONObject(i).optString("date"))) row = days.optJSONObject(i);
+            if (row == null) continue;
+            for (int i = 0; i < settings.length(); i++) {
+                JSONObject s = settings.optJSONObject(i);
+                if (s == null) continue;
+                String id = s.optString("id");
+                String ref = row.optString("duha".equals(id) ? "sunrise" : id, "");
+                if (ref.isEmpty() || !ref.contains(":")) continue;
+                String[] hm = ref.split(":");
+                long at = c.getTimeInMillis() + ((Integer.parseInt(hm[0].trim()) * 60L + Integer.parseInt(hm[1].trim().substring(0, 2)) + ("duha".equals(id) ? 15 : 0) + s.optInt("offsetMinutes")) * 60_000L);
+                try {
+                    if (s.optBoolean("showCountdown", true)) out.put(new JSONObject().put("title", s.optString("name")).put("at", at).put("kind", "azan"));
+                    if (s.optInt("iqamahDuration") > 0) out.put(new JSONObject().put("title", "إقامة " + s.optString("name")).put("at", at + s.optInt("iqamahDuration") * 60_000L).put("kind", "iqamah"));
+                } catch (Exception ignored) {
+                }
+            }
+        }
+        return out;
+    }
+
     private interface Builder {
         RemoteViews build(Context ctx, int w, int h, int realH);
     }
 
     private static void renderAll(Context ctx) {
         AppWidgetManager m = AppWidgetManager.getInstance(ctx);
-        Cloud.refresh(ctx, false);
+        // a widget with nothing to show fetches its data at once (no need to open the app), at most once a minute
+        boolean empty = Cloud.array(ctx, "cloud_channels").length() == 0 || Cloud.master(ctx).length() == 0
+                || Cloud.array(ctx, "cloud_prayers").length() == 0 || Cloud.array(ctx, "cloud_reciters").length() == 0;
+        Cloud.refresh(ctx, empty && System.currentTimeMillis() - lastEmptyFetch > 60_000 && (lastEmptyFetch = System.currentTimeMillis()) > 0);
+        Cloud.matchesIfStale(ctx);
         render(ctx, m, PrayerWidget.class, 250, 110, Widgets::prayer);
         render(ctx, m, MatchesWidget.class, 250, 110, Widgets::matches);
         render(ctx, m, MediaWidget.class, 250, 80, Widgets::media);
@@ -241,7 +297,7 @@ public final class Widgets {
     private static RemoteViews prayer(Context ctx, int w, int h, int realH) {
         RemoteViews v = new RemoteViews(ctx.getPackageName(), R.layout.widget_prayer);
         v.setOnClickPendingIntent(R.id.widget_root, openApp(ctx, "/dashboard", 101));
-        JSONArray list = json(ctx, "config").optJSONArray("countdowns");
+        JSONArray list = countdowns(ctx);
         long now = System.currentTimeMillis();
         SimpleDateFormat day = new SimpleDateFormat("yyyyMMdd", Locale.ROOT);
         SimpleDateFormat hm = new SimpleDateFormat("H:mm", Locale.ROOT);
@@ -579,7 +635,7 @@ public final class Widgets {
         int h12 = g.get(Calendar.HOUR) == 0 ? 12 : g.get(Calendar.HOUR);
         String now = h12 + ":" + String.format(Locale.ROOT, "%02d", g.get(Calendar.MINUTE));
         // the next adhan
-        JSONArray list = json(ctx, "config").optJSONArray("countdowns");
+        JSONArray list = countdowns(ctx);
         long t = System.currentTimeMillis(), nextAt = 0;
         String next = null;
         for (int i = 0; list != null && i < list.length(); i++) {
@@ -606,7 +662,7 @@ public final class Widgets {
     // ---- the dashboard's prayer bar (all of today's prayers side by side) ----
 
     private static RemoteViews prayerBar(Context ctx, int w, int h, int realH) {
-        JSONArray list = json(ctx, "config").optJSONArray("countdowns");
+        JSONArray list = countdowns(ctx);
         long now = System.currentTimeMillis();
         String today = Cloud.day(now);
         SimpleDateFormat hm = new SimpleDateFormat("H:mm", Locale.ROOT);

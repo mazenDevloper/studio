@@ -156,6 +156,47 @@ final class Cloud {
         e.apply();
     }
 
+    private static long lastMatches = 0;
+
+    /**
+     * The matches widget without the app: when the scores the service keeps are missing or old (the service isn't
+     * running), fetch every favourite team's matches here - every 2 minutes while one is live, 15 otherwise.
+     */
+    static void matchesIfStale(Context ctx) {
+        long now = System.currentTimeMillis();
+        JSONArray cur = Widgets.array(ctx, "matchesData");
+        boolean live = false;
+        for (int i = 0; i < cur.length(); i++) if ("live".equals(cur.optJSONObject(i).optString("status"))) live = true;
+        long age = now - NativeIslandPlugin.prefs(ctx).getLong("matchesAt", 0);
+        if (cur.length() > 0 && age < (live ? 2 * 60_000L : 15 * 60_000L)) return;
+        if (now - lastMatches < 60_000L) return;
+        lastMatches = now;
+        JSONArray teams = master(ctx).optJSONArray("favoriteTeams");
+        if (teams == null || teams.length() == 0) return;
+        StringBuilder t = new StringBuilder();
+        for (int i = 0; i < teams.length(); i++) {
+            JSONObject f = teams.optJSONObject(i);
+            if (f != null && !f.optString("name").isEmpty()) t.append(t.length() > 0 ? "|" : "").append(favSpec(f));
+        }
+        String origin = Widgets.json(ctx, "widgets").optString("origin", "https://cplay2.vercel.app");
+        try {
+            HttpURLConnection c = (HttpURLConnection) new URL(origin + "/api/matches?limit=12&teams=" + java.net.URLEncoder.encode(t.toString(), "UTF-8")).openConnection();
+            c.setConnectTimeout(15_000);
+            c.setReadTimeout(40_000);
+            if (c.getResponseCode() != 200) return;
+            StringBuilder sb = new StringBuilder();
+            try (BufferedReader r = new BufferedReader(new InputStreamReader(c.getInputStream(), "UTF-8"))) {
+                String line;
+                while ((line = r.readLine()) != null) sb.append(line);
+            }
+            JSONArray list = new JSONObject(sb.toString()).optJSONArray("matches");
+            JSONArray mine = new JSONArray();
+            for (int i = 0; list != null && i < list.length(); i++) if (list.getJSONObject(i).optBoolean("favorite")) mine.put(list.getJSONObject(i));
+            NativeIslandPlugin.prefs(ctx).edit().putString("matchesData", mine.toString()).putLong("matchesAt", now).apply();
+        } catch (Exception ignored) {
+        }
+    }
+
     static String day(long ms) {
         return new SimpleDateFormat("yyyy-MM-dd", Locale.ROOT).format(new Date(ms));
     }
