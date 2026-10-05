@@ -352,7 +352,10 @@ public class IslandService extends Service {
         }
         List<IslandArt.Item> items = islandItems(now);
         updateNotification(items, now);
-        boolean allowed = (!appVisible || audioView != null) && canDraw() && NativeIslandPlugin.prefs(this).getBoolean("overlayEnabled", true);
+        boolean testing = testUntil > now;
+        if (!testing && !testItems.isEmpty()) { testItems.clear(); islandSignature = ""; }
+        if (testing && !testItems.isEmpty()) { items = new ArrayList<>(items); items.addAll(0, testItems); }
+        boolean allowed = (!appVisible || audioView != null || testing) && canDraw() && NativeIslandPlugin.prefs(this).getBoolean("overlayEnabled", true);
         // hidden from the bubble: only a goal, a prayer that is due within the minute and the sound island still show
         boolean hidden = Hub.bool(this, "islandsHidden", false);
         List<IslandArt.Item> visible = items;
@@ -813,16 +816,99 @@ public class IslandService extends Service {
             say("هدف ل" + team + (g.scorer.isEmpty() ? "" : "، " + g.scorer) + (g.minute.isEmpty() ? "" : "، الدقيقة " + g.minute.replace("'", ""))
                     + ". النتيجة " + g.sh + " " + g.sa);
         }
+        if (celebration != null) { goalQueue.add(g); return; } // one after the other, never on top
+        startCelebration(g);
+    }
+
+    private final List<IslandArt.Item> goalQueue = new ArrayList<>();
+
+    private void startCelebration(IslandArt.Item g) {
+        g.shownAt = System.currentTimeMillis();
+        long d = IslandArt.goalDuration(g);
         celebration = g;
-        celebrationUntil = System.currentTimeMillis() + 7_000;
+        celebrationUntil = g.shownAt + d;
         islandSignature = ""; // rebuild
         handler.postDelayed(() -> {
-            if (System.currentTimeMillis() >= celebrationUntil) {
+            if (celebration == g) {
                 celebration = null;
                 islandSignature = "";
+                if (!goalQueue.isEmpty()) startCelebration(goalQueue.remove(0));
                 tick();
             }
-        }, 7_100);
+        }, d + 100);
+        tick();
+    }
+
+    // ---- test mode (settings): fake islands for a minute, goals every 3 seconds ----
+
+    private long testUntil = 0;
+    private final List<IslandArt.Item> testItems = new ArrayList<>();
+
+    static void test(String kind) {
+        IslandService s = instance;
+        if (s != null) s.handler.post(() -> s.runTest(kind));
+    }
+
+    private void runTest(String kind) {
+        long now = System.currentTimeMillis();
+        testUntil = Math.max(testUntil, now + ("goal".equals(kind) ? 35_000L : 60_000L));
+        // a real favourite match for the logos when there is one
+        JSONObject real = null;
+        JSONArray data = Widgets.array(this, "matchesData");
+        for (int i = 0; i < data.length(); i++) if (data.optJSONObject(i) != null && data.optJSONObject(i).optJSONObject("home") != null) { real = data.optJSONObject(i); break; }
+        IslandArt.Item base = real != null ? matchItem(real, now) : new IslandArt.Item();
+        if (real == null) {
+            base.kind = "match"; base.home = "الهلال"; base.away = "النصر"; base.league = "دوري روشن"; base.matchId = "";
+        }
+        base.id = "test-match";
+        base.status = "live";
+        base.fav = true;
+        base.elapsed = 84;
+        base.sh = 1; base.sa = 1;
+        base.critical = true;
+        if ("goal".equals(kind)) {
+            String[][] scorers = {{"home", "سالم الدوسري", "78'"}, {"away", "كريستيانو رونالدو", "81'"}, {"home", "ميتروفيتش", "84'"}, {"away", "ساديو ماني", "90+2'"}};
+            int h = base.sh, a = base.sa;
+            for (int i = 0; i < scorers.length; i++) {
+                final String[] sc = scorers[i];
+                if ("home".equals(sc[0])) h++; else a++;
+                final int fh = h, fa = a;
+                handler.postDelayed(() -> {
+                    IslandArt.Item g = copy(base);
+                    g.kind = "goal";
+                    g.id = "test-goal-" + System.nanoTime();
+                    g.side = sc[0];
+                    g.sh = fh;
+                    g.sa = fa;
+                    g.scorer = sc[1];
+                    g.minute = sc[2];
+                    g.photo = null;
+                    if (Hub.bool(this, "voiceFollow", false)) say("هدف ل" + ("home".equals(g.side) ? g.home : g.away) + "، " + g.scorer);
+                    celebrate(g);
+                    if (fh + fa == base.sh + base.sa + 1) new Thread(() -> notifyGoal(g)).start(); // the notification too, once
+                }, i * 3000L);
+            }
+        } else {
+            testItems.clear();
+            testItems.add(base);
+            IslandArt.Item cd = new IslandArt.Item();
+            cd.kind = "countdown"; cd.id = "test-cd"; cd.title = "المغرب"; cd.ckind = "azan"; cd.at = now + 3 * 60_000L;
+            testItems.add(cd);
+            IslandArt.Item iq = new IslandArt.Item();
+            iq.kind = "countdown"; iq.id = "test-iq"; iq.title = "إقامة العشاء"; iq.ckind = "iqamah"; iq.at = now + 7 * 60_000L;
+            testItems.add(iq);
+            IslandArt.Item rem = new IslandArt.Item();
+            rem.kind = "countdown"; rem.id = "test-rem"; rem.title = "اتصل بأبوي"; rem.ckind = "reminder"; rem.at = now + 9 * 60_000L;
+            testItems.add(rem);
+            IslandArt.Item az = new IslandArt.Item();
+            az.kind = "azkar"; az.id = "test-az"; az.title = "أذكار المساء";
+            testItems.add(az);
+            IslandArt.Item up = copy(base);
+            up.id = "test-up"; up.status = "upcoming"; up.critical = false; up.fav = false; up.kickoff = now + 25 * 60_000L; up.kickoffText = "9:30";
+            testItems.add(up);
+        }
+        islandSignature = "";
+        tick();
     }
 
     /** One island, drawn by IslandArt. */
@@ -837,7 +923,7 @@ public class IslandService extends Service {
         }
 
         float heightPx() {
-            if ("goal".equals(item.kind)) return dp(item.scorer.isEmpty() ? 150 : 200);
+            if ("goal".equals(item.kind)) return dp(item.scorer.isEmpty() ? 170 : 210);
             if (item.mini) return dp(40);
             return dp(big ? 60 : 44);
         }
@@ -845,7 +931,7 @@ public class IslandService extends Service {
         @Override
         protected void onMeasure(int wSpec, int hSpec) {
             float h = heightPx();
-            float w = "goal".equals(item.kind) ? Math.min(dp(420), getResources().getDisplayMetrics().widthPixels - dp(24))
+            float w = "goal".equals(item.kind) ? Math.min(dp(520), getResources().getDisplayMetrics().widthPixels - dp(24))
                     : IslandArt.measure(getContext(), item, h, big, now);
             // room for the glow around the pill
             int g = Math.round(dp(8));
@@ -856,6 +942,13 @@ public class IslandService extends Service {
         protected void onDraw(Canvas c) {
             float g = dp(8);
             RectF r = new RectF(g, g, getWidth() - g, getHeight() - g);
+            if ("goal".equals(item.kind)) {
+                // the site's two-act animation, drawn frame by frame
+                long t = System.currentTimeMillis() - item.shownAt;
+                IslandArt.drawGoalAnimated(getContext(), c, r, item, t);
+                if (t < IslandArt.goalDuration(item)) postInvalidateOnAnimation();
+                return;
+            }
             IslandArt.draw(getContext(), c, r, item, big, now);
         }
     }
@@ -1072,13 +1165,6 @@ public class IslandService extends Service {
                 // opening wide
                 p.setScaleX(0.8f);
                 p.animate().scaleX(1f).setDuration(260).setInterpolator(new android.view.animation.OvershootInterpolator(1.2f)).start();
-            }
-            if (first && "goal".equals(it.kind)) {
-                // the goal card pops in
-                p.setScaleX(0.6f);
-                p.setScaleY(0.6f);
-                p.setAlpha(0f);
-                p.animate().scaleX(1f).scaleY(1f).alpha(1f).setDuration(420).setInterpolator(new android.view.animation.OvershootInterpolator(1.6f)).start();
             }
             first = false;
         }

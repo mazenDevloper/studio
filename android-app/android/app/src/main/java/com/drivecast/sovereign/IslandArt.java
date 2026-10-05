@@ -44,6 +44,8 @@ final class IslandArt {
         boolean critical;
         /** shown as a small round icon while another island is opened wide */
         boolean mini;
+        /** goal: when its animation started (ms) */
+        long shownAt;
 
         boolean live() { return "live".equals(status); }
         boolean finished() { return "finished".equals(status); }
@@ -376,6 +378,223 @@ final class IslandArt {
             mp.setTextAlign(Paint.Align.RIGHT);
             c.drawText(minute, x - nameW, Art.baseline(mp, cy), mp);
         }
+    }
+
+    // ---- the goal animation, like the site's GoalCelebration: the pill grows into a card, a colour wipe, act 1
+    // "GOAL!" alone (slams in, then leaves), act 2 the scorer: label, photo from the scoring side, name, score bar,
+    // the scoring digit pops green - then the card shrinks back to a pill ----
+
+    static final long ACT2_MS = 2300;
+
+    static long goalDuration(Item it) {
+        return it.scorer != null && !it.scorer.isEmpty() ? 7000 : 5600;
+    }
+
+    private static float clamp01(float v) {
+        return v < 0 ? 0 : v > 1 ? 1 : v;
+    }
+
+    /** cubic-bezier(.2,.9,.2,1)-like: fast then soft */
+    private static float easeOut(float t) {
+        t = clamp01(t);
+        return 1 - (float) Math.pow(1 - t, 3);
+    }
+
+    /** overshoot a little, like (.2,.9,.25,1.1) */
+    private static float easeBack(float t) {
+        t = clamp01(t);
+        float c1 = 1.4f, c3 = c1 + 1;
+        return 1 + c3 * (float) Math.pow(t - 1, 3) + c1 * (float) Math.pow(t - 1, 2);
+    }
+
+    private static float prog(long t, long start, long dur) {
+        return clamp01((t - start) / (float) dur);
+    }
+
+    /** Draws the goal card at time t (ms since it started) inside the view's bounds (the full card size). */
+    static void drawGoalAnimated(Context ctx, Canvas c, RectF full, Item it, long t) {
+        fonts(ctx);
+        long D = goalDuration(it);
+        float W = full.width(), H = full.height();
+        float pillW = Math.min(W, H * 1.1f), pillH = H * 0.3f;
+        // size: pill -> card (120..520 ms), hold, back to a pill from 90 % of the show, gone at the end
+        float grow = easeOut(prog(t, 120, 400));
+        float shrink = easeOut(prog(t, (long) (D * 0.9f), (long) (D * 0.07f)));
+        float k = grow * (1 - shrink);
+        float w = pillW + (W - pillW) * k, h = pillH + (H - pillH) * k;
+        float alpha = t < 120 ? t / 120f : t > D * 0.97f ? clamp01(1 - (t - D * 0.97f) / (D * 0.03f)) : 1;
+        if (alpha <= 0) return;
+        RectF r = new RectF(full.centerX() - w / 2, full.top, full.centerX() + w / 2, full.top + h);
+        float rad = Math.min(h / 2, H * 0.18f + (pillH / 2 - H * 0.18f) * (1 - k));
+        int layer = c.saveLayerAlpha(full, Math.round(alpha * 255));
+        Art.glow(c, r, rad, 0x5900FF85, Math.min(W, H) * 0.08f);
+        android.graphics.Path clip = new android.graphics.Path();
+        clip.addRoundRect(r, rad, rad, android.graphics.Path.Direction.CW);
+        c.save();
+        c.clipPath(clip);
+        // background: deep purple with magenta / cyan blooms
+        Paint bg = new Paint(Paint.ANTI_ALIAS_FLAG);
+        bg.setShader(new android.graphics.LinearGradient(r.left, r.top, r.right, r.bottom,
+                new int[]{0xFF37003C, 0xFF24002A, 0xFF0B0010}, null, android.graphics.Shader.TileMode.CLAMP));
+        c.drawRect(r, bg);
+        Paint bloom = new Paint(Paint.ANTI_ALIAS_FLAG);
+        bloom.setShader(new android.graphics.RadialGradient(r.right - H * 0.1f, r.top, H * 0.9f, 0x40E90052, 0x00E90052, android.graphics.Shader.TileMode.CLAMP));
+        c.drawRect(r, bloom);
+        bloom.setShader(new android.graphics.RadialGradient(r.left + H * 0.1f, r.bottom, H * 0.9f, 0x3304F5FF, 0x0004F5FF, android.graphics.Shader.TileMode.CLAMP));
+        c.drawRect(r, bloom);
+        // the colour wipe (330..1130 ms)
+        float wp = prog(t, 330, 800);
+        if (wp > 0 && wp < 1) {
+            float x = r.left - r.width() * 1.2f + r.width() * 2.5f * easeOut(wp);
+            Paint wipe = new Paint(Paint.ANTI_ALIAS_FLAG);
+            wipe.setShader(new android.graphics.LinearGradient(x, 0, x + r.width() * 1.2f, 0, new int[]{0xFF00FF85, 0xFF04F5FF, 0xFFE90052}, null, android.graphics.Shader.TileMode.CLAMP));
+            wipe.setAlpha(Math.round(255 * (wp > 0.85f ? (1 - wp) / 0.15f : 1)));
+            c.save();
+            c.skew(-0.32f, 0);
+            c.drawRect(x + h * 0.3f, r.top - h, x + h * 0.3f + r.width() * 1.2f, r.bottom + h, wipe);
+            c.restore();
+        }
+        if (k > 0.6f) {
+            // ACT 1: "GOAL!" alone (480..2240 ms)
+            if (t >= 480 && t < ACT2_MS) {
+                float in = easeOut(prog(t, 480, 620));
+                float out = prog(t, 1960, 330);
+                float scale = (2.6f - 1.6f * in) * (1 - 0.28f * out);
+                TextPaint gp = Art.text(black, H * 0.42f, 0xFFFFFFFF);
+                gp.setTextSkewX(-0.22f);
+                gp.setShadowLayer(H * 0.12f, 0, 0, 0xE600FF85);
+                gp.setAlpha(Math.round(255 * clamp01((t - 480) / 80f) * (1 - out)));
+                c.save();
+                float cy = r.centerY() - r.height() * 0.28f * out;
+                c.scale(scale, scale, r.centerX(), cy);
+                Art.centerText(c, "GOAAAL!", r.centerX(), cy, gp);
+                c.restore();
+            }
+            // ACT 2: the scorer card
+            if (t >= ACT2_MS && t < D * 0.9f) {
+                long a = t - ACT2_MS;
+                boolean fromLeft = "home".equals(it.side);
+                float pad = H * 0.06f;
+                // label
+                float lp = easeOut(prog(a, 0, 360));
+                float ph = H * 0.12f, ly = r.top + pad - (1 - lp) * H * 0.07f;
+                TextPaint gl = Art.text(black, ph * 0.62f, 0xFF37003C);
+                gl.setTextSkewX(-0.18f);
+                String gt = "GOAL ⚽";
+                float gw = gl.measureText(gt) + ph * 1.1f;
+                RectF pill = new RectF(r.left + pad, ly, r.left + pad + gw, ly + ph);
+                int la = Math.round(255 * lp);
+                Paint pf = new Paint(Paint.ANTI_ALIAS_FLAG);
+                pf.setColor(0xFF00FF85);
+                pf.setAlpha(la);
+                c.drawRoundRect(pill, ph / 2, ph / 2, pf);
+                gl.setAlpha(la);
+                Art.centerText(c, gt, pill.centerX(), pill.centerY(), gl);
+                String meta = it.league + (it.minute.isEmpty() ? "" : (it.league.isEmpty() ? "" : " · ") + it.minute);
+                TextPaint mp = Art.text(bold, ph * 0.5f, Art.alpha(Art.WHITE, 0.7f));
+                mp.setAlpha(Math.round(180 * lp));
+                mp.setTextAlign(Paint.Align.LEFT);
+                c.drawText(Art.ellipsize(mp, meta, r.right - pill.right - pad * 2), pill.right + pad * 0.6f, Art.baseline(mp, pill.centerY()), mp);
+
+                boolean withScorer = it.scorer != null && !it.scorer.isEmpty();
+                Bitmap hl = Images.cached(ctx, it.homeLogo, 200), al = Images.cached(ctx, it.awayLogo, 200);
+                RectF bar;
+                if (withScorer) {
+                    float pr = H * 0.29f;
+                    float pcx = fromLeft ? r.left + pad + pr : r.right - pad - pr, pcy = r.bottom - pad - pr;
+                    // photo flies in from its side
+                    float fp = easeBack(prog(a, 60, 620));
+                    float off = (1 - fp) * pr * 2.8f * (fromLeft ? -1 : 1);
+                    float ps = 0.6f + 0.4f * fp;
+                    c.save();
+                    c.translate(off, 0);
+                    c.scale(ps, ps, pcx, pcy);
+                    Paint ring = new Paint(Paint.ANTI_ALIAS_FLAG);
+                    ring.setShader(new android.graphics.LinearGradient(pcx - pr, pcy - pr, pcx + pr, pcy + pr, new int[]{0xFF00FF85, 0xFF04F5FF, 0xFFE90052}, null, android.graphics.Shader.TileMode.CLAMP));
+                    ring.setAlpha(Math.round(255 * clamp01(fp)));
+                    c.drawCircle(pcx, pcy, pr, ring);
+                    Bitmap photo = Images.cached(ctx, it.photo, Math.round(pr * 2.2f));
+                    Bitmap scoring = fromLeft ? hl : al;
+                    if (photo != null) {
+                        Art.circleImage(c, photo, pcx, pcy, pr * 0.93f);
+                        if (scoring != null) {
+                            float br = pr * 0.3f, bx = fromLeft ? pcx + pr * 0.72f : pcx - pr * 0.72f, by = pcy + pr * 0.72f;
+                            Paint wb = new Paint(Paint.ANTI_ALIAS_FLAG);
+                            wb.setColor(0xFFFFFFFF);
+                            c.drawCircle(bx, by, br, wb);
+                            drawPlainLogo(c, scoring, bx, by, br * 0.7f, "");
+                        }
+                    } else {
+                        Paint wb = new Paint(Paint.ANTI_ALIAS_FLAG);
+                        wb.setColor(0xFFFFFFFF);
+                        c.drawCircle(pcx, pcy, pr * 0.93f, wb);
+                        drawPlainLogo(c, scoring, pcx, pcy, pr * 0.6f, fromLeft ? it.home : it.away);
+                    }
+                    c.restore();
+                    // name + minute, beside the photo
+                    float np = easeOut(prog(a, 330, 460));
+                    float nl = fromLeft ? pcx + pr + pad : r.left + pad, nr = fromLeft ? r.right - pad : pcx - pr - pad;
+                    TextPaint nm = Art.text(black, H * 0.13f, 0xFFFFFFFF);
+                    nm.setAlpha(Math.round(255 * np));
+                    nm.setTextAlign(fromLeft ? Paint.Align.LEFT : Paint.Align.RIGHT);
+                    float nx = (fromLeft ? nl : nr) + (1 - np) * H * 0.2f * (fromLeft ? 1 : -1);
+                    float ny = r.top + H * 0.32f;
+                    c.drawText(Art.ellipsize(nm, it.scorer, nr - nl), nx, Art.baseline(nm, ny), nm);
+                    TextPaint mm = Art.text(black, H * 0.065f, 0xFF00FF85);
+                    mm.setAlpha(Math.round(255 * np));
+                    mm.setTextAlign(fromLeft ? Paint.Align.LEFT : Paint.Align.RIGHT);
+                    c.drawText(it.minute, nx, Art.baseline(mm, ny + H * 0.11f), mm);
+                    bar = new RectF(nl, r.top + H * 0.5f, nr, r.bottom - pad);
+                } else {
+                    bar = new RectF(r.left + W * 0.12f, r.top + H * 0.28f, r.right - W * 0.12f, r.bottom - pad);
+                }
+                // the score bar slides up, in front of everything
+                float sp = easeOut(prog(a, 180, 460));
+                c.save();
+                c.translate(0, (1 - sp) * H * 0.16f);
+                Paint sb = new Paint(Paint.ANTI_ALIAS_FLAG);
+                sb.setColor(0xBF000000);
+                sb.setAlpha(Math.round(191 * sp));
+                float br2 = Math.min(bar.height() / 2, H * 0.14f);
+                c.drawRoundRect(bar, br2, br2, sb);
+                Art.stroke(c, bar, br2, Art.alpha(Art.WHITE, 0.15f * sp), Math.max(1f, H / 200f));
+                float lr = bar.height() * 0.31f;
+                drawPlainLogo(c, hl, bar.left + bar.height() * 0.55f, bar.centerY(), lr, it.home);
+                drawPlainLogo(c, al, bar.right - bar.height() * 0.55f, bar.centerY(), lr, it.away);
+                TextPaint num = Art.text(black, bar.height() * 0.72f, 0xFFFFFFFF);
+                num.setAlpha(Math.round(255 * sp));
+                String hs = String.valueOf(it.sh), as = String.valueOf(it.sa);
+                float wh = num.measureText(hs), wa = num.measureText(as), gap = bar.height() * 0.18f;
+                TextPaint dash = Art.text(black, bar.height() * 0.6f, Art.alpha(Art.WHITE, 0.4f));
+                float dw = dash.measureText("-");
+                float total = wh + gap + dw + gap + wa, sx = bar.centerX() - total / 2, base = Art.baseline(num, bar.centerY());
+                // the scoring digit pops (scale 1.9, green)
+                float pp = prog(a, 650, 700);
+                float pop = pp <= 0 ? 1 : pp < 0.35f ? 1 + 0.9f * (pp / 0.35f) : 1 + 0.9f * (1 - (pp - 0.35f) / 0.65f);
+                boolean green = pp > 0.1f;
+                drawDigit(c, hs, sx, base, num, "home".equals(it.side), pop, green, bar.centerY());
+                c.drawText("-", sx + wh + gap, Art.baseline(dash, bar.centerY()), dash);
+                drawDigit(c, as, sx + wh + gap + dw + gap, base, num, "away".equals(it.side), pop, green, bar.centerY());
+                c.restore();
+            }
+        }
+        c.restore();
+        Art.stroke(c, r, rad, Art.alpha(0xFF00FF85, 0.7f), Math.max(2f, H / 110f));
+        c.restoreToCount(layer);
+    }
+
+    private static void drawDigit(Canvas c, String d, float x, float base, TextPaint p, boolean scoring, float pop, boolean green, float cy) {
+        if (!scoring) { p.setColor(Art.WHITE); c.drawText(d, x, base, p); return; }
+        int keep = p.getAlpha();
+        p.setColor(green ? 0xFF00FF85 : Art.WHITE);
+        p.setAlpha(keep);
+        float w = p.measureText(d);
+        c.save();
+        c.scale(pop, pop, x + w / 2, cy);
+        c.drawText(d, x, base, p);
+        c.restore();
+        p.setColor(Art.WHITE);
+        p.setAlpha(keep);
     }
 
     /** A logo without a plate (the goal card shows them bare, like the site). */

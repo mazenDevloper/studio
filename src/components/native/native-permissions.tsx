@@ -127,6 +127,16 @@ export function NativePermissions() {
           {t.label}
         </label>
       ))}
+      {/* test mode: see the islands and the goal animation without waiting for a match */}
+      {plugin.testIslands && (
+        <div className="flex flex-wrap items-center gap-3 pt-2">
+          <span className="text-sm font-black text-white/80">وضع التجربة</span>
+          <button onClick={() => plugin.testIslands?.({ kind: "goal" })} data-nav-id="native-test-goal"
+            className="focusable no-focus-scale h-11 px-5 rounded-full bg-[#00ff85] text-[#37003c] text-sm font-black italic">⚽ تجربة الهدف (4 أهداف كل 3 ثوانٍ)</button>
+          <button onClick={() => plugin.testIslands?.({ kind: "islands" })} data-nav-id="native-test-islands"
+            className="focusable no-focus-scale h-11 px-5 rounded-full bg-white/10 border border-white/15 text-white text-sm font-black">🏝 تجربة الجزر (دقيقة)</button>
+        </div>
+      )}
       {/* the app's font size (Android text zoom) */}
       <div className="flex items-center gap-4 pt-2">
         <span className="text-sm font-black text-white/80 shrink-0 flex items-center gap-2"><Type className="w-5 h-5 text-emerald-400" /> حجم الخط</span>

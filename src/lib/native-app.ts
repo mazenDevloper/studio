@@ -25,6 +25,8 @@ interface NativeIslandPlugin {
   /** the shared state of the widgets / islands / page (Hub): read it, change a value (value = JSON text) */
   hubGet?(): Promise<{ state: string }>;
   hubSet?(o: { key: string; value: string }): Promise<void>;
+  /** settings' test: "goal" = four goals 3 s apart with the full animation; "islands" = sample islands for a minute */
+  testIslands?(o: { kind: "goal" | "islands" }): Promise<void>;
   addListener(event: "command", cb: (c: NativeCommand) => void): Promise<{ remove: () => void }> | { remove: () => void };
 }
 

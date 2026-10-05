@@ -87,6 +87,15 @@ public class NativeIslandPlugin extends Plugin {
      * page sent before. Manuscript pictures arriving as data: URLs are saved as files here, so the stored settings
      * stay small and the widget reads the picture from disk.
      */
+    /** Settings' test buttons: kind "goal" (four goals, one every 3 s) or "islands" (sample islands for a minute). */
+    @PluginMethod
+    public void testIslands(PluginCall call) {
+        IslandService.start(getContext());
+        String kind = call.getString("kind", "goal");
+        new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> IslandService.test(kind), 300);
+        call.resolve();
+    }
+
     /** The shared state (Hub): the page reads it when it starts. */
     @PluginMethod
     public void hubGet(PluginCall call) {
