@@ -3,6 +3,16 @@
     <shortcut
         android:enabled="true"
         android:icon="@mipmap/ic_launcher"
+        android:shortcutId="voice"
+        android:shortcutShortLabel="@string/shortcut_voice">
+        <intent
+            android:action="com.drivecast.VOICE"
+            android:targetClass="com.drivecast.sovereign.VoiceActivity"
+            android:targetPackage="com.drivecast.sovereign" />
+    </shortcut>
+    <shortcut
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
         android:shortcutId="dashboard"
         android:shortcutShortLabel="@string/shortcut_dashboard">
         <intent

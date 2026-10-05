@@ -119,6 +119,22 @@ export function NativeWidgetsBridge() {
         // the subscriptions widget: the media screen opens the search box / the tapped channel (see media-view)
         (window as any).__nativeMediaAction = { type: c.cmd, id: c.arg };
         window.dispatchEvent(new CustomEvent("native-media-action"));
+      } else if (c.cmd === "saveVideo") {
+        // the native player's save button: the general favourites (the store syncs it to the cloud)
+        try {
+          const v = JSON.parse(c.arg);
+          const has = (s.savedVideos || []).some(x => x.id === v.id);
+          if (has !== !!v.saved) s.toggleSaveVideo({ id: v.id, title: v.title || "", description: "", thumbnail: v.thumbnail || "", publishedAt: "" } as YouTubeVideo);
+        } catch {}
+      } else if (c.cmd === "reminderDone") {
+        // "تم ✓" on a reminder / dhikr island
+        if (c.arg) s.completeReminder(c.arg);
+      } else if (c.cmd === "hub") {
+        // a shared value changed on the phone (widget counter, islands hidden...): screens listening update
+        try {
+          const d = JSON.parse(c.arg);
+          window.dispatchEvent(new CustomEvent("native-hub", { detail: d }));
+        } catch {}
       } else if (c.cmd === "pip") {
         // the small floating window shows just the player; back to the previous layout afterwards
         if (c.arg === "1") { beforePip.current = s.isFullScreen; s.setIsFullScreen(true); }

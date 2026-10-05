@@ -34,7 +34,7 @@
         <service
             android:name=".IslandService"
             android:exported="false"
-            android:foregroundServiceType="mediaPlayback|specialUse">
+            android:foregroundServiceType="mediaPlayback|specialUse|location">
             <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="Floating island over other apps: live scores and prayer countdowns" />
         </service>
 
@@ -190,6 +190,31 @@
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_search_info" />
         </receiver>
 
+        <!-- Arabic voice commands (the bubble's long press, the app icon's shortcut) -->
+        <activity
+            android:name=".VoiceActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:taskAffinity=".voice"
+            android:theme="@android:style/Theme.DeviceDefault.Dialog.NoActionBar">
+            <intent-filter>
+                <action android:name="com.drivecast.VOICE" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <!-- choose / pin the manuscript of one manuscript widget -->
+        <activity
+            android:name=".ManuscriptPickActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:taskAffinity=".manupick"
+            android:theme="@android:style/Theme.DeviceDefault.Dialog.NoActionBar">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+
         <!-- the search box of the browsing widgets (a small dialog with the keyboard / voice) -->
         <activity
             android:name=".SearchActivity"
@@ -298,6 +323,8 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />

@@ -87,6 +87,42 @@ public class NativeIslandPlugin extends Plugin {
      * page sent before. Manuscript pictures arriving as data: URLs are saved as files here, so the stored settings
      * stay small and the widget reads the picture from disk.
      */
+    /** The shared state (Hub): the page reads it when it starts. */
+    @PluginMethod
+    public void hubGet(PluginCall call) {
+        JSObject r = new JSObject();
+        r.put("state", Hub.state(getContext()).toString());
+        call.resolve(r);
+    }
+
+    /** The page changed a shared value (value: JSON text): the widgets / islands follow. */
+    @PluginMethod
+    public void hubSet(PluginCall call) {
+        String key = call.getString("key", "");
+        if (key.isEmpty()) { call.resolve(); return; }
+        Object v = null;
+        try {
+            String raw = call.getString("value", "null");
+            v = new org.json.JSONTokener(raw).nextValue();
+            if (v == JSONObject.NULL) v = null;
+        } catch (Exception ignored) {
+        }
+        if ("azkarCounts".equals(key) && v instanceof JSONObject) {
+            // merge with the widget's counts (the larger wins), kept where the azkar widget reads them
+            JSONObject mine = MediaBrowser.azkarCounts(getContext()), in = (JSONObject) v;
+            try {
+                java.util.Iterator<String> it = in.keys();
+                while (it.hasNext()) { String k = it.next(); if (!"day".equals(k)) mine.put(k, Math.max(mine.optInt(k), in.optInt(k))); }
+                mine.put("day", Cloud.day(System.currentTimeMillis()));
+            } catch (Exception ignored) {
+            }
+            prefs(getContext()).edit().putString("azkarCounts", mine.toString()).apply();
+            v = mine;
+        }
+        Hub.set(getContext(), key, v, false);
+        call.resolve();
+    }
+
     @PluginMethod
     public void updateWidgets(PluginCall call) {
         Context ctx = getContext();

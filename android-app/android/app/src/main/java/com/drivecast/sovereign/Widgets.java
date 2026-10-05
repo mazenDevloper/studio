@@ -201,6 +201,9 @@ public final class Widgets {
         return out;
     }
 
+    /** The widget being drawn (for widgets with a per-widget choice, like a pinned manuscript). */
+    static int currentId = 0;
+
     private interface Builder {
         RemoteViews build(Context ctx, int w, int h, int realH);
     }
@@ -244,6 +247,7 @@ public final class Widgets {
         for (int id : ids) {
             try {
                 int[] s = sizePx(ctx, m, id, defW, defH);
+                currentId = id;
                 m.updateAppWidget(id, b.build(ctx, s[0], s[1], s[2]));
                 if (provider == FoldersWidget.class || provider == ChannelsWidget.class) m.notifyAppWidgetViewDataChanged(id, R.id.folders_grid);
             } catch (Throwable ignored) {
@@ -417,9 +421,15 @@ public final class Widgets {
 
     /** Today's Hijri date {day, month 0-11}: Umm al-Qura like the site (tabular before Android 7). */
     static int[] hijri() {
+        return hijri(System.currentTimeMillis());
+    }
+
+    /** {day, month (0 = Muharram), year} of a moment (Umm al-Qura). */
+    static int[] hijri(long when) {
         if (Build.VERSION.SDK_INT >= 24) {
             try {
                 android.icu.util.IslamicCalendar ic = new android.icu.util.IslamicCalendar();
+                ic.setTimeInMillis(when);
                 ic.setCalculationType(android.icu.util.IslamicCalendar.CalculationType.ISLAMIC_UMALQURA);
                 return new int[]{ic.get(android.icu.util.Calendar.DAY_OF_MONTH), ic.get(android.icu.util.Calendar.MONTH), ic.get(android.icu.util.Calendar.YEAR)};
             } catch (Throwable ignored) {
@@ -427,6 +437,7 @@ public final class Widgets {
         }
         // tabular Islamic calendar (Kuwaiti algorithm)
         Calendar g = Calendar.getInstance();
+        g.setTimeInMillis(when);
         int d = g.get(Calendar.DAY_OF_MONTH), mo = g.get(Calendar.MONTH) + 1, y = g.get(Calendar.YEAR);
         int jd = (1461 * (y + 4800 + (mo - 14) / 12)) / 4 + (367 * (mo - 2 - 12 * ((mo - 14) / 12))) / 12
                 - (3 * ((y + 4900 + (mo - 14) / 12) / 100)) / 4 + d - 32075;
@@ -508,7 +519,11 @@ public final class Widgets {
         JSONObject scales = master.optJSONObject("manuscriptScales");
         JSONArray cloudItems = Cloud.array(ctx, "cloud_manuscripts");
         JSONArray items = cloudItems.length() > 0 ? cloudItems : wd.optJSONArray("manuscripts");
-        String pinnedId = ms != null ? ms.optString("pinnedManuscriptId", "") : wd.optString("pinnedManuscriptId", "");
+        final int wid = currentId;
+        android.content.SharedPreferences pr = NativeIslandPlugin.prefs(ctx);
+        // this widget's own pin (chosen with its pin button) wins over the site's pinned manuscript
+        String ownPin = pr.getString("manuPin_" + wid, "");
+        String pinnedId = !ownPin.isEmpty() ? ownPin : ms != null ? ms.optString("pinnedManuscriptId", "") : wd.optString("pinnedManuscriptId", "");
         if ("null".equals(pinnedId)) pinnedId = "";
         List<JSONObject> ordered = new ArrayList<>();
         for (int i = 0; items != null && i < items.length(); i++) {
@@ -517,9 +532,9 @@ public final class Widgets {
             if (!pinnedId.isEmpty() && pinnedId.equals(o.optString("id"))) ordered.add(0, o); else ordered.add(o);
         }
         boolean pinned = !ordered.isEmpty() && !pinnedId.isEmpty() && pinnedId.equals(ordered.get(0).optString("id"));
-        int tap = NativeIslandPlugin.prefs(ctx).getInt("manuIdx", 0);
+        int tap = pr.getInt("manuIdx_" + wid, 0);
         // like the site: the pinned one stays, otherwise they take turns (every 5 minutes here)
-        int idx = ordered.isEmpty() ? 0 : (tap + (pinned ? 0 : (int) (System.currentTimeMillis() / 300_000L))) % ordered.size();
+        int idx = ordered.isEmpty() || (pinned && !ownPin.isEmpty()) ? 0 : (tap + (pinned ? 0 : (int) (System.currentTimeMillis() / 300_000L))) % ordered.size();
         JSONObject item = ordered.isEmpty() ? null : ordered.get(idx);
 
         Art.Ink ink = new Art.Ink();
@@ -553,9 +568,16 @@ public final class Widgets {
         if (item != null && fontUrl.isEmpty()) fontUrl = fontUrlFor(ctx, item.optString("fontFamily", ""));
         Typeface font = item != null && art == null ? Fonts.fromUrl(ctx, fontUrl) : null;
         float scale = item != null ? (float) (item.optDouble("scale", 1.0) * (scales != null ? scales.optDouble(item.optString("id"), 1.0) : 1.0)) : 1f;
-        RemoteViews v = canvas(ctx, WidgetArt.manuscript(ctx, w, h, bgImage, art, item != null ? item.optString("content", "") : null,
+        RemoteViews v = new RemoteViews(ctx.getPackageName(), R.layout.widget_manuscript);
+        v.setImageViewBitmap(R.id.widget_canvas, WidgetArt.manuscript(ctx, w, h, bgImage, art, item != null ? item.optString("content", "") : null,
                 font, scale, ink, pinned && idx == 0));
-        v.setOnClickPendingIntent(R.id.widget_root, action(ctx, WidgetActionReceiver.MANU_NEXT, 601));
+        v.setTextViewText(R.id.manu_pin, ownPin.isEmpty() ? "📌" : "📍");
+        v.setInt(R.id.manu_pin, "setBackgroundResource", ownPin.isEmpty() ? R.drawable.widget_btn : R.drawable.widget_btn_accent);
+        Intent next = new Intent(ctx, WidgetActionReceiver.class).setAction(WidgetActionReceiver.MANU_NEXT).putExtra("wid", wid);
+        // a tap shows the next one (a widget with its own pin keeps it)
+        v.setOnClickPendingIntent(R.id.widget_root, PendingIntent.getBroadcast(ctx, 6000 + wid, next, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT));
+        Intent pick = new Intent(ctx, ManuscriptPickActivity.class).putExtra("wid", wid).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        v.setOnClickPendingIntent(R.id.manu_pin, PendingIntent.getActivity(ctx, 7000 + wid, pick, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT));
         return v;
     }
 
@@ -647,6 +669,8 @@ public final class Widgets {
             long at = c.optLong("at");
             if (at > t && (next == null || at < nextAt)) { next = c.optString("title"); nextAt = at; }
         }
+        String occasion = Occasions.label(ctx);
+        if (occasion != null) hijriText = hijriText + "  •  " + occasion;
         v.setImageViewBitmap(R.id.widget_canvas, WidgetArt.day(ctx, w, h, hijriText, DAYS[g.get(Calendar.DAY_OF_WEEK) - 1], now));
         v.setOnClickPendingIntent(R.id.widget_root, openApp(ctx, "/dashboard", 1001));
         if (next == null) {

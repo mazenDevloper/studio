@@ -390,7 +390,8 @@ final class MediaBrowser {
             } catch (Exception ignored) {
             }
             NativeIslandPlugin.prefs(ctx).edit().putString("azkarCounts", counts.toString()).apply();
-            Widgets.updateAll(ctx);
+            // the page's azkar screen and the islands follow the widget's counter
+            Hub.set(ctx, "azkarCounts", counts);
             done.finish();
             return;
         }

@@ -50,10 +50,10 @@
             android:id="@+id/folders_grid"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:columnWidth="100dp"
+            android:columnWidth="150dp"
             android:horizontalSpacing="6dp"
             android:layoutDirection="rtl"
-            android:numColumns="3"
+            android:numColumns="2"
             android:stretchMode="columnWidth"
             android:verticalSpacing="6dp" />
 

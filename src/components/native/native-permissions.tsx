@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Layers, BatteryCharging, BellRing, Check, Smartphone, Type, Sparkles } from "lucide-react";
-import { nativeIsland, type NativeStatus } from "@/lib/native-app";
+import { nativeIsland, hubGet, hubSet, type NativeStatus, type NativeHubEvent } from "@/lib/native-app";
 import { cn } from "@/lib/utils";
 
 /**
@@ -21,6 +21,16 @@ export function NativePermissions() {
     document.addEventListener("visibilitychange", onVis);
     return () => document.removeEventListener("visibilitychange", onVis);
   }, [refresh]);
+
+  // the islands' shared switches (also changed from the bubble on the phone)
+  const [hub, setHub] = useState<Record<string, any>>({});
+  useEffect(() => {
+    hubGet().then(setHub);
+    const on = (e: Event) => { const d = (e as NativeHubEvent).detail; if (d?.key) setHub(h => ({ ...h, [d.key]: d.value })); };
+    window.addEventListener("native-hub", on);
+    return () => window.removeEventListener("native-hub", on);
+  }, []);
+  const setShared = (key: string, value: unknown) => { setHub(h => ({ ...h, [key]: value })); hubSet(key, value); };
 
   const zoom = (v: number) => {
     const percent = Math.max(50, Math.min(200, Math.round(v)));
@@ -104,6 +114,17 @@ export function NativePermissions() {
           onChange={e => plugin.setOverlayEnabled({ enabled: e.target.checked }).then(refresh)} />
         إظهار الجزيرة العائمة فوق التطبيقات الأخرى
       </label>
+      {[
+        { key: "islandsHidden", def: false, label: "إخفاء الجزر مؤقتاً (الهدف والأذان القريب يظهران رغم ذلك)" },
+        { key: "islandBubble", def: true, label: "زر الإخفاء / الإظهار العائم على حافة الشاشة" },
+        { key: "voiceFollow", def: false, label: "المتابعة الصوتية: قراءة الأهداف بصوت عربي أثناء القيادة" },
+      ].map(t => (
+        <label key={t.key} className="flex items-center gap-3 text-sm font-bold text-white/70">
+          <input type="checkbox" checked={typeof hub[t.key] === "boolean" ? hub[t.key] : t.def} className="w-5 h-5 accent-emerald-500"
+            onChange={e => setShared(t.key, e.target.checked)} />
+          {t.label}
+        </label>
+      ))}
       {/* the app's font size (Android text zoom) */}
       <div className="flex items-center gap-4 pt-2">
         <span className="text-sm font-black text-white/80 shrink-0 flex items-center gap-2"><Type className="w-5 h-5 text-emerald-400" /> حجم الخط</span>

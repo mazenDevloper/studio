@@ -40,6 +40,10 @@ final class IslandArt {
         String scorer = "", minute = "", photo;
         String league = "";
         int more;
+        /** the deciding minutes of a favourite's close match: gold pulsing ring, faster updates, opens by itself */
+        boolean critical;
+        /** shown as a small round icon while another island is opened wide */
+        boolean mini;
 
         boolean live() { return "live".equals(status); }
         boolean finished() { return "finished".equals(status); }
@@ -56,6 +60,7 @@ final class IslandArt {
     /** Width a pill needs at height h (px). */
     static float measure(Context ctx, Item it, float h, boolean expanded, long now) {
         fonts(ctx);
+        if (it.mini) return h;
         switch (it.kind) {
             case "match": {
                 float w = h * 0.25f;
@@ -102,12 +107,14 @@ final class IslandArt {
 
     static String countdownText(Item it, long now) {
         if ("azkar".equals(it.kind)) return "الآن";
+        if ("mosque".equals(it.ckind)) return it.minute; // "1.2 كم · 4 د"
         long left = (it.at - now) / 1000;
         return left > 0 ? "-" + Art.countdown(left) : "الآن";
     }
 
     static void draw(Context ctx, Canvas c, RectF r, Item it, boolean expanded, long now) {
         fonts(ctx);
+        if (it.mini) { drawMini(ctx, c, r, it, now); return; }
         switch (it.kind) {
             case "match": drawMatch(ctx, c, r, it, expanded, now); break;
             case "audio": drawAudio(c, r, it, expanded, now); break;
@@ -131,6 +138,11 @@ final class IslandArt {
     private static void drawMatch(Context ctx, Canvas c, RectF r, Item it, boolean expanded, long now) {
         float h = r.height();
         boolean favLive = it.fav && it.live();
+        if (it.critical) {
+            // the deciding minutes: a gold ring that breathes
+            float p = 0.55f + 0.45f * (float) Math.abs(Math.sin(now / 420.0));
+            pillBase(c, r, Art.alpha(Art.YELLOW, p), Art.alpha(0xFFFACC15, 0.55f * p));
+        } else
         pillBase(c, r, favLive ? Art.alpha(Art.YELLOW, 0.7f) : Art.alpha(Art.WHITE, 0.12f), favLive ? 0x59FACC15 : 0);
         float x = r.left + h * 0.25f;
         float cy = r.centerY();
@@ -182,6 +194,7 @@ final class IslandArt {
         float h = r.height();
         boolean iqamah = "iqamah".equals(it.ckind), azkar = "azkar".equals(it.kind);
         int color = azkar || iqamah ? Art.EMERALD : Art.BLUE;
+        if ("mosque".equals(it.ckind)) color = it.more == 0 ? Art.EMERALD : it.more == 1 ? Art.YELLOW : Art.RED;
         pillBase(c, r, Art.alpha(Art.WHITE, 0.12f), 0);
         // RTL: icon square on the right, text to its left (centred in the rest)
         float icon = h * 0.66f;
@@ -233,6 +246,36 @@ final class IslandArt {
             c.drawCircle(cx, r.centerY(), h * 0.28f, x);
             TextPaint xp = Art.text(bold, h * 0.3f, Art.WHITE);
             Art.centerText(c, "✕", cx, r.centerY(), xp);
+        }
+    }
+
+    /** A small round island (another one is open wide): the team logo with the score, or the icon. */
+    private static void drawMini(Context ctx, Canvas c, RectF r, Item it, long now) {
+        float h = r.height();
+        RectF q = new RectF(r.centerX() - h / 2, r.top, r.centerX() + h / 2, r.bottom);
+        int ring = it.critical ? Art.alpha(Art.YELLOW, 0.8f) : "audio".equals(it.kind) ? Art.alpha(Art.EMERALD, 0.6f) : Art.alpha(Art.WHITE, 0.14f);
+        pillBase(c, q, ring, 0);
+        float cx = q.centerX(), cy = q.centerY();
+        if ("match".equals(it.kind)) {
+            Bitmap hl = Images.cached(ctx, it.homeLogo, Math.round(h));
+            Art.logo(c, hl, cx, cy - h * 0.08f, h * 0.28f, it.home, bold);
+            String t = it.live() || it.finished() ? it.sh + "-" + it.sa : it.kickoffText;
+            TextPaint tp = Art.text(black, h * 0.2f, it.live() ? Art.EMERALD : Art.WHITE);
+            RectF tag = new RectF(cx - h * 0.34f, q.bottom - h * 0.3f, cx + h * 0.34f, q.bottom - h * 0.04f);
+            Art.fill(c, tag, tag.height() / 2, 0xE6000000);
+            Art.centerText(c, Art.ellipsize(tp, t, tag.width()), cx, tag.centerY(), tp);
+        } else if ("audio".equals(it.kind)) {
+            Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+            p.setColor(Art.EMERALD);
+            c.drawCircle(cx, cy, h * 0.3f, p);
+            Art.playIcon(c, cx, cy, h * 0.11f, 0xFF000000, it.fav);
+        } else if ("azkar".equals(it.kind)) {
+            Art.centerText(c, "📿", cx, cy, Art.text(Typeface.DEFAULT, h * 0.4f, Art.WHITE));
+        } else if ("countdown".equals(it.kind)) {
+            int color = "iqamah".equals(it.ckind) || "reminder".equals(it.ckind) ? Art.EMERALD : Art.BLUE;
+            Art.clockIcon(c, cx, cy, h * 0.2f, color);
+        } else {
+            drawMore(c, q, it);
         }
     }
 

@@ -22,6 +22,9 @@ interface NativeIslandPlugin {
   setPrayerIsland(o: { enabled: boolean }): Promise<void>;
   setVideoPlaying(o: { playing: boolean }): Promise<void>;
   takePendingCommands(): Promise<{ commands: NativeCommand[] }>;
+  /** the shared state of the widgets / islands / page (Hub): read it, change a value (value = JSON text) */
+  hubGet?(): Promise<{ state: string }>;
+  hubSet?(o: { key: string; value: string }): Promise<void>;
   addListener(event: "command", cb: (c: NativeCommand) => void): Promise<{ remove: () => void }> | { remove: () => void };
 }
 
@@ -36,3 +39,21 @@ export function nativeIsland(): NativeIslandPlugin | null {
 }
 
 export const isNativeApp = () => !!nativeIsland();
+
+/** Change a value shared with the widgets and islands (no-op in a browser). */
+export function hubSet(key: string, value: unknown) {
+  nativeIsland()?.hubSet?.({ key, value: JSON.stringify(value ?? null) }).catch(() => {});
+}
+
+/** The shared state now (empty in a browser). */
+export async function hubGet(): Promise<Record<string, any>> {
+  try {
+    const r = await nativeIsland()?.hubGet?.();
+    return r?.state ? JSON.parse(r.state) : {};
+  } catch {
+    return {};
+  }
+}
+
+/** A shared value changed on the phone (widget, island, bubble...): listen with window "native-hub". */
+export type NativeHubEvent = CustomEvent<{ key: string; value: any }>;

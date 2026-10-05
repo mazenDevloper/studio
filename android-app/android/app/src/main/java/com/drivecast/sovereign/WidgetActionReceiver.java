@@ -56,7 +56,8 @@ public class WidgetActionReceiver extends BroadcastReceiver {
             ContextCompat.startForegroundService(ctx, s);
         } else if (MANU_NEXT.equals(a)) {
             android.content.SharedPreferences p = NativeIslandPlugin.prefs(ctx);
-            p.edit().putInt("manuIdx", p.getInt("manuIdx", 0) + 1).apply();
+            String k = "manuIdx_" + intent.getIntExtra("wid", 0);
+            p.edit().putInt(k, p.getInt(k, 0) + 1).apply();
             Widgets.updateAll(ctx);
         } else if (a.startsWith("com.drivecast.QURAN_")) {
             Intent s = new Intent(ctx, IslandService.class);

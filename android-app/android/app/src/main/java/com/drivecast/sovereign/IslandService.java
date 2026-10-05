@@ -51,6 +51,7 @@ public class IslandService extends Service {
 
     static final String POPUP = "com.drivecast.PLAY_POPUP";
     static final String AUDIO = "com.drivecast.PLAY_AUDIO";
+    static final String QURAN_PLAY = "com.drivecast.QURAN_PLAY";
     private static final String CHANNEL = "drivecast_island";
     private static final int NOTIFICATION_ID = 4101;
     private static final long POLL_MS = 30_000;
@@ -118,7 +119,15 @@ public class IslandService extends Service {
         windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
         createChannel();
         Notification n = buildNotification("يعمل في الخلفية");
-        if (Build.VERSION.SDK_INT >= 34) startForeground(NOTIFICATION_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK | ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
+        if (Build.VERSION.SDK_INT >= 34) {
+            // with the location type when allowed (prayer on the road keeps working behind other apps)
+            try {
+                if (!RoadPrayer.permitted(this)) throw new SecurityException();
+                startForeground(NOTIFICATION_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK | ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE | ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION);
+            } catch (Exception e) {
+                startForeground(NOTIFICATION_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK | ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
+            }
+        }
         else if (Build.VERSION.SDK_INT >= 29) startForeground(NOTIFICATION_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK);
         else startForeground(NOTIFICATION_ID, n);
         loadConfig();
@@ -130,9 +139,25 @@ public class IslandService extends Service {
         String a = intent != null ? intent.getAction() : null;
         if (a != null && a.startsWith("com.drivecast.QURAN_")) quranAction(a);
         if (WidgetActionReceiver.MAP_TOGGLE.equals(a)) handler.post(this::toggleMap);
+        if (QURAN_PLAY.equals(a)) {
+            final int surah = intent.getIntExtra("surah", 1), reciter = intent.getIntExtra("reciter", -1);
+            handler.post(() -> {
+                QuranState q = QuranState.load(this);
+                q.surah = Math.max(1, Math.min(114, surah));
+                if (reciter >= 0) q.reciterIndex = reciter;
+                quranLoaded = "";
+                playQuran(q);
+            });
+        }
         if ((POPUP.equals(a) || AUDIO.equals(a)) && intent.getStringExtra("id") != null) {
             final String t = intent.getStringExtra("type"), id = intent.getStringExtra("id"), title = intent.getStringExtra("title");
             final boolean audio = AUDIO.equals(a);
+            try {
+                audioQueue = new JSONArray(intent.getStringExtra("queue") == null ? "[]" : intent.getStringExtra("queue"));
+            } catch (Exception e) {
+                audioQueue = new JSONArray();
+            }
+            audioIndex = intent.getIntExtra("index", 0);
             handler.post(() -> {
                 if (audio) playAudio(t, id, title);
                 else {
@@ -265,8 +290,10 @@ public class IslandService extends Service {
             quranPlayer = null;
         }
         removeIsland();
+        updateBubble(false, false);
         hideMap();
         stopAudio();
+        if (tts != null) tts.shutdown();
         if (instance == this) instance = null;
         super.onDestroy();
     }
@@ -291,7 +318,11 @@ public class IslandService extends Service {
     private void tick() {
         long now = System.currentTimeMillis();
         // scores: every 30 s behind other apps (islands, goals), every 2 min while the app is open (widgets only)
-        if (now - lastPoll > (appVisible ? 4 * POLL_MS : POLL_MS) && pollDue(now)) {
+        boolean critical = false;
+        for (JSONObject m : matches) if (matchItem(m, now).critical) critical = true;
+        // the deciding minutes: every 15 s
+        long every = appVisible ? 4 * POLL_MS : critical ? POLL_MS / 2 : POLL_MS;
+        if (now - lastPoll > every && pollDue(now)) {
             lastPoll = now;
             pollMatches();
         }
@@ -303,10 +334,22 @@ public class IslandService extends Service {
         }
         List<IslandArt.Item> items = islandItems(now);
         updateNotification(items, now);
-        boolean show = (!appVisible || audioView != null) && (!items.isEmpty() || celebration != null) && canDraw()
-                && NativeIslandPlugin.prefs(this).getBoolean("overlayEnabled", true);
-        if (show) showIsland(items, now);
+        boolean allowed = (!appVisible || audioView != null) && canDraw() && NativeIslandPlugin.prefs(this).getBoolean("overlayEnabled", true);
+        // hidden from the bubble: only a goal, a prayer that is due within the minute and the sound island still show
+        boolean hidden = Hub.bool(this, "islandsHidden", false);
+        List<IslandArt.Item> visible = items;
+        if (hidden) {
+            visible = new ArrayList<>();
+            boolean urgentPrayers = Hub.bool(this, "hiddenShowsUrgent", true);
+            for (IslandArt.Item it : items) {
+                if ("audio".equals(it.kind)) visible.add(it);
+                else if (urgentPrayers && "countdown".equals(it.kind) && !"reminder".equals(it.ckind) && it.at - now < 60_000L) visible.add(it);
+            }
+        }
+        bubbleAlert = hidden && (critical || !visible.isEmpty() || hasUrgent(items, now));
+        if (allowed && (!visible.isEmpty() || celebration != null)) showIsland(visible, now);
         else removeIsland();
+        updateBubble(allowed && (!items.isEmpty() || hidden) && Hub.bool(this, "islandBubble", true), hidden);
     }
 
     private boolean canDraw() {
@@ -560,6 +603,10 @@ public class IslandService extends Service {
         it.fav = m.optBoolean("favorite");
         JSONObject lg = m.optJSONObject("league");
         it.league = lg != null ? lg.optString("name") : "";
+        it.leagueId = lg != null ? lg.optString("id") : "";
+        it.homeId = h != null ? h.optString("id") : "";
+        // the deciding minutes of a favourite's match: from the 80th minute with one goal or less between them
+        it.critical = it.live() && (it.fav || m.optBoolean("pinned")) && it.elapsed >= 80 && Math.abs(it.sh - it.sa) <= 1;
         return it;
     }
 
@@ -607,6 +654,9 @@ public class IslandService extends Service {
             out.add(it);
         }
         reminderItems(out, now);
+        Occasions.items(this, out, now);
+        voiceReminderItems(out, now);
+        roadItem(out, now);
         {
             // the day's dhikr: always shown, like the site (hidden once marked done today)
             JSONArray az = Cloud.master(this).optJSONArray("generalAzkar");
@@ -615,6 +665,7 @@ public class IslandService extends Service {
             for (int i = 0; az != null && i < az.length(); i++) {
                 JSONObject a = az.optJSONObject(i);
                 if (a == null || a.optBoolean("done") || today.equals(a.optString("completedOn"))) continue;
+                if (Hub.has(this, "doneToday:" + today, "az-" + a.optString("id"))) continue;
                 IslandArt.Item it = new IslandArt.Item();
                 it.kind = "azkar";
                 it.id = "az-" + a.optString("id");
@@ -654,6 +705,7 @@ public class IslandService extends Service {
         for (int i = 0; i < rems.length(); i++) {
             JSONObject r = rems.optJSONObject(i);
             if (r == null || today.equals(r.optString("completedOn"))) continue;
+            if (Widgets.json(this, "snoozed").optLong(r.optString("id")) > now || Hub.has(this, "doneToday:" + today, "rem-" + r.optString("id"))) continue;
             boolean isMatch = "match".equals(r.optString("iconType"));
             if (isMatch && !r.optString("matchDate").isEmpty() && !today.equals(r.optString("matchDate"))) continue;
             long start = -1;
@@ -738,6 +790,11 @@ public class IslandService extends Service {
 
     /** A goal: the big goal card for 7 seconds in place of the islands. */
     private void celebrate(IslandArt.Item g) {
+        if (Hub.bool(this, "voiceFollow", false)) {
+            String team = "home".equals(g.side) ? g.home : g.away;
+            say("هدف ل" + team + (g.scorer.isEmpty() ? "" : "، " + g.scorer) + (g.minute.isEmpty() ? "" : "، الدقيقة " + g.minute.replace("'", ""))
+                    + ". النتيجة " + g.sh + " " + g.sa);
+        }
         celebration = g;
         celebrationUntil = System.currentTimeMillis() + 7_000;
         islandSignature = ""; // rebuild
@@ -763,6 +820,7 @@ public class IslandService extends Service {
 
         float heightPx() {
             if ("goal".equals(item.kind)) return dp(item.scorer.isEmpty() ? 150 : 200);
+            if (item.mini) return dp(40);
             return dp(big ? 60 : 44);
         }
 
@@ -820,7 +878,17 @@ public class IslandService extends Service {
                 int startX, startY;
                 boolean moved, longPressed;
                 // long press: expand / collapse like a dynamic island
-                final Runnable longPress = () -> { longPressed = true; expanded = !expanded; islandSignature = ""; tick(); };
+                final Runnable longPress = () -> {
+                    longPressed = true;
+                    PillView hit = pillAt(downX, downY);
+                    if (hit != null && !"more".equals(hit.item.kind) && !"audio".equals(hit.item.kind) && celebration == null) {
+                        openRoute(routeFor(hit.item));
+                    } else {
+                        expanded = !expanded;
+                    }
+                    islandSignature = "";
+                    tick();
+                };
 
                 @Override
                 public boolean onTouch(View v, MotionEvent e) {
@@ -863,8 +931,12 @@ public class IslandService extends Service {
                                     celebration = null;
                                     openRoute("/matches");
                                 } else if (hit != null && !"more".equals(hit.item.kind)) {
-                                    // tap an island: its screen (dhikr -> the azkar, match -> matches, prayer -> home)
-                                    openRoute(routeFor(hit.item));
+                                    // tap an island: it opens wide (the others shrink to round icons) with its panel
+                                    // (a match: events / stats / info); tap it again to close. Long press = its screen.
+                                    String hid = baseId(hit.item.id);
+                                    if (hid.equals(focusedId)) closeFocus();
+                                    else openFocus(hid);
+                                    return true;
                                 } else {
                                     expanded = !expanded; // "+n": show them all
                                 }
@@ -887,8 +959,26 @@ public class IslandService extends Service {
 
         // what to show: the goal card alone, or the islands (compact: three + "+n")
         List<IslandArt.Item> shown = new ArrayList<>();
+        IslandArt.Item focused = null;
+        if (celebration == null && focusedId == null && autoFocusCritical) {
+            // a favourite's deciding minutes: that island opens by itself (once per match)
+            for (IslandArt.Item it : items) if (it.critical && !autoFocused.contains(it.id)) { autoFocused.add(it.id); focusedId = it.id; focusAt = System.currentTimeMillis(); }
+        }
+        if (focusedId != null) for (IslandArt.Item it : items) if (focusedId.equals(it.id)) focused = it;
+        if (focusedId != null && focused == null) closeFocusQuiet();
         if (celebration != null) {
             shown.add(celebration);
+        } else if (focused != null) {
+            // the opened island wide in the middle of the round icons of the others
+            int minis = 0;
+            for (IslandArt.Item it : items) {
+                if (it == focused) { shown.add(it); continue; }
+                if (minis >= 6) continue;
+                IslandArt.Item m = copy(it);
+                m.mini = true;
+                shown.add(m);
+                minis++;
+            }
         } else if (expanded) {
             shown.addAll(items.subList(0, Math.min(items.size(), 8)));
         } else {
@@ -902,12 +992,28 @@ public class IslandService extends Service {
                 shown.add(more);
             }
         }
-        StringBuilder sig = new StringBuilder(expanded ? "E" : "C");
-        for (IslandArt.Item it : shown) sig.append('|').append(it.id).append(it.kind).append(it.more);
+        StringBuilder sig = new StringBuilder(expanded ? "E" : "C").append(focusedId).append(panelTab).append(panelVersion);
+        for (IslandArt.Item it : shown) sig.append('|').append(it.id).append(it.kind).append(it.more).append(it.mini);
         if (!sig.toString().equals(islandSignature)) {
             islandSignature = sig.toString();
-            rebuildPills(shown);
+            rebuildPills(shown, focused);
+            if (focused != null && celebration == null) {
+                View panel = buildPanel(focused);
+                if (panel != null) {
+                    LinearLayout.LayoutParams pl = new LinearLayout.LayoutParams(Math.min(getResources().getDisplayMetrics().widthPixels - dp(16), dp(400)), LinearLayout.LayoutParams.WRAP_CONTENT);
+                    pl.topMargin = dp(2);
+                    island.addView(panel, pl);
+                    panel.setAlpha(0f);
+                    panel.setTranslationY(-dp(10));
+                    panel.animate().alpha(1f).translationY(0).setDuration(220).start();
+                }
+            }
         }
+        if (focused != null && "match".equals(focused.kind) && focused.live() && !focused.matchId.isEmpty()) {
+            Long at = detailsAt.get(focused.matchId);
+            if (at == null || System.currentTimeMillis() - at > 60_000L) loadDetails(focused);
+        }
+        if (focused != null && System.currentTimeMillis() - focusAt > ("match".equals(focused.kind) ? 45_000L : 15_000L)) closeFocus();
         for (int i = 0; i < pills.size() && i < shown.size(); i++) {
             PillView p = pills.get(i);
             p.item = shown.get(i);
@@ -918,7 +1024,7 @@ public class IslandService extends Service {
     }
 
     /** Lay the pills out in rows that fit the screen width (one row normally; a second when expanded and wide). */
-    private void rebuildPills(List<IslandArt.Item> shown) {
+    private void rebuildPills(List<IslandArt.Item> shown, IslandArt.Item focused) {
         island.removeAllViews();
         pills.clear();
         int maxW = getResources().getDisplayMetrics().widthPixels - dp(16);
@@ -929,7 +1035,7 @@ public class IslandService extends Service {
         for (IslandArt.Item it : shown) {
             PillView p = new PillView(this);
             p.item = it;
-            p.big = expanded;
+            p.big = expanded || it == focused;
             p.now = now;
             p.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
             int w = p.getMeasuredWidth();
@@ -944,6 +1050,11 @@ public class IslandService extends Service {
             row.addView(p, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
             rowW += w;
             pills.add(p);
+            if (it == focused) {
+                // opening wide
+                p.setScaleX(0.8f);
+                p.animate().scaleX(1f).setDuration(260).setInterpolator(new android.view.animation.OvershootInterpolator(1.2f)).start();
+            }
             if (first && "goal".equals(it.kind)) {
                 // the goal card pops in
                 p.setScaleX(0.6f);
@@ -953,6 +1064,687 @@ public class IslandService extends Service {
             }
             first = false;
         }
+    }
+
+    // ---- an island opened wide, with its panel ----
+
+    /** the island opened wide (its id), when it was opened, the panel's tab, bumped when its data arrives */
+    private String focusedId;
+    private long focusAt;
+    private int panelTab = 0;
+    private int panelVersion = 0;
+    private final boolean autoFocusCritical = true;
+    private final java.util.Set<String> autoFocused = new java.util.HashSet<>();
+    private final java.util.Map<String, JSONObject> details = new java.util.HashMap<>();
+    private final java.util.Map<String, Long> detailsAt = new java.util.HashMap<>();
+    private final java.util.Set<String> detailsLoading = new java.util.HashSet<>();
+
+    private static String baseId(String id) {
+        return id == null ? "" : id;
+    }
+
+    private void openFocus(String id) {
+        focusedId = id;
+        focusAt = System.currentTimeMillis();
+        panelTab = 0;
+        expanded = false;
+        islandSignature = "";
+        tick();
+    }
+
+    private void closeFocus() {
+        closeFocusQuiet();
+        tick();
+    }
+
+    private void closeFocusQuiet() {
+        focusedId = null;
+        islandSignature = "";
+    }
+
+    /** a touch inside the panel keeps it open longer */
+    private void touchFocus() {
+        focusAt = System.currentTimeMillis();
+    }
+
+    private static IslandArt.Item copy(IslandArt.Item o) {
+        IslandArt.Item it = new IslandArt.Item();
+        it.kind = o.kind; it.id = o.id; it.matchId = o.matchId; it.leagueId = o.leagueId; it.homeId = o.homeId;
+        it.home = o.home; it.away = o.away; it.homeLogo = o.homeLogo; it.awayLogo = o.awayLogo; it.status = o.status;
+        it.sh = o.sh; it.sa = o.sa; it.elapsed = o.elapsed; it.kickoff = o.kickoff; it.kickoffText = o.kickoffText; it.fav = o.fav;
+        it.title = o.title; it.at = o.at; it.ckind = o.ckind; it.league = o.league; it.more = o.more; it.critical = o.critical;
+        return it;
+    }
+
+    private android.widget.TextView label(String text, float sp, int color, boolean heavy) {
+        android.widget.TextView t = new android.widget.TextView(this);
+        t.setText(text);
+        t.setTextSize(sp);
+        t.setTextColor(color);
+        t.setTypeface(heavy ? Fonts.black(this) : Fonts.bold(this));
+        t.setIncludeFontPadding(false);
+        return t;
+    }
+
+    private android.widget.TextView chip(String text, boolean on, int onColor, Runnable tap) {
+        android.widget.TextView t = label(text, 13, on ? 0xFF000000 : 0xE6FFFFFF, true);
+        t.setGravity(Gravity.CENTER);
+        t.setPadding(dp(12), dp(8), dp(12), dp(8));
+        android.graphics.drawable.GradientDrawable g = new android.graphics.drawable.GradientDrawable();
+        g.setCornerRadius(dp(40));
+        g.setColor(on ? onColor : 0x1FFFFFFF);
+        t.setBackground(g);
+        t.setOnClickListener(v -> { touchFocus(); tap.run(); });
+        return t;
+    }
+
+    private LinearLayout panelCard() {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+        card.setPadding(dp(14), dp(12), dp(14), dp(12));
+        android.graphics.drawable.GradientDrawable g = new android.graphics.drawable.GradientDrawable();
+        g.setCornerRadius(dp(26));
+        g.setColor(0xF2050507);
+        g.setStroke(dp(1), 0x26FFFFFF);
+        card.setBackground(g);
+        card.setOnClickListener(v -> touchFocus()); // eats the touch (no drag / tap-through)
+        return card;
+    }
+
+    private LinearLayout hrow() {
+        LinearLayout r = new LinearLayout(this);
+        r.setOrientation(LinearLayout.HORIZONTAL);
+        r.setGravity(Gravity.CENTER_VERTICAL);
+        return r;
+    }
+
+    private void addChipRow(LinearLayout card, android.widget.TextView... chips) {
+        LinearLayout r = hrow();
+        r.setGravity(Gravity.CENTER);
+        for (android.widget.TextView c : chips) {
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1);
+            lp.setMargins(dp(3), 0, dp(3), 0);
+            r.addView(c, lp);
+        }
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        lp.topMargin = dp(10);
+        card.addView(r, lp);
+    }
+
+    /** The panel under the opened island (null: none). */
+    private View buildPanel(IslandArt.Item it) {
+        if ("match".equals(it.kind) && !it.matchId.isEmpty()) return matchPanel(it);
+        if (it.id.startsWith("occ-")) return occasionPanel(it);
+        if ("mosque".equals(it.id)) return roadPanel();
+        if ("countdown".equals(it.kind) && "reminder".equals(it.ckind)) {
+            LinearLayout card = panelCard();
+            card.addView(label(it.title, 16, 0xFFFFFFFF, true));
+            card.addView(label("التذكير · " + new java.text.SimpleDateFormat("h:mm a", new Locale("ar")).format(new java.util.Date(it.at)), 12, 0x80FFFFFF, false));
+            final String rid = it.id.startsWith("rem-") ? it.id.substring(4) : it.id;
+            addChipRow(card,
+                    chip("تم ✓", true, 0xFF34D399, () -> markDone(it.id, rid)),
+                    chip("بعد 10 د", false, 0, () -> snooze(rid, 10)),
+                    chip("فتح", false, 0, () -> openRoute("/dashboard")));
+            return card;
+        }
+        if ("countdown".equals(it.kind)) {
+            // a prayer: the coming times of the day
+            LinearLayout card = panelCard();
+            LinearLayout r = hrow();
+            JSONArray list = Widgets.countdowns(this);
+            long now = System.currentTimeMillis();
+            int n = 0;
+            for (int i = 0; list != null && i < list.length() && n < 4; i++) {
+                JSONObject c = list.optJSONObject(i);
+                if (c == null || c.optLong("at") < now) continue;
+                LinearLayout col = new LinearLayout(this);
+                col.setOrientation(LinearLayout.VERTICAL);
+                col.setGravity(Gravity.CENTER);
+                boolean iq = "iqamah".equals(c.optString("kind"));
+                col.addView(label((iq ? "إقامة " : "") + c.optString("title"), 11, iq ? 0xFF34D399 : 0xCCFFFFFF, false));
+                col.addView(label(new java.text.SimpleDateFormat("h:mm", Locale.US).format(new java.util.Date(c.optLong("at"))), 17, 0xFFFFFFFF, true));
+                r.addView(col, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+                n++;
+            }
+            card.addView(r);
+            addChipRow(card, chip("الأذان الآن ▶", false, 0, () -> openRoute("/dashboard")), chip("المواقيت", false, 0, () -> openRoute("/dashboard")));
+            return card;
+        }
+        if ("azkar".equals(it.kind)) {
+            LinearLayout card = panelCard();
+            card.addView(label(it.title, 16, 0xFFFFFFFF, true));
+            final String aid = it.id.startsWith("az-") ? it.id.substring(3) : it.id;
+            addChipRow(card, chip("تم ✓", true, 0xFF34D399, () -> markDone(it.id, aid)), chip("فتح الأذكار", false, 0, () -> openRoute("/football")));
+            return card;
+        }
+        return null;
+    }
+
+    // ---- reminders said by voice ("ذكرني بعد ربع ساعة ...") ----
+
+    private final java.util.Set<String> spokenReminders = new java.util.HashSet<>();
+
+    private void voiceReminderItems(List<IslandArt.Item> out, long now) {
+        Object v = Hub.get(this, "voiceReminders");
+        if (!(v instanceof JSONArray)) return;
+        JSONArray list = (JSONArray) v;
+        String today = Cloud.day(now);
+        for (int i = 0; i < list.length(); i++) {
+            JSONObject r = list.optJSONObject(i);
+            if (r == null) continue;
+            long at = r.optLong("at");
+            String id = "rem-" + r.optString("id");
+            if (now < at - 15 * 60_000L || now > at + 30 * 60_000L || Hub.has(this, "doneToday:" + today, id)) continue;
+            if (Widgets.json(this, "snoozed").optLong(r.optString("id")) > now) continue;
+            if (now >= at && spokenReminders.add(id)) {
+                say("تذكير: " + r.optString("label"));
+                android.os.Vibrator vib = (android.os.Vibrator) getSystemService(VIBRATOR_SERVICE);
+                try { if (vib != null) vib.vibrate(400); } catch (Exception ignored) { }
+            }
+            IslandArt.Item it = new IslandArt.Item();
+            it.kind = "countdown";
+            it.ckind = "reminder";
+            it.id = id;
+            it.title = r.optString("label");
+            it.at = at;
+            out.add(it);
+        }
+    }
+
+    // ---- prayer on the road ----
+
+    private RoadPrayer road;
+    private List<RoadPrayer.Mosque> roadMosques = new ArrayList<>();
+    private String roadPrayer = "";
+    private long roadIqamah = 0;
+
+    /** From 15 minutes before an adhan until its iqamah, while driving: the nearest mosque ahead. */
+    private void roadItem(List<IslandArt.Item> out, long now) {
+        if (road == null) road = new RoadPrayer(this, () -> handler.post(() -> { if (focusedId != null && focusedId.equals("mosque")) { panelVersion++; } }));
+        JSONArray list = Widgets.countdowns(this);
+        String name = null;
+        long iq = 0;
+        for (int i = 0; list != null && i < list.length(); i++) {
+            JSONObject c = list.optJSONObject(i);
+            if (c == null || !"azan".equals(c.optString("kind"))) continue;
+            String t = c.optString("title");
+            if (t.contains("الشروق") || t.contains("الضحى")) continue;
+            long at = c.optLong("at");
+            long iqAt = at;
+            for (int k = 0; k < list.length(); k++) {
+                JSONObject q = list.optJSONObject(k);
+                if (q != null && "iqamah".equals(q.optString("kind")) && q.optString("title").contains(t) && q.optLong("at") >= at && q.optLong("at") - at < 3 * 3600_000L) { iqAt = q.optLong("at"); break; }
+            }
+            if (iqAt == at) iqAt = at + 15 * 60_000L;
+            if (now >= at - 15 * 60_000L && now < iqAt) { name = t; iq = iqAt; break; }
+        }
+        road.setActive(name != null);
+        if (name == null || !road.driving()) { roadMosques = new ArrayList<>(); return; }
+        roadPrayer = name;
+        roadIqamah = iq;
+        roadMosques = road.ahead(iq);
+        if (roadMosques.isEmpty()) return;
+        RoadPrayer.Mosque m = roadMosques.get(0);
+        IslandArt.Item it = new IslandArt.Item();
+        it.kind = "countdown";
+        it.ckind = "mosque";
+        it.id = "mosque";
+        it.title = "🕌 " + m.name;
+        it.minute = RoadPrayer.distanceText(m.meters) + " · " + Math.max(1, Math.round(m.eta / 60_000f)) + " د";
+        it.more = m.state;
+        it.at = now + m.eta;
+        out.add(it);
+    }
+
+    private View roadPanel() {
+        LinearLayout card = panelCard();
+        long left = Math.max(0, (roadIqamah - System.currentTimeMillis()) / 60_000L);
+        card.addView(label("صلاة " + roadPrayer + " على الطريق · الإقامة بعد " + left + " د", 14, 0xFFFFFFFF, true));
+        String[] states = {"🟢 تصل قبل الإقامة", "🟡 تتأخر دقائق", "🔴 لن تلحق"};
+        for (int i = 0; i < roadMosques.size() && i < 3; i++) {
+            RoadPrayer.Mosque m = roadMosques.get(i);
+            LinearLayout r = hrow();
+            r.setPadding(0, dp(8), 0, 0);
+            LinearLayout col = new LinearLayout(this);
+            col.setOrientation(LinearLayout.VERTICAL);
+            android.widget.TextView n = label(m.name, 14, 0xFFFFFFFF, true);
+            n.setSingleLine(true);
+            n.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            col.addView(n);
+            col.addView(label(RoadPrayer.distanceText(m.meters) + " · " + Math.max(1, Math.round(m.eta / 60_000f)) + " د · " + states[m.state], 11, 0x99FFFFFF, false));
+            r.addView(col, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+            final double la = m.lat, lo = m.lon;
+            r.addView(chip("🧭 اذهب", i == 0, 0xFF34D399, () -> {
+                Intent nav = new Intent(Intent.ACTION_VIEW, android.net.Uri.parse("google.navigation:q=" + la + "," + lo));
+                nav.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                try { startActivity(nav); } catch (Exception e) {
+                    Intent geo = new Intent(Intent.ACTION_VIEW, android.net.Uri.parse("geo:" + la + "," + lo + "?q=" + la + "," + lo));
+                    geo.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    try { startActivity(geo); } catch (Exception ignored) { }
+                }
+                closeFocus();
+            }));
+            card.addView(r);
+        }
+        return card;
+    }
+
+    /** Friday, fasting and the seasons. */
+    private View occasionPanel(IslandArt.Item it) {
+        LinearLayout card = panelCard();
+        card.addView(label(it.title, 16, 0xFFFFFFFF, true));
+        final long now = System.currentTimeMillis();
+        Runnable doneToday = () -> { Hub.toggle(this, "doneToday:" + Cloud.day(now), it.id); closeFocus(); };
+        switch (it.id) {
+            case "occ-kahf":
+                card.addView(label("«من قرأ سورة الكهف يوم الجمعة أضاء له من النور ما بين الجمعتين»", 12, 0x99FFFFFF, false));
+                addChipRow(card, chip("▶ تشغيل الكهف", true, 0xFF34D399, () -> {
+                    QuranState q = QuranState.load(this);
+                    q.surah = 18;
+                    playQuran(q);
+                    closeFocus();
+                }), chip("قرأتها ✓", false, 0, doneToday));
+                break;
+            case "occ-fast":
+                addChipRow(card, chip("سأصوم ✓", true, 0xFF34D399, () -> {
+                    Hub.set(this, "fastDate", Cloud.day(now + 24 * 3600_000L));
+                    closeFocus();
+                }), chip("ليس هذه المرة", false, 0, doneToday));
+                break;
+            case "occ-iftar":
+                card.addView(label("«ذهب الظمأ وابتلت العروق وثبت الأجر إن شاء الله»", 12, 0x99FFFFFF, false));
+                addChipRow(card, chip("الصفحة الرئيسية", false, 0, () -> openRoute("/dashboard")));
+                break;
+            default:
+                addChipRow(card, chip("تم ✓", true, 0xFF34D399, doneToday));
+        }
+        return card;
+    }
+
+    /** A reminder / dhikr done today: hidden here at once, the site marks it (and syncs it). */
+    private void markDone(String itemId, String id) {
+        Hub.toggle(this, "doneToday:" + Cloud.day(System.currentTimeMillis()), itemId);
+        Hub.send(this, "reminderDone", id);
+        closeFocus();
+    }
+
+    private void snooze(String id, int minutes) {
+        JSONObject o = Widgets.json(this, "snoozed");
+        try {
+            o.put(id, System.currentTimeMillis() + minutes * 60_000L);
+        } catch (Exception ignored) {
+        }
+        NativeIslandPlugin.prefs(this).edit().putString("snoozed", o.toString()).apply();
+        closeFocus();
+    }
+
+    // ---- the match panel: events, stats, info (the site's match details) ----
+
+    private View matchPanel(IslandArt.Item it) {
+        JSONObject d = details.get(it.matchId);
+        Long at = detailsAt.get(it.matchId);
+        long maxAge = it.live() ? 60_000L : 10 * 60_000L;
+        if (d == null || at == null || System.currentTimeMillis() - at > maxAge) loadDetails(it);
+        LinearLayout card = panelCard();
+        // header: league · minute / status
+        String head = it.league + (it.live() ? " · " + IslandArt.minuteText(it) : it.finished() ? " · انتهت" : " · " + it.kickoffText);
+        android.widget.TextView h = label(head, 12, 0x99FFFFFF, false);
+        h.setGravity(Gravity.CENTER);
+        card.addView(h, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        // tabs
+        LinearLayout tabs = hrow();
+        String[] names = {"الأحداث", "الإحصائيات", "معلومات"};
+        for (int i = 0; i < names.length; i++) {
+            final int t = i;
+            android.widget.TextView c = chip(names[i], panelTab == i, 0xFF34D399, () -> { panelTab = t; islandSignature = ""; tick(); });
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1);
+            lp.setMargins(dp(3), dp(8), dp(3), dp(8));
+            tabs.addView(c, lp);
+        }
+        card.addView(tabs);
+        LinearLayout body = new LinearLayout(this);
+        body.setOrientation(LinearLayout.VERTICAL);
+        card.addView(body, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        if (d == null) {
+            android.widget.TextView w = label(detailsLoading.contains(it.matchId) ? "جاري تحميل التفاصيل..." : "لا توجد تفاصيل بعد", 13, 0x80FFFFFF, false);
+            w.setGravity(Gravity.CENTER);
+            w.setPadding(0, dp(10), 0, dp(10));
+            body.addView(w, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        } else if (panelTab == 0) {
+            eventsTab(body, d, it);
+        } else if (panelTab == 1) {
+            statsTab(body, d, it);
+        } else {
+            infoTab(body, d);
+        }
+        boolean voice = Hub.bool(this, "voiceFollow", false);
+        addChipRow(card,
+                chip(voice ? "🔊 المتابعة الصوتية" : "🔈 تابع صوتياً", voice, 0xFF34D399, () -> {
+                    Hub.set(this, "voiceFollow", !voice);
+                    if (!voice) say("المتابعة الصوتية مفعّلة. " + it.home + " " + it.sh + "، " + it.away + " " + it.sa);
+                    islandSignature = "";
+                }),
+                chip("المباريات", false, 0, () -> openRoute("/matches")));
+        return card;
+    }
+
+    /** One line per goal / red card, on its team's side, the minute in the middle (like a timeline). */
+    private void eventsTab(LinearLayout body, JSONObject d, IslandArt.Item it) {
+        List<JSONObject> ev = new ArrayList<>();
+        JSONArray sc = d.optJSONArray("scorers"), rc = d.optJSONArray("redCards");
+        try {
+            for (int i = 0; sc != null && i < sc.length(); i++) ev.add(new JSONObject(sc.getJSONObject(i).toString()).put("icon", "⚽"));
+            for (int i = 0; rc != null && i < rc.length(); i++) ev.add(new JSONObject(rc.getJSONObject(i).toString()).put("icon", "🟥"));
+        } catch (Exception ignored) {
+        }
+        Collections.sort(ev, (a, b) -> Double.compare(minuteValue(a.optString("minute")), minuteValue(b.optString("minute"))));
+        // team names row
+        LinearLayout names = hrow();
+        names.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
+        android.widget.TextView hn = label(it.home, 12, 0xCCFFFFFF, true), an = label(it.away, 12, 0xCCFFFFFF, true);
+        an.setGravity(Gravity.END);
+        names.addView(hn, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+        android.widget.TextView score = label(it.sh + " - " + it.sa, 16, it.live() ? 0xFF34D399 : 0xFFFFFFFF, true);
+        names.addView(score);
+        names.addView(an, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+        body.addView(names);
+        if (ev.isEmpty()) {
+            android.widget.TextView w = label("لا أهداف ولا بطاقات حمراء بعد", 13, 0x80FFFFFF, false);
+            w.setGravity(Gravity.CENTER);
+            w.setPadding(0, dp(10), 0, dp(4));
+            body.addView(w, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+            return;
+        }
+        for (int i = Math.max(0, ev.size() - 7); i < ev.size(); i++) {
+            JSONObject e = ev.get(i);
+            boolean home = "home".equals(e.optString("side"));
+            LinearLayout r = hrow();
+            r.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
+            r.setPadding(0, dp(5), 0, dp(5));
+            String who = e.optString("icon") + " " + e.optString("player") + (e.optString("note").isEmpty() ? "" : " (" + e.optString("note") + ")");
+            android.widget.TextView left = label(home ? who : "", 13, 0xFFFFFFFF, false);
+            android.widget.TextView right = label(home ? "" : who, 13, 0xFFFFFFFF, false);
+            right.setGravity(Gravity.END);
+            left.setSingleLine(true);
+            right.setSingleLine(true);
+            left.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            right.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            android.widget.TextView min = label(e.optString("minute"), 12, 0xFF34D399, true);
+            min.setGravity(Gravity.CENTER);
+            r.addView(left, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+            r.addView(min, new LinearLayout.LayoutParams(dp(46), LinearLayout.LayoutParams.WRAP_CONTENT));
+            r.addView(right, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+            body.addView(r);
+        }
+    }
+
+    /** The stats as two-colour bars (home blue / away red, like comparing teams on the site). */
+    private void statsTab(LinearLayout body, JSONObject d, IslandArt.Item it) {
+        JSONArray st = d.optJSONArray("stats");
+        if (st == null || st.length() == 0) {
+            android.widget.TextView w = label("لا إحصائيات متاحة لهذه المباراة", 13, 0x80FFFFFF, false);
+            w.setGravity(Gravity.CENTER);
+            w.setPadding(0, dp(10), 0, dp(10));
+            body.addView(w, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+            return;
+        }
+        for (int i = 0; i < st.length() && i < 6; i++) {
+            JSONObject r = st.optJSONObject(i);
+            if (r == null) continue;
+            String hv = r.optString("home"), av = r.optString("away");
+            double hn = num(hv), an = num(av);
+            LinearLayout line = hrow();
+            line.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
+            android.widget.TextView a = label(hv, 13, 0xFFFFFFFF, true), b = label(av, 13, 0xFFFFFFFF, true);
+            android.widget.TextView n = label(r.optString("name"), 11, 0x99FFFFFF, false);
+            n.setGravity(Gravity.CENTER);
+            b.setGravity(Gravity.END);
+            line.addView(a, new LinearLayout.LayoutParams(dp(48), LinearLayout.LayoutParams.WRAP_CONTENT));
+            line.addView(n, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+            line.addView(b, new LinearLayout.LayoutParams(dp(48), LinearLayout.LayoutParams.WRAP_CONTENT));
+            LinearLayout.LayoutParams ll = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+            ll.topMargin = dp(6);
+            body.addView(line, ll);
+            LinearLayout bar = hrow();
+            bar.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
+            double sum = hn + an;
+            float hw = sum <= 0 ? 0.5f : (float) (hn / sum);
+            View hb = new View(this), ab = new View(this);
+            hb.setBackground(roundRect(0xFF3B82F6));
+            ab.setBackground(roundRect(0xFFEF4444));
+            LinearLayout.LayoutParams hl = new LinearLayout.LayoutParams(0, dp(5), Math.max(0.02f, hw));
+            hl.setMarginEnd(dp(3));
+            bar.addView(hb, hl);
+            bar.addView(ab, new LinearLayout.LayoutParams(0, dp(5), Math.max(0.02f, 1 - hw)));
+            LinearLayout.LayoutParams bl = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+            bl.topMargin = dp(3);
+            body.addView(bar, bl);
+        }
+    }
+
+    private android.graphics.drawable.GradientDrawable roundRect(int color) {
+        android.graphics.drawable.GradientDrawable g = new android.graphics.drawable.GradientDrawable();
+        g.setColor(color);
+        g.setCornerRadius(dp(4));
+        return g;
+    }
+
+    private static double num(String v) {
+        try {
+            return Double.parseDouble(v.replace("%", "").trim());
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    private void infoTab(LinearLayout body, JSONObject d) {
+        List<String> lines = new ArrayList<>();
+        if (!d.optString("round").isEmpty()) lines.add("🏆  " + d.optString("round"));
+        if (!d.optString("venue").isEmpty()) lines.add("🏟  " + d.optString("venue") + (d.optInt("attendance") > 0 ? " · " + d.optInt("attendance") + " متفرج" : ""));
+        if (!d.optString("referee").isEmpty()) lines.add("🧑‍⚖️  " + d.optString("referee"));
+        JSONObject f = d.optJSONObject("formations");
+        if (f != null && (!f.optString("home").isEmpty() || !f.optString("away").isEmpty())) lines.add("📋  " + f.optString("home", "?") + "  ×  " + f.optString("away", "?"));
+        JSONArray ch = d.optJSONArray("channels");
+        if (ch != null && ch.length() > 0) {
+            StringBuilder sb = new StringBuilder("📺  ");
+            for (int i = 0; i < ch.length() && i < 4; i++) sb.append(i > 0 ? " · " : "").append(ch.optString(i));
+            lines.add(sb.toString());
+        }
+        JSONArray cm = d.optJSONArray("commentators");
+        if (cm != null && cm.length() > 0) lines.add("🎙  " + cm.optString(0));
+        if (lines.isEmpty()) lines.add("لا معلومات إضافية");
+        for (String l : lines) {
+            android.widget.TextView t = label(l, 13, 0xE6FFFFFF, false);
+            t.setPadding(0, dp(4), 0, dp(4));
+            body.addView(t);
+        }
+    }
+
+    private void loadDetails(IslandArt.Item it) {
+        final String mid = it.matchId;
+        if (detailsLoading.contains(mid)) return;
+        detailsLoading.add(mid);
+        final String q = "id=" + enc(it.matchId) + "&league=" + enc(it.leagueId) + "&homeId=" + enc(it.homeId)
+                + "&home=" + enc(it.home) + "&away=" + enc(it.away);
+        final String origin = siteOrigin();
+        new Thread(() -> {
+            JSONObject d = null;
+            try {
+                HttpURLConnection c = (HttpURLConnection) new URL(origin + "/api/matches/details?" + q).openConnection();
+                c.setConnectTimeout(10_000);
+                c.setReadTimeout(20_000);
+                StringBuilder sb = new StringBuilder();
+                try (BufferedReader r = new BufferedReader(new InputStreamReader(c.getInputStream(), "UTF-8"))) {
+                    String line;
+                    while ((line = r.readLine()) != null) sb.append(line);
+                }
+                d = new JSONObject(sb.toString());
+                if (d.has("error")) d = null;
+            } catch (Exception ignored) {
+            }
+            final JSONObject got = d;
+            handler.post(() -> {
+                detailsLoading.remove(mid);
+                if (got != null) details.put(mid, got);
+                detailsAt.put(mid, System.currentTimeMillis());
+                panelVersion++;
+                tick();
+            });
+        }).start();
+    }
+
+    // ---- the hide / show bubble ----
+
+    private FrameLayout bubble;
+    private android.widget.ImageView bubbleIcon;
+    private View bubbleDot;
+    private WindowManager.LayoutParams bubbleParams;
+    private boolean bubbleAlert;
+    private Boolean bubbleShownHidden;
+
+    private static final String I_EYE = "M2 12C2 12 5 5 12 5C19 5 22 12 22 12C22 12 19 19 12 19C5 19 2 12 2 12ZM12 9A3 3 0 1 0 12 15A3 3 0 1 0 12 9Z";
+    private static final String I_EYE_OFF = "M2 12C2 12 5 5 12 5C19 5 22 12 22 12C22 12 19 19 12 19C5 19 2 12 2 12ZM3 3L21 21";
+
+    private boolean hasUrgent(List<IslandArt.Item> items, long now) {
+        for (IslandArt.Item it : items) {
+            if (it.critical) return true;
+            if ("countdown".equals(it.kind) && it.at - now < 2 * 60_000L) return true;
+        }
+        return false;
+    }
+
+    /**
+     * A small round button at the screen's edge: tap = hide / show all the islands (the choice is shared with the
+     * app's settings), drag = move it up / down. While hidden, a dot on it pulses when something is happening.
+     */
+    @SuppressLint("ClickableViewAccessibility")
+    private void updateBubble(boolean want, boolean hidden) {
+        if (!want) {
+            if (bubble != null) {
+                try { windowManager.removeView(bubble); } catch (Exception ignored) { }
+                bubble = null;
+                bubbleShownHidden = null;
+            }
+            return;
+        }
+        if (bubble == null) {
+            bubble = new FrameLayout(this);
+            bubbleIcon = new android.widget.ImageView(this);
+            bubbleIcon.setScaleType(android.widget.ImageView.ScaleType.CENTER);
+            android.graphics.drawable.GradientDrawable g = new android.graphics.drawable.GradientDrawable();
+            g.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+            g.setColor(0xB3000000);
+            g.setStroke(dp(1), 0x40FFFFFF);
+            bubbleIcon.setBackground(g);
+            bubble.addView(bubbleIcon, new FrameLayout.LayoutParams(dp(40), dp(40), Gravity.CENTER));
+            bubbleDot = new View(this);
+            android.graphics.drawable.GradientDrawable dg = new android.graphics.drawable.GradientDrawable();
+            dg.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+            dg.setColor(0xFFEF4444);
+            bubbleDot.setBackground(dg);
+            FrameLayout.LayoutParams dl = new FrameLayout.LayoutParams(dp(12), dp(12), Gravity.TOP | Gravity.END);
+            bubble.addView(bubbleDot, dl);
+            bubble.setAlpha(0.75f);
+            int type = Build.VERSION.SDK_INT >= 26 ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY : WindowManager.LayoutParams.TYPE_PHONE;
+            bubbleParams = new WindowManager.LayoutParams(dp(46), dp(46), type,
+                    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, PixelFormat.TRANSLUCENT);
+            bubbleParams.gravity = Gravity.TOP | Gravity.END;
+            bubbleParams.x = 0;
+            bubbleParams.y = NativeIslandPlugin.prefs(this).getInt("bubbleY", dp(160));
+            bubble.setOnTouchListener(new View.OnTouchListener() {
+                float downY;
+                int startY;
+                boolean moved, voiced;
+                // long press: a voice command
+                final Runnable voice = () -> {
+                    voiced = true;
+                    bubble.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS);
+                    Intent vi = new Intent(IslandService.this, VoiceActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    try { startActivity(vi); } catch (Exception ignored) { }
+                };
+
+                @Override
+                public boolean onTouch(View v, MotionEvent e) {
+                    switch (e.getAction()) {
+                        case MotionEvent.ACTION_DOWN:
+                            downY = e.getRawY();
+                            startY = bubbleParams.y;
+                            moved = false;
+                            voiced = false;
+                            bubble.setAlpha(1f);
+                            handler.postDelayed(voice, 600);
+                            return true;
+                        case MotionEvent.ACTION_MOVE:
+                            float dy = e.getRawY() - downY;
+                            if (Math.abs(dy) > dp(6)) { moved = true; handler.removeCallbacks(voice); }
+                            if (moved) {
+                                bubbleParams.y = Math.max(0, startY + (int) dy);
+                                try { windowManager.updateViewLayout(bubble, bubbleParams); } catch (Exception ignored) { }
+                            }
+                            return true;
+                        case MotionEvent.ACTION_UP:
+                        case MotionEvent.ACTION_CANCEL:
+                            bubble.setAlpha(0.75f);
+                            handler.removeCallbacks(voice);
+                            if (voiced) return true;
+                            if (moved) NativeIslandPlugin.prefs(IslandService.this).edit().putInt("bubbleY", bubbleParams.y).apply();
+                            else if (e.getAction() == MotionEvent.ACTION_UP) {
+                                boolean h = !Hub.bool(IslandService.this, "islandsHidden", false);
+                                focusedId = null;
+                                Hub.set(IslandService.this, "islandsHidden", h);
+                                v.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP);
+                            }
+                            return true;
+                    }
+                    return false;
+                }
+            });
+            try {
+                windowManager.addView(bubble, bubbleParams);
+            } catch (Exception e) {
+                bubble = null;
+                return;
+            }
+        }
+        if (bubbleShownHidden == null || bubbleShownHidden != hidden) {
+            bubbleShownHidden = hidden;
+            bubbleIcon.setImageBitmap(PlayerActivity.icon(hidden ? I_EYE_OFF : I_EYE, dp(20), hidden ? 0xB3FFFFFF : 0xFF34D399, false));
+        }
+        if (bubbleAlert) {
+            bubbleDot.setVisibility(View.VISIBLE);
+            bubbleDot.setAlpha(0.4f + 0.6f * (float) Math.abs(Math.sin(System.currentTimeMillis() / 500.0)));
+        } else {
+            bubbleDot.setVisibility(View.GONE);
+        }
+    }
+
+    // ---- spoken updates (follow a match by voice while driving) ----
+
+    private android.speech.tts.TextToSpeech tts;
+    private boolean ttsReady;
+    private String ttsPending;
+
+    void say(String text) {
+        if (tts == null) {
+            ttsPending = text;
+            tts = new android.speech.tts.TextToSpeech(this, st -> {
+                ttsReady = st == android.speech.tts.TextToSpeech.SUCCESS;
+                if (ttsReady) {
+                    tts.setLanguage(new Locale("ar"));
+                    if (ttsPending != null) tts.speak(ttsPending, android.speech.tts.TextToSpeech.QUEUE_ADD, null, "dc");
+                    ttsPending = null;
+                }
+            });
+            return;
+        }
+        if (ttsReady) tts.speak(text, android.speech.tts.TextToSpeech.QUEUE_ADD, null, "dc");
+        else ttsPending = text;
+    }
+
+    static void speak(String text) {
+        IslandService s = instance;
+        if (s != null) s.handler.post(() -> s.say(text));
     }
 
     private PillView pillAt(float x, float y) {
@@ -976,6 +1768,32 @@ public class IslandService extends Service {
     private android.webkit.WebView audioView;
     private String audioTitle = "";
     private boolean audioPlaying = false;
+    /** the list the sound came from: the next one starts by itself 3 s after the end (like the site's player) */
+    private JSONArray audioQueue = new JSONArray();
+    private int audioIndex = 0;
+    private String audioType = "youtube";
+
+    private final class AudioJs {
+        @android.webkit.JavascriptInterface
+        public void ended() {
+            handler.postDelayed(() -> audioStep(1), 3000);
+        }
+
+        @android.webkit.JavascriptInterface
+        public void resumed() { }
+    }
+
+    private void audioStep(int d) {
+        if (audioView == null || audioQueue.length() <= 1) return;
+        audioIndex = (audioIndex + d + audioQueue.length()) % audioQueue.length();
+        JSONObject o = audioQueue.optJSONObject(audioIndex);
+        if (o == null) return;
+        JSONArray q = audioQueue;
+        int idx = audioIndex;
+        playAudio(audioType, o.optString("id"), o.optString("name", o.optString("title")));
+        audioQueue = q;
+        audioIndex = idx;
+    }
 
     /** Plays the video / stream with no picture: a tiny invisible window keeps the player alive, the island shows it. */
     @SuppressLint("SetJavaScriptEnabled")
@@ -991,6 +1809,8 @@ public class IslandService extends Service {
         ws.setMediaPlaybackRequiresUserGesture(false);
         ws.setMixedContentMode(android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         audioView.setWebViewClient(new android.webkit.WebViewClient());
+        audioView.addJavascriptInterface(new AudioJs(), "DCP");
+        audioType = type;
         audioWindow.addView(audioView, new FrameLayout.LayoutParams(dp(160), dp(90)));
         int type2 = Build.VERSION.SDK_INT >= 26 ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY : WindowManager.LayoutParams.TYPE_PHONE;
         WindowManager.LayoutParams lp = new WindowManager.LayoutParams(1, 1, type2,
