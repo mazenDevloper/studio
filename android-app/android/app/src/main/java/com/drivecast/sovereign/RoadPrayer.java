@@ -100,9 +100,24 @@ final class RoadPrayer {
                 lm.removeUpdates(listener);
             }
             listening = on;
+            if (on) maybeLoad();
         } catch (Exception ignored) {
         }
     }
+
+    boolean hasFix() {
+        return last != null;
+    }
+
+    boolean searching() {
+        return loading || (last != null && cacheAt == 0);
+    }
+
+    boolean failed() {
+        return lastFailed;
+    }
+
+    private boolean lastFailed = false;
 
     boolean driving() {
         return System.currentTimeMillis() - lastMoving < 3 * 60_000L || Hub.bool(ctx, "roadPrayerAlways", false);
@@ -120,15 +135,25 @@ final class RoadPrayer {
             List<JSONObject> got = new ArrayList<>();
             try {
                 String q = "[out:json][timeout:20];nwr[\"amenity\"=\"place_of_worship\"][\"religion\"=\"muslim\"](around:6000," + lat + "," + lon + ");out center 60;";
-                HttpURLConnection c = (HttpURLConnection) new URL("https://overpass-api.de/api/interpreter?data=" + URLEncoder.encode(q, "UTF-8")).openConnection();
-                c.setConnectTimeout(15_000);
-                c.setReadTimeout(30_000);
-                c.setRequestProperty("User-Agent", "DriveCast/1.0");
-                StringBuilder sb = new StringBuilder();
-                try (BufferedReader r = new BufferedReader(new InputStreamReader(c.getInputStream(), "UTF-8"))) {
-                    String line;
-                    while ((line = r.readLine()) != null) sb.append(line);
+                StringBuilder sb = null;
+                // the main Overpass server, then mirrors
+                for (String host : new String[]{"https://overpass-api.de", "https://overpass.kumi.systems", "https://overpass.private.coffee"}) {
+                    try {
+                        HttpURLConnection c = (HttpURLConnection) new URL(host + "/api/interpreter?data=" + URLEncoder.encode(q, "UTF-8")).openConnection();
+                        c.setConnectTimeout(12_000);
+                        c.setReadTimeout(25_000);
+                        c.setRequestProperty("User-Agent", "DriveCast/1.0");
+                        StringBuilder b = new StringBuilder();
+                        try (BufferedReader r = new BufferedReader(new InputStreamReader(c.getInputStream(), "UTF-8"))) {
+                            String line;
+                            while ((line = r.readLine()) != null) b.append(line);
+                        }
+                        sb = b;
+                        break;
+                    } catch (Exception ignored) {
+                    }
                 }
+                if (sb == null) throw new Exception("overpass");
                 JSONArray els = new JSONObject(sb.toString()).optJSONArray("elements");
                 for (int i = 0; els != null && i < els.length(); i++) {
                     JSONObject e = els.optJSONObject(i);
@@ -148,7 +173,9 @@ final class RoadPrayer {
                     cacheLon = lon;
                     cacheAt = System.currentTimeMillis();
                 }
+                lastFailed = false;
             } catch (Exception ignored) {
+                lastFailed = true;
                 cacheAt = System.currentTimeMillis() - 15 * 60_000L; // try again in 5 minutes
                 cacheLat = lat;
                 cacheLon = lon;

@@ -101,6 +101,24 @@ public class IslandService extends Service {
         if (s != null) s.handler.post(() -> { s.islandSignature = ""; s.tick(); });
     }
 
+    /** Location was just allowed: run again with the location type (Android 14+) so the road prayer works behind apps. */
+    static void locationGranted() {
+        IslandService s = instance;
+        if (s == null) return;
+        s.handler.post(() -> {
+            if (Build.VERSION.SDK_INT >= 34) {
+                try {
+                    s.startForeground(NOTIFICATION_ID, s.buildNotification("يعمل في الخلفية"), ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
+                            | ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE | ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION);
+                } catch (Exception ignored) {
+                }
+            }
+            if (s.road != null) s.road.setActive(false);
+            s.lastNotificationText = "";
+            s.tick();
+        });
+    }
+
     static void reloadConfig() {
         IslandService s = instance;
         if (s != null) s.handler.post(() -> {
@@ -1176,7 +1194,17 @@ public class IslandService extends Service {
     private View buildPanel(IslandArt.Item it) {
         if ("match".equals(it.kind) && !it.matchId.isEmpty()) return matchPanel(it);
         if (it.id.startsWith("occ-")) return occasionPanel(it);
-        if ("mosque".equals(it.id)) return roadPanel();
+        if ("mosque".equals(it.id)) return roadMosques.isEmpty() ? null : roadPanel();
+        if ("mosque-perm".equals(it.id)) {
+            LinearLayout card = panelCard();
+            card.addView(label("أقرب مسجد على طريقك يحتاج إذن الموقع", 14, 0xFFFFFFFF, true));
+            addChipRow(card, chip("تفعيل الموقع", true, 0xFF34D399, () -> {
+                Intent i = new Intent(this, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP).putExtra("askLocation", true);
+                try { startActivity(i); } catch (Exception ignored) { }
+                closeFocus();
+            }));
+            return card;
+        }
         if ("countdown".equals(it.kind) && "reminder".equals(it.ckind)) {
             LinearLayout card = panelCard();
             card.addView(label(it.title, 16, 0xFFFFFFFF, true));
@@ -1281,18 +1309,33 @@ public class IslandService extends Service {
             if (now >= at - 15 * 60_000L && now < iqAt + 5 * 60_000L) { name = t; iq = iqAt; break; }
         }
         road.setActive(name != null);
-        if (name == null || !road.driving()) { roadMosques = new ArrayList<>(); return; }
+        if (name == null) { roadMosques = new ArrayList<>(); return; }
         roadPrayer = name;
         roadIqamah = iq;
         boolean afterIqamah = now >= iq;
-        // after the iqamah: can you still reach the congregation within its last 5 minutes?
-        roadMosques = road.ahead(afterIqamah ? iq + 5 * 60_000L : iq);
-        if (roadMosques.isEmpty()) return;
-        RoadPrayer.Mosque m = roadMosques.get(0);
         IslandArt.Item it = new IslandArt.Item();
         it.kind = "countdown";
         it.ckind = "mosque";
         it.id = "mosque";
+        it.at = iq;
+        // not ready yet: say why (so the island is never silently missing)
+        String wait = !RoadPrayer.permitted(this) ? "فعّل الموقع لأقرب مسجد" : !Hub.bool(this, "roadPrayer", true) ? null
+                : !road.hasFix() ? "جاري تحديد موقعك..." : null;
+        if (wait == null && Hub.bool(this, "roadPrayer", true)) {
+            // after the iqamah: can you still reach the congregation within its last 5 minutes?
+            roadMosques = road.ahead(afterIqamah ? iq + 5 * 60_000L : iq);
+            if (roadMosques.isEmpty()) wait = road.searching() ? "أبحث عن المساجد القريبة..." : road.failed() ? "تعذّر جلب المساجد · سأعيد المحاولة" : "لا مساجد قريبة في اتجاهك";
+        }
+        if (!Hub.bool(this, "roadPrayer", true)) return;
+        if (wait != null) {
+            it.id = RoadPrayer.permitted(this) ? "mosque" : "mosque-perm";
+            it.title = "🕌 " + roadPrayer;
+            it.minute = wait;
+            it.more = 1;
+            out.add(it);
+            return;
+        }
+        RoadPrayer.Mosque m = roadMosques.get(0);
         it.title = afterIqamah ? "🕌 فاتتك الإقامة · تلحق الجماعة؟" : "🕌 " + m.name;
         it.minute = RoadPrayer.distanceText(m.meters) + " · " + Math.max(1, Math.round(m.eta / 60_000f)) + " د";
         it.more = m.state;
