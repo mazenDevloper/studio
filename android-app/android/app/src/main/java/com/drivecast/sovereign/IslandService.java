@@ -1290,7 +1290,7 @@ public class IslandService extends Service {
     /** From 15 minutes before an adhan until its iqamah, while driving: the nearest mosque ahead. */
     private void roadItem(List<IslandArt.Item> out, long now) {
         if (road == null) road = new RoadPrayer(this, () -> handler.post(() -> { if (focusedId != null && focusedId.equals("mosque")) { panelVersion++; } }));
-        JSONArray list = Widgets.countdowns(this);
+        JSONArray list = Widgets.dayCountdowns(this);
         String name = null, nextName = null;
         long iq = 0, nextIq = 0;
         for (int i = 0; list != null && i < list.length(); i++) {
