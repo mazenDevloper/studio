@@ -1277,20 +1277,23 @@ public class IslandService extends Service {
                 if (q != null && "iqamah".equals(q.optString("kind")) && q.optString("title").contains(t) && q.optLong("at") >= at && q.optLong("at") - at < 3 * 3600_000L) { iqAt = q.optLong("at"); break; }
             }
             if (iqAt == at) iqAt = at + 15 * 60_000L;
-            if (now >= at - 15 * 60_000L && now < iqAt) { name = t; iq = iqAt; break; }
+            // until 5 minutes after the iqamah (still time to join the congregation)
+            if (now >= at - 15 * 60_000L && now < iqAt + 5 * 60_000L) { name = t; iq = iqAt; break; }
         }
         road.setActive(name != null);
         if (name == null || !road.driving()) { roadMosques = new ArrayList<>(); return; }
         roadPrayer = name;
         roadIqamah = iq;
-        roadMosques = road.ahead(iq);
+        boolean afterIqamah = now >= iq;
+        // after the iqamah: can you still reach the congregation within its last 5 minutes?
+        roadMosques = road.ahead(afterIqamah ? iq + 5 * 60_000L : iq);
         if (roadMosques.isEmpty()) return;
         RoadPrayer.Mosque m = roadMosques.get(0);
         IslandArt.Item it = new IslandArt.Item();
         it.kind = "countdown";
         it.ckind = "mosque";
         it.id = "mosque";
-        it.title = "🕌 " + m.name;
+        it.title = afterIqamah ? "🕌 فاتتك الإقامة · تلحق الجماعة؟" : "🕌 " + m.name;
         it.minute = RoadPrayer.distanceText(m.meters) + " · " + Math.max(1, Math.round(m.eta / 60_000f)) + " د";
         it.more = m.state;
         it.at = now + m.eta;
@@ -1299,8 +1302,11 @@ public class IslandService extends Service {
 
     private View roadPanel() {
         LinearLayout card = panelCard();
-        long left = Math.max(0, (roadIqamah - System.currentTimeMillis()) / 60_000L);
-        card.addView(label("صلاة " + roadPrayer + " على الطريق · الإقامة بعد " + left + " د", 14, 0xFFFFFFFF, true));
+        long nowMs = System.currentTimeMillis();
+        long left = Math.max(0, (roadIqamah - nowMs) / 60_000L);
+        card.addView(label(nowMs >= roadIqamah
+                ? "صلاة " + roadPrayer + " · أقيمت الصلاة منذ " + Math.max(0, (nowMs - roadIqamah) / 60_000L) + " د · تلحق الجماعة؟"
+                : "صلاة " + roadPrayer + " على الطريق · الإقامة بعد " + left + " د", 14, 0xFFFFFFFF, true));
         String[] states = {"🟢 تصل قبل الإقامة", "🟡 تتأخر دقائق", "🔴 لن تلحق"};
         for (int i = 0; i < roadMosques.size() && i < 3; i++) {
             RoadPrayer.Mosque m = roadMosques.get(i);
