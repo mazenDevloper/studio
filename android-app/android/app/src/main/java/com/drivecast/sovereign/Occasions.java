@@ -28,7 +28,7 @@ final class Occasions {
         String[][] names = {{"الفجر", "fajr"}, {"الظهر", "dhuhr"}, {"العصر", "asr"}, {"المغرب", "maghrib"}, {"العشاء", "isha"}};
         Calendar c = Calendar.getInstance();
         c.setTimeInMillis(now);
-        JSONArray list = Widgets.countdowns(ctx);
+        JSONArray list = Widgets.dayCountdowns(ctx);
         for (int i = 0; list != null && i < list.length(); i++) {
             JSONObject o = list.optJSONObject(i);
             if (o == null || !"azan".equals(o.optString("kind"))) continue;
@@ -42,7 +42,7 @@ final class Occasions {
     }
 
     private static long tomorrowFajr(Context ctx, long now) {
-        JSONArray list = Widgets.countdowns(ctx);
+        JSONArray list = Widgets.dayCountdowns(ctx);
         long best = 0;
         for (int i = 0; list != null && i < list.length(); i++) {
             JSONObject o = list.optJSONObject(i);

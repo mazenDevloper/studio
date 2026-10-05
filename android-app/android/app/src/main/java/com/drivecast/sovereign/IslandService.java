@@ -1291,8 +1291,8 @@ public class IslandService extends Service {
     private void roadItem(List<IslandArt.Item> out, long now) {
         if (road == null) road = new RoadPrayer(this, () -> handler.post(() -> { if (focusedId != null && focusedId.equals("mosque")) { panelVersion++; } }));
         JSONArray list = Widgets.countdowns(this);
-        String name = null;
-        long iq = 0;
+        String name = null, nextName = null;
+        long iq = 0, nextIq = 0;
         for (int i = 0; list != null && i < list.length(); i++) {
             JSONObject c = list.optJSONObject(i);
             if (c == null || !"azan".equals(c.optString("kind"))) continue;
@@ -1307,7 +1307,10 @@ public class IslandService extends Service {
             if (iqAt == at) iqAt = at + 15 * 60_000L;
             // until 5 minutes after the iqamah (still time to join the congregation)
             if (now >= at - 15 * 60_000L && now < iqAt + 5 * 60_000L) { name = t; iq = iqAt; break; }
+            // "always show": the next prayer's mosque at any time
+            if (Hub.bool(this, "roadPrayerAlways", false) && at > now && (nextIq == 0 || iqAt < nextIq)) { nextName = t; nextIq = iqAt; }
         }
+        if (name == null && nextName != null) { name = nextName; iq = nextIq; }
         road.setActive(name != null);
         if (name == null) { roadMosques = new ArrayList<>(); return; }
         roadPrayer = name;

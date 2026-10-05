@@ -161,6 +161,21 @@ public final class Widgets {
         boolean fresh = false;
         for (int i = 0; sent != null && i < sent.length(); i++) if (sent.optJSONObject(i) != null && sent.optJSONObject(i).optLong("at") > now) fresh = true;
         if (fresh) return sent;
+        return computedCountdowns(ctx);
+    }
+
+    /**
+     * The whole of today (passed prayers included) and tomorrow, from the cloud times: for what lists the day
+     * (the prayer bar, the occasions) - the page may send only the coming ones. Falls back to what the page sent.
+     */
+    static JSONArray dayCountdowns(Context ctx) {
+        JSONArray c = computedCountdowns(ctx);
+        if (c.length() > 0) return c;
+        JSONArray sent = json(ctx, "config").optJSONArray("countdowns");
+        return sent != null ? sent : new JSONArray();
+    }
+
+    static JSONArray computedCountdowns(Context ctx) {
         JSONArray out = new JSONArray();
         JSONArray days = Cloud.array(ctx, "cloud_prayers");
         JSONArray settings = Cloud.master(ctx).optJSONArray("prayerSettings");
@@ -689,7 +704,7 @@ public final class Widgets {
     // ---- the dashboard's prayer bar (all of today's prayers side by side) ----
 
     private static RemoteViews prayerBar(Context ctx, int w, int h, int realH) {
-        JSONArray list = countdowns(ctx);
+        JSONArray list = dayCountdowns(ctx);
         long now = System.currentTimeMillis();
         String today = Cloud.day(now);
         SimpleDateFormat hm = new SimpleDateFormat("H:mm", Locale.ROOT);

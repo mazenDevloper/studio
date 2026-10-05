@@ -118,6 +118,8 @@ export function NativePermissions() {
         { key: "islandsHidden", def: false, label: "إخفاء الجزر مؤقتاً (الهدف والأذان القريب يظهران رغم ذلك)" },
         { key: "islandBubble", def: true, label: "زر الإخفاء / الإظهار العائم على حافة الشاشة" },
         { key: "voiceFollow", def: false, label: "المتابعة الصوتية: قراءة الأهداف بصوت عربي أثناء القيادة" },
+        { key: "roadPrayer", def: true, label: "🕌 أقرب مسجد على الطريق (من قبل الأذان بربع ساعة حتى بعد الإقامة بخمس دقائق)" },
+        { key: "roadPrayerAlways", def: false, label: "🕌 إظهار أقرب مسجد في كل وقت (للتجربة)" },
       ].map(t => (
         <label key={t.key} className="flex items-center gap-3 text-sm font-bold text-white/70">
           <input type="checkbox" checked={typeof hub[t.key] === "boolean" ? hub[t.key] : t.def} className="w-5 h-5 accent-emerald-500"
