@@ -74,7 +74,17 @@ export function athleteImage(athleteId: number | string, version?: number | stri
 }
 
 /** Countries asked for international broadcasters when nobody in the Middle East shows a match. */
-const GLOBAL: [string, RegExp][] = [["POR", /^portugal$/i], ["USA", /^usa$|united states/i], ["IND", /^india$/i], ["ENG", /^england$|united kingdom/i], ["ESP", /^spain$/i]];
+const GLOBAL: [string, RegExp][] = [["POR", /^portugal$/i], ["USA", /^usa$|united states/i], ["IND", /^india$/i], ["ENG", /^england$|united kingdom/i], ["ESP", /^spain$/i],
+  ["FRA", /^france$/i], ["GER", /^germany$/i], ["ITA", /^italy$/i], ["BRA", /^brazil$/i], ["CAN", /^canada$/i], ["AUS", /^australia$/i]];
+
+/** Short code for a 365Scores country id ("POR"), from the known names. */
+export function s365CountryCode(id: number): string | null {
+  for (const [name, cid] of countryIds) if (cid === id) {
+    const g = GLOBAL.find(([, re]) => re.test(name));
+    return g ? g[0] : name.replace(/[^A-Za-z]/g, "").slice(0, 3).toUpperCase() || null;
+  }
+  return null;
+}
 
 export function s365GlobalCountries(): { code: string; id: number }[] {
   const out: { code: string; id: number }[] = [];

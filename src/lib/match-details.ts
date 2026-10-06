@@ -1,7 +1,7 @@
 import { BROWSER_HEADERS, UA, getJson, sameTeam } from "@/lib/match-core";
 import { isArabChannel, prioritizeChannels } from "@/lib/match-channels";
 import { footballDay } from "@/lib/oman-time";
-import { S365_HEADERS, athleteImage, remember365Countries, s365CountryId, s365GlobalCountriesLoaded, s365RegionCountryIds, s365Url } from "@/lib/scores365";
+import { S365_HEADERS, athleteImage, remember365Countries, s365CountryId, s365CountryCode, s365GlobalCountriesLoaded, s365RegionCountryIds, s365Url } from "@/lib/scores365";
 
 /**
  * Extra info for one match card: goal scorers (with photos), TV channels, venue, referee, red cards, round,
@@ -106,10 +106,18 @@ async function details365(gameId: string, revalidate: number): Promise<MatchDeta
   }
   if (!out.channels.some(isArabChannel)) {
     // still nothing in the region: international broadcasters, prefixed with the country ("POR: Sport TV1")
-    const world = await s365GlobalCountriesLoaded();
+    // the countries of the competition and the two clubs first (their home broadcasters), then the big markets
+    const g0 = json?.game;
+    const local = [g0?.competitionCountryId ?? json?.competitions?.[0]?.countryId, g0?.homeCompetitor?.countryId, g0?.awayCompetitor?.countryId]
+      .map(Number).filter(id => id > 0);
+    const global = await s365GlobalCountriesLoaded();
+    const world: { code: string; id: number }[] = [];
+    for (const id of local) { const code = s365CountryCode(id); if (code && !world.some(w => w.id === id)) world.push({ code, id }); }
+    for (const w of global) if (!world.some(x => x.id === w.id)) world.push(w);
+    world.splice(10);
     const found = await Promise.allSettled(world.map(c => getJson(`https://webws.365scores.com/web/game/?appTypeId=5&langId=1&timezoneName=Asia/Muscat&userCountryId=${c.id}&gameId=${gameId}`, S365_HEADERS, Math.max(revalidate, 300))));
     const intl = found.flatMap((r, i) => (r.status === "fulfilled" ? ((r.value?.game?.tvNetworks ?? []) as any[]).map(t => t?.name).filter(Boolean).map(n => `${world[i].code}: ${n}`) : []));
-    if (intl.length) out.channels = Array.from(new Set([...out.channels, ...intl])).slice(0, 12);
+    if (intl.length) out.channels = Array.from(new Set([...out.channels, ...intl])).slice(0, 16);
   }
   const g = json?.game;
   if (g && Number(g.statusGroup) >= 3) {
