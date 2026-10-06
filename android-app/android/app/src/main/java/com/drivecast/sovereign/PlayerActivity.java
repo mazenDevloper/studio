@@ -62,6 +62,15 @@ public class PlayerActivity extends Activity {
             controls.animate().alpha(0f).setDuration(300).withEndAction(() -> controls.setVisibility(View.GONE)).start();
     };
     private Runnable pendingNext;
+    /** the open player (voice "التالي" / "السابق") */
+    static PlayerActivity open;
+
+    static boolean voiceStep(int d) {
+        PlayerActivity p = open;
+        if (p == null || p.queue.length() <= 1) return false;
+        p.ui.post(() -> p.step(d));
+        return true;
+    }
 
     @SuppressLint({"SetJavaScriptEnabled", "AddJavascriptInterface", "ClickableViewAccessibility"})
     @Override
@@ -107,6 +116,7 @@ public class PlayerActivity extends Activity {
         });
         setContentView(root);
         hideBars();
+        open = this;
         load(getIntent());
     }
 
@@ -512,6 +522,7 @@ public class PlayerActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        if (open == this) open = null;
         cancelNext();
         ui.removeCallbacksAndMessages(null);
         if (isFinishing()) Hub.set(this, "player", null);

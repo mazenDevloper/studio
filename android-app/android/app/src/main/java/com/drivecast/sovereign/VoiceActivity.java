@@ -92,7 +92,27 @@ public class VoiceActivity extends Activity {
         } catch (Exception e) {
             answer = null;
         }
-        if (answer == null) answer = "لم أفهم: «" + said + "». جرّب: شغّل سورة الكهف، كم النتيجة، متى المغرب";
+        if (answer == null) {
+            // not one of the known phrasings: the AI works out what was meant (or answers the question)
+            view.setText("«" + said + "»\n\n🤔 ...");
+            final String heard = said;
+            new Thread(() -> {
+                String a;
+                try {
+                    a = VoiceBrain.understand(getApplicationContext(), heard, this::runIntent);
+                } catch (Exception e) {
+                    a = null;
+                }
+                final String ans = a != null ? a : "لم أفهم: «" + heard + "». جرّب: شغّل سورة الكهف، كم النتيجة، متى المغرب";
+                ui.post(() -> {
+                    if (ans.startsWith("@")) { view.setText("«" + heard + "»\n\n" + ans.substring(1)); return; }
+                    if (ans.startsWith("#")) { view.setText("«" + heard + "»\n\n" + ans.substring(1)); ui.postDelayed(this::finish, 1500); return; }
+                    view.setText("«" + heard + "»\n\n" + ans);
+                    done(ans, true);
+                });
+            }).start();
+            return;
+        }
         if (answer.startsWith("@")) {
             // still working (a trip being planned): the answer comes by itself
             view.setText("«" + said + "»\n\n" + answer.substring(1));
@@ -152,6 +172,37 @@ public class VoiceActivity extends Activity {
             return "@أخطط الطريق إلى " + Trip.placeName(dest) + " وأبحث عن المساجد عليه...";
         }
 
+        // the day, the date, the time
+        if (s.contains("التاريخ") || s.contains("اي يوم") || s.contains("ايش اليوم") || s.contains("وش اليوم") || s.contains("كم اليوم") || s.contains("اليوم كم") || s.contains("الهجري") || s.equals("اليوم")) return VoiceBrain.today();
+        if (s.contains("الساعه كم") || s.contains("كم الساعه") || s.contains("الوقت الحين") || s.equals("الساعه")) return VoiceBrain.timeNow();
+
+        // matches of another day: "مباريات الغد / بكره / أمس"
+        if ((s.contains("مباري") || s.contains("ماتش") || s.contains("مباراه")) && (s.contains("بكره") || s.contains("بكرا") || s.contains("غدا") || s.contains("الغد") || s.contains("امس") || s.contains("البارحه"))) {
+            final int day = s.contains("امس") || s.contains("البارحه") ? -1 : 1;
+            new Thread(() -> {
+                String a = VoiceBrain.matchesOn(getApplicationContext(), day);
+                ui.post(() -> { view.setText(a); say(a); ui.postDelayed(this::finish, 8000); });
+            }).start();
+            return "@" + (day == 1 ? "أجلب مباريات الغد..." : "أجلب مباريات الأمس...");
+        }
+        if (s.contains("مباريات اليوم") || s.contains("مباريات الليله")) {
+            new Thread(() -> {
+                String a = VoiceBrain.matchesOn(getApplicationContext(), 0);
+                ui.post(() -> { view.setText(a); say(a); ui.postDelayed(this::finish, 8000); });
+            }).start();
+            return "@أجلب مباريات اليوم...";
+        }
+
+        // next / previous video (the sound island, the full player, or the app's player)
+        if ((s.contains("التالي") || s.contains("بعده") || s.contains("الجاي")) && !IslandService.azkarActive()) {
+            if (!IslandService.mediaStep(1) && !PlayerActivity.voiceStep(1)) media(WidgetActionReceiver.MEDIA_NEXT);
+            return "التالي";
+        }
+        if (s.contains("السابق") || s.contains("اللي قبله") || s.contains("ارجع")) {
+            if (!IslandService.mediaStep(-1) && !PlayerActivity.voiceStep(-1)) media(WidgetActionReceiver.MEDIA_PREV);
+            return "السابق";
+        }
+
         // stop everything that plays / reads
         if (s.contains("اوقف") || s.contains("وقف") || s.contains("توقف") || s.contains("اسكت") || s.contains("انهي") || s.equals("خلاص")) {
             boolean az = IslandService.azkarActive();
@@ -209,6 +260,12 @@ public class VoiceActivity extends Activity {
             return "أبحث وأشغّل " + query;
         }
 
+        // "شغل <anything>": a YouTube search, the first result as sound in the island
+        if ((s.startsWith("شغل") || s.startsWith("شغلي") || s.startsWith("ابي اسمع") || s.startsWith("سمعني") || s.startsWith("حط")) && !s.contains("سوره") && findSurah(s) == 0) {
+            String q = said.replaceFirst("^\\s*(شغّل|شغل|شغلي|شغّلي|أبي أسمع|ابي اسمع|سمعني|سمّعني|حط|حطلي)\\s*", "").trim();
+            if (!q.isEmpty()) return runIntent("play_youtube", q, null);
+        }
+
         // scores
         if (s.contains("نتيجه") || s.contains("النتيجه") || s.contains("كم المباراه") || s.contains("المباراه") || s.contains("الماتش") || s.contains("كوره")) return scores();
 
@@ -256,6 +313,101 @@ public class VoiceActivity extends Activity {
 
     private void media(String action) {
         sendBroadcast(new Intent(this, WidgetActionReceiver.class).setAction(action));
+    }
+
+    /**
+     * Do what the AI understood (intent + one or two arguments). Returns what to say ("#…" = shown only, "@…" =
+     * still working).
+     */
+    String runIntent(String intent, String a, String b) {
+        switch (intent == null ? "" : intent) {
+            case "play_surah": {
+                String q = "سورة " + a + (b == null || b.isEmpty() ? "" : " " + b);
+                return runIntent("play_youtube", q, null);
+            }
+            case "play_youtube": {
+                final String q = a;
+                new Thread(() -> {
+                    JSONArray res = MediaBrowser.search(q, null);
+                    JSONObject first = res.optJSONObject(0);
+                    if (first == null) return;
+                    Intent i = new Intent(this, IslandService.class).setAction(IslandService.AUDIO).putExtra("type", "youtube")
+                            .putExtra("id", first.optString("id")).putExtra("title", first.optString("name")).putExtra("queue", res.toString()).putExtra("index", 0);
+                    ContextCompat.startForegroundService(getApplicationContext(), i);
+                }).start();
+                return "أشغّل: " + q;
+            }
+            case "stop":
+                ContextCompat.startForegroundService(getApplicationContext(), new Intent(this, IslandService.class).setAction(IslandService.STOP_ALL));
+                return "أوقفت التشغيل";
+            case "next_video":
+                if (!IslandService.mediaStep(1) && !PlayerActivity.voiceStep(1)) media(WidgetActionReceiver.MEDIA_NEXT);
+                return "التالي";
+            case "prev_video":
+                if (!IslandService.mediaStep(-1) && !PlayerActivity.voiceStep(-1)) media(WidgetActionReceiver.MEDIA_PREV);
+                return "السابق";
+            case "pause_resume":
+                media(WidgetActionReceiver.MEDIA_TOGGLE);
+                return "تم";
+            case "scores":
+                return scores();
+            case "matches_day":
+                return VoiceBrain.matchesOn(getApplicationContext(), a == null ? 0 : parseInt(a, 0));
+            case "prayer_time":
+                return prayer(a == null || a.isEmpty() ? null : a);
+            case "date_today":
+                return VoiceBrain.today();
+            case "time_now":
+                return VoiceBrain.timeNow();
+            case "azkar":
+                IslandService.start(getApplicationContext());
+                final String period = "evening".equals(a) || "morning".equals(a) ? a : null;
+                ui.postDelayed(() -> IslandService.azkar("start", period), 400);
+                return "#أقرأ لك الأذكار · قل «التالي» بعد كل ذكر";
+            case "azkar_next":
+                IslandService.azkar("next", null);
+                return "#التالي ✓";
+            case "open_screen":
+                open(a == null || !a.startsWith("/") ? "/dashboard" : a);
+                return "تم";
+            case "hide_islands":
+                Hub.set(this, "islandsHidden", true);
+                return "أخفيت الجزر";
+            case "show_islands":
+                Hub.set(this, "islandsHidden", false);
+                return "أظهرت الجزر";
+            case "remind":
+                return remind(norm("ذكرني بعد " + parseInt(a, 10) + " دقيقه"), "ذكرني " + (b == null ? "" : b));
+            case "trip":
+                return Trip.start(getApplicationContext(), "البيت".equals(a) ? "home" : "العمل".equals(a) ? "work" : a);
+            case "trip_plan": {
+                JSONObject t = Trip.current(this);
+                return t != null ? Trip.summary(t) : "لا توجد رحلة الآن";
+            }
+            case "end_trip":
+                Trip.stop(this);
+                return "أنهيت الرحلة";
+            case "save_place":
+                return Trip.saveHere(this, "work".equals(a) ? "work" : "home") ? "حفظت موقعك" : "لا أعرف موقعك الآن";
+            case "mosque": {
+                Intent m = new Intent(Intent.ACTION_VIEW, android.net.Uri.parse("geo:0,0?q=" + android.net.Uri.encode("مسجد")));
+                m.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                try { startActivity(m); } catch (Exception ignored) { }
+                return "أقرب مسجد على الخريطة";
+            }
+            case "answer":
+                return a;
+            default:
+                return null;
+        }
+    }
+
+    private static int parseInt(String v, int def) {
+        try {
+            return Integer.parseInt(v.trim());
+        } catch (Exception e) {
+            return def;
+        }
     }
 
     /** "home" / "work" from the words (null: neither) */

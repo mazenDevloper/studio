@@ -873,6 +873,14 @@ public class IslandService extends Service {
     private long testUntil = 0;
     private final List<IslandArt.Item> testItems = new ArrayList<>();
 
+    /** "الفيديو التالي / السابق" by voice: the sound island's list; true when it took it */
+    static boolean mediaStep(int d) {
+        IslandService s = instance;
+        if (s == null || s.audioView == null || s.audioQueue.length() <= 1) return false;
+        s.handler.post(() -> s.audioStep(d));
+        return true;
+    }
+
     static void test(String kind) {
         IslandService s = instance;
         if (s != null) s.handler.post(() -> s.runTest(kind));
