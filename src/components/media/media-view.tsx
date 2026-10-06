@@ -454,8 +454,8 @@ export function MediaView() {
         </div>
       </aside>
 
-      <main data-nav-zone="content" className="flex-1 overflow-y-auto relative pt-52 min-[968px]:pt-32 pb-40 px-10 no-scrollbar" style={{ direction: isDockLeft ? 'ltr' : 'rtl' }}>
-        <section data-row-id="row-search" className="py-4 space-y-6 pt-20 md:pt-6">
+      <main data-nav-zone="content" className="flex-1 overflow-y-auto relative pt-3 min-[968px]:pt-32 pb-40 px-3 min-[551px]:px-10 no-scrollbar" style={{ direction: isDockLeft ? 'ltr' : 'rtl' }}>
+        <section data-row-id="row-search" className="py-2 space-y-6 pt-0 md:pt-6">
           <div className="flex gap-3">
             <div className="relative flex-1"><Input ref={searchInputRef} placeholder={isSearchLocked ? "اضغط 5 للكتابة أو الصق رابطاً..." : "ابحث عن تلاوة أو الصق رابط يوتيوب/انستجرام..."} value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={handleSearchKeyDown} onDoubleClick={() => setIsSearchLocked(false)} readOnly={isSearchLocked} className={cn("h-16 border-none rounded-[2rem] pr-10 text-xl font-bold focusable", isSearchLocked ? "bg-white/5 text-white/30" : "bg-white/10 text-white")} data-nav-id="content-search-input-0" /></div>
             <button onClick={() => performSearch()} className={cn("h-14 bg-red-600 text-white font-black text-base focusable flex items-center justify-center transition-all px-6 rounded-full md:px-8 md:rounded-[2rem]")} data-nav-id="content-search-btn-0">

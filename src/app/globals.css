@@ -190,6 +190,9 @@ span.text-\[18cqw\].font-black.text-white.leading-none.tracking-tight.block {
 
   /* --- Tablet & Mobile Range Scaling --- */
   @media (max-width: 550px) {
+    /* phones: wide side paddings squeeze the content */
+    .px-6, .px-8, .px-10, .px-12, .px-16 { padding-left: 12px !important; padding-right: 12px !important; }
+    .p-8, .p-10, .p-12 { padding: 14px !important; }
     h1, .text-6xl, .text-5xl, .text-4xl { font-size: 1.5rem !important; line-height: 1.2 !important; }
     h2, .text-3xl { font-size: 1.25rem !important; }
 

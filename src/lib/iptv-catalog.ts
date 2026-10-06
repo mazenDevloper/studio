@@ -141,6 +141,8 @@ export function searchCatalog(q: string, max = 60): IptvChannel[] {
 export function resolveChannel<T extends LinkableChannel>(
   broadcast: string, favorites: T[], find: (b: string, f: T[]) => T | null, country?: string, arab = false,
 ): { ch: T | IptvChannel; fav: boolean } | null {
+  // international channels carry a country prefix ("POR: Sport TV1")
+  broadcast = broadcast.replace(/^[A-Z]{2,3}:\s*/, "");
   if (!channelKey(broadcast)) return null;
   const fav = find(broadcast, favorites);
   if (fav) return { ch: fav, fav: true };

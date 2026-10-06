@@ -302,7 +302,7 @@ export function LiveMatchIsland() {
       <div className="flex items-start gap-3">
         <div onClick={toggleShowIslands} className="pointer-events-auto shadow-2xl w-12 h-12 rounded-full flex items-center justify-center premium-glass cursor-pointer border border-white/10 active:scale-90 transition-all">{showIslands ? <Eye className="w-5 h-5 text-accent" /> : <EyeOff className="w-5 h-5 text-white/20" />}</div>
         {showIslands && (
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap justify-center items-center gap-2 max-[967px]:max-w-[calc(100vw/0.7-32px)]">
             {visibleAlerts.map((alert) => {
                if (alert.type === 'match') {
                  return (
