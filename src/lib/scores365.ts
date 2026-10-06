@@ -72,3 +72,32 @@ export const s365Url = async (path: string, extra: Record<string, string | numbe
 export function athleteImage(athleteId: number | string, version?: number | string, size = 120): string {
   return `https://imagecache.365scores.com/image/upload/f_png,w_${size},h_${size},c_limit,q_auto:eco,dpr_2,d_Athletes:default.png,r_max,c_thumb,g_face,z_0.65/${version ? `v${version}/` : ""}Athletes/${athleteId}`;
 }
+
+/** Countries asked for international broadcasters when nobody in the Middle East shows a match. */
+const GLOBAL: [string, RegExp][] = [["POR", /^portugal$/i], ["USA", /^usa$|united states/i], ["IND", /^india$/i], ["ENG", /^england$|united kingdom/i], ["ESP", /^spain$/i],
+  ["FRA", /^france$/i], ["GER", /^germany$/i], ["ITA", /^italy$/i], ["BRA", /^brazil$/i], ["CAN", /^canada$/i], ["AUS", /^australia$/i]];
+
+/** Short code for a 365Scores country id ("POR"), from the known names. */
+export function s365CountryCode(id: number): string | null {
+  for (const [name, cid] of countryIds) if (cid === id) {
+    const g = GLOBAL.find(([, re]) => re.test(name));
+    return g ? g[0] : name.replace(/[^A-Za-z]/g, "").slice(0, 3).toUpperCase() || null;
+  }
+  return null;
+}
+
+export function s365GlobalCountries(): { code: string; id: number }[] {
+  const out: { code: string; id: number }[] = [];
+  for (const [code, re] of GLOBAL) for (const [name, id] of countryIds) if (re.test(name)) { out.push({ code, id }); break; }
+  return out;
+}
+
+let globalLookupAt = 0;
+/** Same, fetching the full country list once if those countries were not seen yet. */
+export async function s365GlobalCountriesLoaded(): Promise<{ code: string; id: number }[]> {
+  if (s365GlobalCountries().length < 3 && Date.now() - globalLookupAt > 30 * 60_000) {
+    globalLookupAt = Date.now();
+    try { remember365Countries(await getJson(`${API}/countries/?appTypeId=5&langId=1&sports=1`, S365_HEADERS, 86_400)); } catch {}
+  }
+  return s365GlobalCountries();
+}
