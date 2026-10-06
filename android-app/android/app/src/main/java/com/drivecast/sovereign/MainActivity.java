@@ -66,18 +66,6 @@ public class MainActivity extends BridgeActivity {
         }
         IslandService.start(this);
         openRoute(getIntent(), true);
-        // prayer on the road needs the location: ask once on first start (Android shows its own dialog)
-        if (Build.VERSION.SDK_INT >= 23 && !RoadPrayer.permitted(this) && !NativeIslandPlugin.prefs(this).getBoolean("askedRoadLocation", false)) {
-            NativeIslandPlugin.prefs(this).edit().putBoolean("askedRoadLocation", true).apply();
-            requestPermissions(new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.ACCESS_COARSE_LOCATION}, 7101);
-        }
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        // location just allowed: the service keeps it behind other apps from now on
-        if (requestCode == 7101 && RoadPrayer.permitted(this)) IslandService.locationGranted();
     }
 
     @Override
@@ -101,18 +89,9 @@ public class MainActivity extends BridgeActivity {
                 webView.postDelayed(() -> webView.loadUrl(url), coldStart ? 600 : 0);
             }
         }
-        // with a screen to open, the command waits for that screen's page (the current page is about to be replaced)
-        if (command != null) {
-            if (route != null && route.startsWith("/")) NativeIslandPlugin.queueCommand(command, intent.getStringExtra("arg"));
-            else NativeIslandPlugin.emitCommand(command, intent.getStringExtra("arg"));
-        }
-        // the radar map asked for the location permission (a service can't ask)
-        if (intent.getBooleanExtra("askLocation", false) && Build.VERSION.SDK_INT >= 23) {
-            requestPermissions(new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.ACCESS_COARSE_LOCATION}, 7101);
-        }
+        if (command != null) NativeIslandPlugin.emitCommand(command, intent.getStringExtra("arg"));
         intent.removeExtra("route");
         intent.removeExtra("command");
-        intent.removeExtra("askLocation");
     }
 
     @Override

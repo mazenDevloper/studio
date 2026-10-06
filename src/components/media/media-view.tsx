@@ -251,29 +251,6 @@ export function MediaView() {
   };
 
   // offline / quran.com down: keep the empty list instead of an unhandled rejection
-  // the Android subscriptions widget: open the search box ready to type, or the tapped channel
-  useEffect(() => {
-    const run = () => {
-      const act = (window as any).__nativeMediaAction as { type: string; id?: string } | undefined;
-      if (!act) return;
-      if (act.type === "search") {
-        (window as any).__nativeMediaAction = undefined;
-        setSelectedChannel(null); setSelectedPlaylist(null);
-        setIsSearchLocked(false);
-        setTimeout(() => searchInputRef.current?.focus(), 150);
-      } else if (act.type === "channel") {
-        const ch = (favoriteChannels || []).find(c => c.channelid === act.id);
-        if (!ch) return; // channels still loading: tried again when they arrive
-        (window as any).__nativeMediaAction = undefined;
-        setSelectedChannel(ch); setSelectedPlaylist(null); setSearchResults([]); setIsSidebarShrinked(true);
-      }
-    };
-    run();
-    window.addEventListener("native-media-action", run);
-    return () => window.removeEventListener("native-media-action", run);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [favoriteChannels]);
-
   useEffect(() => { fetch("https://api.quran.com/api/v4/chapters?language=ar").then(r => r.json()).then(d => { setSurahs(d.chapters || []); setAllSurahs(d.chapters || []); }).catch(() => {}); }, []);
 
   const resetView = () => { setSelectedChannel(null); setSelectedPlaylist(null); setSearchResults([]); setSearch(""); setIsSidebarShrinked(false); setSelectedReciter(null); setSelectedSurah(null); setSelectedJuz(null); setSurahs(allSurahs); };
@@ -477,8 +454,8 @@ export function MediaView() {
         </div>
       </aside>
 
-      <main data-nav-zone="content" className="flex-1 overflow-y-auto relative pt-52 min-[968px]:pt-32 pb-40 px-10 no-scrollbar" style={{ direction: isDockLeft ? 'ltr' : 'rtl' }}>
-        <section data-row-id="row-search" className="py-4 space-y-6 pt-20 md:pt-6">
+      <main data-nav-zone="content" className="flex-1 overflow-y-auto relative pt-3 min-[968px]:pt-32 pb-40 px-3 min-[551px]:px-10 no-scrollbar" style={{ direction: isDockLeft ? 'ltr' : 'rtl' }}>
+        <section data-row-id="row-search" className="py-2 space-y-6 pt-0 md:pt-6">
           <div className="flex gap-3">
             <div className="relative flex-1"><Input ref={searchInputRef} placeholder={isSearchLocked ? "اضغط 5 للكتابة أو الصق رابطاً..." : "ابحث عن تلاوة أو الصق رابط يوتيوب/انستجرام..."} value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={handleSearchKeyDown} onDoubleClick={() => setIsSearchLocked(false)} readOnly={isSearchLocked} className={cn("h-16 border-none rounded-[2rem] pr-10 text-xl font-bold focusable", isSearchLocked ? "bg-white/5 text-white/30" : "bg-white/10 text-white")} data-nav-id="content-search-input-0" /></div>
             <button onClick={() => performSearch()} className={cn("h-14 bg-red-600 text-white font-black text-base focusable flex items-center justify-center transition-all px-6 rounded-full md:px-8 md:rounded-[2rem]")} data-nav-id="content-search-btn-0">

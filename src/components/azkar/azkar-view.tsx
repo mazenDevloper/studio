@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useCallback, useRef } from "react";
-import { hubGet, hubSet, type NativeHubEvent } from "@/lib/native-app";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { isDoneToday, localDay } from "@/lib/store";
 import { prayerDayFor } from "@/lib/prayer-day";
 import { Card, CardContent } from "@/components/ui/card";
@@ -69,33 +68,6 @@ export function AzkarView() {
     setLoaded(true);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (loaded) try { localStorage.setItem(COUNTS_KEY(localDay()), JSON.stringify(counts)); } catch {} }, [counts, loaded]);
-
-  // the phone's azkar widget and this screen count together: each side's counter takes the larger value
-  const fromPhone = useRef(false);
-  useEffect(() => {
-    const merge = (o: any) => {
-      if (!o || (o.day && o.day !== localDay())) return;
-      setCounters(prev => {
-        let changed = false;
-        const next = { ...prev };
-        for (const [k, v] of Object.entries(o)) {
-          if (k === "day" || typeof v !== "number") continue;
-          if ((next[k] || 0) < v) { next[k] = v; changed = true; }
-        }
-        if (changed) fromPhone.current = true;
-        return changed ? next : prev;
-      });
-    };
-    hubGet().then(st => merge(st.azkarCounts));
-    const on = (e: Event) => { const d = (e as NativeHubEvent).detail; if (d?.key === "azkarCounts") merge(d.value); };
-    window.addEventListener("native-hub", on);
-    return () => window.removeEventListener("native-hub", on);
-  }, []);
-  useEffect(() => {
-    if (!loaded) return;
-    if (fromPhone.current) { fromPhone.current = false; return; }
-    hubSet("azkarCounts", { ...counts, day: localDay() });
-  }, [counts, loaded]);
 
   // all of a period's azkar done -> its reminder (label with "الصباح" / "المساء") is done for today
   useEffect(() => {

@@ -2,11 +2,9 @@ name: Android APK
 
 # Builds the DriveCast Android app (android-app/) and publishes it as the "android-latest" release:
 # open https://github.com/<owner>/<repo>/releases/tag/android-latest on the phone and install DriveCast.apk.
-# A build from a work branch (claude/...) goes to the "android-preview" release instead, so it can be tried before
-# merging without replacing the main APK.
 on:
   push:
-    branches: [main, claude/practical-mendel-feeiyn, "claude/**"]
+    branches: [main, claude/practical-mendel-feeiyn]
     paths: ["android-app/**", ".github/workflows/android-apk.yml"]
   workflow_dispatch:
     inputs:
@@ -18,7 +16,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: android-apk-${{ github.ref_name }}
+  group: android-apk
   cancel-in-progress: true
 
 jobs:
@@ -58,14 +56,12 @@ jobs:
           name: DriveCast-apk
           path: DriveCast.apk
 
-      - name: Publish as the "android-latest" release (work branches - "android-preview")
+      - name: Publish as the "android-latest" release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG=android-latest
-          case "$GITHUB_REF_NAME" in main|claude/practical-mendel-feeiyn) ;; *) TAG=android-preview ;; esac
-          gh release delete "$TAG" --yes --cleanup-tag || true
-          gh release create "$TAG" DriveCast.apk \
+          gh release delete android-latest --yes --cleanup-tag || true
+          gh release create android-latest DriveCast.apk \
             --target "$GITHUB_SHA" --prerelease \
             --title "DriveCast Android (build ${{ github.run_number }})" \
             --notes "Built from ${GITHUB_REF_NAME} @ ${GITHUB_SHA::7}. Install DriveCast.apk on the phone (allow installing from this source once)."

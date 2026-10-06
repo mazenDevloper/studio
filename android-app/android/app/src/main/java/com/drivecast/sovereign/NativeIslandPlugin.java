@@ -20,9 +20,6 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
-
 /**
  * window.Capacitor.Plugins.NativeIsland: the site tells the native floating island what to show (the matches
  * API address with the favourite teams, pinned matches, upcoming adhan / iqamah times) and asks for the
@@ -54,14 +51,6 @@ public class NativeIslandPlugin extends Plugin {
         else synchronized (pending) { pending.add(data); }
     }
 
-    /** Keep a command for the next page that loads (a widget opened a screen: the current page is about to go). */
-    static void queueCommand(String cmd, String arg) {
-        JSObject data = new JSObject();
-        data.put("cmd", cmd);
-        data.put("arg", arg == null ? "" : arg);
-        synchronized (pending) { pending.add(data); }
-    }
-
     /** The page is running and listening (a media command can be delivered right away). */
     static boolean isPageAlive() {
         NativeIslandPlugin p = instance;
@@ -81,98 +70,11 @@ public class NativeIslandPlugin extends Plugin {
         call.resolve(ret);
     }
 
-    /**
-     * What the home-screen widgets show (now playing, Quran surahs / reciters, the site's address, manuscripts and the
-     * board's ink, folders, most viewed videos). Each call sends some of these keys: they are merged into what the
-     * page sent before. Manuscript pictures arriving as data: URLs are saved as files here, so the stored settings
-     * stay small and the widget reads the picture from disk.
-     */
-    /** Settings' test buttons: kind "goal" (four goals, one every 3 s) or "islands" (sample islands for a minute). */
-    @PluginMethod
-    public void testIslands(PluginCall call) {
-        IslandService.start(getContext());
-        String kind = call.getString("kind", "goal");
-        new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> IslandService.test(kind), 300);
-        call.resolve();
-    }
-
-    /** The shared state (Hub): the page reads it when it starts. */
-    @PluginMethod
-    public void hubGet(PluginCall call) {
-        JSObject r = new JSObject();
-        r.put("state", Hub.state(getContext()).toString());
-        call.resolve(r);
-    }
-
-    /** The page changed a shared value (value: JSON text): the widgets / islands follow. */
-    @PluginMethod
-    public void hubSet(PluginCall call) {
-        String key = call.getString("key", "");
-        if (key.isEmpty()) { call.resolve(); return; }
-        Object v = null;
-        try {
-            String raw = call.getString("value", "null");
-            v = new org.json.JSONTokener(raw).nextValue();
-            if (v == JSONObject.NULL) v = null;
-        } catch (Exception ignored) {
-        }
-        if ("azkarCounts".equals(key) && v instanceof JSONObject) {
-            // merge with the widget's counts (the larger wins), kept where the azkar widget reads them
-            JSONObject mine = MediaBrowser.azkarCounts(getContext()), in = (JSONObject) v;
-            try {
-                java.util.Iterator<String> it = in.keys();
-                while (it.hasNext()) { String k = it.next(); if (!"day".equals(k)) mine.put(k, Math.max(mine.optInt(k), in.optInt(k))); }
-                mine.put("day", Cloud.day(System.currentTimeMillis()));
-            } catch (Exception ignored) {
-            }
-            prefs(getContext()).edit().putString("azkarCounts", mine.toString()).apply();
-            v = mine;
-        }
-        Hub.set(getContext(), key, v, false);
-        call.resolve();
-    }
-
+    /** What the home-screen widgets show (now playing, Quran surahs / reciters, the site's address). */
     @PluginMethod
     public void updateWidgets(PluginCall call) {
-        Context ctx = getContext();
-        JSONObject merged;
-        try {
-            merged = new JSONObject(prefs(ctx).getString("widgets", "{}"));
-        } catch (Exception e) {
-            merged = new JSONObject();
-        }
-        try {
-            JSONObject in = new JSONObject(call.getString("data", "{}"));
-            JSONArray ms = in.optJSONArray("manuscripts");
-            if (ms != null) {
-                java.io.File dir = new java.io.File(ctx.getFilesDir(), "manuscripts");
-                //noinspection ResultOfMethodCallIgnored
-                dir.mkdirs();
-                for (int i = 0; i < ms.length(); i++) {
-                    JSONObject m = ms.optJSONObject(i);
-                    String src = m != null ? m.optString("src", "") : "";
-                    if (!src.startsWith("data:")) continue;
-                    java.io.File f = new java.io.File(dir, Images.sha1(src) + ".png");
-                    if (!f.exists()) {
-                        int comma = src.indexOf(',');
-                        byte[] bytes = android.util.Base64.decode(src.substring(comma + 1), android.util.Base64.DEFAULT);
-                        try (java.io.FileOutputStream o = new java.io.FileOutputStream(f)) {
-                            o.write(bytes);
-                        }
-                    }
-                    m.put("src", "file://" + f.getAbsolutePath());
-                }
-            }
-            java.util.Iterator<String> keys = in.keys();
-            while (keys.hasNext()) {
-                String k = keys.next();
-                merged.put(k, in.get(k));
-            }
-            if (in.has("playlists") || in.has("topVideos")) merged.put("foldersAt", System.currentTimeMillis());
-        } catch (Exception ignored) {
-        }
-        prefs(ctx).edit().putString("widgets", merged.toString()).apply();
-        Widgets.updateAll(ctx);
+        prefs(getContext()).edit().putString("widgets", call.getString("data", "{}")).apply();
+        Widgets.updateAll(getContext());
         call.resolve();
     }
 

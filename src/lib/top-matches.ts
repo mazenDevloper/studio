@@ -281,42 +281,17 @@ async function collectDay(date: string, only?: string): Promise<DayData> {
   if (!raws.some(r => r.attempt.ok)) {
     throw new Error(`تعذر الوصول لأي مصدر / no source reachable: ${raws.map(r => `${r.attempt.source}: ${r.attempt.error}`).join(" | ")}`);
   }
-  // "live" = a match that would be listed (important, a favourite...) is being played; hundreds of minor matches are
-  // live on any football day, and counting them kept today on the fastest refresh all day long
-  const live = raws.some(r => r.matches.some(m => m.status === "live" && m.importance > 0 && footballDay(new Date(m.timestamp * 1000)) === date));
+  const live = raws.some(r => r.matches.some(m => m.status === "live" && footballDay(new Date(m.timestamp * 1000)) === date));
   return { date, at: Date.now(), raws, live };
 }
 
-const inflightAt = new Map<string, number>();
-const okSources = (d?: DayData) => (d ? d.raws.filter(r => r.attempt.ok && r.matches.length > 0).length : 0);
-
-/**
- * Day data: fresh -> cached; older -> refreshed, waiting at most a few seconds before answering with the old one.
- *
- * Why today failed (and not yesterday / tomorrow): on Vercel a function is frozen as soon as it has answered, so a
- * refresh left running "in the background" stopped mid-way and was picked up, frozen, by the next request - its
- * timers then fired all at once ("failed" after 24 s, fotmob after 124 s) and the near-empty result (one source, 0
- * matches) was cached. Only today is refreshed that way (the warm-up, live scores). Now a refresh older than 45 s is
- * dropped and started again, and a result worse than the one we have (fewer working sources, no matches) never
- * replaces it - nor is cached at all when there is nothing better.
- */
+/** Day data with stale-while-revalidate: fresh -> cached; a bit old -> cached now + refreshed in the background. */
 async function getDay(date: string, only?: string): Promise<DayData> {
   const key = `${date}|${only ?? ""}`;
   const refresh = () => {
     let p = inflight.get(key);
-    if (p && Date.now() - (inflightAt.get(key) ?? 0) > 45_000) { inflight.delete(key); p = undefined; }
     if (!p) {
-      inflightAt.set(key, Date.now());
-      p = collectDay(date, only).then(d => {
-        const prev = dayCache.get(key);
-        const bad = okSources(d) === 0 || (prev && okSources(d) < Math.min(2, okSources(prev)));
-        if (bad) {
-          if (prev) return prev;
-          throw new Error(`no source answered: ${d.raws.map(r => `${r.attempt.source}: ${r.attempt.error || "0"}`).join(" | ")}`);
-        }
-        dayCache.set(key, d);
-        return d;
-      }).finally(() => { inflight.delete(key); inflightAt.delete(key); });
+      p = collectDay(date, only).then(d => { dayCache.set(key, d); return d; }).finally(() => inflight.delete(key));
       inflight.set(key, p);
     }
     return p;
@@ -325,8 +300,7 @@ async function getDay(date: string, only?: string): Promise<DayData> {
   if (hit) {
     const age = Date.now() - hit.at;
     if (age < (hit.live ? LIVE_FRESH_MS : FRESH_MS)) return hit;
-    // refresh, but answer with what we have if the sources are slow or fail
-    return Promise.race([refresh(), new Promise<DayData>(res => setTimeout(() => res(hit), age < STALE_OK_MS ? 4000 : 12000))]).catch(() => hit);
+    if (age < (hit.live ? LIVE_STALE_OK_MS : STALE_OK_MS)) { refresh().catch(() => {}); return hit; }
   }
   return refresh();
 }
@@ -338,15 +312,7 @@ async function getDay(date: string, only?: string): Promise<DayData> {
 export function startMatchesWarmup() {
   const g = globalThis as any;
   if (g.__matchesWarmup) return;
-  // every 30 s while something is live, every 5 minutes otherwise (fewer calls = no rate limiting by the sources)
-  let last = 0;
-  const tick = () => {
-    if (!(Date.now() - lastUsedAt < 10 * 60_000 || !dayCache.size)) return;
-    const hit = dayCache.get(`${footballDay()}|`);
-    if (hit && Date.now() - last < (hit.live ? 30_000 : 5 * 60_000)) return;
-    last = Date.now();
-    getDay(footballDay()).catch(() => {});
-  };
+  const tick = () => { if (Date.now() - lastUsedAt < 10 * 60_000 || !dayCache.size) getDay(footballDay()).catch(() => {}); };
   tick();
   g.__matchesWarmup = setInterval(tick, 15_000);
   g.__matchesWarmup.unref?.();
