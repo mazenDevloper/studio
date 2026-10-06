@@ -91,11 +91,17 @@ final class RoadPrayer {
         if (lm == null) return;
         try {
             if (on) {
-                for (String p : new String[]{LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER}) {
-                    if (lm.isProviderEnabled(p)) lm.requestLocationUpdates(p, 5_000, 20, listener, Looper.getMainLooper());
-                    Location k = lm.getLastKnownLocation(p);
-                    if (k != null && (last == null || k.getTime() > last.getTime())) last = k;
+                // each provider on its own: "approximate location only" refuses the GPS but allows the others
+                int ok = 0;
+                for (String p : new String[]{LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER, LocationManager.PASSIVE_PROVIDER}) {
+                    try {
+                        Location k = lm.getLastKnownLocation(p);
+                        if (k != null && (last == null || k.getTime() > last.getTime())) last = k;
+                        if (lm.isProviderEnabled(p)) { lm.requestLocationUpdates(p, 5_000, 20, listener, Looper.getMainLooper()); ok++; }
+                    } catch (Exception ignored) {
+                    }
                 }
+                status = ok == 0 ? "خدمة الموقع مغلقة في الجهاز" : "";
             } else {
                 lm.removeUpdates(listener);
             }
@@ -104,6 +110,9 @@ final class RoadPrayer {
         } catch (Exception ignored) {
         }
     }
+
+    /** what went wrong last (shown in the island's panel) */
+    String status = "";
 
     boolean hasFix() {
         return last != null;
@@ -133,56 +142,84 @@ final class RoadPrayer {
         final double lat = last.getLatitude(), lon = last.getLongitude();
         new Thread(() -> {
             List<JSONObject> got = new ArrayList<>();
-            try {
-                String q = "[out:json][timeout:20];nwr[\"amenity\"=\"place_of_worship\"][\"religion\"=\"muslim\"](around:6000," + lat + "," + lon + ");out center 60;";
-                StringBuilder sb = null;
-                // the main Overpass server, then mirrors
-                for (String host : new String[]{"https://overpass-api.de", "https://overpass.kumi.systems", "https://overpass.private.coffee"}) {
-                    try {
-                        HttpURLConnection c = (HttpURLConnection) new URL(host + "/api/interpreter?data=" + URLEncoder.encode(q, "UTF-8")).openConnection();
-                        c.setConnectTimeout(12_000);
-                        c.setReadTimeout(25_000);
-                        c.setRequestProperty("User-Agent", "DriveCast/1.0");
-                        StringBuilder b = new StringBuilder();
-                        try (BufferedReader r = new BufferedReader(new InputStreamReader(c.getInputStream(), "UTF-8"))) {
-                            String line;
-                            while ((line = r.readLine()) != null) b.append(line);
-                        }
-                        sb = b;
-                        break;
-                    } catch (Exception ignored) {
+            String why = "";
+            // 1) OpenStreetMap through Overpass (any place of worship that isn't of another religion, and mosque
+            //    buildings: many mosques here carry no religion tag), the main server then mirrors
+            String q = "[out:json][timeout:15];(nwr[\"amenity\"=\"place_of_worship\"](around:6000," + lat + "," + lon + ");"
+                    + "nwr[\"building\"=\"mosque\"](around:6000," + lat + "," + lon + "););out center 80;";
+            for (String host : new String[]{"https://overpass-api.de", "https://overpass.kumi.systems", "https://overpass.private.coffee"}) {
+                try {
+                    JSONArray els = new JSONObject(get(host + "/api/interpreter?data=" + URLEncoder.encode(q, "UTF-8"))).optJSONArray("elements");
+                    for (int i = 0; els != null && i < els.length(); i++) {
+                        JSONObject e = els.optJSONObject(i);
+                        if (e == null) continue;
+                        JSONObject tags = e.optJSONObject("tags");
+                        String rel = tags != null ? tags.optString("religion", "") : "";
+                        if (!rel.isEmpty() && !"muslim".equals(rel)) continue;
+                        JSONObject center = e.optJSONObject("center");
+                        double la = e.has("lat") ? e.optDouble("lat") : center != null ? center.optDouble("lat") : Double.NaN;
+                        double lo = e.has("lon") ? e.optDouble("lon") : center != null ? center.optDouble("lon") : Double.NaN;
+                        if (Double.isNaN(la) || Double.isNaN(lo)) continue;
+                        String name = tags != null ? tags.optString("name:ar", tags.optString("name", "")) : "";
+                        got.add(new JSONObject().put("name", name.isEmpty() ? "مسجد" : name).put("lat", la).put("lon", lo));
                     }
+                    why = "";
+                    break;
+                } catch (Exception ex) {
+                    why = "Overpass: " + ex.getClass().getSimpleName() + " " + (ex.getMessage() == null ? "" : ex.getMessage());
                 }
-                if (sb == null) throw new Exception("overpass");
-                JSONArray els = new JSONObject(sb.toString()).optJSONArray("elements");
-                for (int i = 0; els != null && i < els.length(); i++) {
-                    JSONObject e = els.optJSONObject(i);
-                    if (e == null) continue;
-                    JSONObject center = e.optJSONObject("center");
-                    double la = e.has("lat") ? e.optDouble("lat") : center != null ? center.optDouble("lat") : Double.NaN;
-                    double lo = e.has("lon") ? e.optDouble("lon") : center != null ? center.optDouble("lon") : Double.NaN;
-                    if (Double.isNaN(la) || Double.isNaN(lo)) continue;
-                    JSONObject tags = e.optJSONObject("tags");
-                    String name = tags != null ? tags.optString("name:ar", tags.optString("name", "")) : "";
-                    got.add(new JSONObject().put("name", name.isEmpty() ? "مسجد" : name).put("lat", la).put("lon", lo));
+            }
+            // 2) Nominatim search (another OpenStreetMap service) when Overpass failed or found nothing
+            if (got.isEmpty()) {
+                double dl = 0.06;
+                String box = (lon - dl) + "," + (lat + dl) + "," + (lon + dl) + "," + (lat - dl);
+                for (String term : new String[]{"mosque", "مسجد", "جامع"}) {
+                    try {
+                        JSONArray arr = new JSONArray(get("https://nominatim.openstreetmap.org/search?format=jsonv2&limit=40&bounded=1&viewbox=" + box
+                                + "&q=" + URLEncoder.encode(term, "UTF-8") + "&accept-language=ar"));
+                        for (int i = 0; i < arr.length(); i++) {
+                            JSONObject e = arr.optJSONObject(i);
+                            if (e == null) continue;
+                            String name = e.optString("name", "");
+                            if (name.isEmpty()) name = e.optString("display_name", "مسجد").split(",")[0];
+                            got.add(new JSONObject().put("name", name).put("lat", e.optDouble("lat")).put("lon", e.optDouble("lon")));
+                        }
+                        why = got.isEmpty() ? why : "";
+                    } catch (Exception ex) {
+                        why = (why.isEmpty() ? "" : why + " · ") + "Nominatim: " + ex.getClass().getSimpleName();
+                    }
+                    if (!got.isEmpty()) break;
                 }
-                synchronized (cache) {
-                    cache.clear();
-                    cache.addAll(got);
-                    cacheLat = lat;
-                    cacheLon = lon;
-                    cacheAt = System.currentTimeMillis();
-                }
-                lastFailed = false;
-            } catch (Exception ignored) {
-                lastFailed = true;
-                cacheAt = System.currentTimeMillis() - 15 * 60_000L; // try again in 5 minutes
+            }
+            synchronized (cache) {
+                cache.clear();
+                cache.addAll(got);
                 cacheLat = lat;
                 cacheLon = lon;
+                // a failure tries again in 2 minutes, a result is kept 20 minutes / 3 km
+                cacheAt = got.isEmpty() && !why.isEmpty() ? System.currentTimeMillis() - 18 * 60_000L : System.currentTimeMillis();
             }
+            lastFailed = got.isEmpty() && !why.isEmpty();
+            status = why;
             loading = false;
             changed.run();
         }).start();
+    }
+
+    private static String get(String url) throws Exception {
+        HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
+        c.setConnectTimeout(8_000);
+        c.setReadTimeout(18_000);
+        c.setRequestProperty("User-Agent", "DriveCast/1.0 (car dashboard; mosque finder)");
+        c.setRequestProperty("Accept", "application/json");
+        int code = c.getResponseCode();
+        if (code != 200) throw new Exception("HTTP " + code);
+        StringBuilder b = new StringBuilder();
+        try (BufferedReader r = new BufferedReader(new InputStreamReader(c.getInputStream(), "UTF-8"))) {
+            String line;
+            while ((line = r.readLine()) != null) b.append(line);
+        }
+        return b.toString();
     }
 
     /**

@@ -368,9 +368,12 @@ public class IslandService extends Service {
             }
         }
         bubbleAlert = hidden && (critical || !visible.isEmpty() || hasUrgent(items, now));
-        if (allowed && (!visible.isEmpty() || celebration != null)) showIsland(visible, now);
+        boolean controls = Hub.bool(this, "islandBubble", true);
+        // hidden: the islands' row keeps just its controls (eye / microphone) so they can come back
+        if (allowed && (!visible.isEmpty() || celebration != null || (hidden && controls) || (controls && !items.isEmpty()))) showIsland(visible, now);
         else removeIsland();
-        updateBubble(allowed && (!items.isEmpty() || hidden) && Hub.bool(this, "islandBubble", true), hidden);
+        updateBubble(false, hidden); // the controls now sit beside the islands
+        updateControls(hidden);
     }
 
     private boolean canDraw() {
@@ -1103,7 +1106,7 @@ public class IslandService extends Service {
                 shown.add(more);
             }
         }
-        StringBuilder sig = new StringBuilder(expanded ? "E" : "C").append(focusedId).append(panelTab).append(panelVersion);
+        StringBuilder sig = new StringBuilder(expanded ? "E" : "C").append(Hub.bool(this, "islandsHidden", false)).append(Hub.bool(this, "islandBubble", true)).append(focusedId).append(panelTab).append(panelVersion);
         for (IslandArt.Item it : shown) sig.append('|').append(it.id).append(it.kind).append(it.more).append(it.mini);
         if (!sig.toString().equals(islandSignature)) {
             islandSignature = sig.toString();
@@ -1111,7 +1114,7 @@ public class IslandService extends Service {
             if (focused != null && celebration == null) {
                 View panel = buildPanel(focused);
                 if (panel != null) {
-                    LinearLayout.LayoutParams pl = new LinearLayout.LayoutParams(Math.min(getResources().getDisplayMetrics().widthPixels - dp(16), dp(400)), LinearLayout.LayoutParams.WRAP_CONTENT);
+                    LinearLayout.LayoutParams pl = new LinearLayout.LayoutParams(Math.min(getResources().getDisplayMetrics().widthPixels - dp(16), dp("match".equals(focused.kind) ? 480 : 400)), LinearLayout.LayoutParams.WRAP_CONTENT);
                     pl.topMargin = dp(2);
                     island.addView(panel, pl);
                     panel.setAlpha(0f);
@@ -1167,6 +1170,85 @@ public class IslandService extends Service {
                 p.animate().scaleX(1f).setDuration(260).setInterpolator(new android.view.animation.OvershootInterpolator(1.2f)).start();
             }
             first = false;
+        }
+        // the controls at the end of the islands: hide / show (eye) and voice commands (microphone)
+        if (Hub.bool(this, "islandBubble", true) && celebration == null) {
+            if (row == null) {
+                row = new LinearLayout(this);
+                row.setOrientation(LinearLayout.HORIZONTAL);
+                row.setGravity(Gravity.CENTER);
+                row.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+                island.addView(row, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+            }
+            row.addView(controlsView(), new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        }
+    }
+
+    private android.widget.ImageView eyeView;
+    private View eyeDot;
+    private Boolean eyeShownHidden;
+
+    private View controlsView() {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.HORIZONTAL);
+        box.setGravity(Gravity.CENTER_VERTICAL);
+        box.setPadding(dp(6), dp(8), dp(6), dp(8));
+        FrameLayout eye = new FrameLayout(this);
+        eyeView = roundIcon();
+        eye.addView(eyeView, new FrameLayout.LayoutParams(dp(34), dp(34), Gravity.CENTER));
+        eyeDot = new View(this);
+        android.graphics.drawable.GradientDrawable dg = new android.graphics.drawable.GradientDrawable();
+        dg.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+        dg.setColor(0xFFEF4444);
+        eyeDot.setBackground(dg);
+        eyeDot.setVisibility(View.GONE);
+        eye.addView(eyeDot, new FrameLayout.LayoutParams(dp(10), dp(10), Gravity.TOP | Gravity.END));
+        eye.setOnClickListener(v -> {
+            v.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP);
+            focusedId = null;
+            Hub.set(this, "islandsHidden", !Hub.bool(this, "islandsHidden", false));
+        });
+        eyeShownHidden = null;
+        box.addView(eye, new LinearLayout.LayoutParams(dp(38), dp(38)));
+        android.widget.ImageView mic = roundIcon();
+        mic.setImageBitmap(PlayerActivity.icon(I_MIC, dp(18), 0xFF34D399, false));
+        mic.setOnClickListener(v -> {
+            v.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP);
+            Intent vi = new Intent(this, VoiceActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            try { startActivity(vi); } catch (Exception ignored) { }
+        });
+        LinearLayout.LayoutParams ml = new LinearLayout.LayoutParams(dp(34), dp(34));
+        ml.setMarginStart(dp(4));
+        box.addView(mic, ml);
+        updateControls(Hub.bool(this, "islandsHidden", false));
+        return box;
+    }
+
+    private android.widget.ImageView roundIcon() {
+        android.widget.ImageView iv = new android.widget.ImageView(this);
+        iv.setScaleType(android.widget.ImageView.ScaleType.CENTER);
+        android.graphics.drawable.GradientDrawable g = new android.graphics.drawable.GradientDrawable();
+        g.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+        g.setColor(0xE6000000);
+        g.setStroke(dp(1), 0x33FFFFFF);
+        iv.setBackground(g);
+        return iv;
+    }
+
+    private static final String I_MIC = "M12 2A3 3 0 0 1 15 5V12A3 3 0 0 1 9 12V5A3 3 0 0 1 12 2ZM19 10V12A7 7 0 0 1 5 12V10M12 19V22";
+
+    /** The eye's picture (open / crossed out) and the red dot that pulses while hidden when something happens. */
+    private void updateControls(boolean hidden) {
+        if (eyeView == null) return;
+        if (eyeShownHidden == null || eyeShownHidden != hidden) {
+            eyeShownHidden = hidden;
+            eyeView.setImageBitmap(PlayerActivity.icon(hidden ? I_EYE_OFF : I_EYE, dp(18), hidden ? 0xB3FFFFFF : 0xFF34D399, false));
+        }
+        if (hidden && bubbleAlert) {
+            eyeDot.setVisibility(View.VISIBLE);
+            eyeDot.setAlpha(0.4f + 0.6f * (float) Math.abs(Math.sin(System.currentTimeMillis() / 500.0)));
+        } else {
+            eyeDot.setVisibility(View.GONE);
         }
     }
 
@@ -1280,7 +1362,19 @@ public class IslandService extends Service {
     private View buildPanel(IslandArt.Item it) {
         if ("match".equals(it.kind) && !it.matchId.isEmpty()) return matchPanel(it);
         if (it.id.startsWith("occ-")) return occasionPanel(it);
-        if ("mosque".equals(it.id)) return roadMosques.isEmpty() ? null : roadPanel();
+        if ("mosque".equals(it.id)) {
+            if (!roadMosques.isEmpty()) return roadPanel();
+            LinearLayout card = panelCard();
+            card.addView(label(it.minute, 14, 0xFFFFFFFF, true));
+            if (road != null && !road.status.isEmpty()) card.addView(label(road.status, 11, 0x99FFFFFF, false));
+            addChipRow(card, chip("أقرب مسجد على الخريطة", true, 0xFF34D399, () -> {
+                Intent m = new Intent(Intent.ACTION_VIEW, android.net.Uri.parse("geo:0,0?q=" + android.net.Uri.encode("مسجد")));
+                m.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                try { startActivity(m); } catch (Exception ignored) { }
+                closeFocus();
+            }));
+            return card;
+        }
         if ("mosque-perm".equals(it.id)) {
             LinearLayout card = panelCard();
             card.addView(label("أقرب مسجد على طريقك يحتاج إذن الموقع", 14, 0xFFFFFFFF, true));
@@ -1409,7 +1503,7 @@ public class IslandService extends Service {
         it.at = iq;
         // not ready yet: say why (so the island is never silently missing)
         String wait = !RoadPrayer.permitted(this) ? "فعّل الموقع لأقرب مسجد" : !Hub.bool(this, "roadPrayer", true) ? null
-                : !road.hasFix() ? "جاري تحديد موقعك..." : null;
+                : !road.hasFix() ? (road.status.isEmpty() ? "جاري تحديد موقعك..." : road.status) : null;
         if (wait == null && Hub.bool(this, "roadPrayer", true)) {
             // after the iqamah: can you still reach the congregation within its last 5 minutes?
             roadMosques = road.ahead(afterIqamah ? iq + 5 * 60_000L : iq);
@@ -1532,18 +1626,30 @@ public class IslandService extends Service {
         card.addView(h, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
         // tabs
         LinearLayout tabs = hrow();
-        String[] names = {"الأحداث", "الإحصائيات", "معلومات"};
+        String[] names = {"الأحداث", "الإحصائيات", "التشكيلة", "الترتيب", "معلومات"};
         for (int i = 0; i < names.length; i++) {
             final int t = i;
             android.widget.TextView c = chip(names[i], panelTab == i, 0xFF34D399, () -> { panelTab = t; islandSignature = ""; tick(); });
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1);
-            lp.setMargins(dp(3), dp(8), dp(3), dp(8));
+            lp.setMargins(dp(2), dp(8), dp(2), dp(8));
+            c.setPadding(dp(4), dp(8), dp(4), dp(8));
+            c.setTextSize(12);
             tabs.addView(c, lp);
         }
         card.addView(tabs);
         LinearLayout body = new LinearLayout(this);
         body.setOrientation(LinearLayout.VERTICAL);
-        card.addView(body, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        // long tabs (line-ups, table) scroll inside the panel
+        android.widget.ScrollView sv = new android.widget.ScrollView(this) {
+            @Override
+            protected void onMeasure(int w, int h) {
+                super.onMeasure(w, View.MeasureSpec.makeMeasureSpec(Math.round(getResources().getDisplayMetrics().heightPixels * 0.5f), View.MeasureSpec.AT_MOST));
+            }
+        };
+        sv.setVerticalScrollBarEnabled(false);
+        sv.addView(body);
+        sv.setOnTouchListener((v, e) -> { touchFocus(); return false; });
+        card.addView(sv, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
         if (d == null) {
             android.widget.TextView w = label(detailsLoading.contains(it.matchId) ? "جاري تحميل التفاصيل..." : "لا توجد تفاصيل بعد", 13, 0x80FFFFFF, false);
             w.setGravity(Gravity.CENTER);
@@ -1553,6 +1659,10 @@ public class IslandService extends Service {
             eventsTab(body, d, it);
         } else if (panelTab == 1) {
             statsTab(body, d, it);
+        } else if (panelTab == 2) {
+            lineupTab(body, d, it);
+        } else if (panelTab == 3) {
+            tableTab(body, d);
         } else {
             infoTab(body, d);
         }
@@ -1676,6 +1786,108 @@ public class IslandService extends Service {
         }
     }
 
+    /** The two line-ups side by side (home on the right in RTL): number, name, position; substitutes below. */
+    private void lineupTab(LinearLayout body, JSONObject d, IslandArt.Item it) {
+        JSONObject lu = d.optJSONObject("lineups");
+        JSONObject h = lu != null ? lu.optJSONObject("home") : null, a = lu != null ? lu.optJSONObject("away") : null;
+        if (h == null && a == null) {
+            JSONObject f = d.optJSONObject("formations");
+            String txt = f != null ? "الخطة: " + f.optString("home", "?") + "  ×  " + f.optString("away", "?") + "\nالتشكيلة لم تُعلن بعد" : "التشكيلة لم تُعلن بعد (تُعلن عادة قبل المباراة بساعة)";
+            android.widget.TextView w = label(txt, 13, 0x99FFFFFF, false);
+            w.setGravity(Gravity.CENTER);
+            w.setPadding(0, dp(10), 0, dp(10));
+            body.addView(w, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+            return;
+        }
+        LinearLayout cols = hrow();
+        cols.setGravity(Gravity.TOP);
+        cols.addView(lineupColumn(it.home, h), new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+        View div = new View(this);
+        div.setBackgroundColor(0x1AFFFFFF);
+        LinearLayout.LayoutParams dl = new LinearLayout.LayoutParams(dp(1), LinearLayout.LayoutParams.MATCH_PARENT);
+        dl.setMargins(dp(6), 0, dp(6), 0);
+        cols.addView(div, dl);
+        cols.addView(lineupColumn(it.away, a), new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+        body.addView(cols);
+    }
+
+    private View lineupColumn(String team, JSONObject l) {
+        LinearLayout col = new LinearLayout(this);
+        col.setOrientation(LinearLayout.VERTICAL);
+        String head = team + (l != null && !l.optString("formation").isEmpty() ? "  ·  " + l.optString("formation") : "");
+        android.widget.TextView t = label(head, 12, 0xFF34D399, true);
+        t.setSingleLine(true);
+        t.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        t.setPadding(0, 0, 0, dp(4));
+        col.addView(t);
+        if (l == null) { col.addView(label("—", 12, 0x66FFFFFF, false)); return col; }
+        for (String key : new String[]{"starters", "subs"}) {
+            JSONArray ps = l.optJSONArray(key);
+            if (ps == null || ps.length() == 0) continue;
+            if ("subs".equals(key)) {
+                android.widget.TextView sh = label("الاحتياط", 11, 0x80FFFFFF, true);
+                sh.setPadding(0, dp(8), 0, dp(2));
+                col.addView(sh);
+            }
+            for (int i = 0; i < ps.length() && i < ("subs".equals(key) ? 12 : 11); i++) {
+                JSONObject p = ps.optJSONObject(i);
+                if (p == null) continue;
+                String num = p.optString("number", "");
+                String pos = p.optString("pos", "");
+                android.widget.TextView row = label((num.isEmpty() ? "" : num + "  ") + p.optString("name") + (pos.isEmpty() ? "" : "  ·" + pos), 12,
+                        "subs".equals(key) ? 0x99FFFFFF : 0xF2FFFFFF, false);
+                row.setSingleLine(true);
+                row.setEllipsize(android.text.TextUtils.TruncateAt.END);
+                row.setPadding(0, dp(2), 0, dp(2));
+                col.addView(row);
+            }
+        }
+        return col;
+    }
+
+    /** The league table / the group of the two teams; their rows highlighted. */
+    private void tableTab(LinearLayout body, JSONObject d) {
+        JSONObject t = d.optJSONObject("table");
+        JSONArray rows = t != null ? t.optJSONArray("rows") : null;
+        if (rows == null || rows.length() == 0) {
+            android.widget.TextView w = label("لا يوجد ترتيب لهذه البطولة", 13, 0x80FFFFFF, false);
+            w.setGravity(Gravity.CENTER);
+            w.setPadding(0, dp(10), 0, dp(10));
+            body.addView(w, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+            return;
+        }
+        if (!t.optString("name").isEmpty()) body.addView(label(t.optString("name"), 12, 0xFF34D399, true));
+        body.addView(tableLine("#", "الفريق", "لعب", "+/-", "نقاط", 0x80FFFFFF, 0));
+        for (int i = 0; i < rows.length(); i++) {
+            JSONObject r = rows.optJSONObject(i);
+            if (r == null) continue;
+            boolean mine = !r.optString("side").isEmpty();
+            body.addView(tableLine(String.valueOf(r.optInt("pos")), r.optString("team"), String.valueOf(r.optInt("played")),
+                    r.optString("gd", ""), String.valueOf(r.optInt("points")), mine ? 0xFF000000 : 0xE6FFFFFF, mine ? 0xFF34D399 : 0));
+        }
+    }
+
+    private View tableLine(String pos, String team, String played, String gd, String pts, int color, int bg) {
+        LinearLayout r = hrow();
+        r.setPadding(dp(6), dp(3), dp(6), dp(3));
+        if (bg != 0) r.setBackground(roundRect(bg));
+        android.widget.TextView a = label(pos, 12, color, true);
+        r.addView(a, new LinearLayout.LayoutParams(dp(26), LinearLayout.LayoutParams.WRAP_CONTENT));
+        android.widget.TextView b = label(team, 12, color, bg != 0);
+        b.setSingleLine(true);
+        b.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        r.addView(b, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+        for (String v : new String[]{played, gd, pts}) {
+            android.widget.TextView c = label(v, 12, color, true);
+            c.setGravity(Gravity.CENTER);
+            r.addView(c, new LinearLayout.LayoutParams(dp(38), LinearLayout.LayoutParams.WRAP_CONTENT));
+        }
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        lp.topMargin = dp(2);
+        r.setLayoutParams(lp);
+        return r;
+    }
+
     private void infoTab(LinearLayout body, JSONObject d) {
         List<String> lines = new ArrayList<>();
         if (!d.optString("round").isEmpty()) lines.add("🏆  " + d.optString("round"));
@@ -1695,6 +1907,12 @@ public class IslandService extends Service {
         for (String l : lines) {
             android.widget.TextView t = label(l, 13, 0xE6FFFFFF, false);
             t.setPadding(0, dp(4), 0, dp(4));
+            if (l.startsWith("📋")) {
+                // the formation: tap for the line-ups
+                t.setText(l + "  ‹ التشكيلة");
+                t.setTextColor(0xFF34D399);
+                t.setOnClickListener(v -> { touchFocus(); panelTab = 2; islandSignature = ""; tick(); });
+            }
             body.addView(t);
         }
     }
@@ -1704,7 +1922,7 @@ public class IslandService extends Service {
         if (detailsLoading.contains(mid)) return;
         detailsLoading.add(mid);
         final String q = "id=" + enc(it.matchId) + "&league=" + enc(it.leagueId) + "&homeId=" + enc(it.homeId)
-                + "&home=" + enc(it.home) + "&away=" + enc(it.away);
+                + "&home=" + enc(it.home) + "&away=" + enc(it.away) + "&table=1";
         final String origin = siteOrigin();
         new Thread(() -> {
             JSONObject d = null;

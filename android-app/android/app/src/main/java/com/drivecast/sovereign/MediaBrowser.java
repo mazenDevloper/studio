@@ -344,6 +344,19 @@ final class MediaBrowser {
     /** A section of the media screen: a header row, then rows of 4 circles or 2 cards. */
     private static void section(JSONArray rows, String title, String style, JSONArray list, String kind, int max) throws Exception {
         if (list == null || list.length() == 0) return;
+        if ("circle".equals(style) && list.length() > 4) {
+            // subscriptions / reciters: one sliding row with all of them (‹ › in the title, like the site's
+            // scrolling strip - a widget can't scroll sideways)
+            JSONArray all = new JSONArray();
+            for (int i = 0; i < Math.min(80, list.length()); i++) {
+                JSONObject it = new JSONObject(list.getJSONObject(i).toString());
+                if (kind != null && !it.has("kind")) it.put("kind", kind);
+                all.put(it);
+            }
+            rows.put(new JSONObject().put("row", "header").put("title", title).put("carousel", title).put("count", all.length()));
+            rows.put(new JSONObject().put("row", "tiles").put("style", style).put("carousel", title).put("items", all));
+            return;
+        }
         rows.put(new JSONObject().put("row", "header").put("title", title));
         int per = "circle".equals(style) ? 4 : 2;
         JSONArray cur = null;
@@ -379,6 +392,19 @@ final class MediaBrowser {
             return;
         }
         final String kind = i.getStringExtra("kind"), id = i.getStringExtra("id"), name = i.getStringExtra("name");
+        if ("page".equals(kind)) {
+            // a sliding row's ‹ ›: 4 at a time, round and round
+            String key = "carousel_" + wid + "_" + id;
+            int count = Math.max(1, i.getIntExtra("count", 1));
+            android.content.SharedPreferences p = NativeIslandPlugin.prefs(ctx);
+            int off = p.getInt(key, 0) + i.getIntExtra("delta", 4);
+            if (off >= count) off = 0;
+            if (off < 0) off = Math.max(0, ((count - 1) / 4) * 4);
+            p.edit().putInt(key, off).apply();
+            android.appwidget.AppWidgetManager.getInstance(ctx).notifyAppWidgetViewDataChanged(wid, R.id.folders_grid);
+            done.finish();
+            return;
+        }
         if ("zikr".equals(kind)) {
             // one more: the counter goes down, the card turns green when done
             JSONObject counts = azkarCounts(ctx);

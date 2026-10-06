@@ -175,11 +175,29 @@ public class FoldersWidgetService extends RemoteViewsService {
                 v.setViewVisibility(R.id.row_tiles, android.view.View.GONE);
                 v.setViewVisibility(R.id.row_header, android.view.View.VISIBLE);
                 v.setImageViewBitmap(R.id.row_header, WidgetArt.sectionHeader(ctx, Math.round(360 * d), Math.round(34 * d), o.optString("title")));
+                boolean car = !o.optString("carousel").isEmpty();
+                v.setViewVisibility(R.id.row_arrows, car ? android.view.View.VISIBLE : android.view.View.GONE);
+                if (car) {
+                    int count = o.optInt("count");
+                    int off = NativeIslandPlugin.prefs(ctx).getInt("carousel_" + wid + "_" + o.optString("carousel"), 0);
+                    v.setTextViewText(R.id.row_page, Math.min(count, off + 1) + "–" + Math.min(count, off + 4) + " / " + count);
+                    v.setOnClickFillInIntent(R.id.row_prev, new Intent().putExtra("kind", "page").putExtra("id", o.optString("carousel")).putExtra("delta", -4).putExtra("count", count));
+                    v.setOnClickFillInIntent(R.id.row_next, new Intent().putExtra("kind", "page").putExtra("id", o.optString("carousel")).putExtra("delta", 4).putExtra("count", count));
+                }
                 return v;
             }
             v.setViewVisibility(R.id.row_header, android.view.View.GONE);
+            v.setViewVisibility(R.id.row_arrows, android.view.View.GONE);
             v.setViewVisibility(R.id.row_tiles, android.view.View.VISIBLE);
             JSONArray it = o.optJSONArray("items");
+            if (!o.optString("carousel").isEmpty() && it != null) {
+                // the sliding row: the 4 from the saved position
+                int off = NativeIslandPlugin.prefs(ctx).getInt("carousel_" + wid + "_" + o.optString("carousel"), 0);
+                if (off >= it.length()) off = 0;
+                JSONArray page = new JSONArray();
+                for (int k = off; k < Math.min(it.length(), off + 4); k++) page.put(it.opt(k));
+                it = page;
+            }
             boolean circle = "circle".equals(o.optString("style"));
             int per = circle ? 4 : 2;
             for (int i = 0; i < 4; i++) {

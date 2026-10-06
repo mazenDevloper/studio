@@ -42,6 +42,10 @@ final class Cloud {
     private static final long EVERY_MS = 10 * 60_000L;
     private static long lastRefresh = 0;
 
+    static boolean due() {
+        return System.currentTimeMillis() - lastRefresh >= EVERY_MS;
+    }
+
     /** Fetch the bins again if the last read is older than 10 minutes (or forced). Blocking: call off the main thread. */
     static synchronized void refresh(Context ctx, boolean force) {
         long now = System.currentTimeMillis();
@@ -53,6 +57,24 @@ final class Cloud {
             if (m instanceof JSONObject) e.putString("cloud_master", slimMaster((JSONObject) m).toString());
         } catch (Exception ignored) {
         }
+        // the prayer times first (the prayer widgets wait for them), saved at once
+        try {
+            JSONArray p = list(fetch(PRAYERS), "prayers");
+            if (p != null) {
+                // a week around today is all that's needed
+                String from = day(now - 2 * 86_400_000L), to = day(now + 5 * 86_400_000L);
+                JSONArray out = new JSONArray();
+                for (int i = 0; i < p.length(); i++) {
+                    JSONObject r = p.optJSONObject(i);
+                    String d = r != null ? r.optString("date") : "";
+                    if (d.compareTo(from) >= 0 && d.compareTo(to) <= 0) out.put(r);
+                }
+                if (out.length() > 0) e.putString("cloud_prayers", out.toString());
+            }
+        } catch (Exception ignored) {
+        }
+        e.apply();
+        e = NativeIslandPlugin.prefs(ctx).edit();
         try {
             JSONArray ms = list(fetch(MANUSCRIPTS), "manuscripts");
             if (ms != null) e.putString("cloud_manuscripts", slimManuscripts(ctx, ms).toString());
@@ -135,21 +157,6 @@ final class Cloud {
                 JSONArray out = new JSONArray();
                 for (JSONObject c : l) out.put(new JSONObject().put("id", c.optString("channelid")).put("name", c.optString("name", c.optString("channeltitle"))).put("image", c.optString("image")));
                 e.putString("cloud_reciters", out.toString());
-            }
-        } catch (Exception ignored) {
-        }
-        try {
-            JSONArray p = list(fetch(PRAYERS), "prayers");
-            if (p != null) {
-                // a week around today is all that's needed
-                String from = day(now - 2 * 86_400_000L), to = day(now + 5 * 86_400_000L);
-                JSONArray out = new JSONArray();
-                for (int i = 0; i < p.length(); i++) {
-                    JSONObject r = p.optJSONObject(i);
-                    String d = r != null ? r.optString("date") : "";
-                    if (d.compareTo(from) >= 0 && d.compareTo(to) <= 0) out.put(r);
-                }
-                if (out.length() > 0) e.putString("cloud_prayers", out.toString());
             }
         } catch (Exception ignored) {
         }

@@ -12,6 +12,23 @@
         android:contentDescription="@string/widget_media_home_label"
         android:scaleType="fitEnd" />
 
+    <!-- a sliding row's controls (subscriptions / reciters): ‹ 1–4 / 30 › on the left of its title -->
+    <LinearLayout
+        android:id="@+id/row_arrows"
+        android:layout_width="wrap_content"
+        android:layout_height="30dp"
+        android:layout_gravity="start|top"
+        android:layout_marginTop="6dp"
+        android:gravity="center_vertical"
+        android:layoutDirection="ltr"
+        android:orientation="horizontal"
+        android:visibility="gone">
+
+        <TextView android:id="@+id/row_prev" android:layout_width="34dp" android:layout_height="28dp" android:background="@drawable/widget_btn" android:gravity="center" android:text="‹" android:textColor="#FFFFFF" android:textSize="18sp" android:textStyle="bold" />
+        <TextView android:id="@+id/row_page" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="6dp" android:layout_marginEnd="6dp" android:textColor="#99FFFFFF" android:textSize="11sp" />
+        <TextView android:id="@+id/row_next" android:layout_width="34dp" android:layout_height="28dp" android:background="@drawable/widget_btn" android:gravity="center" android:text="›" android:textColor="#FFFFFF" android:textSize="18sp" android:textStyle="bold" />
+    </LinearLayout>
+
     <LinearLayout
         android:id="@+id/row_tiles"
         android:layout_width="match_parent"

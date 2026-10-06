@@ -20,7 +20,62 @@ final class Occasions {
     private Occasions() {
     }
 
-    private static final int MUHARRAM = 0, RAMADAN = 8, SHAWWAL = 9, DHUL_HIJJAH = 11;
+    private static final int MUHARRAM = 0, RABI1 = 2, RAJAB = 6, SHABAN = 7, RAMADAN = 8, SHAWWAL = 9, DHUL_HIJJAH = 11;
+
+    private static final String[] MONTHS = {"محرم", "صفر", "ربيع الأول", "ربيع الآخر", "جمادى الأولى", "جمادى الآخرة", "رجب", "شعبان", "رمضان", "شوال", "ذو القعدة", "ذو الحجة"};
+
+    /** one short saying a day, so every day has at least one island (by day of the year) */
+    private static final String[] DAILY = {
+            "«أحبّ الأعمال إلى الله أدومها وإن قلّ»",
+            "«كلمتان خفيفتان على اللسان: سبحان الله وبحمده، سبحان الله العظيم»",
+            "«من قال سبحان الله وبحمده مئة مرة حُطّت خطاياه»",
+            "«الكلمة الطيبة صدقة»",
+            "«تبسّمك في وجه أخيك صدقة»",
+            "«لا حول ولا قوة إلا بالله كنز من كنوز الجنة»",
+            "«من صلّى عليّ صلاة صلّى الله عليه بها عشراً»",
+            "«الطهور شطر الإيمان»",
+            "«خيركم من تعلّم القرآن وعلّمه»",
+            "«اتق الله حيثما كنت»",
+            "«لا يؤمن أحدكم حتى يحب لأخيه ما يحب لنفسه»",
+            "«الدعاء هو العبادة»",
+            "«من سلك طريقاً يلتمس فيه علماً سهّل الله له به طريقاً إلى الجنة»",
+            "سورة الملك قبل النوم · «تنجي من عذاب القبر»",
+    };
+
+    /** the day's Hijri occasion (null: none) */
+    static String hijriOccasion(int[] hj) {
+        int d = hj[0], m = hj[1];
+        if (m == MUHARRAM && d == 1) return "رأس السنة الهجرية " + hj[2] + " هـ";
+        if (m == MUHARRAM && d == 9) return "يوم تاسوعاء";
+        if (m == MUHARRAM && d == 10) return "يوم عاشوراء";
+        if (m == RABI1 && d == 12) return "ذكرى المولد النبوي الشريف ﷺ";
+        if (m == RAJAB && d == 27) return "ذكرى الإسراء والمعراج";
+        if (m == SHABAN && d == 15) return "النصف من شعبان";
+        if (m == RAMADAN && d == 1) return "أول أيام رمضان · رمضان كريم";
+        if (m == RAMADAN && d == 27) return "ليلة السابع والعشرين · تحرّ ليلة القدر";
+        if (m == RAMADAN && d >= 21) return "العشر الأواخر · تحرّ ليلة القدر";
+        if (m == RAMADAN) return "رمضان كريم · اليوم " + d;
+        if (m == SHAWWAL && d <= 3) return "عيد الفطر مبارك";
+        if (m == DHUL_HIJJAH && d == 9) return "يوم عرفة · خير الدعاء دعاء يوم عرفة";
+        if (m == DHUL_HIJJAH && d == 10) return "عيد الأضحى مبارك";
+        if (m == DHUL_HIJJAH && d >= 11 && d <= 13) return "أيام التشريق · أيام أكل وشرب وذكر لله";
+        if (m == DHUL_HIJJAH && d <= 8) return "العشر من ذي الحجة · أكثروا التكبير";
+        if (d == 1) return "هلّ شهر " + MONTHS[m] + " · دعاء رؤية الهلال";
+        if (d >= 13 && d <= 15) return "الأيام البيض";
+        return null;
+    }
+
+    /** the day's Gregorian occasion (null: none) */
+    static String gregorianOccasion(Calendar c) {
+        int d = c.get(Calendar.DAY_OF_MONTH), m = c.get(Calendar.MONTH) + 1;
+        if (m == 1 && d == 1) return "رأس السنة الميلادية " + c.get(Calendar.YEAR);
+        if (m == 1 && d == 11) return "ذكرى تولّي جلالة السلطان مقاليد الحكم";
+        if (m == 3 && d == 21) return "عيد الأم";
+        if (m == 8 && d == 26) return "يوم الشباب العُماني";
+        if (m == 10 && d == 17) return "يوم المرأة العُمانية";
+        if (m == 11 && d == 20) return "العيد الوطني العُماني";
+        return null;
+    }
 
     /** Today's adhan times by prayer id (fajr, dhuhr, asr, maghrib, isha) - 0 when unknown. */
     private static long[] times(Context ctx, long now) {
@@ -95,9 +150,15 @@ final class Occasions {
         if (hj[1] == MUHARRAM && hj[0] == 10) return "يوم عاشوراء";
         if (hj[1] == RAMADAN) return "رمضان كريم";
         if (hj[1] == DHUL_HIJJAH && hj[0] <= 9) return "العشر من ذي الحجة";
+        String h = hijriOccasion(hj);
+        if (h != null) return h.split(" · ")[0];
+        String g = gregorianOccasion(c);
+        if (g != null) return g;
         if (fasting(ctx, now)) return "صائم اليوم";
-        if (c.get(Calendar.DAY_OF_WEEK) == Calendar.FRIDAY) return "يوم الجمعة";
-        if (hj[0] >= 13 && hj[0] <= 15) return "الأيام البيض";
+        int dow = c.get(Calendar.DAY_OF_WEEK);
+        if (dow == Calendar.FRIDAY) return "يوم الجمعة";
+        if (fastReason(now) != null) return "غداً " + fastReason(now);
+        if (dow == Calendar.SUNDAY || dow == Calendar.TUESDAY) return "يوم الرياضة";
         return null;
     }
 
@@ -149,19 +210,24 @@ final class Occasions {
         // the evening before a day to fast: ask
         String reason = fastReason(now);
         long askEnd = isha > 0 ? isha + 3 * 3600_000L : maghrib + 4 * 3600_000L;
-        if (reason != null && now >= maghrib && now < askEnd && !fasting(ctx, now + 24 * 3600_000L) && !done(ctx, "occ-fast", now)) {
-            out.add(banner("occ-fast", "غداً " + reason + " · هل ستصوم؟"));
+        if (reason != null && now >= (asr > 0 ? asr : maghrib) && now < askEnd && !fasting(ctx, now + 24 * 3600_000L) && !done(ctx, "occ-fast", now)) {
+            out.add(banner("occ-fast", "تذكير صيام الغد · " + reason + " · هل ستصوم؟"));
         }
 
-        // seasons
-        if (hj[1] == DHUL_HIJJAH && hj[0] >= 1 && hj[0] <= 8 && now >= fajr && now < (isha > 0 ? isha : maghrib) && !done(ctx, "occ-ten", now))
-            out.add(banner("occ-ten", "العشر من ذي الحجة · أكثروا التكبير"));
-        if (hj[1] == DHUL_HIJJAH && hj[0] == 9 && now >= fajr && now < maghrib && !done(ctx, "occ-arafah", now))
-            out.add(banner("occ-arafah", "يوم عرفة · خير الدعاء دعاء يوم عرفة"));
-        if (hj[1] == MUHARRAM && hj[0] == 10 && now >= fajr && now < maghrib && !done(ctx, "occ-ashura", now))
-            out.add(banner("occ-ashura", "يوم عاشوراء"));
-        boolean eid = (hj[1] == SHAWWAL && hj[0] == 1) || (hj[1] == DHUL_HIJJAH && hj[0] == 10);
-        if (eid && now >= fajr && now < dhuhr && !done(ctx, "occ-eid", now))
-            out.add(banner("occ-eid", hj[1] == SHAWWAL ? "عيد الفطر مبارك · تقبل الله منا ومنكم" : "عيد الأضحى مبارك · الله أكبر"));
+        // the day's occasions, from Fajr until Isha: Hijri, Gregorian, sport days - and, when the day has none,
+        // a short saying, so there is always one
+        long dayEnd = isha > 0 ? isha + 60 * 60_000L : maghrib + 2 * 3600_000L;
+        boolean daytime = now >= fajr && now < dayEnd;
+        int before = out.size();
+        String h = hijriOccasion(hj);
+        if (h != null && daytime && !done(ctx, "occ-hijri", now)) out.add(banner("occ-hijri", "🌙 " + h));
+        String g = gregorianOccasion(c);
+        if (g != null && daytime && !done(ctx, "occ-greg", now)) out.add(banner("occ-greg", "📅 " + g));
+        int dow = c.get(Calendar.DAY_OF_WEEK);
+        if ((dow == Calendar.SUNDAY || dow == Calendar.TUESDAY) && daytime && Hub.bool(ctx, "sportDays", true) && !done(ctx, "occ-sport", now))
+            out.add(banner("occ-sport", "🏃 يوم الرياضة · لا تنسَ تمرينك اليوم"));
+        boolean any = out.size() > before || friday || fasting(ctx, now) || reason != null;
+        if (!any && daytime && !done(ctx, "occ-daily", now))
+            out.add(banner("occ-daily", "✨ " + DAILY[c.get(Calendar.DAY_OF_YEAR) % DAILY.length]));
     }
 }

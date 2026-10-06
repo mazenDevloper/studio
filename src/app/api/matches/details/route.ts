@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
   const team = (k: string) => (p.get(k) || "").slice(0, 80);
   try {
     return NextResponse.json(await getMatchDetails(id, p.get("league") || "", p.get("homeId") || "", {
-      home: team("home"), away: team("away"), fresh: p.get("fresh") === "1",
+      home: team("home"), away: team("away"), fresh: p.get("fresh") === "1", table: p.get("table") === "1",
     }));
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || "failed" }, { status: 502 });

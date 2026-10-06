@@ -228,7 +228,13 @@ public final class Widgets {
         // a widget with nothing to show fetches its data at once (no need to open the app), at most once a minute
         boolean empty = Cloud.array(ctx, "cloud_channels").length() == 0 || Cloud.master(ctx).length() == 0
                 || Cloud.array(ctx, "cloud_prayers").length() == 0 || Cloud.array(ctx, "cloud_reciters").length() == 0;
-        Cloud.refresh(ctx, empty && System.currentTimeMillis() - lastEmptyFetch > 60_000 && (lastEmptyFetch = System.currentTimeMillis()) > 0);
+        final boolean force = empty && System.currentTimeMillis() - lastEmptyFetch > 60_000 && (lastEmptyFetch = System.currentTimeMillis()) > 0;
+        // the cloud is read on its own thread (the channel feeds take a while): the widgets draw now with what is
+        // saved, and again as soon as the new data is in
+        if (force || Cloud.due()) {
+            final Context app = ctx.getApplicationContext();
+            new Thread(() -> { Cloud.refresh(app, force); updateAll(app); }).start();
+        }
         Cloud.matchesIfStale(ctx);
         render(ctx, m, PrayerWidget.class, 250, 110, Widgets::prayer);
         render(ctx, m, MatchesWidget.class, 250, 110, Widgets::matches);
