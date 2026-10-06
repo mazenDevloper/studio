@@ -62,7 +62,7 @@ final class Trip {
         if (saved != null) {
             if (saved.has("lat")) return saved;
             if (!saved.optString("text").isEmpty()) {
-                JSONObject f = GMaps.find(saved.optString("text"), from != null ? from.getLatitude() : 0, from != null ? from.getLongitude() : 0);
+                JSONObject f = GMaps.findAny(ctx, saved.optString("text"), from != null ? from.getLatitude() : 0, from != null ? from.getLongitude() : 0);
                 if (f != null) {
                     // remember the coordinates of a typed address
                     try {
@@ -76,7 +76,7 @@ final class Trip {
             }
             return null;
         }
-        return GMaps.find(dest, from != null ? from.getLatitude() : 0, from != null ? from.getLongitude() : 0);
+        return GMaps.findAny(ctx, dest, from != null ? from.getLatitude() : 0, from != null ? from.getLongitude() : 0);
     }
 
     /** home / work: what the app set (Hub), else the cloud copy from the site's settings */
@@ -89,6 +89,12 @@ final class Trip {
 
     static String placeName(String key) {
         return "home".equals(key) ? "البيت" : "work".equals(key) ? "العمل" : key;
+    }
+
+    /** a saved place's own name (custom places are kept by id) */
+    static String placeName(Context ctx, String key) {
+        JSONObject p = places(ctx).optJSONObject(key);
+        return p != null && !p.optString("name").isEmpty() ? p.optString("name") : placeName(key);
     }
 
     /** Save where the phone is now as "home" / "work". */
@@ -111,9 +117,9 @@ final class Trip {
         Location from = here(ctx);
         if (from == null) return "لا أعرف موقعك الآن - فعّل الموقع";
         JSONObject to = resolve(ctx, dest, from);
-        if (to == null) return "لم أجد «" + placeName(dest) + "»" + (GMaps.lastError.isEmpty() ? "" : " (" + GMaps.lastError + ")")
+        if (to == null) return "لم أجد «" + placeName(ctx, dest) + "»" + (GMaps.lastError.isEmpty() ? "" : " (" + GMaps.lastError + ")")
                 + ("home".equals(dest) || "work".equals(dest) ? " - احفظه من الإعدادات أو قل: احفظ موقعي " + placeName(dest) : "");
-        JSONObject route = GMaps.route(from.getLatitude(), from.getLongitude(), to.optDouble("lat"), to.optDouble("lon"));
+        JSONObject route = GMaps.routeAny(ctx, from.getLatitude(), from.getLongitude(), to.optDouble("lat"), to.optDouble("lon"));
         long now = System.currentTimeMillis();
         long seconds;
         List<double[]> pts = new ArrayList<>();
@@ -161,7 +167,7 @@ final class Trip {
                     while (k < cum.length - 1 && cum[k] < target) k++;
                     double[] p = pts.isEmpty() ? new double[]{from.getLatitude(), from.getLongitude()} : pts.get(k);
                     row.put("km", Math.round(target / 1000)).put("lat", p[0]).put("lon", p[1]);
-                    List<JSONObject> ms = GMaps.mosquesNear(p[0], p[1], 6000);
+                    List<JSONObject> ms = GMaps.mosques(ctx, p[0], p[1], 6000);
                     if (ms == null || ms.isEmpty()) ms = RoadPrayer.osmMosques(p[0], p[1], 6000);
                     if (ms != null && !ms.isEmpty()) {
                         // the nearest to that point of the road
@@ -181,8 +187,8 @@ final class Trip {
         }
         JSONObject t = new JSONObject();
         try {
-            t.put("name", to.optString("name", placeName(dest))).put("dest", dest).put("toLat", to.optDouble("lat")).put("toLon", to.optDouble("lon"))
-                    .put("startAt", now).put("seconds", seconds).put("meters", Math.round(total)).put("plan", plan).put("google", route != null);
+            t.put("name", places(ctx).has(dest) ? placeName(ctx, dest) : to.optString("name", placeName(dest))).put("dest", dest).put("toLat", to.optDouble("lat")).put("toLon", to.optDouble("lon"))
+                    .put("startAt", now).put("seconds", seconds).put("meters", Math.round(total)).put("plan", plan).put("google", route != null).put("via", route != null ? route.optString("via") : "");
         } catch (Exception ignored) {
         }
         Hub.set(ctx, "trip", t);

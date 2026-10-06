@@ -20,8 +20,16 @@ export function TripsSettings() {
   const storeSetPlace = useMediaStore(s => s.setPlace);
   const storeSetTrips = useMediaStore(s => s.setWeeklyTrips);
   const setPlace = (key: string, p: Place) => { storeSetPlace(key, p); hubSet("places", { ...places, [key]: p }); };
+  const removePlace = (key: string) => {
+    const next = { ...places };
+    delete next[key];
+    useMediaStore.setState({ places: next });
+    setTimeout(() => useMediaStore.getState().syncMasterBin(), 100);
+    hubSet("places", next);
+  };
+  const nameOf = (key: string) => places[key]?.name || (key === "home" ? "البيت" : key === "work" ? "العمل" : "مكان");
   const here = (key: string) => navigator.geolocation?.getCurrentPosition(
-    pos => setPlace(key, { name: key === "home" ? "البيت" : "العمل", lat: pos.coords.latitude, lon: pos.coords.longitude, text: "موقعي المحفوظ" }),
+    pos => setPlace(key, { name: nameOf(key), lat: pos.coords.latitude, lon: pos.coords.longitude, text: "موقعي المحفوظ" }),
     () => alert("تعذّر تحديد الموقع"), { enableHighAccuracy: true, timeout: 15000 });
   const setTrips = (t: WeeklyTrip[]) => { storeSetTrips(t); hubSet("weeklyTrips", t); };
   const update = (id: string, u: Partial<WeeklyTrip>) => setTrips(trips.map(t => (t.id === id ? { ...t, ...u } : t)));
@@ -29,20 +37,26 @@ export function TripsSettings() {
     <section className="rounded-[2.5rem] bg-white/5 border border-white/10 p-6 md:p-8 space-y-4" dir="rtl">
       <p className="text-xl font-black text-white">🧭 أماكني ورحلاتي الأسبوعية</p>
       <p className="text-[11px] text-white/45 font-bold">يخطط الهاتف كل رحلة قرب وقتها: المسار، الصلوات التي تقع أثناء الطريق، وأقرب مسجد لكل صلاة. ويمكنك أيضاً أن تقول: «رحلتي إلى صلالة».</p>
-      {(["home", "work"] as const).map(key => (
-        <PlaceRow key={key} k={key} place={places[key]} onSave={p => setPlace(key, p)} onHere={() => here(key)} />
+      {["home", "work", ...Object.keys(places).filter(k => k !== "home" && k !== "work")].map(key => (
+        <PlaceRow key={key} k={key} place={places[key]} onSave={p => setPlace(key, p)} onHere={() => here(key)}
+          onRemove={key === "home" || key === "work" ? undefined : () => removePlace(key)} />
       ))}
+      <button onClick={() => setPlace("p" + Date.now(), { name: "" })}
+        className="focusable no-focus-scale h-10 px-4 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-sm font-black">+ إضافة مكان</button>
+      <GoogleKey />
       {trips.map(t => (
         <div key={t.id} className={cn("rounded-2xl border p-3 space-y-2", t.off ? "border-white/5 opacity-60" : "border-white/10 bg-white/5")}>
           <div className="flex flex-wrap items-center gap-2">
             <input type="time" value={t.time} onChange={e => update(t.id, { time: e.target.value })}
               className="h-9 px-3 rounded-full bg-black/40 border border-white/10 text-white text-sm font-black" />
             <span className="text-xs text-white/50 font-bold">إلى</span>
-            <select value={["home", "work"].includes(t.to) ? t.to : "other"} onChange={e => update(t.id, { to: e.target.value === "other" ? "" : e.target.value })}
+            <select value={t.to in places || ["home", "work"].includes(t.to) ? t.to : "other"} onChange={e => update(t.id, { to: e.target.value === "other" ? "" : e.target.value })}
               className="h-9 px-3 rounded-full bg-black/40 border border-white/10 text-white text-sm font-bold">
-              <option value="work">العمل</option><option value="home">البيت</option><option value="other">مكان آخر…</option>
+              <option value="work">العمل</option><option value="home">البيت</option>
+              {Object.keys(places).filter(k => k !== "home" && k !== "work").map(k => <option key={k} value={k}>{nameOf(k)}</option>)}
+              <option value="other">مكان آخر…</option>
             </select>
-            {!["home", "work"].includes(t.to) && (
+            {!(t.to in places) && !["home", "work"].includes(t.to) && (
               <input value={t.to} placeholder="اسم المكان" onChange={e => update(t.id, { to: e.target.value })}
                 className="flex-1 min-w-[8rem] h-9 px-3 rounded-full bg-black/40 border border-white/10 text-white text-sm font-bold" />
             )}
@@ -73,23 +87,30 @@ export function TripsSettings() {
 }
 
 /** One saved place: type an address and press "حفظ", take the current position, or pick it on the map. */
-function PlaceRow({ k, place, onSave, onHere }: { k: "home" | "work"; place?: Place; onSave: (p: Place) => void; onHere: () => void }) {
-  const label = k === "home" ? "البيت" : "العمل";
+function PlaceRow({ k, place, onSave, onHere, onRemove }: { k: string; place?: Place; onSave: (p: Place) => void; onHere: () => void; onRemove?: () => void }) {
+  const custom = k !== "home" && k !== "work";
+  const [name, setName] = useState(place?.name ?? "");
+  useEffect(() => { setName(place?.name ?? ""); }, [place?.name]);
+  const label = custom ? (name.trim() || "مكان") : k === "home" ? "البيت" : "العمل";
   const [text, setText] = useState(place?.text ?? "");
   const [map, setMap] = useState(false);
   useEffect(() => { setText(place?.text ?? ""); }, [place?.text]);
-  const dirty = text.trim() !== (place?.text ?? "");
+  const dirty = text.trim() !== (place?.text ?? "") || (custom && name.trim() !== (place?.name ?? ""));
   return (
     <div className="space-y-1">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="w-16 text-sm font-black text-white/70 shrink-0">{k === "home" ? "🏠" : "🏢"} {label}</span>
+        {custom
+          ? <input value={name} placeholder="اسم المكان (مثل: الجامعة)" onChange={e => setName(e.target.value)}
+              className="w-36 h-10 px-3 rounded-full bg-white/10 border border-emerald-400/30 text-white text-sm font-black shrink-0" />
+          : <span className="w-16 text-sm font-black text-white/70 shrink-0">{k === "home" ? "🏠" : "🏢"} {label}</span>}
         <input value={text} placeholder="العنوان أو اسم المكان" onChange={e => setText(e.target.value)}
-          onKeyDown={e => { if (e.key === "Enter" && text.trim()) onSave({ name: label, text: text.trim() }); }}
+          onKeyDown={e => { if (e.key === "Enter" && text.trim()) onSave({ ...place, name: label, text: text.trim() }); }}
           className="flex-1 min-w-[10rem] h-10 px-4 rounded-full bg-white/5 border border-white/10 text-white text-sm font-bold focusable" />
-        <button onClick={() => text.trim() && onSave({ name: label, text: text.trim() })} disabled={!dirty || !text.trim()}
-          className={cn("focusable no-focus-scale h-10 px-4 rounded-full text-xs font-black shrink-0", dirty && text.trim() ? "bg-emerald-500 text-black" : "bg-white/5 text-white/30")}>حفظ</button>
+        <button onClick={() => onSave({ ...place, name: label, text: text.trim() || place?.text })} disabled={!dirty}
+          className={cn("focusable no-focus-scale h-10 px-4 rounded-full text-xs font-black shrink-0", dirty ? "bg-emerald-500 text-black" : "bg-white/5 text-white/30")}>حفظ</button>
         <button onClick={onHere} className="focusable no-focus-scale h-10 px-3 rounded-full bg-white/10 text-xs font-black text-white shrink-0">📍 موقعي الآن</button>
         <button onClick={() => setMap(true)} className="focusable no-focus-scale h-10 px-3 rounded-full bg-white/10 text-xs font-black text-white shrink-0">🗺 من الخريطة</button>
+        {onRemove && <button onClick={onRemove} className="focusable no-focus-scale h-10 px-3 rounded-full bg-red-600/40 text-xs font-black text-white shrink-0">حذف</button>}
       </div>
       {place?.lat != null && <p className="text-[10px] text-emerald-300/70 font-bold mr-[4.5rem]">✓ محفوظ على الخريطة ({place.lat.toFixed(4)}, {place.lon?.toFixed(4)})</p>}
       {map && <MapPicker title={`حدّد ${label} على الخريطة`} start={place} onClose={() => setMap(false)}
@@ -162,5 +183,27 @@ function MapPicker({ title, start, onPick, onClose }: { title: string; start?: P
           className={cn("h-12 px-6 rounded-full text-sm font-black", pos ? "bg-emerald-500 text-black" : "bg-white/10 text-white/30")}>حفظ هذا المكان</button>
       </div>
     </div>
+  );
+}
+
+/**
+ * Your own Google Maps key (optional): the site's key may be limited to the website; a key of yours with the
+ * "Places API (New)" and "Routes API" switched on gives the phone Google's mosques and routes.
+ */
+function GoogleKey() {
+  const ms = useMediaStore(s => s.mapSettings);
+  const updateMapSettings = useMediaStore(s => s.updateMapSettings);
+  const [k, setK] = useState(ms?.googleKey ?? "");
+  const save = () => { updateMapSettings({ googleKey: k.trim() }); hubSet("googleKey", k.trim()); setTimeout(() => useMediaStore.getState().syncMasterBin(), 200); };
+  return (
+    <details className="rounded-2xl border border-white/10 p-3">
+      <summary className="text-xs font-black text-white/60 cursor-pointer">مفتاح خرائط جوجل (اختياري - لنتائج أدق من OpenStreetMap)</summary>
+      <div className="flex flex-wrap items-center gap-2 mt-2">
+        <input value={k} onChange={e => setK(e.target.value)} placeholder="AIza..." dir="ltr"
+          className="flex-1 min-w-[12rem] h-10 px-4 rounded-full bg-black/40 border border-white/10 text-white text-xs font-mono" />
+        <button onClick={save} className="h-10 px-4 rounded-full bg-emerald-500 text-black text-xs font-black">حفظ</button>
+      </div>
+      <p className="text-[10px] text-white/40 font-bold mt-2 leading-5">من Google Cloud Console: أنشئ مفتاحاً، فعّل عليه «Places API (New)» و«Routes API» و«Maps JavaScript API» و«Places API»، واتركه بلا تقييد أو قيّده بتطبيقات Android. بدونه يجرّب التطبيق مفتاح الموقع ثم OpenStreetMap.</p>
+    </details>
   );
 }

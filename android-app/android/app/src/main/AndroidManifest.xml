@@ -203,6 +203,14 @@
             </intent-filter>
         </activity>
 
+        <!-- the trip options (long press on the islands' microphone) -->
+        <activity
+            android:name=".TripMenuActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:taskAffinity=".trips"
+            android:theme="@android:style/Theme.DeviceDefault.Dialog.NoActionBar" />
+
         <!-- choose / pin the manuscript of one manuscript widget -->
         <activity
             android:name=".ManuscriptPickActivity"

@@ -251,7 +251,7 @@ final class Cloud {
         JSONObject ms = m.optJSONObject("mapSettings");
         if (ms != null) {
             JSONObject s = new JSONObject();
-            for (String k : new String[]{"manuscriptInk", "manuscriptInkColor", "manuscriptTexture", "manuscriptBgUrl", "showManuscriptBg", "pinnedManuscriptId"}) {
+            for (String k : new String[]{"manuscriptInk", "manuscriptInkColor", "manuscriptTexture", "manuscriptBgUrl", "showManuscriptBg", "pinnedManuscriptId", "googleKey"}) {
                 if (ms.has(k)) s.put(k, ms.get(k));
             }
             o.put("mapSettings", s);

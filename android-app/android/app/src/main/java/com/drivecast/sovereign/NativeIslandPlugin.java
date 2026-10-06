@@ -129,6 +129,7 @@ public class NativeIslandPlugin extends Plugin {
             v = mine;
         }
         Hub.set(getContext(), key, v, false);
+        if ("googleKey".equals(key)) GJs.reset();
         call.resolve();
     }
 

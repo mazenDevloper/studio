@@ -75,7 +75,7 @@ export interface PrayerSetting {
   showCountup: boolean; countupWindow: number; iqamahDuration: number;
 }
 
-export interface MapSettings {
+export interface MapSettings { googleKey?: string;
   zoom: number; tilt: number; carScale: number; backgroundIndex: number; showManuscriptBg: boolean;
   manuscriptBgUrl: string; fontScale: number; manuscriptColor: string; showManuscriptOnMoon: boolean;
   moonManuIdx: number; hue: number; saturation: number; brightness: number;

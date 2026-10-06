@@ -25,6 +25,109 @@ final class GMaps {
     /** the site's Google Maps key (src/lib/constants.ts) */
     static final String KEY = "AIzaSyBRqAHJ2elbE_Z7NXXYC50XZpqi6HbG6Rk";
     static String lastError = "";
+    private static String key = KEY;
+
+    /** the key: your own from the settings ("googleKey"), else the site's */
+    static String key(android.content.Context ctx) {
+        Object k = Hub.get(ctx, "googleKey");
+        if (k == null || String.valueOf(k).trim().length() < 20) {
+            JSONObject m = Cloud.master(ctx).optJSONObject("mapSettings");
+            k = m != null ? m.optString("googleKey", "") : "";
+        }
+        key = k != null && String.valueOf(k).trim().length() >= 20 ? String.valueOf(k).trim() : KEY;
+        return key;
+    }
+
+    /** Mosques: Google web service, then Google's JavaScript library (works with a site-limited key), else null. */
+    static List<JSONObject> mosques(android.content.Context ctx, double lat, double lon, int radius) {
+        key(ctx);
+        List<JSONObject> l = mosquesNear(lat, lon, radius);
+        if (l != null && !l.isEmpty()) return l;
+        String webErr = lastError;
+        JSONObject j = GJs.nearby(ctx, lat, lon, radius);
+        if (j != null) {
+            try {
+                return listOf(j);
+            } catch (Exception ignored) {
+            }
+        }
+        lastError = webErr + (GJs.lastError.isEmpty() ? "" : " · " + GJs.lastError);
+        return l;
+    }
+
+    static JSONObject findAny(android.content.Context ctx, String text, double lat, double lon) {
+        key(ctx);
+        JSONObject f = find(text, lat, lon);
+        if (f != null) return f;
+        String webErr = lastError;
+        JSONObject j = GJs.find(ctx, text, lat, lon);
+        try {
+            if (j != null && !listOf(j).isEmpty()) return listOf(j).get(0);
+        } catch (Exception ignored) {
+        }
+        // OpenStreetMap's search (Nominatim)
+        try {
+            String url = "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&accept-language=ar&q=" + java.net.URLEncoder.encode(text, "UTF-8")
+                    + (lat != 0 || lon != 0 ? "&viewbox=" + (lon - 1) + "," + (lat + 1) + "," + (lon + 1) + "," + (lat - 1) : "");
+            JSONArray a = new JSONArray(getText(url));
+            if (a.length() > 0) {
+                JSONObject e = a.getJSONObject(0);
+                return new JSONObject().put("name", e.optString("name", text)).put("lat", e.optDouble("lat")).put("lon", e.optDouble("lon"));
+            }
+        } catch (Exception ignored) {
+        }
+        lastError = webErr + (GJs.lastError.isEmpty() ? "" : " · " + GJs.lastError);
+        return null;
+    }
+
+    /** A route: Google web service, Google's JavaScript library, then OSRM (OpenStreetMap routing). */
+    static JSONObject routeAny(android.content.Context ctx, double a, double b, double c, double d) {
+        key(ctx);
+        JSONObject r = route(a, b, c, d);
+        if (r != null) {
+            try { r.put("via", "Google"); } catch (Exception ignored) { }
+            return r;
+        }
+        String webErr = lastError;
+        JSONObject j = GJs.route(ctx, a, b, c, d);
+        if (j != null && j.optJSONArray("points") != null) {
+            try {
+                return new JSONObject().put("meters", j.optLong("meters")).put("seconds", j.optLong("seconds")).put("points", j.getJSONArray("points")).put("via", "Google");
+            } catch (Exception ignored) {
+            }
+        }
+        try {
+            JSONObject o = new JSONObject(getText("https://router.project-osrm.org/route/v1/driving/" + b + "," + a + ";" + d + "," + c + "?overview=simplified&geometries=polyline"));
+            JSONObject rt = o.optJSONArray("routes").getJSONObject(0);
+            JSONArray pts = new JSONArray();
+            for (double[] p : decode(rt.optString("geometry"))) pts.put(new JSONArray().put(p[0]).put(p[1]));
+            lastError = webErr;
+            return new JSONObject().put("meters", Math.round(rt.optDouble("distance"))).put("seconds", Math.round(rt.optDouble("duration"))).put("points", pts).put("via", "OSRM");
+        } catch (Exception ignored) {
+        }
+        lastError = webErr + (GJs.lastError.isEmpty() ? "" : " · " + GJs.lastError);
+        return null;
+    }
+
+    private static List<JSONObject> listOf(JSONObject j) throws Exception {
+        List<JSONObject> out = new ArrayList<>();
+        JSONArray r = j.optJSONArray("res");
+        for (int i = 0; r != null && i < r.length(); i++) out.add(r.getJSONObject(i));
+        return out;
+    }
+
+    private static String getText(String url) throws Exception {
+        HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
+        c.setConnectTimeout(8_000);
+        c.setReadTimeout(15_000);
+        c.setRequestProperty("User-Agent", "DriveCast/1.0");
+        StringBuilder b = new StringBuilder();
+        try (BufferedReader r = new BufferedReader(new InputStreamReader(c.getInputStream(), "UTF-8"))) {
+            String line;
+            while ((line = r.readLine()) != null) b.append(line);
+        }
+        return b.toString();
+    }
 
     private static JSONObject post(String url, String fieldMask, JSONObject body) throws Exception {
         HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
@@ -33,7 +136,7 @@ final class GMaps {
         c.setRequestMethod("POST");
         c.setDoOutput(true);
         c.setRequestProperty("Content-Type", "application/json; charset=utf-8");
-        c.setRequestProperty("X-Goog-Api-Key", KEY);
+        c.setRequestProperty("X-Goog-Api-Key", key);
         c.setRequestProperty("X-Goog-FieldMask", fieldMask);
         // the key may be limited to the site's address
         c.setRequestProperty("Referer", "https://cplay2.vercel.app/");

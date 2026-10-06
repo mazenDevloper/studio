@@ -1264,6 +1264,13 @@ public class IslandService extends Service {
             Intent vi = new Intent(this, VoiceActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             try { startActivity(vi); } catch (Exception ignored) { }
         });
+        // long press: the trip options (go to a saved place, the current trip's plan / end)
+        mic.setOnLongClickListener(v -> {
+            v.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS);
+            Intent tm = new Intent(this, TripMenuActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            try { startActivity(tm); } catch (Exception ignored) { }
+            return true;
+        });
         LinearLayout.LayoutParams ml = new LinearLayout.LayoutParams(dp(34), dp(34));
         ml.setMarginStart(dp(4));
         box.addView(mic, ml);
@@ -1577,7 +1584,8 @@ public class IslandService extends Service {
         addChipRow(card,
                 chip("🔊 اقرأ الخطة", false, 0, () -> say(Trip.summary(t))),
                 chip("إنهاء الرحلة", false, 0, () -> { Trip.stop(this); closeFocus(); }));
-        if (!t.optBoolean("google")) card.addView(label("المسار تقريبي (Google: " + GMaps.lastError + ")", 10, 0x66FFFFFF, false));
+        if (!t.optBoolean("google")) card.addView(label("المسار تقريبي (" + GMaps.lastError + ")", 10, 0x66FFFFFF, false));
+        else if (!t.optString("via").isEmpty()) card.addView(label("المسار: " + t.optString("via"), 10, 0x66FFFFFF, false));
         return card;
     }
 

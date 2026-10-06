@@ -200,7 +200,7 @@ final class RoadPrayer {
         new Thread(() -> {
             String why = "";
             // 1) Google Maps (the site's key), 2) OpenStreetMap when Google refuses or finds nothing
-            List<JSONObject> got = GMaps.mosquesNear(lat, lon, 6000);
+            List<JSONObject> got = GMaps.mosques(ctx, lat, lon, 6000);
             if (got == null || got.isEmpty()) {
                 String g = got == null ? "Google: " + GMaps.lastError : "";
                 got = osmMosques(lat, lon, 6000);

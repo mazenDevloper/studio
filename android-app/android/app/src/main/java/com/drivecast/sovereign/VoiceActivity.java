@@ -418,16 +418,34 @@ public class VoiceActivity extends Activity {
     }
 
     /** "رحلتي إلى صلالة" -> "صلالة"; "رايح البيت" -> "home"; null when it isn't a trip */
-    private static String tripDestination(String said, String s) {
-        String[] starts = {"رحلتي", "رحله الي", "رحله الى", "رايح", "رايحين", "وديني", "خذني", "مشواري", "طريقي الي", "طريقي الى", "متجه", "ذاهب", "مسافر"};
+    private static final String TRIP_WORDS = "رحلتي|رحلة|رحله|رايح|رايحه|رايحين|وديني|ودني|خذني|مشواري|مشوار|طريقي|متجه|متوجه|ذاهب|مسافر|الذهاب|اذهب|أذهب|نروح|اروح|أروح|بروح|توجه|ودنا";
+
+    /**
+     * "رحلتي إلى صلالة", "الذهاب إلى العمل", "إلى العمل", "رايح البيت", "روح الجامعة" (a saved place) -> where to
+     * ("home" / "work" / a saved place's key / the words for the search); null when it isn't a trip.
+     */
+    private String tripDestination(String said, String s) {
         boolean trip = false;
-        for (String k : starts) if (s.contains(k)) trip = true;
+        for (String k : TRIP_WORDS.split("\\|")) if (s.contains(norm(k))) trip = true;
+        // "إلى العمل" / "الى البيت" alone
+        if (s.startsWith("الي ") || s.startsWith("الى ") || s.startsWith("روح ")) trip = true;
         if (!trip) return null;
         String key = placeKey(s);
         if (key != null) return key;
-        // the words after "إلى / الى / ل" (the original spelling, for the search)
-        java.util.regex.Matcher m = java.util.regex.Pattern.compile("(?:^|\\s)(?:إلى|الى|الي|إلي|لـ)\\s+(.+)$").matcher(said.replaceAll("^.*?(رحلتي|رحلة|رايح|رايحين|وديني|خذني|مشواري|طريقي|متجه|ذاهب|مسافر)", ""));
-        String d = m.find() ? m.group(1).trim() : said.replaceAll("^.*?(رحلتي|رحلة|رايح|رايحين|وديني|خذني|مشواري|طريقي|متجه|ذاهب|مسافر)", "").trim();
+        // a saved place by its name ("الجامعة", "بيت الوالد")
+        JSONObject places = Trip.places(this);
+        java.util.Iterator<String> it = places.keys();
+        while (it.hasNext()) {
+            String k = it.next();
+            JSONObject p = places.optJSONObject(k);
+            String n = p != null ? norm(p.optString("name")) : "";
+            if (n.length() >= 2 && s.contains(n)) return k;
+        }
+        // the words after "إلى / الى" (the original spelling, for the search)
+        String rest = said.replaceAll("^.*?(" + TRIP_WORDS + ")\\s*", "");
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("(?:^|\\s)(?:إلى|الى|الي|إلي|لـ)\\s+(.+)$").matcher(" " + rest);
+        String d = m.find() ? m.group(1).trim() : rest.replaceAll("^(?:إلى|الى|الي|إلي)\\s*", "").trim();
+        if (d.startsWith("ال") && d.length() < 2) return null;
         return d.isEmpty() ? null : d;
     }
 
