@@ -350,6 +350,11 @@ public class IslandService extends Service {
         long minute = now / 60_000L;
         if (minute != lastWidgetsMinute) {
             lastWidgetsMinute = minute;
+            // a weekly trip near its time: plan it (route + mosques) and read it out
+            new Thread(() -> {
+                String said = Trip.autoWeekly(this);
+                if (said != null) handler.post(() -> { say(said); islandSignature = ""; tick(); });
+            }).start();
             Widgets.updateAll(this);
         }
         List<IslandArt.Item> items = islandItems(now);
@@ -701,6 +706,7 @@ public class IslandService extends Service {
         Occasions.items(this, out, now);
         voiceReminderItems(out, now);
         roadItem(out, now);
+        tripItem(out, now);
         {
             // the day's dhikr: always shown, like the site (hidden once marked done today)
             JSONArray az = Cloud.master(this).optJSONArray("generalAzkar");
@@ -1404,6 +1410,7 @@ public class IslandService extends Service {
                     chip("إنهاء", false, 0, () -> { azkarCommand("stop", null); closeFocus(); }));
             return card;
         }
+        if ("trip".equals(it.id)) return tripPanel();
         if ("mosque".equals(it.id)) {
             if (!roadMosques.isEmpty()) return roadPanel();
             LinearLayout card = panelCard();
@@ -1502,6 +1509,81 @@ public class IslandService extends Service {
         }
     }
 
+    // ---- a planned trip: the next prayer on the way and its mosque ----
+
+    private void tripItem(List<IslandArt.Item> out, long now) {
+        JSONObject t = Trip.current(this);
+        if (t == null) return;
+        JSONArray plan = t.optJSONArray("plan");
+        JSONObject next = null;
+        for (int i = 0; plan != null && i < plan.length(); i++) {
+            JSONObject r = plan.optJSONObject(i);
+            if (r != null && r.optLong("at") > now - 20 * 60_000L) { next = r; break; }
+        }
+        IslandArt.Item it = new IslandArt.Item();
+        it.kind = "countdown";
+        it.ckind = "mosque";
+        it.id = "trip";
+        if (next == null) {
+            it.title = "🧭 إلى " + Trip.placeName(t.optString("name"));
+            long left = t.optLong("startAt") + t.optLong("seconds") * 1000L - now;
+            it.minute = left > 0 ? "الوصول بعد " + Trip.duration(left / 1000) : "وصلت";
+            it.more = 0;
+            it.at = now + Math.max(0, left);
+        } else {
+            JSONObject m = next.optJSONObject("mosque");
+            it.title = "🧭 " + next.optString("prayer") + " " + Trip.clock(next.optLong("at")) + (m != null ? " · " + m.optString("name") : "");
+            it.minute = next.optBoolean("after") ? "بعد الوصول" : "عند الكيلو " + next.optLong("km");
+            it.more = 0;
+            it.at = next.optLong("at");
+        }
+        out.add(it);
+    }
+
+    private View tripPanel() {
+        JSONObject t = Trip.current(this);
+        if (t == null) return null;
+        LinearLayout card = panelCard();
+        card.addView(label("🧭 " + Trip.placeName(t.optString("name")) + " · " + Trip.duration(t.optLong("seconds")) + " · " + Math.round(t.optLong("meters") / 1000.0) + " كم", 15, 0xFFFFFFFF, true));
+        JSONArray plan = t.optJSONArray("plan");
+        if (plan == null || plan.length() == 0) card.addView(label("لا صلاة أثناء الطريق", 12, 0x99FFFFFF, false));
+        for (int i = 0; plan != null && i < plan.length(); i++) {
+            JSONObject r = plan.optJSONObject(i);
+            JSONObject m = r.optJSONObject("mosque");
+            LinearLayout row = hrow();
+            row.setPadding(0, dp(8), 0, 0);
+            LinearLayout col = new LinearLayout(this);
+            col.setOrientation(LinearLayout.VERTICAL);
+            col.addView(label(r.optString("prayer") + "  " + Trip.clock(r.optLong("at")), 14, 0xFFFFFFFF, true));
+            String sub = r.optBoolean("after") ? "بعد وصولك" : "عند الكيلو " + r.optLong("km") + (m != null ? " · " + m.optString("name") + (r.optLong("off") > 0 ? " (" + RoadPrayer.distanceText(r.optLong("off")) + " عن الطريق)" : "") : " · لا مسجد معروف قريب");
+            android.widget.TextView st = label(sub, 11, 0x99FFFFFF, false);
+            st.setMaxLines(2);
+            col.addView(st);
+            row.addView(col, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+            if (m != null) {
+                final double la = m.optDouble("lat"), lo = m.optDouble("lon");
+                row.addView(chip("🧭", false, 0, () -> navigate(la, lo)));
+            }
+            card.addView(row);
+        }
+        addChipRow(card,
+                chip("🔊 اقرأ الخطة", false, 0, () -> say(Trip.summary(t))),
+                chip("إنهاء الرحلة", false, 0, () -> { Trip.stop(this); closeFocus(); }));
+        if (!t.optBoolean("google")) card.addView(label("المسار تقريبي (Google: " + GMaps.lastError + ")", 10, 0x66FFFFFF, false));
+        return card;
+    }
+
+    private void navigate(double la, double lo) {
+        Intent nav = new Intent(Intent.ACTION_VIEW, android.net.Uri.parse("google.navigation:q=" + la + "," + lo));
+        nav.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        try { startActivity(nav); } catch (Exception e) {
+            Intent geo = new Intent(Intent.ACTION_VIEW, android.net.Uri.parse("geo:" + la + "," + lo + "?q=" + la + "," + lo));
+            geo.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            try { startActivity(geo); } catch (Exception ignored) { }
+        }
+        closeFocus();
+    }
+
     // ---- prayer on the road ----
 
     private RoadPrayer road;
@@ -1576,6 +1658,7 @@ public class IslandService extends Service {
                 ? "صلاة " + roadPrayer + " · أقيمت الصلاة منذ " + Math.max(0, (nowMs - roadIqamah) / 60_000L) + " د · تلحق الجماعة؟"
                 : "صلاة " + roadPrayer + " على الطريق · الإقامة بعد " + left + " د", 14, 0xFFFFFFFF, true));
         String[] states = {"🟢 تصل قبل الإقامة", "🟡 تتأخر دقائق", "🔴 لن تلحق"};
+        if (road != null && !road.source.isEmpty()) card.addView(label("المصدر: " + road.source, 10, 0x66FFFFFF, false));
         for (int i = 0; i < roadMosques.size() && i < 3; i++) {
             RoadPrayer.Mosque m = roadMosques.get(i);
             LinearLayout r = hrow();

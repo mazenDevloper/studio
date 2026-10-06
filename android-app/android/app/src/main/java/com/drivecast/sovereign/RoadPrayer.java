@@ -113,6 +113,63 @@ final class RoadPrayer {
 
     /** what went wrong last (shown in the island's panel) */
     String status = "";
+    /** where the mosques came from */
+    String source = "";
+    static String osmError = "";
+
+    /** OpenStreetMap mosques around a point (Overpass, mirrors, then Nominatim); null when all failed (osmError). */
+    static List<JSONObject> osmMosques(double lat, double lon, int radius) {
+        List<JSONObject> got = new ArrayList<>();
+        String why = "";
+        String q = "[out:json][timeout:15];(nwr[\"amenity\"=\"place_of_worship\"](around:" + radius + "," + lat + "," + lon + ");"
+                + "nwr[\"building\"=\"mosque\"](around:" + radius + "," + lat + "," + lon + "););out center 80;";
+        boolean ok = false;
+        for (String host : new String[]{"https://overpass-api.de", "https://overpass.kumi.systems", "https://overpass.private.coffee"}) {
+            try {
+                JSONArray els = new JSONObject(get(host + "/api/interpreter?data=" + URLEncoder.encode(q, "UTF-8"))).optJSONArray("elements");
+                for (int i = 0; els != null && i < els.length(); i++) {
+                    JSONObject e = els.optJSONObject(i);
+                    if (e == null) continue;
+                    JSONObject tags = e.optJSONObject("tags");
+                    String rel = tags != null ? tags.optString("religion", "") : "";
+                    if (!rel.isEmpty() && !"muslim".equals(rel)) continue;
+                    JSONObject center = e.optJSONObject("center");
+                    double la = e.has("lat") ? e.optDouble("lat") : center != null ? center.optDouble("lat") : Double.NaN;
+                    double lo = e.has("lon") ? e.optDouble("lon") : center != null ? center.optDouble("lon") : Double.NaN;
+                    if (Double.isNaN(la) || Double.isNaN(lo)) continue;
+                    String name = tags != null ? tags.optString("name:ar", tags.optString("name", "")) : "";
+                    got.add(new JSONObject().put("name", name.isEmpty() ? "مسجد" : name).put("lat", la).put("lon", lo));
+                }
+                ok = true;
+                break;
+            } catch (Exception ex) {
+                why = "Overpass: " + ex.getClass().getSimpleName() + " " + (ex.getMessage() == null ? "" : ex.getMessage());
+            }
+        }
+        if (got.isEmpty()) {
+            double dl = radius / 100_000.0;
+            String box = (lon - dl) + "," + (lat + dl) + "," + (lon + dl) + "," + (lat - dl);
+            for (String term : new String[]{"mosque", "مسجد", "جامع"}) {
+                try {
+                    JSONArray arr = new JSONArray(get("https://nominatim.openstreetmap.org/search?format=jsonv2&limit=40&bounded=1&viewbox=" + box
+                            + "&q=" + URLEncoder.encode(term, "UTF-8") + "&accept-language=ar"));
+                    for (int i = 0; i < arr.length(); i++) {
+                        JSONObject e = arr.optJSONObject(i);
+                        if (e == null) continue;
+                        String name = e.optString("name", "");
+                        if (name.isEmpty()) name = e.optString("display_name", "مسجد").split(",")[0];
+                        got.add(new JSONObject().put("name", name).put("lat", e.optDouble("lat")).put("lon", e.optDouble("lon")));
+                    }
+                    ok = true;
+                } catch (Exception ex) {
+                    why = (why.isEmpty() ? "" : why + " · ") + "Nominatim: " + ex.getClass().getSimpleName();
+                }
+                if (!got.isEmpty()) break;
+            }
+        }
+        osmError = why;
+        return ok ? got : null;
+    }
 
     boolean hasFix() {
         return last != null;
@@ -141,55 +198,16 @@ final class RoadPrayer {
         loading = true;
         final double lat = last.getLatitude(), lon = last.getLongitude();
         new Thread(() -> {
-            List<JSONObject> got = new ArrayList<>();
             String why = "";
-            // 1) OpenStreetMap through Overpass (any place of worship that isn't of another religion, and mosque
-            //    buildings: many mosques here carry no religion tag), the main server then mirrors
-            String q = "[out:json][timeout:15];(nwr[\"amenity\"=\"place_of_worship\"](around:6000," + lat + "," + lon + ");"
-                    + "nwr[\"building\"=\"mosque\"](around:6000," + lat + "," + lon + "););out center 80;";
-            for (String host : new String[]{"https://overpass-api.de", "https://overpass.kumi.systems", "https://overpass.private.coffee"}) {
-                try {
-                    JSONArray els = new JSONObject(get(host + "/api/interpreter?data=" + URLEncoder.encode(q, "UTF-8"))).optJSONArray("elements");
-                    for (int i = 0; els != null && i < els.length(); i++) {
-                        JSONObject e = els.optJSONObject(i);
-                        if (e == null) continue;
-                        JSONObject tags = e.optJSONObject("tags");
-                        String rel = tags != null ? tags.optString("religion", "") : "";
-                        if (!rel.isEmpty() && !"muslim".equals(rel)) continue;
-                        JSONObject center = e.optJSONObject("center");
-                        double la = e.has("lat") ? e.optDouble("lat") : center != null ? center.optDouble("lat") : Double.NaN;
-                        double lo = e.has("lon") ? e.optDouble("lon") : center != null ? center.optDouble("lon") : Double.NaN;
-                        if (Double.isNaN(la) || Double.isNaN(lo)) continue;
-                        String name = tags != null ? tags.optString("name:ar", tags.optString("name", "")) : "";
-                        got.add(new JSONObject().put("name", name.isEmpty() ? "مسجد" : name).put("lat", la).put("lon", lo));
-                    }
-                    why = "";
-                    break;
-                } catch (Exception ex) {
-                    why = "Overpass: " + ex.getClass().getSimpleName() + " " + (ex.getMessage() == null ? "" : ex.getMessage());
-                }
-            }
-            // 2) Nominatim search (another OpenStreetMap service) when Overpass failed or found nothing
-            if (got.isEmpty()) {
-                double dl = 0.06;
-                String box = (lon - dl) + "," + (lat + dl) + "," + (lon + dl) + "," + (lat - dl);
-                for (String term : new String[]{"mosque", "مسجد", "جامع"}) {
-                    try {
-                        JSONArray arr = new JSONArray(get("https://nominatim.openstreetmap.org/search?format=jsonv2&limit=40&bounded=1&viewbox=" + box
-                                + "&q=" + URLEncoder.encode(term, "UTF-8") + "&accept-language=ar"));
-                        for (int i = 0; i < arr.length(); i++) {
-                            JSONObject e = arr.optJSONObject(i);
-                            if (e == null) continue;
-                            String name = e.optString("name", "");
-                            if (name.isEmpty()) name = e.optString("display_name", "مسجد").split(",")[0];
-                            got.add(new JSONObject().put("name", name).put("lat", e.optDouble("lat")).put("lon", e.optDouble("lon")));
-                        }
-                        why = got.isEmpty() ? why : "";
-                    } catch (Exception ex) {
-                        why = (why.isEmpty() ? "" : why + " · ") + "Nominatim: " + ex.getClass().getSimpleName();
-                    }
-                    if (!got.isEmpty()) break;
-                }
+            // 1) Google Maps (the site's key), 2) OpenStreetMap when Google refuses or finds nothing
+            List<JSONObject> got = GMaps.mosquesNear(lat, lon, 6000);
+            if (got == null || got.isEmpty()) {
+                String g = got == null ? "Google: " + GMaps.lastError : "";
+                got = osmMosques(lat, lon, 6000);
+                if (got == null) { got = new ArrayList<>(); why = (g.isEmpty() ? "" : g + " · ") + osmError; }
+                else source = "OpenStreetMap" + (g.isEmpty() ? "" : " (" + g + ")");
+            } else {
+                source = "Google";
             }
             synchronized (cache) {
                 cache.clear();

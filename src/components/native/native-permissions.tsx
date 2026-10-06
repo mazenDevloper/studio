@@ -127,6 +127,7 @@ export function NativePermissions() {
           {t.label}
         </label>
       ))}
+      <TripsSettings hub={hub} setShared={setShared} />
       {/* test mode: see the islands and the goal animation without waiting for a match */}
       {plugin.testIslands && (
         <div className="flex flex-wrap items-center gap-3 pt-2">
@@ -148,5 +149,75 @@ export function NativePermissions() {
       </div>
       {status.version && <p className="text-[11px] text-white/30 font-bold">إصدار التطبيق {status.version}</p>}
     </section>
+  );
+}
+
+const DAYS = ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
+type Place = { name?: string; text?: string; lat?: number; lon?: number };
+type WeeklyTrip = { id: string; days: number[]; time: string; to: string; off?: boolean };
+
+/**
+ * Home / work and the weekly trips (the phone plans each one near its time: route, the prayers on the way and the
+ * mosque for each). Shared with the phone through the Hub ("places", "weeklyTrips").
+ */
+function TripsSettings({ hub, setShared }: { hub: Record<string, any>; setShared: (k: string, v: unknown) => void }) {
+  const places: Record<string, Place> = hub.places || {};
+  const trips: WeeklyTrip[] = Array.isArray(hub.weeklyTrips) ? hub.weeklyTrips : [];
+  const setPlace = (key: string, p: Place) => setShared("places", { ...places, [key]: p });
+  const here = (key: string) => navigator.geolocation?.getCurrentPosition(
+    pos => setPlace(key, { name: key === "home" ? "البيت" : "العمل", lat: pos.coords.latitude, lon: pos.coords.longitude, text: "موقعي المحفوظ" }),
+    () => alert("تعذّر تحديد الموقع"), { enableHighAccuracy: true, timeout: 15000 });
+  const setTrips = (t: WeeklyTrip[]) => setShared("weeklyTrips", t);
+  const update = (id: string, u: Partial<WeeklyTrip>) => setTrips(trips.map(t => (t.id === id ? { ...t, ...u } : t)));
+  return (
+    <div className="space-y-3 pt-3 border-t border-white/10">
+      <p className="text-sm font-black text-white/80">🧭 أماكني ورحلاتي الأسبوعية</p>
+      <p className="text-[11px] text-white/45 font-bold">يخطط الهاتف كل رحلة قرب وقتها: المسار، الصلوات التي تقع أثناء الطريق، وأقرب مسجد لكل صلاة. ويمكنك أيضاً أن تقول: «رحلتي إلى صلالة».</p>
+      {(["home", "work"] as const).map(key => (
+        <div key={key} className="flex items-center gap-2">
+          <span className="w-14 text-sm font-black text-white/70 shrink-0">{key === "home" ? "🏠 البيت" : "🏢 العمل"}</span>
+          <input value={places[key]?.text ?? ""} placeholder="العنوان أو اسم المكان"
+            onChange={e => setPlace(key, { name: key === "home" ? "البيت" : "العمل", text: e.target.value })}
+            className="flex-1 min-w-0 h-10 px-4 rounded-full bg-white/5 border border-white/10 text-white text-sm font-bold focusable" />
+          <button onClick={() => here(key)} className="focusable no-focus-scale h-10 px-3 rounded-full bg-white/10 text-xs font-black text-white shrink-0">📍 موقعي الآن</button>
+        </div>
+      ))}
+      {trips.map(t => (
+        <div key={t.id} className={cn("rounded-2xl border p-3 space-y-2", t.off ? "border-white/5 opacity-60" : "border-white/10 bg-white/5")}>
+          <div className="flex flex-wrap items-center gap-2">
+            <input type="time" value={t.time} onChange={e => update(t.id, { time: e.target.value })}
+              className="h-9 px-3 rounded-full bg-black/40 border border-white/10 text-white text-sm font-black" />
+            <span className="text-xs text-white/50 font-bold">إلى</span>
+            <select value={["home", "work"].includes(t.to) ? t.to : "other"} onChange={e => update(t.id, { to: e.target.value === "other" ? "" : e.target.value })}
+              className="h-9 px-3 rounded-full bg-black/40 border border-white/10 text-white text-sm font-bold">
+              <option value="work">العمل</option><option value="home">البيت</option><option value="other">مكان آخر…</option>
+            </select>
+            {!["home", "work"].includes(t.to) && (
+              <input value={t.to} placeholder="اسم المكان" onChange={e => update(t.id, { to: e.target.value })}
+                className="flex-1 min-w-[8rem] h-9 px-3 rounded-full bg-black/40 border border-white/10 text-white text-sm font-bold" />
+            )}
+            <button onClick={() => update(t.id, { off: !t.off })} className="h-9 px-3 rounded-full bg-white/10 text-xs font-black text-white">{t.off ? "تفعيل" : "إيقاف"}</button>
+            <button onClick={() => setTrips(trips.filter(x => x.id !== t.id))} className="h-9 px-3 rounded-full bg-red-600/40 text-xs font-black text-white">حذف</button>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {DAYS.map((d, i) => {
+              const on = t.days.includes(i);
+              return (
+                <button key={i} onClick={() => update(t.id, { days: on ? t.days.filter(x => x !== i) : [...t.days, i] })}
+                  className={cn("h-8 px-3 rounded-full text-xs font-black", on ? "bg-emerald-500 text-black" : "bg-white/5 text-white/50")}>{d}</button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+      <div className="flex flex-wrap gap-2">
+        <button onClick={() => setTrips([...trips, { id: String(Date.now()), days: [0, 1, 2, 3, 4], time: "07:00", to: "work" }])}
+          className="focusable no-focus-scale h-10 px-4 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-sm font-black">+ رحلة الذهاب للعمل</button>
+        <button onClick={() => setTrips([...trips, { id: String(Date.now()), days: [0, 1, 2, 3, 4], time: "14:30", to: "home" }])}
+          className="focusable no-focus-scale h-10 px-4 rounded-full bg-white/10 border border-white/10 text-white text-sm font-black">+ رحلة العودة للبيت</button>
+        <button onClick={() => setTrips([...trips, { id: String(Date.now()), days: [4], time: "16:00", to: "" }])}
+          className="focusable no-focus-scale h-10 px-4 rounded-full bg-white/10 border border-white/10 text-white text-sm font-black">+ رحلة أخرى</button>
+      </div>
+    </div>
   );
 }

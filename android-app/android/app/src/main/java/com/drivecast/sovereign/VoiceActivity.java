@@ -93,6 +93,11 @@ public class VoiceActivity extends Activity {
             answer = null;
         }
         if (answer == null) answer = "لم أفهم: «" + said + "». جرّب: شغّل سورة الكهف، كم النتيجة، متى المغرب";
+        if (answer.startsWith("@")) {
+            // still working (a trip being planned): the answer comes by itself
+            view.setText("«" + said + "»\n\n" + answer.substring(1));
+            return;
+        }
         if (answer.startsWith("#")) {
             // the service answers by itself (the azkar are read aloud, a surah starts): just show it
             view.setText("«" + said + "»\n\n" + answer.substring(1));
@@ -110,7 +115,7 @@ public class VoiceActivity extends Activity {
     }
 
     private void say(String text) {
-        IslandService.start(this);
+        IslandService.start(getApplicationContext());
         ui.postDelayed(() -> IslandService.speak(text), 300);
     }
 
@@ -122,6 +127,30 @@ public class VoiceActivity extends Activity {
 
     private String run(String said) {
         String s = norm(said);
+
+        // trips: "رحلتي إلى صلالة", "رايح العمل", "وديني البيت", "احفظ موقعي البيت", "أنهِ الرحلة", "وين أصلي؟"
+        if (s.contains("رحله") && (s.contains("انهي") || s.contains("الغ") || s.contains("وقف") || s.contains("اوقف"))) {
+            Trip.stop(this);
+            return "أنهيت الرحلة";
+        }
+        if (s.contains("احفظ") && (s.contains("موقع") || s.contains("هنا") || s.contains("المكان"))) {
+            String key = placeKey(s);
+            if (key == null) return "قل: احفظ موقعي البيت، أو احفظ موقعي العمل";
+            return Trip.saveHere(this, key) ? "حفظت موقعك الحالي كـ" + Trip.placeName(key) : "لا أعرف موقعك الآن - فعّل الموقع";
+        }
+        if (s.contains("وين اصلي") || s.contains("اين اصلي") || s.contains("مساجد الطريق") || s.contains("خطه الرحله") || s.contains("مساجد طريقي")) {
+            org.json.JSONObject t = Trip.current(this);
+            return t != null ? Trip.summary(t) : "لا توجد رحلة الآن. قل مثلاً: رحلتي إلى صلالة";
+        }
+        String dest = tripDestination(said, s);
+        if (dest != null) {
+            final String d = dest;
+            new Thread(() -> {
+                String plan = Trip.start(getApplicationContext(), d);
+                ui.post(() -> { view.setText(plan); say(plan); ui.postDelayed(this::finish, 6000); });
+            }).start();
+            return "@أخطط الطريق إلى " + Trip.placeName(dest) + " وأبحث عن المساجد عليه...";
+        }
 
         // stop everything that plays / reads
         if (s.contains("اوقف") || s.contains("وقف") || s.contains("توقف") || s.contains("اسكت") || s.contains("انهي") || s.equals("خلاص")) {
@@ -227,6 +256,27 @@ public class VoiceActivity extends Activity {
 
     private void media(String action) {
         sendBroadcast(new Intent(this, WidgetActionReceiver.class).setAction(action));
+    }
+
+    /** "home" / "work" from the words (null: neither) */
+    private static String placeKey(String s) {
+        if (s.contains("البيت") || s.contains("بيتي") || s.contains("المنزل") || s.contains("منزلي") || s.contains("الحاره")) return "home";
+        if (s.contains("العمل") || s.contains("الدوام") || s.contains("الشغل") || s.contains("المكتب") || s.contains("عملي")) return "work";
+        return null;
+    }
+
+    /** "رحلتي إلى صلالة" -> "صلالة"; "رايح البيت" -> "home"; null when it isn't a trip */
+    private static String tripDestination(String said, String s) {
+        String[] starts = {"رحلتي", "رحله الي", "رحله الى", "رايح", "رايحين", "وديني", "خذني", "مشواري", "طريقي الي", "طريقي الى", "متجه", "ذاهب", "مسافر"};
+        boolean trip = false;
+        for (String k : starts) if (s.contains(k)) trip = true;
+        if (!trip) return null;
+        String key = placeKey(s);
+        if (key != null) return key;
+        // the words after "إلى / الى / ل" (the original spelling, for the search)
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("(?:^|\\s)(?:إلى|الى|الي|إلي|لـ)\\s+(.+)$").matcher(said.replaceAll("^.*?(رحلتي|رحلة|رايح|رايحين|وديني|خذني|مشواري|طريقي|متجه|ذاهب|مسافر)", ""));
+        String d = m.find() ? m.group(1).trim() : said.replaceAll("^.*?(رحلتي|رحلة|رايح|رايحين|وديني|خذني|مشواري|طريقي|متجه|ذاهب|مسافر)", "").trim();
+        return d.isEmpty() ? null : d;
     }
 
     /** a reciter named after "لـ" / "بصوت" that isn't in the list ("شغل الكهف للمنشاوي") */
