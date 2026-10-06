@@ -56,7 +56,11 @@ public class VoiceActivity extends Activity {
         listen();
     }
 
+    private boolean auto = false;
+    private int autoRetries = 0;
+
     private void listen() {
+        auto = getIntent().getBooleanExtra("auto", false);
         Intent i = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
         i.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
         i.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "ar");
@@ -73,7 +77,14 @@ public class VoiceActivity extends Activity {
         super.onActivityResult(req, res, data);
         if (req != VOICE) return;
         ArrayList<String> r = data != null ? data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS) : null;
-        if (res != RESULT_OK || r == null || r.isEmpty()) { finish(); return; }
+        if (res != RESULT_OK || r == null || r.isEmpty()) {
+            if (auto && IslandService.azkarActive()) {
+                // nothing heard after a zikr: listen once more, then leave it (the island has the buttons)
+                if (++autoRetries <= 1) { listen(); return; }
+            }
+            finish();
+            return;
+        }
         String said = r.get(0);
         String answer;
         try {
@@ -82,6 +93,12 @@ public class VoiceActivity extends Activity {
             answer = null;
         }
         if (answer == null) answer = "لم أفهم: «" + said + "». جرّب: شغّل سورة الكهف، كم النتيجة، متى المغرب";
+        if (answer.startsWith("#")) {
+            // the service answers by itself (the azkar are read aloud, a surah starts): just show it
+            view.setText("«" + said + "»\n\n" + answer.substring(1));
+            ui.postDelayed(this::finish, 1500);
+            return;
+        }
         view.setText("«" + said + "»\n\n" + answer);
         done(answer, true);
     }
@@ -106,6 +123,25 @@ public class VoiceActivity extends Activity {
     private String run(String said) {
         String s = norm(said);
 
+        // stop everything that plays / reads
+        if (s.contains("اوقف") || s.contains("وقف") || s.contains("توقف") || s.contains("اسكت") || s.contains("انهي") || s.equals("خلاص")) {
+            boolean az = IslandService.azkarActive();
+            ContextCompat.startForegroundService(this, new Intent(this, IslandService.class).setAction(IslandService.STOP_ALL));
+            return az ? "أنهيت قراءة الأذكار" : "أوقفت التشغيل";
+        }
+
+        // the azkar being read aloud: "التالي" = this one done, read the next; "كرر" = again
+        if (IslandService.azkarActive()) {
+            if (s.contains("التالي") || s.contains("بعده") || s.equals("تم") || s.contains("تم ") || s.contains("الي بعده") || s.contains("كملت")) {
+                IslandService.azkar("next", null);
+                return "#التالي ✓";
+            }
+            if (s.contains("كرر") || s.contains("اعد") || s.contains("مره ثانيه") || s.contains("عيد")) {
+                IslandService.azkar("repeat", null);
+                return "#أعيد الذكر";
+            }
+        }
+
         // islands
         if ((s.contains("اخف") || s.contains("خبي") || s.contains("سكر")) && s.contains("جزر")) {
             Hub.set(this, "islandsHidden", true);
@@ -123,11 +159,25 @@ public class VoiceActivity extends Activity {
         int surah = findSurah(s);
         if (surah > 0 && (s.contains("شغل") || s.contains("اقرا") || s.contains("سوره") || s.contains("سمعني"))) {
             int reciter = findReciter(s);
-            Intent q = new Intent(this, IslandService.class).setAction(IslandService.QURAN_PLAY).putExtra("surah", surah).putExtra("reciter", reciter);
-            ContextCompat.startForegroundService(this, q);
-            QuranState st = QuranState.load(this);
-            if (reciter >= 0) st.reciterIndex = reciter;
-            return "أشغّل سورة " + MediaBrowser.SURAHS[surah - 1] + (st.reciterName(this).isEmpty() ? "" : " بصوت " + st.reciterName(this));
+            String rname = reciter >= 0 ? QuranState.reciters(this).optJSONObject(reciter).optString("name") : spokenReciter(said);
+            final String query = "سورة " + MediaBrowser.SURAHS[surah - 1] + (rname.isEmpty() ? "" : " " + rname);
+            final int fs = surah, fr = reciter;
+            // YouTube: the first result plays as sound in the island (the other results are its next / previous)
+            new Thread(() -> {
+                JSONArray res = MediaBrowser.search(query, null);
+                JSONObject first = res.optJSONObject(0);
+                if (first != null) {
+                    JSONArray q = new JSONArray();
+                    for (int i = 0; i < res.length(); i++) q.put(res.optJSONObject(i));
+                    Intent a = new Intent(this, IslandService.class).setAction(IslandService.AUDIO).putExtra("type", "youtube")
+                            .putExtra("id", first.optString("id")).putExtra("title", first.optString("name")).putExtra("queue", q.toString()).putExtra("index", 0);
+                    ContextCompat.startForegroundService(this, a);
+                } else {
+                    // no YouTube (quota / network): the Quran player
+                    ContextCompat.startForegroundService(this, new Intent(this, IslandService.class).setAction(IslandService.QURAN_PLAY).putExtra("surah", fs).putExtra("reciter", fr));
+                }
+            }).start();
+            return "أبحث وأشغّل " + query;
         }
 
         // scores
@@ -148,16 +198,21 @@ public class VoiceActivity extends Activity {
 
         // azkar
         if (s.contains("اذكار") || s.contains("ذكر")) {
-            open("/football");
-            return s.contains("مسا") ? "أذكار المساء" : s.contains("صباح") ? "أذكار الصباح" : "الأذكار";
+            if (s.contains("افتح") || s.contains("صفحه")) {
+                open("/football");
+                return "فتحت الأذكار";
+            }
+            // read them aloud, one by one: say "التالي" after each
+            String period = s.contains("مسا") ? "evening" : s.contains("صباح") ? "morning" : null;
+            IslandService.start(this);
+            ui.postDelayed(() -> IslandService.azkar("start", period), 400);
+            return "#أقرأ لك الأذكار · قل «التالي» بعد كل ذكر، «كرر» للإعادة، «أوقف» للإنهاء";
         }
 
         // media
         if (s.equals("التالي") || s.contains("اللي بعده") || s.contains("التالي")) { media(WidgetActionReceiver.MEDIA_NEXT); return "التالي"; }
         if (s.contains("السابق") || s.contains("اللي قبله")) { media(WidgetActionReceiver.MEDIA_PREV); return "السابق"; }
-        if (s.contains("اوقف") || s.contains("وقف") || s.contains("كمل") || s.contains("استمر")) {
-            QuranState q = QuranState.load(this);
-            if (q.playing) { ContextCompat.startForegroundService(this, new Intent(this, IslandService.class).setAction(WidgetActionReceiver.QURAN_TOGGLE)); return "أوقفت التلاوة"; }
+        if (s.contains("كمل") || s.contains("استمر")) {
             media(WidgetActionReceiver.MEDIA_TOGGLE);
             return "تم";
         }
@@ -172,6 +227,12 @@ public class VoiceActivity extends Activity {
 
     private void media(String action) {
         sendBroadcast(new Intent(this, WidgetActionReceiver.class).setAction(action));
+    }
+
+    /** a reciter named after "لـ" / "بصوت" that isn't in the list ("شغل الكهف للمنشاوي") */
+    private static String spokenReciter(String said) {
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("(?:^|\\s)(?:بصوت\\s+|للقارئ\\s+|للشيخ\\s+|لل)(\\S+(?:\\s+\\S+)?)").matcher(said);
+        return m.find() ? m.group(1).trim() : "";
     }
 
     private int findSurah(String s) {

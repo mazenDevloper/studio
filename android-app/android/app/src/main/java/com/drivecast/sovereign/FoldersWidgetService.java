@@ -174,7 +174,7 @@ public class FoldersWidgetService extends RemoteViewsService {
             if ("header".equals(o.optString("row"))) {
                 v.setViewVisibility(R.id.row_tiles, android.view.View.GONE);
                 v.setViewVisibility(R.id.row_header, android.view.View.VISIBLE);
-                v.setImageViewBitmap(R.id.row_header, WidgetArt.sectionHeader(ctx, Math.round(360 * d), Math.round(34 * d), o.optString("title")));
+                v.setImageViewBitmap(R.id.row_header, WidgetArt.sectionHeader(ctx, Math.round(360 * d), Math.round(46 * d), o.optString("title")));
                 boolean car = !o.optString("carousel").isEmpty();
                 v.setViewVisibility(R.id.row_arrows, car ? android.view.View.VISIBLE : android.view.View.GONE);
                 if (car) {

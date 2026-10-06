@@ -52,6 +52,7 @@ public class IslandService extends Service {
     static final String POPUP = "com.drivecast.PLAY_POPUP";
     static final String AUDIO = "com.drivecast.PLAY_AUDIO";
     static final String QURAN_PLAY = "com.drivecast.QURAN_PLAY";
+    static final String STOP_ALL = "com.drivecast.STOP_ALL";
     private static final String CHANNEL = "drivecast_island";
     private static final int NOTIFICATION_ID = 4101;
     private static final long POLL_MS = 30_000;
@@ -157,6 +158,7 @@ public class IslandService extends Service {
         String a = intent != null ? intent.getAction() : null;
         if (a != null && a.startsWith("com.drivecast.QURAN_")) quranAction(a);
         if (WidgetActionReceiver.MAP_TOGGLE.equals(a)) handler.post(this::toggleMap);
+        if (STOP_ALL.equals(a)) handler.post(this::stopAll);
         if (QURAN_PLAY.equals(a)) {
             final int surah = intent.getIntExtra("surah", 1), reciter = intent.getIntExtra("reciter", -1);
             handler.post(() -> {
@@ -650,6 +652,24 @@ public class IslandService extends Service {
             it.fav = audioPlaying;
             out.add(it);
         }
+        QuranState qs = QuranState.load(this);
+        if (qs.playing) {
+            // the Quran player (voice "شغّل سورة" / the Quran widget): tap = pause / resume, ✕ (opened) = stop
+            IslandArt.Item it = new IslandArt.Item();
+            it.kind = "audio";
+            it.id = "quran";
+            it.title = "سورة " + qs.surahName(this) + (qs.reciterName(this).isEmpty() ? "" : " · " + qs.reciterName(this));
+            it.fav = quranPlayer != null && quranPlayer.isPlaying();
+            out.add(it);
+        }
+        Object av = Hub.get(this, "azkarVoice");
+        if (av instanceof JSONObject && azkarIdx >= 0) {
+            IslandArt.Item it = new IslandArt.Item();
+            it.kind = "azkar";
+            it.id = "az-voice";
+            it.title = "🔊 " + ((JSONObject) av).optString("title") + "  " + ((JSONObject) av).optInt("i") + "/" + ((JSONObject) av).optInt("n");
+            out.add(it);
+        }
         for (JSONObject m : matches) {
             if (!m.optBoolean("island", true)) continue; // a favourite whose island switch is off: widget only
             IslandArt.Item it = matchItem(m, now);
@@ -995,6 +1015,12 @@ public class IslandService extends Service {
                 final Runnable longPress = () -> {
                     longPressed = true;
                     PillView hit = pillAt(downX, downY);
+                    if (hit != null && "audio".equals(hit.item.kind) && !"quran".equals(hit.item.id) && celebration == null) {
+                        toggleAudio(); // long press on the sound island: pause / resume
+                        islandSignature = "";
+                        tick();
+                        return;
+                    }
                     if (hit != null && !"more".equals(hit.item.kind) && !"audio".equals(hit.item.kind) && celebration == null) {
                         openRoute(routeFor(hit.item));
                     } else {
@@ -1033,9 +1059,16 @@ public class IslandService extends Service {
                             } else if (!longPressed && e.getAction() == MotionEvent.ACTION_UP) {
                                 PillView hit = pillAt(e.getRawX(), e.getRawY());
                                 if (hit != null && "audio".equals(hit.item.kind) && celebration == null) {
-                                    // the sound island: tap = pause / resume (expanded: the ✕ part stops it)
-                                    if (expanded && e.getRawX() < hitLeft(hit) + hit.getHeight() * 0.9f) stopAudio();
-                                    else toggleAudio();
+                                    boolean x = expanded && e.getRawX() < hitLeft(hit) + hit.getHeight() * 0.9f;
+                                    if ("quran".equals(hit.item.id)) {
+                                        // the Quran: tap = pause / resume, ✕ = stop
+                                        QuranState q = QuranState.load(IslandService.this);
+                                        if (x) pauseQuran(q);
+                                        else if (quranPlayer != null && quranPlayer.isPlaying()) { quranPlayer.pause(); lastNotificationText = ""; }
+                                        else if (quranPlayer != null) quranPlayer.start();
+                                        else playQuran(q);
+                                    } else if (x) stopAudio();
+                                    else backToFullPlayer(); // the sound island: back to the full-screen player
                                     islandSignature = "";
                                     tick();
                                     return true;
@@ -1362,6 +1395,15 @@ public class IslandService extends Service {
     private View buildPanel(IslandArt.Item it) {
         if ("match".equals(it.kind) && !it.matchId.isEmpty()) return matchPanel(it);
         if (it.id.startsWith("occ-")) return occasionPanel(it);
+        if ("az-voice".equals(it.id)) {
+            LinearLayout card = panelCard();
+            card.addView(label(it.title, 15, 0xFFFFFFFF, true));
+            addChipRow(card,
+                    chip("التالي ✓", true, 0xFF34D399, () -> azkarCommand("next", null)),
+                    chip("كرّر", false, 0, () -> azkarCommand("repeat", null)),
+                    chip("إنهاء", false, 0, () -> { azkarCommand("stop", null); closeFocus(); }));
+            return card;
+        }
         if ("mosque".equals(it.id)) {
             if (!roadMosques.isEmpty()) return roadPanel();
             LinearLayout card = panelCard();
@@ -2081,6 +2123,23 @@ public class IslandService extends Service {
     private boolean ttsReady;
     private String ttsPending;
 
+    /** read text, then open the microphone (the azkar session: "التالي" after each one) */
+    void sayThenListen(String text) {
+        listenAfter = true;
+        say(text);
+    }
+
+    private boolean listenAfter = false;
+
+    private void onSpoken() {
+        if (!listenAfter) return;
+        listenAfter = false;
+        handler.post(() -> {
+            Intent vi = new Intent(this, VoiceActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK).putExtra("auto", true);
+            try { startActivity(vi); } catch (Exception ignored) { }
+        });
+    }
+
     void say(String text) {
         if (tts == null) {
             ttsPending = text;
@@ -2088,14 +2147,118 @@ public class IslandService extends Service {
                 ttsReady = st == android.speech.tts.TextToSpeech.SUCCESS;
                 if (ttsReady) {
                     tts.setLanguage(new Locale("ar"));
-                    if (ttsPending != null) tts.speak(ttsPending, android.speech.tts.TextToSpeech.QUEUE_ADD, null, "dc");
+                    tts.setOnUtteranceProgressListener(new android.speech.tts.UtteranceProgressListener() {
+                        @Override public void onStart(String id) { }
+                        @Override public void onDone(String id) { if ("dc-last".equals(id)) onSpoken(); }
+                        @Override public void onError(String id) { }
+                    });
+                    if (ttsPending != null) tts.speak(ttsPending, android.speech.tts.TextToSpeech.QUEUE_FLUSH, null, "dc-last");
                     ttsPending = null;
                 }
             });
             return;
         }
-        if (ttsReady) tts.speak(text, android.speech.tts.TextToSpeech.QUEUE_ADD, null, "dc");
+        if (ttsReady) tts.speak(text, android.speech.tts.TextToSpeech.QUEUE_FLUSH, null, "dc-last");
         else ttsPending = text;
+    }
+
+    // ---- stop everything (voice "أوقف") ----
+
+    private void stopAll() {
+        stopAudio();
+        QuranState q = QuranState.load(this);
+        if (q.playing || (quranPlayer != null && quranPlayer.isPlaying())) pauseQuran(q);
+        azkarIdx = -1;
+        Hub.set(this, "azkarVoice", null);
+        if (tts != null) tts.stop();
+        listenAfter = false;
+        islandSignature = "";
+        tick();
+    }
+
+    // ---- the azkar read aloud: "التالي" marks the current one done and reads the next ----
+
+    private String azkarPeriod = "morning";
+    private int azkarIdx = -1;
+    private long azkarAt = 0;
+
+    static boolean azkarActive() {
+        IslandService s = instance;
+        return s != null && s.azkarIdx >= 0 && System.currentTimeMillis() - s.azkarAt < 30 * 60_000L;
+    }
+
+    static void azkar(String cmd, String period) {
+        IslandService s = instance;
+        if (s != null) s.handler.post(() -> s.azkarCommand(cmd, period));
+    }
+
+    private List<String[]> azkarList() {
+        List<String[]> l = new ArrayList<>();
+        for (String[] z : AzkarData.ITEMS) if (azkarPeriod.equals(z[3])) l.add(z);
+        return l;
+    }
+
+    private void azkarCommand(String cmd, String period) {
+        azkarAt = System.currentTimeMillis();
+        List<String[]> l;
+        JSONObject counts = MediaBrowser.azkarCounts(this);
+        switch (cmd) {
+            case "start":
+                azkarPeriod = period != null ? period : MediaBrowser.azkarPeriod(this);
+                l = azkarList();
+                azkarIdx = 0;
+                // from the first one not done yet today
+                while (azkarIdx < l.size() && counts.optInt(l.get(azkarIdx)[0]) >= Integer.parseInt(l.get(azkarIdx)[2])) azkarIdx++;
+                if (azkarIdx >= l.size()) { azkarIdx = -1; say("أتممت " + ("morning".equals(azkarPeriod) ? "أذكار الصباح" : "أذكار المساء") + " اليوم، تقبّل الله"); return; }
+                readZikr(l, true);
+                break;
+            case "next":
+                l = azkarList();
+                if (azkarIdx < 0 || azkarIdx >= l.size()) return;
+                // the current one is done: its counter goes full (the widget and the site follow)
+                String[] cur = l.get(azkarIdx);
+                try {
+                    counts.put("day", Cloud.day(System.currentTimeMillis()));
+                    counts.put(cur[0], Integer.parseInt(cur[2]));
+                } catch (Exception ignored) {
+                }
+                NativeIslandPlugin.prefs(this).edit().putString("azkarCounts", counts.toString()).apply();
+                Hub.set(this, "azkarCounts", counts);
+                azkarIdx++;
+                while (azkarIdx < l.size() && counts.optInt(l.get(azkarIdx)[0]) >= Integer.parseInt(l.get(azkarIdx)[2])) azkarIdx++;
+                if (azkarIdx >= l.size()) {
+                    azkarIdx = -1;
+                    Hub.set(this, "azkarVoice", null);
+                    say("تمّت " + ("morning".equals(azkarPeriod) ? "أذكار الصباح" : "أذكار المساء") + "، تقبّل الله منك");
+                    return;
+                }
+                readZikr(l, false);
+                break;
+            case "repeat":
+                l = azkarList();
+                if (azkarIdx >= 0 && azkarIdx < l.size()) readZikr(l, false);
+                break;
+            default: // stop
+                azkarIdx = -1;
+                Hub.set(this, "azkarVoice", null);
+                if (tts != null) tts.stop();
+                listenAfter = false;
+        }
+        islandSignature = "";
+        tick();
+    }
+
+    private void readZikr(List<String[]> l, boolean first) {
+        String[] z = l.get(azkarIdx);
+        int n = Integer.parseInt(z[2]);
+        String times = n == 1 ? "" : n == 2 ? "، مرّتين" : n <= 10 ? "، " + n + " مرّات" : "، " + n + " مرّة";
+        String intro = first ? ("morning".equals(azkarPeriod) ? "أذكار الصباح. " : "أذكار المساء. ") : "";
+        try {
+            Hub.set(this, "azkarVoice", new JSONObject().put("title", z[1]).put("i", azkarIdx + 1).put("n", l.size()));
+        } catch (Exception ignored) {
+        }
+        // read it, then listen for "التالي" / "كرر" / "أوقف"
+        sayThenListen(intro + z[1] + ". " + z[4] + times);
     }
 
     static void speak(String text) {
@@ -2128,6 +2291,16 @@ public class IslandService extends Service {
     private JSONArray audioQueue = new JSONArray();
     private int audioIndex = 0;
     private String audioType = "youtube";
+    private String audioId = "";
+
+    /** The sound island tapped: the same video back in the full-screen player (with its list). */
+    private void backToFullPlayer() {
+        if (audioView == null || audioId.isEmpty()) return;
+        Intent p = new Intent(this, PlayerActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                .putExtra("type", audioType).putExtra("id", audioId).putExtra("title", audioTitle).putExtra("queue", audioQueue.toString());
+        stopAudio();
+        try { startActivity(p); } catch (Exception ignored) { }
+    }
 
     private final class AudioJs {
         @android.webkit.JavascriptInterface
@@ -2167,6 +2340,7 @@ public class IslandService extends Service {
         audioView.setWebViewClient(new android.webkit.WebViewClient());
         audioView.addJavascriptInterface(new AudioJs(), "DCP");
         audioType = type;
+        audioId = id;
         audioWindow.addView(audioView, new FrameLayout.LayoutParams(dp(160), dp(90)));
         int type2 = Build.VERSION.SDK_INT >= 26 ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY : WindowManager.LayoutParams.TYPE_PHONE;
         WindowManager.LayoutParams lp = new WindowManager.LayoutParams(1, 1, type2,
