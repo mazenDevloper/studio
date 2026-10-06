@@ -245,6 +245,9 @@ final class Cloud {
             if (m.optJSONArray(k) != null) o.put(k, m.getJSONArray(k));
         }
         if (m.optJSONObject("manuscriptScales") != null) o.put("manuscriptScales", m.getJSONObject("manuscriptScales"));
+        // the trips' places and weekly trips (set in the site's settings)
+        if (m.optJSONObject("places") != null) o.put("places", m.getJSONObject("places"));
+        if (m.optJSONArray("weeklyTrips") != null) o.put("weeklyTrips", m.getJSONArray("weeklyTrips"));
         JSONObject ms = m.optJSONObject("mapSettings");
         if (ms != null) {
             JSONObject s = new JSONObject();

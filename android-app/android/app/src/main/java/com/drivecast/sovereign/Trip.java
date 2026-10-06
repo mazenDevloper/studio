@@ -57,8 +57,7 @@ final class Trip {
 
     /** "home" / "work" / any words: where to. {name, lat, lon} or null. */
     static JSONObject resolve(Context ctx, String dest, Location from) {
-        Object pl = Hub.get(ctx, "places");
-        JSONObject places = pl instanceof JSONObject ? (JSONObject) pl : new JSONObject();
+        JSONObject places = places(ctx);
         JSONObject saved = places.optJSONObject(dest);
         if (saved != null) {
             if (saved.has("lat")) return saved;
@@ -80,6 +79,14 @@ final class Trip {
         return GMaps.find(dest, from != null ? from.getLatitude() : 0, from != null ? from.getLongitude() : 0);
     }
 
+    /** home / work: what the app set (Hub), else the cloud copy from the site's settings */
+    static JSONObject places(Context ctx) {
+        Object pl = Hub.get(ctx, "places");
+        if (pl instanceof JSONObject && ((JSONObject) pl).length() > 0) return (JSONObject) pl;
+        JSONObject m = Cloud.master(ctx).optJSONObject("places");
+        return m != null ? m : new JSONObject();
+    }
+
     static String placeName(String key) {
         return "home".equals(key) ? "البيت" : "work".equals(key) ? "العمل" : key;
     }
@@ -88,8 +95,7 @@ final class Trip {
     static boolean saveHere(Context ctx, String key) {
         Location l = here(ctx);
         if (l == null) return false;
-        Object pl = Hub.get(ctx, "places");
-        JSONObject places = pl instanceof JSONObject ? (JSONObject) pl : new JSONObject();
+        JSONObject places = places(ctx);
         try {
             places.put(key, new JSONObject().put("name", placeName(key)).put("lat", l.getLatitude()).put("lon", l.getLongitude()));
         } catch (Exception ignored) {
@@ -214,6 +220,7 @@ final class Trip {
     /** The weekly trips: started by themselves near their time (once a day each). Call every minute (off the main thread). */
     static String autoWeekly(Context ctx) {
         Object w = Hub.get(ctx, "weeklyTrips");
+        if (!(w instanceof JSONArray)) w = Cloud.master(ctx).optJSONArray("weeklyTrips");
         if (!(w instanceof JSONArray) || current(ctx) != null) return null;
         Calendar c = Calendar.getInstance();
         int dow = c.get(Calendar.DAY_OF_WEEK) - 1; // 0 = Sunday, like the site

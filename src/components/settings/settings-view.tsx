@@ -20,6 +20,7 @@ import { Card, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FootballSettings } from "@/components/settings/football-settings";
 import { NativePermissions } from "@/components/native/native-permissions";
+import { TripsSettings } from "@/components/settings/trips-settings";
 import { ManuscriptInkSettings } from "@/components/manuscript/manuscript-ink-settings";
 import { Trophy as TabTrophy } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -498,6 +499,7 @@ export function SettingsView() {
           <TabsTrigger value="manuscripts" className={TAB_CLASS}><TabScrollText className="w-4 h-4" />المخطوطات</TabsTrigger>
           <TabsTrigger value="reminders" className={TAB_CLASS}><TabBell className="w-4 h-4" />التذكيرات</TabsTrigger>
           <TabsTrigger value="azkar" className={TAB_CLASS}><TabSparkles className="w-4 h-4" />الأذكار</TabsTrigger>
+          <TabsTrigger value="trips" className={TAB_CLASS}>🧭 رحلاتي</TabsTrigger>
           <TabsTrigger value="subscriptions" className={TAB_CLASS}><TabYoutube className="w-4 h-4" />الاشتراكات</TabsTrigger>
           <TabsTrigger value="football" className={TAB_CLASS}><TabTrophy className="w-4 h-4" />المباريات</TabsTrigger>
           <TabsTrigger value="iptv" className={TAB_CLASS}><TabTv className="w-4 h-4" />قنوات IPTV</TabsTrigger>
@@ -837,6 +839,10 @@ export function SettingsView() {
                  </TabsContent>
               </Tabs>
            </Card>
+        </TabsContent>
+
+        <TabsContent value="trips" className="space-y-8 animate-in fade-in duration-0">
+          <TripsSettings />
         </TabsContent>
 
         <TabsContent value="azkar" className="space-y-8 animate-in fade-in duration-0">

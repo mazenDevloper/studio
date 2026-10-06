@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useMediaStore } from "@/lib/store";
-import { nativeIsland, type NativeCommand } from "@/lib/native-app";
+import { nativeIsland, hubSet, type NativeCommand } from "@/lib/native-app";
 import type { YouTubeVideo } from "@/lib/youtube";
 
 const QURAN_META = "native-quran-meta-v1";
@@ -92,6 +92,15 @@ export function NativeWidgetsBridge() {
     const list = (playlists || []).slice(0, 20).map(p => ({ id: p.id, name: p.name, count: p.videos?.length || 0, thumb: p.videos?.[0]?.thumbnail || "" }));
     plugin.updateWidgets({ data: JSON.stringify({ playlists: list }) }).catch(() => {});
   }, [playlists]);
+
+  // the trips' places and weekly trips (site settings / cloud) reach the phone's planner
+  const places = useMediaStore(st => st.places);
+  const weeklyTrips = useMediaStore(st => st.weeklyTrips);
+  useEffect(() => {
+    if (!nativeIsland()) return;
+    if (places && Object.keys(places).length) hubSet("places", places);
+    if (Array.isArray(weeklyTrips)) hubSet("weeklyTrips", weeklyTrips);
+  }, [places, weeklyTrips]);
 
   // commands from the widgets / picture-in-picture
   useEffect(() => {
