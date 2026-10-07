@@ -65,6 +65,42 @@ final class Occasions {
         return null;
     }
 
+    /**
+     * The occasions around now (90 days back, 180 ahead): {at (ms, midnight), title}, in date order - for browsing
+     * with ‹ › in the occasion island.
+     */
+    static java.util.List<long[]> aroundDays() {
+        java.util.List<long[]> out = new java.util.ArrayList<>();
+        Calendar c = Calendar.getInstance();
+        c.set(Calendar.HOUR_OF_DAY, 12);
+        c.set(Calendar.MINUTE, 0);
+        c.add(Calendar.DAY_OF_MONTH, -90);
+        for (int i = 0; i <= 270; i++) {
+            int[] hj = Widgets.hijri(c.getTimeInMillis());
+            if (hijriOccasion(hj) != null || gregorianOccasion(c) != null) out.add(new long[]{c.getTimeInMillis()});
+            c.add(Calendar.DAY_OF_MONTH, 1);
+        }
+        return out;
+    }
+
+    /** "الخميس 15 جمادى الأولى · 22 أكتوبر — الأيام البيض (بعد 14 يوماً)" */
+    static String describe(long at) {
+        Calendar c = Calendar.getInstance();
+        c.setTimeInMillis(at);
+        int[] hj = Widgets.hijri(at);
+        String[] days = {"الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"};
+        String[] gm = {"يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"};
+        StringBuilder t = new StringBuilder();
+        String h = hijriOccasion(hj), g = gregorianOccasion(c);
+        if (h != null) t.append(h);
+        if (g != null) t.append(t.length() > 0 ? " · " : "").append(g);
+        Calendar today = Calendar.getInstance();
+        today.set(Calendar.HOUR_OF_DAY, 12);
+        long diff = Math.round((at - today.getTimeInMillis()) / 86_400_000.0);
+        String when = diff == 0 ? "اليوم" : diff == 1 ? "غداً" : diff == -1 ? "أمس" : diff > 0 ? "بعد " + diff + " يوماً" : "قبل " + (-diff) + " يوماً";
+        return t + "\n" + days[c.get(Calendar.DAY_OF_WEEK) - 1] + " " + hj[0] + " " + MONTHS[hj[1]] + " · " + c.get(Calendar.DAY_OF_MONTH) + " " + gm[c.get(Calendar.MONTH)] + "  (" + when + ")";
+    }
+
     /** the day's Gregorian occasion (null: none) */
     static String gregorianOccasion(Calendar c) {
         int d = c.get(Calendar.DAY_OF_MONTH), m = c.get(Calendar.MONTH) + 1;

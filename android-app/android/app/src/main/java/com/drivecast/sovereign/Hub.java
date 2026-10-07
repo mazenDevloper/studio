@@ -38,6 +38,11 @@ final class Hub {
     }
 
     static void set(Context ctx, String key, Object value, boolean tellPage) {
+        set(ctx, key, value, tellPage, true);
+    }
+
+    /** redrawWidgets false: the caller refreshes its own widget (a list that must keep its scroll position) */
+    static void set(Context ctx, String key, Object value, boolean tellPage, boolean redrawWidgets) {
         synchronized (lock) {
             JSONObject s = state(ctx);
             try {
@@ -53,7 +58,7 @@ final class Hub {
             }
         }
         IslandService.redraw();
-        Widgets.updateAll(ctx);
+        if (redrawWidgets) Widgets.updateAll(ctx);
     }
 
     /** Ids kept as a set (favourite channels, ...). */

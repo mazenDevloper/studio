@@ -377,7 +377,7 @@ public class IslandService extends Service {
         bubbleAlert = hidden && (critical || !visible.isEmpty() || hasUrgent(items, now));
         boolean controls = Hub.bool(this, "islandBubble", true);
         // hidden: the islands' row keeps just its controls (eye / microphone) so they can come back
-        if (allowed && (!visible.isEmpty() || celebration != null || (hidden && controls) || (controls && !items.isEmpty()))) showIsland(visible, now);
+        if (allowed && (!visible.isEmpty() || celebration != null || controls)) showIsland(visible, now); // the eye / microphone stay even with no island
         else removeIsland();
         updateBubble(false, hidden); // the controls now sit beside the islands
         updateControls(hidden);
@@ -477,7 +477,8 @@ public class IslandService extends Service {
             lastPollOk = System.currentTimeMillis();
             List<IslandArt.Item> goals = detectGoals(mine);
             for (IslandArt.Item g : goals) findScorer(origin, g);
-            NativeIslandPlugin.prefs(this).edit().putString("matchesData", widgetData.toString()).putLong("matchesAt", System.currentTimeMillis()).apply();
+            NativeIslandPlugin.prefs(this).edit().putString("matchesData", widgetData.toString()).putLong("matchesAt", System.currentTimeMillis())
+                    .putString("matchesDay", Cloud.day(System.currentTimeMillis())).putBoolean("matchesFailed", false).apply();
             // the logos, so the islands draw them right away
             List<String> logos = new ArrayList<>();
             for (JSONObject m : mine) {
@@ -1153,7 +1154,7 @@ public class IslandService extends Service {
                 shown.add(more);
             }
         }
-        StringBuilder sig = new StringBuilder(expanded ? "E" : "C").append(Hub.bool(this, "islandsHidden", false)).append(Hub.bool(this, "islandBubble", true)).append(focusedId).append(panelTab).append(panelVersion);
+        StringBuilder sig = new StringBuilder(expanded ? "E" : "C").append(Hub.bool(this, "islandsHidden", false)).append(Hub.bool(this, "islandBubble", true)).append(focusedId).append(panelTab).append(panelVersion).append(occBrowse);
         for (IslandArt.Item it : shown) sig.append('|').append(it.id).append(it.kind).append(it.more).append(it.mini);
         if (!sig.toString().equals(islandSignature)) {
             islandSignature = sig.toString();
@@ -1339,6 +1340,7 @@ public class IslandService extends Service {
 
     private void closeFocusQuiet() {
         focusedId = null;
+        occBrowse = -1;
         islandSignature = "";
     }
 
@@ -1704,9 +1706,31 @@ public class IslandService extends Service {
     }
 
     /** Friday, fasting and the seasons. */
+    /** browsing the occasions with ‹ › (index in Occasions.aroundDays, -1 = the island's own) */
+    private int occBrowse = -1;
+    private java.util.List<long[]> occDays;
+
     private View occasionPanel(IslandArt.Item it) {
         LinearLayout card = panelCard();
         card.addView(label(it.title, 16, 0xFFFFFFFF, true));
+        // ‹ the previous / the next occasion ›
+        if (occDays == null || occBrowse < 0) {
+            occDays = Occasions.aroundDays();
+            long noon = System.currentTimeMillis();
+            occBrowse = 0;
+            while (occBrowse < occDays.size() - 1 && occDays.get(occBrowse)[0] < noon - 12 * 3600_000L) occBrowse++;
+        }
+        if (!occDays.isEmpty()) {
+            final int i = Math.max(0, Math.min(occDays.size() - 1, occBrowse));
+            LinearLayout nav = hrow();
+            nav.setPadding(0, dp(10), 0, 0);
+            nav.addView(chip("‹ السابقة", false, 0, () -> { occBrowse = Math.max(0, i - 1); islandSignature = ""; tick(); }));
+            android.widget.TextView d = label(Occasions.describe(occDays.get(i)[0]), 12, 0xE6FFFFFF, true);
+            d.setGravity(Gravity.CENTER);
+            nav.addView(d, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+            nav.addView(chip("التالية ›", false, 0, () -> { occBrowse = Math.min(occDays.size() - 1, i + 1); islandSignature = ""; tick(); }));
+            card.addView(nav);
+        }
         final long now = System.currentTimeMillis();
         Runnable doneToday = () -> { Hub.toggle(this, "doneToday:" + Cloud.day(now), it.id); closeFocus(); };
         switch (it.id) {
@@ -2284,6 +2308,49 @@ public class IslandService extends Service {
     static boolean azkarActive() {
         IslandService s = instance;
         return s != null && s.azkarIdx >= 0 && System.currentTimeMillis() - s.azkarAt < 30 * 60_000L;
+    }
+
+    /** "آية الكرسي · 2/7 · الذكر 3 من 22" for the listening window */
+    static String azkarStatus() {
+        IslandService s = instance;
+        if (s == null || s.azkarIdx < 0) return "";
+        List<String[]> l = s.azkarList();
+        if (s.azkarIdx >= l.size()) return "";
+        String[] z = l.get(s.azkarIdx);
+        int have = MediaBrowser.azkarCounts(s).optInt(z[0]);
+        return "📿 " + z[1] + "  ·  " + have + "/" + z[2] + "\n" + z[4];
+    }
+
+    /**
+     * One recitation heard (several in one breath count as several, by length): 0 nothing, 1 counted, 2 the dhikr
+     * is complete and the next one is being read.
+     */
+    static int azkarCount(String heard) {
+        IslandService s = instance;
+        if (s == null || s.azkarIdx < 0) return 0;
+        List<String[]> l = s.azkarList();
+        if (s.azkarIdx >= l.size()) return 0;
+        String[] z = l.get(s.azkarIdx);
+        int need = Integer.parseInt(z[2]);
+        int words = Math.max(1, VoiceActivity.norm(z[4]).split("\\s+").length);
+        int said = VoiceActivity.norm(heard).split("\\s+").length;
+        int times = Math.max(1, Math.round(said / (float) words));
+        JSONObject counts = MediaBrowser.azkarCounts(s);
+        int now = Math.min(need, counts.optInt(z[0]) + times);
+        try {
+            counts.put("day", Cloud.day(System.currentTimeMillis()));
+            counts.put(z[0], now);
+        } catch (Exception ignored) {
+        }
+        NativeIslandPlugin.prefs(s).edit().putString("azkarCounts", counts.toString()).apply();
+        Hub.set(s, "azkarCounts", counts);
+        s.azkarAt = System.currentTimeMillis();
+        if (now >= need) {
+            s.handler.post(() -> s.azkarCommand("next", null));
+            return 2;
+        }
+        s.islandSignature = "";
+        return 1;
     }
 
     static void azkar(String cmd, String period) {

@@ -9,6 +9,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.speech.RecognizerIntent;
 import android.view.Gravity;
+import android.view.View;
 import android.widget.TextView;
 
 import androidx.core.content.ContextCompat;
@@ -58,13 +59,75 @@ public class VoiceActivity extends Activity {
 
     private boolean auto = false;
     private int autoRetries = 0;
+    private android.speech.SpeechRecognizer rec;
+    private static final int MIC = 7302;
 
+    /**
+     * Listen in the app itself (Android's SpeechRecognizer: no Google window, nothing opens full screen); the
+     * system's voice window only when the phone has no recognizer.
+     */
     private void listen() {
         auto = getIntent().getBooleanExtra("auto", false);
+        if (android.os.Build.VERSION.SDK_INT >= 23 && checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{android.Manifest.permission.RECORD_AUDIO}, MIC);
+            return;
+        }
+        if (!android.speech.SpeechRecognizer.isRecognitionAvailable(this)) { listenWithSystem(); return; }
+        if (rec == null) {
+            rec = android.speech.SpeechRecognizer.createSpeechRecognizer(this);
+            rec.setRecognitionListener(new android.speech.RecognitionListener() {
+                @Override public void onReadyForSpeech(Bundle p) { showListening(); }
+                @Override public void onBeginningOfSpeech() { }
+                @Override public void onRmsChanged(float v) { if (level != null) level.setScaleX(0.2f + Math.min(1f, Math.max(0f, (v + 2) / 12f))); }
+                @Override public void onBufferReceived(byte[] b) { }
+                @Override public void onEndOfSpeech() { }
+                @Override public void onError(int e) { onHeard(null); }
+                @Override public void onResults(Bundle r) {
+                    ArrayList<String> l = r.getStringArrayList(android.speech.SpeechRecognizer.RESULTS_RECOGNITION);
+                    onHeard(l == null || l.isEmpty() ? null : l.get(0));
+                }
+                @Override public void onPartialResults(Bundle r) {
+                    ArrayList<String> l = r.getStringArrayList(android.speech.SpeechRecognizer.RESULTS_RECOGNITION);
+                    if (l != null && !l.isEmpty() && !l.get(0).isEmpty()) view.setText("🎤  " + l.get(0));
+                }
+                @Override public void onEvent(int t, Bundle b) { }
+            });
+        }
         Intent i = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
         i.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
         i.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "ar");
-        i.putExtra(RecognizerIntent.EXTRA_PROMPT, "قل أمرك: شغّل سورة… / كم النتيجة / متى المغرب");
+        i.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
+        if (IslandService.azkarActive()) {
+            // reciting: allow long phrases and pauses
+            i.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 2500);
+            i.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 2000);
+        }
+        try {
+            rec.startListening(i);
+        } catch (Exception e) {
+            listenWithSystem();
+        }
+    }
+
+    private View level;
+
+    private void showListening() {
+        if (IslandService.azkarActive()) view.setText(IslandService.azkarStatus() + "\n\n🎤 كرّر الذكر · «التالي» · «كرر» · «أوقف»");
+        else view.setText("🎤  تحدّث الآن...");
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int code, String[] p, int[] r) {
+        super.onRequestPermissionsResult(code, p, r);
+        if (code != MIC) return;
+        if (r.length > 0 && r[0] == android.content.pm.PackageManager.PERMISSION_GRANTED) listen();
+        else listenWithSystem();
+    }
+
+    private void listenWithSystem() {
+        Intent i = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+        i.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+        i.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "ar");
         try {
             startActivityForResult(i, VOICE);
         } catch (Exception e) {
@@ -73,18 +136,48 @@ public class VoiceActivity extends Activity {
     }
 
     @Override
+    protected void onDestroy() {
+        if (rec != null) { try { rec.destroy(); } catch (Exception ignored) { } }
+        super.onDestroy();
+    }
+
+    @Override
     protected void onActivityResult(int req, int res, Intent data) {
         super.onActivityResult(req, res, data);
         if (req != VOICE) return;
         ArrayList<String> r = data != null ? data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS) : null;
-        if (res != RESULT_OK || r == null || r.isEmpty()) {
-            if (auto && IslandService.azkarActive()) {
-                // nothing heard after a zikr: listen once more, then leave it (the island has the buttons)
-                if (++autoRetries <= 1) { listen(); return; }
-            }
+        onHeard(res != RESULT_OK || r == null || r.isEmpty() ? null : r.get(0));
+    }
+
+    /** What was heard (null: nothing). */
+    private void onHeard(String heardText) {
+        boolean azkar = IslandService.azkarActive();
+        if (heardText == null) {
+            // the azkar: keep listening a while (silence between repetitions)
+            if (azkar && ++autoRetries <= 6) { listen(); return; }
             finish();
             return;
         }
+        autoRetries = 0;
+        if (azkar) {
+            String n = norm(heardText);
+            boolean command = n.contains("التالي") || n.contains("بعده") || n.equals("تم") || n.contains("كرر") || n.contains("اعد")
+                    || n.contains("اوقف") || n.contains("وقف") || n.contains("توقف") || n.contains("انهي") || n.equals("خلاص");
+            if (!command) {
+                // a repetition of the current dhikr: counted (several in one breath count as several)
+                int got = IslandService.azkarCount(heardText);
+                if (got == 2) { finish(); return; }          // done: the next one is being read
+                showListening();
+                ui.postDelayed(this::listen, 250);
+                return;
+            }
+        }
+        handleText(heardText);
+    }
+
+    private void handleText(String heardText) {
+        ArrayList<String> r = new ArrayList<>();
+        r.add(heardText);
         String said = r.get(0);
         String answer;
         try {
@@ -176,6 +269,15 @@ public class VoiceActivity extends Activity {
         if (s.contains("التاريخ") || s.contains("اي يوم") || s.contains("ايش اليوم") || s.contains("وش اليوم") || s.contains("كم اليوم") || s.contains("اليوم كم") || s.contains("الهجري") || s.equals("اليوم")) return VoiceBrain.today();
         if (s.contains("الساعه كم") || s.contains("كم الساعه") || s.contains("الوقت الحين") || s.equals("الساعه")) return VoiceBrain.timeNow();
 
+        // "أهم مباريات اليوم / الغد", "وش المباريات بكرة"
+        if ((s.contains("مباري") || s.contains("ماتشات")) && (s.contains("اهم") || s.contains("ابرز") || s.contains("كبيره") || s.contains("القويه"))) {
+            final int day = s.contains("بكره") || s.contains("بكرا") || s.contains("غدا") || s.contains("الغد") ? 1 : s.contains("امس") || s.contains("البارحه") ? -1 : 0;
+            new Thread(() -> {
+                String a = VoiceBrain.matchesOn(getApplicationContext(), day, true);
+                ui.post(() -> { view.setText(a); say(a); ui.postDelayed(this::finish, 9000); });
+            }).start();
+            return "@أجلب أهم المباريات...";
+        }
         // matches of another day: "مباريات الغد / بكره / أمس"
         if ((s.contains("مباري") || s.contains("ماتش") || s.contains("مباراه")) && (s.contains("بكره") || s.contains("بكرا") || s.contains("غدا") || s.contains("الغد") || s.contains("امس") || s.contains("البارحه"))) {
             final int day = s.contains("امس") || s.contains("البارحه") ? -1 : 1;
@@ -185,7 +287,7 @@ public class VoiceActivity extends Activity {
             }).start();
             return "@" + (day == 1 ? "أجلب مباريات الغد..." : "أجلب مباريات الأمس...");
         }
-        if (s.contains("مباريات اليوم") || s.contains("مباريات الليله")) {
+        if (s.contains("مباريات اليوم") || s.contains("مباريات الليله") || s.equals("المباريات") || s.contains("وش المباريات") || s.contains("ايش المباريات")) {
             new Thread(() -> {
                 String a = VoiceBrain.matchesOn(getApplicationContext(), 0);
                 ui.post(() -> { view.setText(a); say(a); ui.postDelayed(this::finish, 8000); });
@@ -240,7 +342,10 @@ public class VoiceActivity extends Activity {
         if (surah > 0 && (s.contains("شغل") || s.contains("اقرا") || s.contains("سوره") || s.contains("سمعني"))) {
             int reciter = findReciter(s);
             String rname = reciter >= 0 ? QuranState.reciters(this).optJSONObject(reciter).optString("name") : spokenReciter(said);
-            final String query = "سورة " + MediaBrowser.SURAHS[surah - 1] + (rname.isEmpty() ? "" : " " + rname);
+            // what was said, minus the verb ("سورة الكهف ياسر الدوسري"): keeps any reciter, even one not in the list
+            String spoken = said.replaceAll("^\\s*(شغّل|شغل|شغلي|شغّلي|اقرأ|اقرا|إقرأ|سمعني|سمّعني|أبي|ابي|ابغى|أبغى|حط|حطلي)\\s*(لي\\s+)?", "").trim();
+            if (!VoiceActivity.norm(spoken).contains("سوره")) spoken = "سورة " + spoken;
+            final String query = rname.isEmpty() || VoiceActivity.norm(spoken).contains(norm(rname)) ? spoken : spoken + " " + rname;
             final int fs = surah, fr = reciter;
             // YouTube: the first result plays as sound in the island (the other results are its next / previous)
             new Thread(() -> {
@@ -352,7 +457,7 @@ public class VoiceActivity extends Activity {
             case "scores":
                 return scores();
             case "matches_day":
-                return VoiceBrain.matchesOn(getApplicationContext(), a == null ? 0 : parseInt(a, 0));
+                return VoiceBrain.matchesOn(getApplicationContext(), a == null ? 0 : parseInt(a, 0), "top".equals(b));
             case "prayer_time":
                 return prayer(a == null || a.isEmpty() ? null : a);
             case "date_today":

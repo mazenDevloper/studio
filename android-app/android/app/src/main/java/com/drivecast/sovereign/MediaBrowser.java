@@ -416,8 +416,12 @@ final class MediaBrowser {
             } catch (Exception ignored) {
             }
             NativeIslandPlugin.prefs(ctx).edit().putString("azkarCounts", counts.toString()).apply();
-            // the page's azkar screen and the islands follow the widget's counter
-            Hub.set(ctx, "azkarCounts", counts);
+            // the page's azkar screen and the islands follow the widget's counter - without redrawing the whole
+            // widget (that would jump the list back to the top): only its items, and the tapped one stays in view
+            Hub.set(ctx, "azkarCounts", counts, true, false);
+            int pos = i.getIntExtra("pos", -1);
+            if (pos >= 0) NativeIslandPlugin.prefs(ctx).edit().putInt("scroll_" + wid, pos).apply();
+            android.appwidget.AppWidgetManager.getInstance(ctx).notifyAppWidgetViewDataChanged(wid, R.id.folders_grid);
             done.finish();
             return;
         }
@@ -548,6 +552,9 @@ final class MediaBrowser {
         Intent svc = new Intent(ctx, FoldersWidgetService.class);
         svc.setData(Uri.parse("drivecast://browse/" + wid + "/" + items.toString().hashCode() + "/" + layout));
         v.setRemoteAdapter(R.id.folders_grid, svc);
+        // a full redraw keeps the azkar list where it was (around the last tapped dhikr)
+        int keep = NativeIslandPlugin.prefs(ctx).getInt("scroll_" + wid, -1);
+        if (keep >= 0 && "azkar".equals(top(ctx, wid).optString("kind", rootKind(ctx, wid)))) v.setScrollPosition(R.id.folders_grid, keep + 1);
         v.setEmptyView(R.id.folders_grid, R.id.folders_empty);
         v.setTextViewText(R.id.folders_empty, t.optString("empty", ""));
         Intent tpl = new Intent(ctx, WidgetActionReceiver.class).setAction(BROWSE).putExtra("wid", wid);

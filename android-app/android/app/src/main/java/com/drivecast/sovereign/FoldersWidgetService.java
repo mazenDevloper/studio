@@ -263,6 +263,7 @@ public class FoldersWidgetService extends RemoteViewsService {
             v.setImageViewBitmap(R.id.folder_card, card);
             Intent fill = new Intent();
             fill.putExtra("kind", kind);
+            fill.putExtra("pos", position);
             fill.putExtra("id", o.optString("id"));
             fill.putExtra("name", o.optString("name"));
             if (o.has("reciter")) fill.putExtra("reciter", o.optString("reciter"));

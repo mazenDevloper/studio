@@ -170,38 +170,84 @@ final class Cloud {
      * running), fetch every favourite team's matches here - every 2 minutes while one is live, 15 otherwise.
      */
     static void matchesIfStale(Context ctx) {
+        if (!matchesDue(ctx)) return;
+        final Context app = ctx.getApplicationContext();
+        lastMatches = System.currentTimeMillis();
+        // on its own thread: the widgets draw now and again when the scores are in
+        new Thread(() -> { if (fetchMatches(app)) Widgets.updateAll(app); }).start();
+    }
+
+    /**
+     * Ask the API only when the answer can change: a new day, nothing saved yet, a match live or about to start
+     * (every minute), otherwise once an hour (schedule changes); after a failure, again in 2 minutes.
+     */
+    static boolean matchesDue(Context ctx) {
         long now = System.currentTimeMillis();
+        android.content.SharedPreferences p = NativeIslandPlugin.prefs(ctx);
+        if (now - lastMatches < 60_000L) return false;
+        if (p.getBoolean("matchesFailed", false)) return now - p.getLong("matchesTried", 0) > 2 * 60_000L;
+        long age = now - p.getLong("matchesAt", 0);
+        if (!day(now).equals(p.getString("matchesDay", ""))) return true;
         JSONArray cur = Widgets.array(ctx, "matchesData");
-        boolean live = false;
-        for (int i = 0; i < cur.length(); i++) if ("live".equals(cur.optJSONObject(i).optString("status"))) live = true;
-        long age = now - NativeIslandPlugin.prefs(ctx).getLong("matchesAt", 0);
-        if (cur.length() > 0 && age < (live ? 2 * 60_000L : 15 * 60_000L)) return;
-        if (now - lastMatches < 60_000L) return;
-        lastMatches = now;
+        if (cur.length() == 0) return age > 15 * 60_000L;
+        for (int i = 0; i < cur.length(); i++) {
+            JSONObject m = cur.optJSONObject(i);
+            if (m == null) continue;
+            String st = m.optString("status");
+            long k = m.optLong("timestamp") * 1000L;
+            if ("live".equals(st)) return age > 60_000L;
+            if ("upcoming".equals(st) && k - now < 10 * 60_000L) return age > 60_000L; // kicking off (or late to update)
+        }
+        return age > 60 * 60_000L;
+    }
+
+    /** Today's favourite-team matches from the site's API (blocking). True when they changed. */
+    static boolean fetchMatches(Context ctx) {
+        long now = System.currentTimeMillis();
+        android.content.SharedPreferences p = NativeIslandPlugin.prefs(ctx);
         JSONArray teams = master(ctx).optJSONArray("favoriteTeams");
-        if (teams == null || teams.length() == 0) return;
+        if (teams == null || teams.length() == 0) return false;
         StringBuilder t = new StringBuilder();
         for (int i = 0; i < teams.length(); i++) {
             JSONObject f = teams.optJSONObject(i);
             if (f != null && !f.optString("name").isEmpty()) t.append(t.length() > 0 ? "|" : "").append(favSpec(f));
         }
         String origin = Widgets.json(ctx, "widgets").optString("origin", "https://cplay2.vercel.app");
-        try {
-            HttpURLConnection c = (HttpURLConnection) new URL(origin + "/api/matches?limit=12&teams=" + java.net.URLEncoder.encode(t.toString(), "UTF-8")).openConnection();
-            c.setConnectTimeout(15_000);
-            c.setReadTimeout(40_000);
-            if (c.getResponseCode() != 200) return;
-            StringBuilder sb = new StringBuilder();
-            try (BufferedReader r = new BufferedReader(new InputStreamReader(c.getInputStream(), "UTF-8"))) {
-                String line;
-                while ((line = r.readLine()) != null) sb.append(line);
-            }
-            JSONArray list = new JSONObject(sb.toString()).optJSONArray("matches");
-            JSONArray mine = new JSONArray();
-            for (int i = 0; list != null && i < list.length(); i++) if (list.getJSONObject(i).optBoolean("favorite")) mine.put(list.getJSONObject(i));
-            NativeIslandPlugin.prefs(ctx).edit().putString("matchesData", mine.toString()).putLong("matchesAt", now).apply();
-        } catch (Exception ignored) {
+        JSONArray pins = master(ctx).optJSONArray("pinnedMatches");
+        StringBuilder pn = new StringBuilder();
+        for (int i = 0; pins != null && i < pins.length(); i++) {
+            JSONObject x = pins.optJSONObject(i);
+            if (x != null) pn.append(pn.length() > 0 ? "|" : "").append(x.optString("home")).append("|").append(x.optString("away"));
         }
+        for (int attempt = 0; attempt < 2; attempt++) {
+            try {
+                HttpURLConnection c = (HttpURLConnection) new URL(origin + "/api/matches?limit=12&teams=" + java.net.URLEncoder.encode(t.toString(), "UTF-8")
+                        + (pn.length() > 0 ? "&pins=" + java.net.URLEncoder.encode(pn.toString(), "UTF-8") : "")).openConnection();
+                c.setConnectTimeout(15_000);
+                c.setReadTimeout(40_000);
+                if (c.getResponseCode() != 200) throw new Exception("HTTP " + c.getResponseCode());
+                StringBuilder sb = new StringBuilder();
+                try (BufferedReader r = new BufferedReader(new InputStreamReader(c.getInputStream(), "UTF-8"))) {
+                    String line;
+                    while ((line = r.readLine()) != null) sb.append(line);
+                }
+                JSONArray list = new JSONObject(sb.toString()).optJSONArray("matches");
+                if (list == null) throw new Exception("no list");
+                JSONArray mine = new JSONArray();
+                for (int i = 0; i < list.length(); i++) {
+                    JSONObject m = list.getJSONObject(i);
+                    if (m.optBoolean("favorite") || m.optBoolean("pinned")) mine.put(m);
+                }
+                String before = p.getString("matchesData", "[]");
+                p.edit().putString("matchesData", mine.toString()).putLong("matchesAt", now).putString("matchesDay", day(now))
+                        .putBoolean("matchesFailed", false).putLong("matchesTried", now).apply();
+                return !before.equals(mine.toString());
+            } catch (Exception e) {
+                try { Thread.sleep(3000); } catch (InterruptedException ignored) { }
+            }
+        }
+        p.edit().putBoolean("matchesFailed", true).putLong("matchesTried", now).apply();
+        return false;
     }
 
     static String day(long ms) {

@@ -68,6 +68,14 @@ final class VoiceBrain {
 
     /** The favourite teams' matches of a day (0 today, 1 tomorrow, -1 yesterday), else the day's top ones. */
     static String matchesOn(Context ctx, int day) {
+        return matchesOn(ctx, day, false);
+    }
+
+    /**
+     * top = the day's biggest matches (the site's ranking, 365Scores among its sources) instead of the favourite
+     * teams first.
+     */
+    static String matchesOn(Context ctx, int day, boolean topOnly) {
         String when = day == 1 ? "غداً" : day == -1 ? "أمس" : "اليوم";
         try {
             String origin = Widgets.json(ctx, "widgets").optString("origin", "https://cplay2.vercel.app");
@@ -77,7 +85,7 @@ final class VoiceBrain {
                 JSONObject f = teams.optJSONObject(i);
                 if (f != null && !f.optString("name").isEmpty()) t.append(t.length() > 0 ? "|" : "").append(Cloud.favSpec(f));
             }
-            JSONArray list = new JSONObject(get(origin + "/api/matches?limit=12&day=" + day + (t.length() > 0 ? "&teams=" + URLEncoder.encode(t.toString(), "UTF-8") : ""))).optJSONArray("matches");
+            JSONArray list = new JSONObject(get(origin + "/api/matches?limit=12&day=" + day + (t.length() > 0 && !topOnly ? "&teams=" + URLEncoder.encode(t.toString(), "UTF-8") : ""))).optJSONArray("matches");
             if (list == null || list.length() == 0) return "لا توجد مباريات مهمة " + when;
             StringBuilder fav = new StringBuilder(), top = new StringBuilder();
             int nf = 0, nt = 0;
@@ -90,6 +98,11 @@ final class VoiceBrain {
                 else if (!m.optString("omanTime").isEmpty()) line += " الساعة " + Art.to12h(m.optString("omanTime"));
                 if (m.optBoolean("favorite") && nf < 6) { fav.append(fav.length() > 0 ? ". " : "").append(line); nf++; }
                 else if (nt < 4) { top.append(top.length() > 0 ? ". " : "").append(line); nt++; }
+            }
+            if (topOnly) {
+                StringBuilder all = new StringBuilder(fav);
+                if (top.length() > 0) all.append(all.length() > 0 ? ". " : "").append(top);
+                return "أهم مباريات " + when + ": " + all + ".";
             }
             if (nf > 0) return "مباريات فرقك " + when + ": " + fav + ".";
             return "لا مباريات لفرقك " + when + ". أبرز المباريات: " + top + ".";
@@ -108,7 +121,7 @@ final class VoiceBrain {
             + "next_video / prev_video: الفيديو أو المقطع التالي / السابق\n"
             + "pause_resume: إيقاف مؤقت أو متابعة\n"
             + "scores: نتيجة المباراة المباشرة الآن\n"
-            + "matches_day: a=0 اليوم، 1 غداً، -1 أمس، 2 بعد غد\n"
+            + "matches_day: a=0 اليوم، 1 غداً، -1 أمس، 2 بعد غد؛ b=top عند السؤال عن أهم/أبرز المباريات\n"
             + "prayer_time: a=الفجر|الظهر|العصر|المغرب|العشاء أو فارغ للصلاة القادمة\n"
             + "date_today / time_now\n"
             + "azkar: a=morning|evening أو فارغ (قراءة الأذكار صوتياً)\n"
