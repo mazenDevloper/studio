@@ -171,6 +171,10 @@ final class RoadPrayer {
         return ok ? got : null;
     }
 
+    android.location.Location location() {
+        return last;
+    }
+
     boolean hasFix() {
         return last != null;
     }

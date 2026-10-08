@@ -1556,16 +1556,28 @@ public class IslandService extends Service {
         it.kind = "countdown";
         it.ckind = "mosque";
         it.id = "trip";
+        // live: the distance left along the route and the time at its pace; "وصلت" only at the destination
+        if (road == null) road = new RoadPrayer(this, () -> { });
+        road.setActive(true);
+        JSONObject pr = Trip.progress(t, road.location());
+        if (pr.optBoolean("arrived") && t.optLong("arrivedAt") == 0) {
+            try { t.put("arrivedAt", now); Hub.set(this, "trip", t, false); } catch (Exception ignored) { }
+            say("وصلت إلى " + Trip.placeName(t.optString("name")));
+        }
+        long leftM = pr.optLong("left", -1), eta = pr.optLong("etaSec");
+        String leftText = t.optLong("arrivedAt") > 0 ? "وصلت ✓"
+                : (leftM >= 0 ? RoadPrayer.distanceText(leftM) + " · " : "") + "الوصول " + Trip.clock(now + eta * 1000L) + " (" + Trip.duration(eta) + ")";
         if (next == null) {
             it.title = "🧭 إلى " + Trip.placeName(t.optString("name"));
-            long left = t.optLong("startAt") + t.optLong("seconds") * 1000L - now;
-            it.minute = left > 0 ? "الوصول بعد " + Trip.duration(left / 1000) : "وصلت";
+            it.minute = leftText;
             it.more = 0;
-            it.at = now + Math.max(0, left);
+            it.at = now + eta * 1000L;
         } else {
             JSONObject m = next.optJSONObject("mosque");
             it.title = "🧭 " + next.optString("prayer") + " " + Trip.clock(next.optLong("at")) + (m != null ? " · " + m.optString("name") : "");
-            it.minute = next.optBoolean("after") ? "بعد الوصول" : "عند الكيلو " + next.optLong("km");
+            long toPrayerKm = next.optLong("km") * 1000 - pr.optLong("done", 0);
+            it.minute = next.optBoolean("after") ? "بعد الوصول · " + leftText
+                    : (toPrayerKm > 0 ? "بعد " + RoadPrayer.distanceText(toPrayerKm) : "قريباً") + " · " + leftText;
             it.more = 0;
             it.at = next.optLong("at");
         }
@@ -1648,7 +1660,7 @@ public class IslandService extends Service {
             if (Hub.bool(this, "roadPrayerAlways", false) && at > now && (nextIq == 0 || iqAt < nextIq)) { nextName = t; nextIq = iqAt; }
         }
         if (name == null && nextName != null) { name = nextName; iq = nextIq; }
-        road.setActive(name != null);
+        road.setActive(name != null || Trip.current(this) != null); // a trip follows the road all the way
         if (name == null) { roadMosques = new ArrayList<>(); return; }
         roadPrayer = name;
         roadIqamah = iq;

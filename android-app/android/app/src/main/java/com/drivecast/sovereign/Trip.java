@@ -30,7 +30,9 @@ final class Trip {
         Object t = Hub.get(ctx, "trip");
         if (!(t instanceof JSONObject)) return null;
         JSONObject j = (JSONObject) t;
-        long end = j.optLong("startAt") + j.optLong("seconds") * 1000L + 30 * 60_000L;
+        // until 30 minutes after arriving (checked on the road), at most three times the planned time + 2 hours
+        long end = j.optLong("arrivedAt") > 0 ? j.optLong("arrivedAt") + 30 * 60_000L
+                : j.optLong("startAt") + j.optLong("seconds") * 3000L + 2 * 3600_000L;
         return System.currentTimeMillis() < end ? j : null;
     }
 
@@ -191,11 +193,58 @@ final class Trip {
         JSONObject t = new JSONObject();
         try {
             t.put("name", places(ctx).has(dest) ? placeName(ctx, dest) : to.optString("name", placeName(dest))).put("dest", dest).put("toLat", to.optDouble("lat")).put("toLon", to.optDouble("lon"))
-                    .put("startAt", now).put("seconds", seconds).put("meters", Math.round(total)).put("plan", plan).put("google", route != null).put("via", route != null ? route.optString("via") : "");
+                    .put("startAt", now).put("seconds", seconds).put("meters", Math.round(total)).put("plan", plan).put("path", thin(pts, cum)).put("google", route != null).put("via", route != null ? route.optString("via") : "");
         } catch (Exception ignored) {
         }
         Hub.set(ctx, "trip", t);
         return summary(t);
+    }
+
+    /** the route, at most ~300 points: [lat, lon, metres from the start] */
+    private static JSONArray thin(List<double[]> pts, double[] cum) {
+        JSONArray a = new JSONArray();
+        int step = Math.max(1, pts.size() / 300);
+        try {
+            for (int i = 0; i < pts.size(); i += step) a.put(new JSONArray().put(pts.get(i)[0]).put(pts.get(i)[1]).put(Math.round(cum[i])));
+            if (!pts.isEmpty() && (pts.size() - 1) % step != 0) {
+                int l = pts.size() - 1;
+                a.put(new JSONArray().put(pts.get(l)[0]).put(pts.get(l)[1]).put(Math.round(cum[l])));
+            }
+        } catch (Exception ignored) {
+        }
+        return a;
+    }
+
+    /**
+     * Where you are on the trip (live, from the phone's position): {left (m), done (m), etaSec, arrived}. The time
+     * left is the distance left at the route's own average speed - stops simply make it come later, never "arrived"
+     * before you are within 300 m of the destination.
+     */
+    static JSONObject progress(JSONObject t, android.location.Location here) {
+        JSONObject o = new JSONObject();
+        try {
+            double total = t.optLong("meters");
+            double avg = t.optLong("seconds") > 0 ? total / t.optLong("seconds") : 18;
+            if (here == null) {
+                long left = t.optLong("startAt") + t.optLong("seconds") * 1000L - System.currentTimeMillis();
+                return o.put("left", -1).put("etaSec", Math.max(60, left / 1000)).put("arrived", false);
+            }
+            float[] d = new float[1];
+            android.location.Location.distanceBetween(here.getLatitude(), here.getLongitude(), t.optDouble("toLat"), t.optDouble("toLon"), d);
+            JSONArray path = t.optJSONArray("path");
+            double done = 0, best = Double.MAX_VALUE;
+            for (int i = 0; path != null && i < path.length(); i++) {
+                JSONArray p = path.optJSONArray(i);
+                float[] e = new float[1];
+                android.location.Location.distanceBetween(here.getLatitude(), here.getLongitude(), p.optDouble(0), p.optDouble(1), e);
+                if (e[0] < best) { best = e[0]; done = p.optDouble(2); }
+            }
+            double left = path != null && path.length() > 1 ? Math.max(d[0], total - done) : d[0] * 1.3;
+            boolean arrived = d[0] < 300;
+            return o.put("left", Math.round(left)).put("done", Math.round(done)).put("etaSec", Math.round(left / Math.max(5, avg))).put("arrived", arrived);
+        } catch (Exception e) {
+            return o;
+        }
     }
 
     /** "رحلتك إلى صلالة: ساعتان و10 دقائق. العصر 3:15 عند الكيلو 85: مسجد ..." */
