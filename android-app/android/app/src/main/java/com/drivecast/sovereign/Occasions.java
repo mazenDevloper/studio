@@ -303,9 +303,9 @@ final class Occasions {
         }
         // today's weekly / monthly ones together in one island
         if (!routine.isEmpty() && !done(ctx, "occ-routine", now)) {
-            StringBuilder t = new StringBuilder("📅 ");
-            for (int i = 0; i < routine.size(); i++) t.append(i > 0 ? " • " : "").append(routine.get(i));
-            IslandArt.Item it = banner("occ-routine", t.toString());
+            StringBuilder rt = new StringBuilder("📅 ");
+            for (int i = 0; i < routine.size(); i++) rt.append(i > 0 ? " • " : "").append(routine.get(i));
+            IslandArt.Item it = banner("occ-routine", rt.toString());
             out.add(it);
         }
         boolean any = out.size() > before || friday || fasting(ctx, now) || reason != null;
