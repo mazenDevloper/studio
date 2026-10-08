@@ -41,8 +41,13 @@ export function TripsSettings() {
         <PlaceRow key={key} k={key} place={places[key]} onSave={p => setPlace(key, p)} onHere={() => here(key)}
           onRemove={key === "home" || key === "work" ? undefined : () => removePlace(key)} />
       ))}
-      <button onClick={() => setPlace("p" + Date.now(), { name: "" })}
-        className="focusable no-focus-scale h-10 px-4 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-sm font-black">+ إضافة مكان</button>
+      <div className="flex flex-wrap gap-2">
+        <button onClick={() => setPlace("p" + Date.now(), { name: "" })}
+          className="focusable no-focus-scale h-10 px-4 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-sm font-black">+ إضافة مكان</button>
+        <button onClick={() => setPlace("m" + Date.now(), { name: "", mosque: true })}
+          className="focusable no-focus-scale h-10 px-4 rounded-full bg-white/10 border border-white/10 text-white text-sm font-black">+ 🕌 إضافة مسجد</button>
+      </div>
+      <p className="text-[10px] text-white/40 font-bold">المساجد المحفوظة تظهر دائماً في جزيرة «أقرب مسجد» وفي خطة الرحلة، حتى لو لم تجدها الخرائط (مثل الجوامع الداخلية).</p>
       <GoogleKey />
       {trips.map(t => (
         <div key={t.id} className={cn("rounded-2xl border p-3 space-y-2", t.off ? "border-white/5 opacity-60" : "border-white/10 bg-white/5")}>
@@ -110,6 +115,8 @@ function PlaceRow({ k, place, onSave, onHere, onRemove }: { k: string; place?: P
           className={cn("focusable no-focus-scale h-10 px-4 rounded-full text-xs font-black shrink-0", dirty ? "bg-emerald-500 text-black" : "bg-white/5 text-white/30")}>حفظ</button>
         <button onClick={onHere} className="focusable no-focus-scale h-10 px-3 rounded-full bg-white/10 text-xs font-black text-white shrink-0">📍 موقعي الآن</button>
         <button onClick={() => setMap(true)} className="focusable no-focus-scale h-10 px-3 rounded-full bg-white/10 text-xs font-black text-white shrink-0">🗺 من الخريطة</button>
+        {custom && <button onClick={() => onSave({ ...place, name: label, mosque: !place?.mosque })}
+          className={cn("focusable no-focus-scale h-10 px-3 rounded-full text-xs font-black shrink-0", place?.mosque ? "bg-emerald-500 text-black" : "bg-white/10 text-white")}>🕌 {place?.mosque ? "مسجد ✓" : "مسجد؟"}</button>}
         {onRemove && <button onClick={onRemove} className="focusable no-focus-scale h-10 px-3 rounded-full bg-red-600/40 text-xs font-black text-white shrink-0">حذف</button>}
       </div>
       {place?.lat != null && <p className="text-[10px] text-emerald-300/70 font-bold mr-[4.5rem]">✓ محفوظ على الخريطة ({place.lat.toFixed(4)}, {place.lon?.toFixed(4)})</p>}

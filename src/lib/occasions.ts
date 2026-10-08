@@ -92,12 +92,15 @@ export function todayOccasions(now: Date, rules?: { id: string; title: string; d
   if (g) out.push({ id: "occ-greg", title: "📅 " + g });
   const dow = now.getDay();
   // your weekly / monthly occasions (settings ← المناسبات)
+  const routine: string[] = [];
   for (const r of rules ?? []) {
     if (r.off) continue;
-    if ((r.days && r.days.includes(dow)) || (r.monthDay && r.monthDay === now.getDate())) out.push({ id: `occ-r-${r.id}`, title: r.title });
+    if ((r.days && r.days.includes(dow)) || (r.monthDay && r.monthDay === now.getDate())) routine.push(r.title);
   }
+  // today's weekly / monthly ones together in one island
+  if (routine.length) out.push({ id: "occ-routine", title: "📅 " + routine.join(" • ") });
   const r = fastReason(now);
-  if (r && now.getHours() >= 15 && !out.some(o => o.id === "occ-r-fast")) out.push({ id: "occ-fast", title: `تذكير صيام الغد · ${r}` });
+  if (r && now.getHours() >= 15 && !routine.some(t => t.includes("صيام"))) out.push({ id: "occ-fast", title: `تذكير صيام الغد · ${r}` });
   if (!out.length) out.push({ id: "occ-daily", title: "✨ " + DAILY[Math.floor((now.getTime() - new Date(now.getFullYear(), 0, 0).getTime()) / 86_400_000) % DAILY.length] });
   return out;
 }

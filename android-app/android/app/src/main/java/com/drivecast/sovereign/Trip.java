@@ -169,6 +169,9 @@ final class Trip {
                     row.put("km", Math.round(target / 1000)).put("lat", p[0]).put("lon", p[1]);
                     List<JSONObject> ms = GMaps.mosques(ctx, p[0], p[1], 6000);
                     if (ms == null || ms.isEmpty()) ms = RoadPrayer.osmMosques(p[0], p[1], 6000);
+                    // your saved mosques near that point of the road too
+                    List<JSONObject> mine = RoadPrayer.savedMosques(ctx);
+                    if (!mine.isEmpty()) { ms = ms == null ? new ArrayList<>() : new ArrayList<>(ms); ms.addAll(mine); }
                     if (ms != null && !ms.isEmpty()) {
                         // the nearest to that point of the road
                         JSONObject best = null;

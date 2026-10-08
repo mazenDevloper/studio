@@ -30,7 +30,7 @@ export interface AudioTrack {
 /** Local calendar day, YYYY-MM-DD. */
 export const localDay = (d: Date = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 /** A reminder / zikr counts as done only on the day it was marked done. */
-export type SavedPlace = { name?: string; text?: string; lat?: number; lon?: number };
+export type SavedPlace = { name?: string; text?: string; lat?: number; lon?: number; mosque?: boolean };
 /** a repeating occasion: weekly on some days (0 = Sunday) or monthly on a day of the month */
 export type OccasionRule = { id: string; title: string; days?: number[]; monthDay?: number; off?: boolean };
 export const DEFAULT_OCCASION_RULES: OccasionRule[] = [

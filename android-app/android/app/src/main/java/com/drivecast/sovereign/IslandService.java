@@ -1758,6 +1758,16 @@ public class IslandService extends Service {
                     closeFocus();
                 }), chip("قرأتها ✓", false, 0, doneToday));
                 break;
+            case "occ-routine":
+                if (it.title.contains("الكهف")) {
+                    addChipRow(card, chip("▶ تشغيل الكهف", true, 0xFF34D399, () -> {
+                        QuranState q = QuranState.load(this);
+                        q.surah = 18;
+                        playQuran(q);
+                        closeFocus();
+                    }), chip("تم ✓", false, 0, doneToday));
+                } else addChipRow(card, chip("تم ✓", true, 0xFF34D399, doneToday));
+                break;
             case "occ-fast":
                 addChipRow(card, chip("سأصوم ✓", true, 0xFF34D399, () -> {
                     Hub.set(this, "fastDate", Cloud.day(now + 24 * 3600_000L));

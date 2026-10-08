@@ -250,8 +250,13 @@ final class RoadPrayer {
         float speed = last.hasSpeed() && last.getSpeed() > 3 ? last.getSpeed() : 8.3f;
         boolean heading = last.hasBearing() && last.hasSpeed() && last.getSpeed() > 3;
         long now = System.currentTimeMillis();
+        // your own mosques (settings ← رحلاتي, a place marked 🕌) always count, even when the maps miss them
+        List<JSONObject> all = new ArrayList<>(savedMosques(ctx));
         synchronized (cache) {
-            for (JSONObject o : cache) {
+            all.addAll(cache);
+        }
+        {
+            for (JSONObject o : all) {
                 Location m = new Location("osm");
                 m.setLatitude(o.optDouble("lat"));
                 m.setLongitude(o.optDouble("lon"));
@@ -276,6 +281,22 @@ final class RoadPrayer {
             return Float.compare(a.meters, b.meters);
         });
         return out.size() > 5 ? new ArrayList<>(out.subList(0, 5)) : out;
+    }
+
+    /** the saved places marked as a mosque: {name, lat, lon} */
+    static List<JSONObject> savedMosques(Context ctx) {
+        List<JSONObject> out = new ArrayList<>();
+        JSONObject places = Trip.places(ctx);
+        java.util.Iterator<String> it = places.keys();
+        while (it.hasNext()) {
+            JSONObject p = places.optJSONObject(it.next());
+            if (p == null || !p.optBoolean("mosque") || !p.has("lat")) continue;
+            try {
+                out.add(new JSONObject().put("name", p.optString("name", "مسجد")).put("lat", p.optDouble("lat")).put("lon", p.optDouble("lon")).put("saved", true));
+            } catch (Exception ignored) {
+            }
+        }
+        return out;
     }
 
     static String distanceText(float m) {

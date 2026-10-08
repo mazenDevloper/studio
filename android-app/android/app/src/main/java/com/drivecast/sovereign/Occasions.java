@@ -282,6 +282,7 @@ final class Occasions {
         // your weekly / monthly occasions (site settings ← المناسبات): Kahf on Friday, sport, the mosque outing, the
         // monthly shopping...; "fast" reminds the day before from Asr (with "سأصوم")
         JSONArray rules = rules(ctx);
+        List<String> routine = new java.util.ArrayList<>();
         int jsDow = dow - 1; // 0 = Sunday, like the site
         for (int i = 0; i < rules.length(); i++) {
             JSONObject r = rules.optJSONObject(i);
@@ -298,8 +299,14 @@ final class Occasions {
                     out.add(banner("occ-fast", "تذكير صيام الغد · " + why + " · هل ستصوم؟"));
                 continue;
             }
-            String id = "kahf".equals(rid) ? "occ-kahf" : "occ-r-" + rid;
-            if (daytime && !done(ctx, id, now)) out.add(banner(id, r.optString("title")));
+            if (daytime && !done(ctx, "occ-r-" + rid, now)) routine.add(r.optString("title"));
+        }
+        // today's weekly / monthly ones together in one island
+        if (!routine.isEmpty() && !done(ctx, "occ-routine", now)) {
+            StringBuilder t = new StringBuilder("📅 ");
+            for (int i = 0; i < routine.size(); i++) t.append(i > 0 ? " • " : "").append(routine.get(i));
+            IslandArt.Item it = banner("occ-routine", t.toString());
+            out.add(it);
         }
         boolean any = out.size() > before || friday || fasting(ctx, now) || reason != null;
         if (!any && daytime && !done(ctx, "occ-daily", now))
