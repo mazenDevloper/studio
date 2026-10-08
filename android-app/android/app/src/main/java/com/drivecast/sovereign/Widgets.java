@@ -378,8 +378,13 @@ public final class Widgets {
         });
         JSONArray sorted = new JSONArray();
         for (JSONObject o : list) sorted.put(o);
-        RemoteViews v = canvas(ctx, WidgetArt.matches(ctx, w, h, sorted));
+        RemoteViews v = new RemoteViews(ctx.getPackageName(), R.layout.widget_matches_canvas);
+        v.setImageViewBitmap(R.id.widget_canvas, WidgetArt.matches(ctx, w, h, sorted));
         v.setOnClickPendingIntent(R.id.widget_root, openApp(ctx, "/matches", 102));
+        // ⟳ : fetch the scores now ("…" while it works)
+        boolean busy = System.currentTimeMillis() - NativeIslandPlugin.prefs(ctx).getLong("matchesRefreshAt", 0) < 30_000L;
+        v.setTextViewText(R.id.matches_refresh, busy ? "…" : "⟳");
+        v.setOnClickPendingIntent(R.id.matches_refresh, action(ctx, WidgetActionReceiver.MATCHES_REFRESH, 103));
         return v;
     }
 

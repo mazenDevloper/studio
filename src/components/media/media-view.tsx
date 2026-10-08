@@ -261,6 +261,16 @@ export function MediaView() {
         setSelectedChannel(null); setSelectedPlaylist(null);
         setIsSearchLocked(false);
         setTimeout(() => searchInputRef.current?.focus(), 150);
+      } else if (act.type === "voice" && act.id) {
+        // a voice search: the results, and the first one plays
+        const q = act.id;
+        (window as any).__nativeMediaAction = undefined;
+        setSelectedChannel(null); setSelectedPlaylist(null); setSearch(q); setLoading(true);
+        searchYouTubeVideos(q, 40).then(r => {
+          setSearchResults(r || []);
+          if (r?.[0]) setActiveVideo(r[0], r);
+          autoFocusResults();
+        }).catch(() => {}).finally(() => setLoading(false));
       } else if (act.type === "channel") {
         const ch = (favoriteChannels || []).find(c => c.channelid === act.id);
         if (!ch) return; // channels still loading: tried again when they arrive

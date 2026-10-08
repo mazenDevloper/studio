@@ -22,6 +22,7 @@ public class WidgetActionReceiver extends BroadcastReceiver {
     static final String MOON_NEXT = "com.drivecast.MOON_NEXT";
     static final String MANU_NEXT = "com.drivecast.MANU_NEXT";
     static final String MAP_TOGGLE = "com.drivecast.MAP_TOGGLE";
+    static final String MATCHES_REFRESH = "com.drivecast.MATCHES_REFRESH";
 
     @Override
     public void onReceive(Context ctx, Intent intent) {
@@ -44,6 +45,19 @@ public class WidgetActionReceiver extends BroadcastReceiver {
                 open.putExtra("arg", cmd);
                 ctx.startActivity(open);
             }
+        } else if (MATCHES_REFRESH.equals(a)) {
+            // the matches widget's ⟳: the scores now, whatever the schedule says
+            final Context app = ctx.getApplicationContext();
+            NativeIslandPlugin.prefs(app).edit().putLong("matchesRefreshAt", System.currentTimeMillis()).apply();
+            Widgets.updateAll(app);
+            final PendingResult pr = goAsync();
+            new Thread(() -> {
+                Cloud.fetchMatches(app);
+                NativeIslandPlugin.prefs(app).edit().putLong("matchesRefreshAt", 0).apply();
+                Widgets.updateAll(app);
+                IslandService.redraw();
+                pr.finish();
+            }).start();
         } else if (MOON_NEXT.equals(a)) {
             // the moon widget: Hijri -> Gregorian -> weather, like the site's moon card
             android.content.SharedPreferences p = NativeIslandPlugin.prefs(ctx);

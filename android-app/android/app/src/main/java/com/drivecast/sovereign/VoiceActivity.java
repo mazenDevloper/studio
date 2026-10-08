@@ -339,7 +339,9 @@ public class VoiceActivity extends Activity {
 
         // the Quran
         int surah = findSurah(s);
-        if (surah > 0 && (s.contains("شغل") || s.contains("اقرا") || s.contains("سوره") || s.contains("سمعني"))) {
+        if (surah > 0 && (s.contains("شغل") || s.contains("اقرا") || s.contains("سوره") || s.contains("سمعني")
+                || s.split("\\s+").length <= 5 && !AMBIGUOUS.contains(norm(MediaBrowser.SURAHS[surah - 1])) && !s.contains("متي") && !s.contains("كم")
+                && !s.contains("وين") && !s.contains("نتيجه") && !s.contains("مباري") && !s.contains("اذان") && !s.contains("صلاه"))) {
             int reciter = findReciter(s);
             String rname = reciter >= 0 ? QuranState.reciters(this).optJSONObject(reciter).optString("name") : spokenReciter(said);
             // what was said, minus the verb ("سورة الكهف ياسر الدوسري"): keeps any reciter, even one not in the list
@@ -357,6 +359,7 @@ public class VoiceActivity extends Activity {
                     Intent a = new Intent(this, IslandService.class).setAction(IslandService.AUDIO).putExtra("type", "youtube")
                             .putExtra("id", first.optString("id")).putExtra("title", first.optString("name")).putExtra("queue", q.toString()).putExtra("index", 0);
                     ContextCompat.startForegroundService(this, a);
+                    showResults(query, q);
                 } else {
                     // no YouTube (quota / network): the Quran player
                     ContextCompat.startForegroundService(this, new Intent(this, IslandService.class).setAction(IslandService.QURAN_PLAY).putExtra("surah", fs).putExtra("reciter", fr));
@@ -439,6 +442,7 @@ public class VoiceActivity extends Activity {
                     Intent i = new Intent(this, IslandService.class).setAction(IslandService.AUDIO).putExtra("type", "youtube")
                             .putExtra("id", first.optString("id")).putExtra("title", first.optString("name")).putExtra("queue", res.toString()).putExtra("index", 0);
                     ContextCompat.startForegroundService(getApplicationContext(), i);
+                    showResults(q, res);
                 }).start();
                 return "أشغّل: " + q;
             }
@@ -513,6 +517,17 @@ public class VoiceActivity extends Activity {
         } catch (Exception e) {
             return def;
         }
+    }
+
+    /** surah names that are also prayers / teams / everyday words: they need "سورة" or "شغّل" */
+    private static final java.util.Set<String> AMBIGUOUS = new java.util.HashSet<>(java.util.Arrays.asList(
+            "الفجر", "العصر", "النصر", "الشمس", "الليل", "القمر", "النور", "الفتح", "الملك", "الناس", "الضحي", "الحج", "الروم", "الفيل", "الطور", "القلم", "الرعد", "النجم", "الحديد", "العاديات", "التين"));
+
+    /** the search's results full screen, to browse (the first one already plays) */
+    private void showResults(String query, JSONArray res) {
+        Intent r = new Intent(getApplicationContext(), SearchResultsActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                .putExtra("query", query).putExtra("items", res.toString());
+        try { getApplicationContext().startActivity(r); } catch (Exception ignored) { }
     }
 
     /** "home" / "work" from the words (null: neither) */

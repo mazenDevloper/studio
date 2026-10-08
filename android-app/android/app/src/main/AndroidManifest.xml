@@ -203,6 +203,14 @@
             </intent-filter>
         </activity>
 
+        <!-- a voice search's results, full screen -->
+        <activity
+            android:name=".SearchResultsActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:taskAffinity=".results"
+            android:theme="@android:style/Theme.DeviceDefault.NoActionBar" />
+
         <!-- the trip options (long press on the islands' microphone) -->
         <activity
             android:name=".TripMenuActivity"

@@ -11,6 +11,8 @@ import { cn } from "@/lib/utils";
 import { X, Eye, EyeOff, Bell, Clock, Timer, Check, Trophy, Play, ChevronDown, ChevronUp, Zap, Cloud, Bookmark } from "lucide-react";
 import { convertTo12Hour } from "@/lib/constants";
 import { prayerDayFor } from "@/lib/prayer-day";
+import { todayOccasions, occasionDays, describeDay } from "@/lib/occasions";
+import { SiteVoiceButton } from "@/components/voice/site-voice";
 
 interface AlertItem {
   id: string;
@@ -187,6 +189,13 @@ export function LiveMatchIsland() {
         }
       }
 
+      // the day's occasions (Hijri, Gregorian, Friday, fasting tomorrow, sport days, or a saying): one at least
+      const occDone: string[] = (() => { try { return JSON.parse(localStorage.getItem(`occ-done-${dateStr}`) || "[]"); } catch { return []; } })();
+      for (const o of todayOccasions(now)) {
+        if (occDone.includes(o.id)) continue;
+        list.push({ id: o.id, name: o.title, diff: 0, type: 'azkar', iconType: 'circle', color: 'text-amber-300', completed: false });
+      }
+
       // Add General Azkar to Island
       if (generalAzkar && generalAzkar.length > 0) {
         generalAzkar.forEach(az => {
@@ -256,10 +265,21 @@ export function LiveMatchIsland() {
       skipMatch(live ? matchHideKey(live) : id);
     }
     else if (type === 'sync') setShowSyncIsland(false);
+    else if (id.startsWith('occ-')) {
+      // an occasion: done for today (this device)
+      const k = `occ-done-${new Date().toISOString().slice(0, 10)}`;
+      try { const l = JSON.parse(localStorage.getItem(k) || "[]"); localStorage.setItem(k, JSON.stringify([...l, id])); } catch {}
+      setOccTick(t => t + 1);
+      return;
+    }
     else if (type === 'azkar') toggleReminder(id);
     else toggleReminder(id);
     await syncMasterBin();
   };
+
+  // the occasions browser (‹ the previous / the next ›), opened by tapping an occasion island
+  const [occOpen, setOccOpen] = useState(false);
+  const [, setOccTick] = useState(0);
 
   const formatCountdown = (diffSeconds: number) => { 
     const absSecs = Math.abs(diffSeconds); 
@@ -301,6 +321,7 @@ export function LiveMatchIsland() {
     <div ref={islandRootRef} className={cn("fixed top-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3 pointer-events-none scale-[0.7] max-[639px]:scale-[0.6] min-[968px]:scale-[0.80] dir-rtl transition-all duration-700", hasOnTop ? "z-[100002]" : "z-[10001]", (showIslands || activeAlerts.length) ? "translate-y-0 opacity-100" : "-translate-y-20 opacity-0")}>
       <div className="flex items-start gap-3">
         <div onClick={toggleShowIslands} className="pointer-events-auto shadow-2xl w-12 h-12 rounded-full flex items-center justify-center premium-glass cursor-pointer border border-white/10 active:scale-90 transition-all">{showIslands ? <Eye className="w-5 h-5 text-accent" /> : <EyeOff className="w-5 h-5 text-white/20" />}</div>
+        <SiteVoiceButton />
         {showIslands && (
           <div className="flex flex-wrap justify-center items-center gap-2 w-max max-w-[calc(100vw/0.7-90px)] min-[968px]:max-w-[calc(100vw/0.8-90px)] max-[639px]:flex-nowrap max-[639px]:justify-start max-[639px]:overflow-x-auto max-[639px]:no-scrollbar max-[639px]:pointer-events-auto max-[639px]:max-w-[calc(100vw/0.6-70px)] [&>*]:shrink-0">
             {visibleAlerts.map((alert) => {
@@ -336,15 +357,41 @@ export function LiveMatchIsland() {
                }
 
                return (
-                  <div key={alert.id} className={cn("pointer-events-auto premium-glass min-w-[12rem] h-[5rem] rounded-[2.5rem] flex items-center px-6 gap-3 animate-in slide-in-from-top-2 border transition-all relative group shadow-xl", alert.completed ? "bg-emerald-600/60 border-emerald-400 shadow-[0_0_40px_rgba(16,185,129,0.4)]" : "border-white/10")}>
-                    <button onClick={() => handleAction(alert.id, alert.type as any)} className="absolute -top-1 -right-1 w-7 h-7 rounded-full bg-black/60 text-emerald-400 opacity-0 group-hover:opacity-100 flex items-center justify-center pointer-events-auto transition-opacity focusable z-50 border border-white/10 shadow-glow"><Check className="w-4 h-4" /></button>
+                  <div key={alert.id} onClick={alert.id.startsWith('occ-') ? () => setOccOpen(true) : undefined} className={cn("pointer-events-auto premium-glass min-w-[12rem] h-[5rem] rounded-[2.5rem] flex items-center px-6 gap-3 animate-in slide-in-from-top-2 border transition-all relative group shadow-xl", alert.id.startsWith('occ-') && "cursor-pointer max-w-[22rem]", alert.completed ? "bg-emerald-600/60 border-emerald-400 shadow-[0_0_40px_rgba(16,185,129,0.4)]" : "border-white/10")}>
+                    <button onClick={(e) => { e.stopPropagation(); handleAction(alert.id, alert.type as any); }} className="absolute -top-1 -right-1 w-7 h-7 rounded-full bg-black/60 text-emerald-400 opacity-0 group-hover:opacity-100 flex items-center justify-center pointer-events-auto transition-opacity focusable z-50 border border-white/10 shadow-glow"><Check className="w-4 h-4" /></button>
                     <div className={cn("w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 transition-colors shadow-inner", alert.completed ? "bg-white/20" : alert.type === 'azan' ? "bg-accent/20" : (alert.type === 'iqamah' || alert.type === 'azkar') ? "bg-emerald-400/20" : "bg-primary/20")}>{alert.completed ? <Check className="w-5 h-5 text-white" /> : alert.type === 'azan' ? <Clock className="w-5 h-5 text-accent" /> : alert.type === 'iqamah' ? <Timer className="w-5 h-5 text-emerald-400" /> : alert.type === 'azkar' ? <Bookmark className="w-5 h-5 text-emerald-400" /> : alert.iconType === 'play' ? <Play className="w-5 h-5 fill-current text-primary" /> : <Bell className="w-5 h-5 text-primary" />}</div>
-                    <div className="flex-1 flex flex-col items-center justify-center"><span className={cn("text-[0.85rem] font-black uppercase truncate max-w-[100px] leading-none mb-1", alert.completed ? "text-white" : "text-white/80")}>{alert.name}</span><div className="h-10 w-full"><GlassNumber text={alert.completed ? "منجز" : (alert.isExpired || alert.type === 'azkar') ? "الآن" : `${alert.diff >= 0 ? "-" : "+"}${formatCountdown(alert.diff)}`} id={`alert-${alert.id}`} size="5.6rem" colorClass={alert.completed ? "text-white" : alert.color} /></div></div>
+                    <div className="flex-1 flex flex-col items-center justify-center"><span className={cn("text-[0.85rem] font-black uppercase truncate leading-none mb-1", alert.id.startsWith('occ-') ? "max-w-[16rem]" : "max-w-[100px]", alert.completed ? "text-white" : "text-white/80")}>{alert.name}</span><div className="h-10 w-full"><GlassNumber text={alert.completed ? "منجز" : (alert.isExpired || alert.type === 'azkar') ? "الآن" : `${alert.diff >= 0 ? "-" : "+"}${formatCountdown(alert.diff)}`} id={`alert-${alert.id}`} size="5.6rem" colorClass={alert.completed ? "text-white" : alert.color} /></div></div>
                   </div>
                );
             })}
           </div>
         )}
+      </div>
+      {occOpen && <OccasionsBrowser onClose={() => setOccOpen(false)} />}
+    </div>
+  );
+}
+
+/** The occasions one by one: ‹ the previous / the next ›, from three months back to six ahead. */
+function OccasionsBrowser({ onClose }: { onClose: () => void }) {
+  const now = useMemo(() => new Date(), []);
+  const days = useMemo(() => occasionDays(now), [now]);
+  const [i, setI] = useState(() => { const t = new Date(now); t.setHours(0, 0, 0, 0); const k = days.findIndex(d => d.getTime() >= t.getTime()); return k < 0 ? days.length - 1 : k; });
+  const d = days[i];
+  const info = d ? describeDay(d, now) : null;
+  return (
+    <div className="pointer-events-auto mt-2 w-[min(34rem,92vw)] rounded-[2rem] premium-glass border border-amber-300/30 p-5 space-y-3 shadow-2xl" dir="rtl" onClick={e => e.stopPropagation()}>
+      <div className="flex items-center justify-between"><span className="text-sm font-black text-amber-300">المناسبات</span><button onClick={onClose} className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center"><X className="w-4 h-4 text-white/70" /></button></div>
+      {info && (
+        <div className="text-center space-y-1">
+          <p className="text-2xl font-black text-white">{info.title}</p>
+          <p className="text-sm font-bold text-white/60">{info.date}</p>
+          <p className="text-xs font-black text-emerald-300">{info.when}</p>
+        </div>
+      )}
+      <div className="flex items-center justify-between gap-3">
+        <button disabled={i <= 0} onClick={() => setI(x => Math.max(0, x - 1))} className="h-11 px-5 rounded-full bg-white/10 text-white font-black disabled:opacity-30">‹ السابقة</button>
+        <button disabled={i >= days.length - 1} onClick={() => setI(x => Math.min(days.length - 1, x + 1))} className="h-11 px-5 rounded-full bg-white/10 text-white font-black disabled:opacity-30">التالية ›</button>
       </div>
     </div>
   );

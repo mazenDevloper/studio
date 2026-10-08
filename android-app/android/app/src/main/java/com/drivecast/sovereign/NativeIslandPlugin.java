@@ -87,6 +87,14 @@ public class NativeIslandPlugin extends Plugin {
      * page sent before. Manuscript pictures arriving as data: URLs are saved as files here, so the stored settings
      * stay small and the widget reads the picture from disk.
      */
+    /** The site's microphone: the phone's voice commands. */
+    @PluginMethod
+    public void voice(PluginCall call) {
+        Intent v = new Intent(getContext(), VoiceActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        try { getContext().startActivity(v); } catch (Exception ignored) { }
+        call.resolve();
+    }
+
     /** Settings' test buttons: kind "goal" (four goals, one every 3 s) or "islands" (sample islands for a minute). */
     @PluginMethod
     public void testIslands(PluginCall call) {

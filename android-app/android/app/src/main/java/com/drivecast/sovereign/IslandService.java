@@ -425,7 +425,7 @@ public class IslandService extends Service {
             Cloud.refresh(this, false);
             JSONObject master = Cloud.master(this);
             JSONArray teams = master.optJSONArray("favoriteTeams");
-            JSONArray pins = master.optJSONArray("pinnedMatches") != null ? master.optJSONArray("pinnedMatches") : configPins;
+            JSONArray pins = Cloud.pinsWithBells(this, master.optJSONArray("pinnedMatches") != null ? master.optJSONArray("pinnedMatches") : configPins);
             List<String> islandTeams = new ArrayList<>();
             String apiUrl = configUrl;
             if (teams != null && teams.length() > 0) {
@@ -693,7 +693,8 @@ public class IslandService extends Service {
             JSONObject c = list.optJSONObject(i);
             if (c == null) continue;
             long left = c.optLong("at") - now;
-            long window = "iqamah".equals(c.optString("kind")) ? 10 * 60_000L : 5 * 60_000L;
+            // the adhan from 10 minutes before, the iqamah from 15
+            long window = "iqamah".equals(c.optString("kind")) ? 15 * 60_000L : 10 * 60_000L;
             if (left <= 0 || left > window) continue;
             IslandArt.Item it = new IslandArt.Item();
             it.kind = "countdown";

@@ -181,6 +181,28 @@ final class Cloud {
      * Ask the API only when the answer can change: a new day, nothing saved yet, a match live or about to start
      * (every minute), otherwise once an hour (schedule changes); after a failure, again in 2 minutes.
      */
+    /**
+     * The pinned matches plus today's matches with the goal bell on (the site's "goal:match:<day>:<home>:<away>"
+     * keys), as {home, away}: their goals show on the islands even when they aren't the favourite teams' matches.
+     */
+    static JSONArray pinsWithBells(Context ctx, JSONArray pins) {
+        JSONArray out = new JSONArray();
+        for (int i = 0; pins != null && i < pins.length(); i++) out.put(pins.opt(i));
+        JSONArray bells = master(ctx).optJSONArray("belledMatchIds");
+        String today = day(System.currentTimeMillis());
+        for (int i = 0; bells != null && i < bells.length(); i++) {
+            String[] k = bells.optString(i).split(":");
+            // goal : match : day : home : away
+            if (k.length >= 5 && "goal".equals(k[0]) && today.equals(k[2])) {
+                try {
+                    out.put(new JSONObject().put("home", k[3]).put("away", k[4]).put("bell", true));
+                } catch (Exception ignored) {
+                }
+            }
+        }
+        return out;
+    }
+
     static boolean matchesDue(Context ctx) {
         long now = System.currentTimeMillis();
         android.content.SharedPreferences p = NativeIslandPlugin.prefs(ctx);
@@ -213,7 +235,7 @@ final class Cloud {
             if (f != null && !f.optString("name").isEmpty()) t.append(t.length() > 0 ? "|" : "").append(favSpec(f));
         }
         String origin = Widgets.json(ctx, "widgets").optString("origin", "https://cplay2.vercel.app");
-        JSONArray pins = master(ctx).optJSONArray("pinnedMatches");
+        JSONArray pins = pinsWithBells(ctx, master(ctx).optJSONArray("pinnedMatches"));
         StringBuilder pn = new StringBuilder();
         for (int i = 0; pins != null && i < pins.length(); i++) {
             JSONObject x = pins.optJSONObject(i);
@@ -287,7 +309,7 @@ final class Cloud {
         }
         JSONArray sv = m.optJSONArray("savedVideos");
         if (sv != null) o.put("savedVideos", slimVideos(sv, 80));
-        for (String k : new String[]{"favoriteTeams", "pinnedMatches", "generalAzkar", "reminders", "prayerSettings"}) {
+        for (String k : new String[]{"favoriteTeams", "pinnedMatches", "generalAzkar", "reminders", "prayerSettings", "belledMatchIds", "followedLeagues"}) {
             if (m.optJSONArray(k) != null) o.put(k, m.getJSONArray(k));
         }
         if (m.optJSONObject("manuscriptScales") != null) o.put("manuscriptScales", m.getJSONObject("manuscriptScales"));

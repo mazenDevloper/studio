@@ -27,6 +27,8 @@ interface NativeIslandPlugin {
   hubSet?(o: { key: string; value: string }): Promise<void>;
   /** settings' test: "goal" = four goals 3 s apart with the full animation; "islands" = sample islands for a minute */
   testIslands?(o: { kind: "goal" | "islands" }): Promise<void>;
+  /** the phone's voice commands window */
+  voice?(): Promise<void>;
   addListener(event: "command", cb: (c: NativeCommand) => void): Promise<{ remove: () => void }> | { remove: () => void };
 }
 
