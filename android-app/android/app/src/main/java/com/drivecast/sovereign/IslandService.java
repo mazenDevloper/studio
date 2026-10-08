@@ -179,7 +179,7 @@ public class IslandService extends Service {
             }
             audioIndex = intent.getIntExtra("index", 0);
             handler.post(() -> {
-                if (audio) playAudio(t, id, title);
+                if (audio) { audioStart = intent.getIntExtra("start", 0); playAudio(t, id, title); }
                 else {
                     stopAudio();
                     if ("stream".equals(t)) playStream(id, title); else playVideo(id, title);
@@ -462,8 +462,11 @@ public class IslandService extends Service {
                     if (h == null || a == null) continue;
                     boolean pinned = isPinned(pins, h.optString("name"), a.optString("name"));
                     if (!m.optBoolean("favorite") && !pinned) continue;
-                    m.put("pinned", pinned);
-                    boolean onIsland = pinned || (m.optBoolean("favorite") && (islandTeams.isEmpty() && teams == null
+                    // a match with only the goal bell on: no island, just its goals (the animation + notification)
+                    boolean bellOnly = !m.optBoolean("favorite") && isBellOnly(pins, h.optString("name"), a.optString("name"));
+                    m.put("pinned", pinned && !bellOnly);
+                    m.put("bell", bellOnly);
+                    boolean onIsland = !bellOnly && pinned || (m.optBoolean("favorite") && (islandTeams.isEmpty() && teams == null
                             || involves(islandTeams, h.optString("name"), a.optString("name"))));
                     m.put("island", onIsland);
                     mine.add(m);
@@ -598,6 +601,17 @@ public class IslandService extends Service {
     private static boolean involves(List<String> names, String home, String away) {
         for (String n : names) if (same(n, home) || same(n, away)) return true;
         return false;
+    }
+
+    /** matched only by a goal-bell entry, not by a real pin */
+    private static boolean isBellOnly(JSONArray pins, String home, String away) {
+        boolean bell = false, pin = false;
+        for (int i = 0; pins != null && i < pins.length(); i++) {
+            JSONObject p = pins.optJSONObject(i);
+            if (p == null || !same(p.optString("home"), home) || !same(p.optString("away"), away)) continue;
+            if (p.optBoolean("bell")) bell = true; else pin = true;
+        }
+        return bell && !pin;
     }
 
     private static boolean isPinned(JSONArray pins, String home, String away) {
@@ -2461,12 +2475,21 @@ public class IslandService extends Service {
     private String audioId = "";
 
     /** The sound island tapped: the same video back in the full-screen player (with its list). */
+    private int audioStart = 0;
+
     private void backToFullPlayer() {
         if (audioView == null || audioId.isEmpty()) return;
-        Intent p = new Intent(this, PlayerActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                .putExtra("type", audioType).putExtra("id", audioId).putExtra("title", audioTitle).putExtra("queue", audioQueue.toString());
-        stopAudio();
-        try { startActivity(p); } catch (Exception ignored) { }
+        final String t = audioType, id = audioId, title = audioTitle, q = audioQueue.toString();
+        // the full player continues at the same second
+        audioView.evaluateJavascript("(function(){try{return Math.floor(P&&P.getCurrentTime?P.getCurrentTime():0)}catch(e){return 0}})()", v -> {
+            int sec = 0;
+            try { sec = (int) Double.parseDouble(v); } catch (Exception ignored) { }
+            Intent p = new Intent(this, PlayerActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                    .putExtra("type", t).putExtra("id", id).putExtra("title", title).putExtra("queue", q).putExtra("start", "stream".equals(t) ? 0 : sec);
+            stopAudio();
+            islandSignature = "";
+            try { startActivity(p); } catch (Exception ignored) { }
+        });
     }
 
     private final class AudioJs {
@@ -2519,7 +2542,8 @@ public class IslandService extends Service {
         } catch (Exception e) {
             audioWindow = null;
         }
-        audioView.loadDataWithBaseURL(PlayerActivity.base(this, type), PlayerActivity.html(type, id), "text/html", "UTF-8", null);
+        audioView.loadDataWithBaseURL(PlayerActivity.base(this, type), PlayerActivity.html(type, id, audioStart), "text/html", "UTF-8", null);
+        audioStart = 0;
         audioView.onResume();
         audioView.resumeTimers();
         audioPlaying = true;

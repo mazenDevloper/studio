@@ -130,7 +130,10 @@ public class PlayerActivity extends Activity {
         return Math.round(v * getResources().getDisplayMetrics().density);
     }
 
+    private int startAt = 0;
+
     private void load(Intent i) {
+        startAt = i.getIntExtra("start", 0);
         type = i.getStringExtra("type");
         id = i.getStringExtra("id");
         title = i.getStringExtra("title");
@@ -150,7 +153,8 @@ public class PlayerActivity extends Activity {
 
     private void play() {
         cancelNext();
-        web.loadDataWithBaseURL(base(this, type), html(type, id), "text/html", "UTF-8", null);
+        web.loadDataWithBaseURL(base(this, type), html(type, id, startAt), "text/html", "UTF-8", null);
+        startAt = 0;
         titleView.setText(title == null ? "" : title);
         rebuildBar();
         if (listPanel.getVisibility() == View.VISIBLE) fillList();
@@ -463,6 +467,11 @@ public class PlayerActivity extends Activity {
 
     /** The player page: YouTube's IFrame API (end / resume reported to DCP), or a stream through hls.js. */
     static String html(String type, String id) {
+        return html(type, id, 0);
+    }
+
+    /** start: the second to begin at (continuing from the sound island / the full player) */
+    static String html(String type, String id, int start) {
         String css = "<meta name='viewport' content='width=device-width,initial-scale=1'><style>html,body{margin:0;height:100%;background:#000;overflow:hidden}"
                 + "iframe,video{border:0;width:100%;height:100%;background:#000;transition:transform .3s}"
                 + "body.fill iframe{transform:scale(1.34)}body.fill video{object-fit:cover}</style>";
@@ -481,7 +490,7 @@ public class PlayerActivity extends Activity {
         return "<!doctype html><html><head>" + css + "</head><body><div id='p'></div>"
                 + "<script src='https://www.youtube.com/iframe_api'></script><script>" + bridge + "var P;"
                 + "function onYouTubeIframeAPIReady(){P=new YT.Player('p',{width:'100%',height:'100%',videoId:'" + id.replace("'", "") + "',"
-                + "playerVars:{autoplay:1,playsinline:1,rel:0,fs:1,modestbranding:1,iv_load_policy:3,hl:'ar'},"
+                + "playerVars:{autoplay:1,playsinline:1,start:" + Math.max(0, start) + ",rel:0,fs:1,modestbranding:1,iv_load_policy:3,hl:'ar'},"
                 + "events:{onReady:function(e){e.target.playVideo();},onStateChange:function(e){if(e.data===0)dcEnd();else if(e.data===1||e.data===3)dcOn();}}});}"
                 + "window.dcToggle=function(){if(!P||!P.getPlayerState)return true;if(P.getPlayerState()==1){P.pauseVideo();return false;}P.playVideo();return true;};"
                 + "</script></body></html>";
@@ -495,10 +504,16 @@ public class PlayerActivity extends Activity {
 
     /** Switch to the floating window or to audio only in the island (the list goes along for next / previous). */
     private void switchTo(String mode) {
-        Intent s = new Intent(this, IslandService.class).setAction("popup".equals(mode) ? IslandService.POPUP : IslandService.AUDIO)
-                .putExtra("type", type).putExtra("id", id).putExtra("title", title).putExtra("queue", queue.toString()).putExtra("index", index);
-        try { androidx.core.content.ContextCompat.startForegroundService(this, s); } catch (Exception ignored) { }
-        finish();
+        // the same second: the sound / the window continues where the video is
+        web.evaluateJavascript("(function(){try{return Math.floor(P&&P.getCurrentTime?P.getCurrentTime():(document.getElementById('v')||{}).currentTime||0)}catch(e){return 0}})()", v -> {
+            int sec = 0;
+            try { sec = (int) Double.parseDouble(v); } catch (Exception ignored) { }
+            Intent s = new Intent(this, IslandService.class).setAction("popup".equals(mode) ? IslandService.POPUP : IslandService.AUDIO)
+                    .putExtra("type", type).putExtra("id", id).putExtra("title", title).putExtra("queue", queue.toString()).putExtra("index", index)
+                    .putExtra("start", "stream".equals(type) ? 0 : sec);
+            try { androidx.core.content.ContextCompat.startForegroundService(this, s); } catch (Exception ignored) { }
+            finish();
+        });
     }
 
     private void hideBars() {

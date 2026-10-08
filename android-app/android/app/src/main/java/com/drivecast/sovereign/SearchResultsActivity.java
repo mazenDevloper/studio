@@ -63,7 +63,7 @@ public class SearchResultsActivity extends Activity {
         close.setOnClickListener(v -> finish());
         bar.addView(close);
         root.addView(bar);
-        TextView hint = text("الأول يعمل الآن صوتاً في الجزيرة · اضغط بطاقة للمشغّل الكامل · 🎧 للصوت فقط", 12, 0x99FFFFFF, false);
+        TextView hint = text("اضغط بطاقة للمشغّل الكامل · 🎧 للصوت فقط في الجزيرة", 12, 0x99FFFFFF, false);
         hint.setPadding(dp(16), 0, dp(16), dp(8));
         root.addView(hint);
 
@@ -107,12 +107,6 @@ public class SearchResultsActivity extends Activity {
         FrameLayout.LayoutParams al = new FrameLayout.LayoutParams(dp(40), dp(40), Gravity.BOTTOM | Gravity.START);
         al.setMargins(dp(6), dp(6), dp(6), dp(6));
         pic.addView(audio, al);
-        if (i == 0) {
-            TextView now = pill("▶ يعمل الآن", 0xE610B981);
-            FrameLayout.LayoutParams nl = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.END);
-            nl.setMargins(dp(6), dp(6), dp(6), dp(6));
-            pic.addView(now, nl);
-        }
         c.addView(pic);
         TextView t = text(o != null ? o.optString("name") : "", 13, Color.WHITE, true);
         t.setMaxLines(2);

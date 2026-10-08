@@ -358,14 +358,13 @@ public class VoiceActivity extends Activity {
                     for (int i = 0; i < res.length(); i++) q.put(res.optJSONObject(i));
                     Intent a = new Intent(this, IslandService.class).setAction(IslandService.AUDIO).putExtra("type", "youtube")
                             .putExtra("id", first.optString("id")).putExtra("title", first.optString("name")).putExtra("queue", q.toString()).putExtra("index", 0);
-                    ContextCompat.startForegroundService(this, a);
-                    showResults(query, q);
+                    showResults(query, q); // browse first: nothing starts by itself
                 } else {
                     // no YouTube (quota / network): the Quran player
                     ContextCompat.startForegroundService(this, new Intent(this, IslandService.class).setAction(IslandService.QURAN_PLAY).putExtra("surah", fs).putExtra("reciter", fr));
                 }
             }).start();
-            return "أبحث وأشغّل " + query;
+            return "#أبحث عن " + query;
         }
 
         // "شغل <anything>": a YouTube search, the first result as sound in the island
@@ -441,10 +440,9 @@ public class VoiceActivity extends Activity {
                     if (first == null) return;
                     Intent i = new Intent(this, IslandService.class).setAction(IslandService.AUDIO).putExtra("type", "youtube")
                             .putExtra("id", first.optString("id")).putExtra("title", first.optString("name")).putExtra("queue", res.toString()).putExtra("index", 0);
-                    ContextCompat.startForegroundService(getApplicationContext(), i);
                     showResults(q, res);
                 }).start();
-                return "أشغّل: " + q;
+                return "#أبحث عن: " + q;
             }
             case "stop":
                 ContextCompat.startForegroundService(getApplicationContext(), new Intent(this, IslandService.class).setAction(IslandService.STOP_ALL));
