@@ -96,6 +96,8 @@ export function NativeWidgetsBridge() {
   // the trips' places and weekly trips (site settings / cloud) reach the phone's planner
   const places = useMediaStore(st => st.places);
   const weeklyTrips = useMediaStore(st => st.weeklyTrips);
+  const occasionRules = useMediaStore(st => st.occasionRules);
+  useEffect(() => { if (nativeIsland() && Array.isArray(occasionRules)) hubSet("occasionRules", occasionRules); }, [occasionRules]);
   useEffect(() => {
     if (!nativeIsland()) return;
     if (places && Object.keys(places).length) hubSet("places", places);

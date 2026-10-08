@@ -31,6 +31,15 @@ export interface AudioTrack {
 export const localDay = (d: Date = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 /** A reminder / zikr counts as done only on the day it was marked done. */
 export type SavedPlace = { name?: string; text?: string; lat?: number; lon?: number };
+/** a repeating occasion: weekly on some days (0 = Sunday) or monthly on a day of the month */
+export type OccasionRule = { id: string; title: string; days?: number[]; monthDay?: number; off?: boolean };
+export const DEFAULT_OCCASION_RULES: OccasionRule[] = [
+  { id: "kahf", title: "سورة الكهف · يوم الجمعة", days: [5] },
+  { id: "sport", title: "🏃 يوم الرياضة", days: [0, 2] },
+  { id: "mosque", title: "🕌 طلعة المسجد", days: [3] },
+  { id: "fast", title: "تذكير: صيام الغد", days: [0, 3] },
+  { id: "shop", title: "🛒 التسوّق الشهري", monthDay: 23 },
+];
 export type WeeklyTrip = { id: string; days: number[]; time: string; to: string; off?: boolean };
 
 export const isDoneToday = (r: { completedOn?: string }) => !!r.completedOn && r.completedOn === localDay();
@@ -141,6 +150,7 @@ interface MediaState {
   playlists: Playlist[]; isLooping: boolean;
   /** home / work (text and / or a point on the map) and the weekly trips: the phone plans each one near its time */
   places: Record<string, SavedPlace>; weeklyTrips: WeeklyTrip[];
+  occasionRules: OccasionRule[]; setOccasionRules: (r: OccasionRule[]) => void;
   setPlace: (key: string, p: SavedPlace) => void; setWeeklyTrips: (t: WeeklyTrip[]) => void;
   displayScale: number; dockScale: number; keyMappings: Record<string, Record<string, string[]>>; 
   activeVideo: YouTubeVideo | null; lastPlayedVideo: YouTubeVideo | null; activeIptv: IptvChannel | null;
@@ -320,14 +330,14 @@ function masterPayload(s: MediaState) {
     leagueChannelOverrides: s.leagueChannelOverrides, followedLeagues: s.followedLeagues,
     reminders: s.reminders, generalAzkar: s.generalAzkar, mapSettings: s.mapSettings, keyMappings: s.keyMappings, savedVideos: s.savedVideos,
     manuscriptScales: s.manuscriptScales, lastPlayedVideo: s.lastPlayedVideo, playlists: s.playlists,
-    places: s.places, weeklyTrips: s.weeklyTrips,
+    places: s.places, weeklyTrips: s.weeklyTrips, occasionRules: s.occasionRules,
   };
 }
 
 export const useMediaStore = create<MediaState>()(
   persist(
     (set, get) => ({
-      favoriteChannels: [], savedVideos: [], videoProgress: {}, continueWatching: [], favoriteTeams: [], pinnedMatches: [], seededTeamsV1: false, favoriteLeagueIds: [307, 39, 2, 140, 135], belledMatchIds: [], skippedMatchIds: [], leagueChannelOverrides: {}, followedLeagues: [], skippedReminderIds: [], favoriteIptvChannels: [], favoriteReciters: [], favoritePodcasts: [], iptvPlaylist: [], iptvPlaylistIndex: 0, prayerTimes: prayerTimesData, prayerSettings: DEFAULT_PRAYER_SETTINGS, reminders: [], generalAzkar: [], customManuscripts: [], manuscriptScales: {}, customFonts: [], customWallBackgrounds: [], playlists: [], isLooping: true, places: {}, weeklyTrips: [],
+      favoriteChannels: [], savedVideos: [], videoProgress: {}, continueWatching: [], favoriteTeams: [], pinnedMatches: [], seededTeamsV1: false, favoriteLeagueIds: [307, 39, 2, 140, 135], belledMatchIds: [], skippedMatchIds: [], leagueChannelOverrides: {}, followedLeagues: [], skippedReminderIds: [], favoriteIptvChannels: [], favoriteReciters: [], favoritePodcasts: [], iptvPlaylist: [], iptvPlaylistIndex: 0, prayerTimes: prayerTimesData, prayerSettings: DEFAULT_PRAYER_SETTINGS, reminders: [], generalAzkar: [], customManuscripts: [], manuscriptScales: {}, customFonts: [], customWallBackgrounds: [], playlists: [], isLooping: true, places: {}, weeklyTrips: [], occasionRules: DEFAULT_OCCASION_RULES,
       mapSettings: { zoom: 20.0, tilt: 65, carScale: 1.02, backgroundIndex: 0, showManuscriptBg: true, manuscriptBgUrl: "https://www.image2url.com/r2/default/images/1782382707952-d99447c6-bc60-475d-9406-5fd2ef320bd5.png", fontScale: 1.0, manuscriptColor: '#ffffff', showManuscriptOnMoon: true, moonManuIdx: 0, hue: 0, saturation: 100, brightness: 100, winwinUrl: "https://psee.io/9f4ngl", beinUrl: "https://idebsports.ly/matches", omanUrl: "https://player.mangomolo.com/v1/live?id=MTY8&channelid=MTYx&countries=Q0M%3D&filter=DENY&signature=3fd1e8dd84138a41bf33d93afd4a7f09&language=en&app_id=&fullscreen=yes&player_profile=&base_url=aHR0cHM6Ly9heW4ub20vbGl2ZS8xNjEvJUQ5JTgyJUQ5JTg2JUQ4JUE3JUQ4JUE5LSVEOCVCOSVEOSU4NSVEOCVBNyVEOSU4Ni0lRDklODUlRDglQTglRDglQTclRDglQjQlRDglQjE%3D&autoplay=false&vast=true", bein1Url: "https://online.aflam4you.net/zremb472.php/?vid=68&aflam_s=1&aflam_w=360&aflam_w=360&aflam_h=250&aflam_k=18311111", mbc1Url: "https://online.aflam4you.net/zremb472.php?vid=5&aflam_s=1&aflam_w=360&h=250&aflam_k=18311111", invertJoystickX: true, invertJoystickY: true, autoRotateNav90: true },
       displayScale: 1.0, dockScale: 1.0, keyMappings: DEFAULT_CONTEXT_MAPPINGS, activeVideo: null, lastPlayedVideo: null, activeIptv: null, activeAudio: null, activeQuranUrl: "https://quran.com/ar/radio?autoplay=1", playlist: [], playlistIndex: 0, isPlaying: false, isMinimized: false, isFullScreen: false, isPlayerControlsExpanded: false, isPlayerPlaylistOpen: false, gridMode: 'hidden', dockSide: 'left', showIslands: true, autoHideIsland: true, isSidebarShrinked: false, wallPlateType: null, wallPlateData: null, isReorderMode: false, isRecordingKey: false, recordingAction: null, isInitialLoading: true, aiSuggestions: [], pickedUpId: null,
       
@@ -385,6 +395,7 @@ export const useMediaStore = create<MediaState>()(
             playlists: Array.isArray(data.playlists) ? data.playlists : get().playlists || [],
             places: data.places && typeof data.places === "object" && !Array.isArray(data.places) ? data.places : get().places || {},
             weeklyTrips: Array.isArray(data.weeklyTrips) ? data.weeklyTrips : get().weeklyTrips || [],
+            occasionRules: Array.isArray(data.occasionRules) ? data.occasionRules : get().occasionRules || DEFAULT_OCCASION_RULES,
           });
           // One-time: add the user's favourite teams (by name; ids are synthetic) and remember it in the cloud,
           // so a team removed later is not added back and every device gets the same list.
@@ -496,6 +507,7 @@ export const useMediaStore = create<MediaState>()(
       reorderIptvChannelTo: (f, t) => set((s) => { const l = [...s.favoriteIptvChannels], fI = l.findIndex(i => i.stream_id === f), tI = l.findIndex(i => i.stream_id === t); if (fI === -1 || tI === -1) return s; const [m] = l.splice(fI, 1); l.splice(tI, 0, m); return { favoriteIptvChannels: l }; }),
       
       setPlace: (key, p) => { set((s) => ({ places: { ...(s.places || {}), [key]: p } })); setTimeout(() => get().syncMasterBin(), 100); },
+      setOccasionRules: (r) => { set({ occasionRules: r }); setTimeout(() => get().syncMasterBin(), 600); },
       setWeeklyTrips: (t) => { set({ weeklyTrips: t }); setTimeout(() => get().syncMasterBin(), 600); },
       addPlaylist: (name, videos = []) => {
         const id = Date.now().toString();

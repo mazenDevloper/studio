@@ -191,7 +191,7 @@ export function LiveMatchIsland() {
 
       // the day's occasions (Hijri, Gregorian, Friday, fasting tomorrow, sport days, or a saying): one at least
       const occDone: string[] = (() => { try { return JSON.parse(localStorage.getItem(`occ-done-${dateStr}`) || "[]"); } catch { return []; } })();
-      for (const o of todayOccasions(now)) {
+      for (const o of todayOccasions(now, useMediaStore.getState().occasionRules)) {
         if (occDone.includes(o.id)) continue;
         list.push({ id: o.id, name: o.title, diff: 0, type: 'azkar', iconType: 'circle', color: 'text-amber-300', completed: false });
       }

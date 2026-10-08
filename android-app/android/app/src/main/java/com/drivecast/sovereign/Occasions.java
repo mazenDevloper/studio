@@ -198,6 +198,25 @@ final class Occasions {
         return null;
     }
 
+    private static boolean containsId(List<IslandArt.Item> l, String id) {
+        for (IslandArt.Item it : l) if (id.equals(it.id)) return true;
+        return false;
+    }
+
+    /** the occasion rules: the app's copy (Hub), else the cloud's, else the defaults */
+    static JSONArray rules(Context ctx) {
+        Object h = Hub.get(ctx, "occasionRules");
+        if (h instanceof JSONArray) return (JSONArray) h;
+        JSONArray m = Cloud.master(ctx).optJSONArray("occasionRules");
+        if (m != null) return m;
+        try {
+            return new JSONArray("[{\"id\":\"kahf\",\"title\":\"سورة الكهف · يوم الجمعة\",\"days\":[5]},{\"id\":\"sport\",\"title\":\"🏃 يوم الرياضة\",\"days\":[0,2]},"
+                    + "{\"id\":\"mosque\",\"title\":\"🕌 طلعة المسجد\",\"days\":[3]},{\"id\":\"fast\",\"title\":\"تذكير: صيام الغد\",\"days\":[0,3]},{\"id\":\"shop\",\"title\":\"🛒 التسوّق الشهري\",\"monthDay\":23}]");
+        } catch (Exception e) {
+            return new JSONArray();
+        }
+    }
+
     private static IslandArt.Item banner(String id, String title) {
         IslandArt.Item it = new IslandArt.Item();
         it.kind = "azkar";
@@ -229,7 +248,7 @@ final class Occasions {
 
         // Friday
         if (friday) {
-            if (now >= fajr && now < maghrib && !done(ctx, "occ-kahf", now)) out.add(banner("occ-kahf", "سورة الكهف · يوم الجمعة"));
+            // (Surat al-Kahf now comes from the occasion rules below)
             if (dhuhr > 0 && now >= dhuhr - 90 * 60_000L && now < dhuhr) out.add(countdown("occ-jumuah", "الجمعة · بكّر إلى الصلاة", dhuhr));
             if (now >= maghrib - 60 * 60_000L && now < maghrib && !done(ctx, "occ-hour", now)) out.add(countdown("occ-hour", "ساعة الإجابة · أكثر من الدعاء", maghrib));
         }
@@ -260,8 +279,28 @@ final class Occasions {
         String g = gregorianOccasion(c);
         if (g != null && daytime && !done(ctx, "occ-greg", now)) out.add(banner("occ-greg", "📅 " + g));
         int dow = c.get(Calendar.DAY_OF_WEEK);
-        if ((dow == Calendar.SUNDAY || dow == Calendar.TUESDAY) && daytime && Hub.bool(ctx, "sportDays", true) && !done(ctx, "occ-sport", now))
-            out.add(banner("occ-sport", "🏃 يوم الرياضة · لا تنسَ تمرينك اليوم"));
+        // your weekly / monthly occasions (site settings ← المناسبات): Kahf on Friday, sport, the mosque outing, the
+        // monthly shopping...; "fast" reminds the day before from Asr (with "سأصوم")
+        JSONArray rules = rules(ctx);
+        int jsDow = dow - 1; // 0 = Sunday, like the site
+        for (int i = 0; i < rules.length(); i++) {
+            JSONObject r = rules.optJSONObject(i);
+            if (r == null || r.optBoolean("off")) continue;
+            boolean today = false;
+            JSONArray ds = r.optJSONArray("days");
+            for (int k = 0; ds != null && k < ds.length(); k++) if (ds.optInt(k) == jsDow) today = true;
+            if (r.optInt("monthDay") > 0 && r.optInt("monthDay") == c.get(Calendar.DAY_OF_MONTH)) today = true;
+            if (!today) continue;
+            String rid = r.optString("id");
+            if ("fast".equals(rid)) {
+                String why = reason != null ? reason : "صيام الغد";
+                if (now >= (asr > 0 ? asr : maghrib) && now < askEnd && !fasting(ctx, now + 24 * 3600_000L) && !done(ctx, "occ-fast", now) && !containsId(out, "occ-fast"))
+                    out.add(banner("occ-fast", "تذكير صيام الغد · " + why + " · هل ستصوم؟"));
+                continue;
+            }
+            String id = "kahf".equals(rid) ? "occ-kahf" : "occ-r-" + rid;
+            if (daytime && !done(ctx, id, now)) out.add(banner(id, r.optString("title")));
+        }
         boolean any = out.size() > before || friday || fasting(ctx, now) || reason != null;
         if (!any && daytime && !done(ctx, "occ-daily", now))
             out.add(banner("occ-daily", "✨ " + DAILY[c.get(Calendar.DAY_OF_YEAR) % DAILY.length]));

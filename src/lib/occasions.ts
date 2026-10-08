@@ -84,17 +84,20 @@ export function fastReason(now: Date): string | null {
 }
 
 /** Today's occasions as island titles (at least one). */
-export function todayOccasions(now: Date): { id: string; title: string }[] {
+export function todayOccasions(now: Date, rules?: { id: string; title: string; days?: number[]; monthDay?: number; off?: boolean }[]): { id: string; title: string }[] {
   const out: { id: string; title: string }[] = [];
   const h = hijriOccasion(hijri(now));
   if (h) out.push({ id: "occ-hijri", title: "🌙 " + h });
   const g = gregorianOccasion(now);
   if (g) out.push({ id: "occ-greg", title: "📅 " + g });
   const dow = now.getDay();
-  if (dow === 5) out.push({ id: "occ-kahf", title: "سورة الكهف · يوم الجمعة" });
-  if (dow === 0 || dow === 2) out.push({ id: "occ-sport", title: "🏃 يوم الرياضة" });
+  // your weekly / monthly occasions (settings ← المناسبات)
+  for (const r of rules ?? []) {
+    if (r.off) continue;
+    if ((r.days && r.days.includes(dow)) || (r.monthDay && r.monthDay === now.getDate())) out.push({ id: `occ-r-${r.id}`, title: r.title });
+  }
   const r = fastReason(now);
-  if (r && now.getHours() >= 15) out.push({ id: "occ-fast", title: `تذكير صيام الغد · ${r}` });
+  if (r && now.getHours() >= 15 && !out.some(o => o.id === "occ-r-fast")) out.push({ id: "occ-fast", title: `تذكير صيام الغد · ${r}` });
   if (!out.length) out.push({ id: "occ-daily", title: "✨ " + DAILY[Math.floor((now.getTime() - new Date(now.getFullYear(), 0, 0).getTime()) / 86_400_000) % DAILY.length] });
   return out;
 }
