@@ -163,7 +163,22 @@ final class WidgetArt {
 
     // ============================================================================================== matches
 
+    /** how many match rows one page of the widget holds (the arrows page through the rest) */
+    static int matchesPerPage(int w, int h) {
+        float unit = Math.min(h, w * 0.5f);
+        float pad = Math.max(unit * 0.07f, w * 0.03f);
+        float headH = Math.max(h * 0.16f, Math.min(h * 0.22f, unit * 0.2f));
+        float avail = h - (pad * 0.5f + headH + pad * 0.2f) - pad * 0.7f - headH * 0.45f;
+        float minRow = Math.max(unit * 0.15f, h * 0.1f);
+        int rows = Math.max(1, (int) (avail / minRow));
+        return rows * (w > h * 1.6f ? 2 : 1);
+    }
+
     static Bitmap matches(Context ctx, int w, int h, JSONArray list) {
+        return matches(ctx, w, h, list, "مباريات فرقي ⚽", "");
+    }
+
+    static Bitmap matches(Context ctx, int w, int h, JSONArray list, String heading, String pageText) {
         Bitmap b = blank(w, h);
         Canvas c = new Canvas(b);
         float rad = radius(w, h);
@@ -176,7 +191,7 @@ final class WidgetArt {
         float headH = Math.max(h * 0.16f, Math.min(h * 0.22f, unit * 0.2f));
         TextPaint title = Art.text(black, headH * 0.5f, Art.YELLOW);
         title.setTextAlign(Paint.Align.RIGHT);
-        c.drawText("مباريات فرقي ⚽", w - pad, Art.baseline(title, pad * 0.5f + headH / 2), title);
+        c.drawText(heading + (pageText.isEmpty() ? "" : "  " + pageText), w - pad, Art.baseline(title, pad * 0.5f + headH / 2), title);
         int live = 0;
         for (int i = 0; i < list.length(); i++) if ("live".equals(list.optJSONObject(i).optString("status"))) live++;
         if (live > 0) {
@@ -190,13 +205,13 @@ final class WidgetArt {
         float avail = h - top - pad * 0.7f;
         if (list.length() == 0) {
             TextPaint e = Art.text(bold, unit * 0.09f, Art.alpha(Art.WHITE, 0.35f));
-            Art.centerText(c, "لا مباريات لفرقك اليوم", w / 2f, top + avail / 2, e);
+            Art.centerText(c, heading.startsWith("المنتهية") ? "لا مباريات منتهية" : "لا مباريات لفرقك اليوم", w / 2f, top + avail / 2, e);
             return b;
         }
         // all your teams' matches: smaller rows, and two columns when they still don't fit (a wide widget)
         float minRow = Math.max(unit * 0.15f, h * 0.1f);
         int cap = Math.max(1, (int) (avail / minRow));
-        int cols = list.length() > cap && w > h * 1.1f ? 2 : 1;
+        int cols = (list.length() > cap && w > h * 1.1f) || w > h * 1.6f ? 2 : 1;
         int rows = Math.max(1, Math.min((list.length() + cols - 1) / cols, cap));
         int shown = Math.min(list.length(), rows * cols);
         if (shown < list.length()) {

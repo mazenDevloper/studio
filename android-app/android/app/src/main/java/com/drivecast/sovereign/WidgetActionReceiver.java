@@ -23,6 +23,8 @@ public class WidgetActionReceiver extends BroadcastReceiver {
     static final String MANU_NEXT = "com.drivecast.MANU_NEXT";
     static final String MAP_TOGGLE = "com.drivecast.MAP_TOGGLE";
     static final String MATCHES_REFRESH = "com.drivecast.MATCHES_REFRESH";
+    static final String MATCHES_PREV = "com.drivecast.MATCHES_PREV";
+    static final String MATCHES_NEXT = "com.drivecast.MATCHES_NEXT";
 
     @Override
     public void onReceive(Context ctx, Intent intent) {
@@ -45,6 +47,14 @@ public class WidgetActionReceiver extends BroadcastReceiver {
                 open.putExtra("arg", cmd);
                 ctx.startActivity(open);
             }
+        } else if (MATCHES_PREV.equals(a) || MATCHES_NEXT.equals(a)) {
+            // the matches widget's ‹ (the finished) / › (the next ones by kick-off)
+            android.content.SharedPreferences p = NativeIslandPlugin.prefs(ctx);
+            boolean fresh = System.currentTimeMillis() - p.getLong("matchesPageAt", 0) <= 180_000L;
+            int page = (fresh ? p.getInt("matchesPage", 0) : 0) + (MATCHES_NEXT.equals(a) ? 1 : -1);
+            page = Math.max(p.getInt("matchesPageMin", -1), Math.min(p.getInt("matchesPages", 1) - 1, page));
+            p.edit().putInt("matchesPage", page).putLong("matchesPageAt", System.currentTimeMillis()).apply();
+            Widgets.updateAll(ctx.getApplicationContext());
         } else if (MATCHES_REFRESH.equals(a)) {
             // the matches widget's ⟳: the scores now, whatever the schedule says
             final Context app = ctx.getApplicationContext();

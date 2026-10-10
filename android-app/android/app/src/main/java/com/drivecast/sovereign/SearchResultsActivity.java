@@ -46,6 +46,8 @@ public class SearchResultsActivity extends Activity {
         } catch (Exception ignored) {
         }
         String query = getIntent().getStringExtra("query");
+        String reciter = getIntent().getStringExtra("reciter"), channel = getIntent().getStringExtra("channel");
+        String heading = getIntent().getStringExtra("title");
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
@@ -55,22 +57,84 @@ public class SearchResultsActivity extends Activity {
         LinearLayout bar = new LinearLayout(this);
         bar.setGravity(Gravity.CENTER_VERTICAL);
         bar.setPadding(dp(16), dp(14), dp(16), dp(10));
-        TextView title = text("🔎 " + (query == null ? "" : query), 18, Color.WHITE, true);
-        title.setSingleLine(true);
-        title.setEllipsize(TextUtils.TruncateAt.END);
-        bar.addView(title, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+        titleView = text(heading != null ? heading : reciter != null ? "🎙 " + reciter : "🔎 " + (query == null ? "" : query), 18, Color.WHITE, true);
+        titleView.setSingleLine(true);
+        titleView.setEllipsize(TextUtils.TruncateAt.END);
+        bar.addView(titleView, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
         TextView close = pill("✕ إغلاق", 0x99DC2626);
         close.setOnClickListener(v -> finish());
         bar.addView(close);
         root.addView(bar);
-        TextView hint = text("اضغط بطاقة للمشغّل الكامل · 🎧 للصوت فقط في الجزيرة", 12, 0x99FFFFFF, false);
+        hint = text("", 12, 0x99FFFFFF, false);
         hint.setPadding(dp(16), 0, dp(16), dp(8));
         root.addView(hint);
 
         ScrollView sv = new ScrollView(this);
-        LinearLayout grid = new LinearLayout(this);
+        grid = new LinearLayout(this);
         grid.setOrientation(LinearLayout.VERTICAL);
         grid.setPadding(dp(10), 0, dp(10), dp(20));
+        sv.addView(grid);
+        root.addView(sv, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1));
+        setContentView(root);
+
+        if (reciter != null) showSurahs(reciter);
+        else if (getIntent().getStringExtra("items") != null) showVideos();
+        else load(query, channel);
+    }
+
+    private LinearLayout grid;
+    private TextView titleView, hint;
+
+    /** a reciter (the reciters widget): the 114 surahs to pick from, then that surah's recitations */
+    private void showSurahs(String reciter) {
+        hint.setText("اختر السورة");
+        grid.removeAllViews();
+        int cols = getResources().getDisplayMetrics().widthPixels > dp(700) ? 5 : 3;
+        LinearLayout row = null;
+        for (int k = 0; k < MediaBrowser.SURAHS.length; k++) {
+            if (k % cols == 0) {
+                row = new LinearLayout(this);
+                row.setOrientation(LinearLayout.HORIZONTAL);
+                grid.addView(row);
+            }
+            final String name = MediaBrowser.SURAHS[k];
+            TextView t = text((k + 1) + ". " + name, 15, Color.WHITE, true);
+            t.setGravity(Gravity.CENTER);
+            t.setPadding(dp(6), dp(14), dp(6), dp(14));
+            GradientDrawable g = new GradientDrawable();
+            g.setColor(0xFF15151C);
+            g.setCornerRadius(dp(14));
+            t.setBackground(g);
+            t.setOnClickListener(v -> {
+                titleView.setText("🎙 " + reciter + " · سورة " + name);
+                load(reciter + " سورة " + name, null);
+            });
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1);
+            lp.setMargins(dp(4), dp(4), dp(4), dp(4));
+            row.addView(t, lp);
+        }
+        if (row != null) for (int k = MediaBrowser.SURAHS.length % cols; k > 0 && k < cols; k++) row.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1));
+    }
+
+    /** a search / a channel's videos, fetched here */
+    private void load(String query, String channel) {
+        grid.removeAllViews();
+        hint.setText("جاري التحميل...");
+        new Thread(() -> {
+            JSONArray res;
+            try {
+                res = channel != null ? MediaBrowser.channelVideos(channel) : MediaBrowser.search(query == null ? "" : query, null);
+            } catch (Exception e) {
+                res = new JSONArray();
+            }
+            final JSONArray r = res;
+            ui.post(() -> { items = r; showVideos(); });
+        }).start();
+    }
+
+    private void showVideos() {
+        hint.setText("اضغط بطاقة للمشغّل الكامل · 🎧 للصوت فقط في الجزيرة");
+        grid.removeAllViews();
         int cols = getResources().getDisplayMetrics().widthPixels > dp(700) ? 3 : 2;
         LinearLayout row = null;
         for (int i = 0; i < items.length(); i++) {
@@ -83,9 +147,13 @@ public class SearchResultsActivity extends Activity {
         }
         if (row != null) for (int k = items.length() % cols; k > 0 && k < cols; k++) row.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1));
         if (items.length() == 0) grid.addView(text("لا نتائج", 16, 0x99FFFFFF, false));
-        sv.addView(grid);
-        root.addView(sv, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1));
-        setContentView(root);
+    }
+
+    /** open full screen from a widget */
+    static void open(android.content.Context ctx, Intent extras) {
+        Intent i = new Intent(ctx, SearchResultsActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        if (extras.getExtras() != null) i.putExtras(extras.getExtras());
+        try { ctx.startActivity(i); } catch (Exception ignored) { }
     }
 
     private View card(int i) {

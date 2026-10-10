@@ -376,10 +376,33 @@ public final class Widgets {
             if (ra != rb) return ra - rb;
             return Long.compare(a.optLong("timestamp"), b.optLong("timestamp"));
         });
+        // pages: ‹ the finished ones · the live and upcoming (the default) · › the rest by kick-off time
+        List<JSONObject> done = new ArrayList<>(), active = new ArrayList<>();
+        for (JSONObject o : list) ("finished".equals(o.optString("status")) ? done : active).add(o);
+        int per = WidgetArt.matchesPerPage(w, h);
+        int pages = Math.max(1, (active.size() + per - 1) / per);
+        android.content.SharedPreferences pr = NativeIslandPlugin.prefs(ctx);
+        int page = pr.getInt("matchesPage", 0);
+        // back to the live / upcoming page after 3 minutes untouched
+        if (System.currentTimeMillis() - pr.getLong("matchesPageAt", 0) > 180_000L) page = 0;
+        page = Math.max(done.isEmpty() ? 0 : -1, Math.min(pages - 1, page));
+        pr.edit().putInt("matchesPages", pages).putInt("matchesPageMin", done.isEmpty() ? 0 : -1).apply();
         JSONArray sorted = new JSONArray();
-        for (JSONObject o : list) sorted.put(o);
+        String heading = "مباريات فرقي ⚽", pageText = "";
+        if (page < 0) {
+            heading = "المنتهية ✓";
+            for (int k = Math.max(0, done.size() - per); k < done.size(); k++) sorted.put(done.get(k));
+        } else {
+            for (int k = page * per; k < Math.min(active.size(), (page + 1) * per); k++) sorted.put(active.get(k));
+            if (page > 0) heading = "التالية";
+            if (pages > 1) pageText = (page + 1) + "/" + pages;
+        }
         RemoteViews v = new RemoteViews(ctx.getPackageName(), R.layout.widget_matches_canvas);
-        v.setImageViewBitmap(R.id.widget_canvas, WidgetArt.matches(ctx, w, h, sorted));
+        v.setImageViewBitmap(R.id.widget_canvas, WidgetArt.matches(ctx, w, h, sorted, heading, pageText));
+        v.setTextViewText(R.id.matches_prev, "‹");
+        v.setTextViewText(R.id.matches_next, "›");
+        v.setOnClickPendingIntent(R.id.matches_prev, action(ctx, WidgetActionReceiver.MATCHES_PREV, 104));
+        v.setOnClickPendingIntent(R.id.matches_next, action(ctx, WidgetActionReceiver.MATCHES_NEXT, 105));
         v.setOnClickPendingIntent(R.id.widget_root, openApp(ctx, "/matches", 102));
         // ⟳ : fetch the scores now ("…" while it works)
         boolean busy = System.currentTimeMillis() - NativeIslandPlugin.prefs(ctx).getLong("matchesRefreshAt", 0) < 30_000L;

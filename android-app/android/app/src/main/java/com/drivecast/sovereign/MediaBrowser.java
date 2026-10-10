@@ -200,7 +200,26 @@ final class MediaBrowser {
     static JSONObject top(Context ctx, int wid) {
         JSONArray st = stack(ctx, wid);
         if (st.length() > 0) return st.optJSONObject(st.length() - 1);
-        return root(ctx, rootKind(ctx, wid));
+        String kind = rootKind(ctx, wid);
+        JSONObject r = root(ctx, kind);
+        if (paged(kind)) {
+            // one page: as many as the widget shows, ‹ › for the others
+            android.content.SharedPreferences p = NativeIslandPlugin.prefs(ctx);
+            int per = Math.max(1, p.getInt("pageSize_" + wid, 8));
+            JSONArray all = r.optJSONArray("items");
+            if (all != null && all.length() > per) {
+                int pages = (all.length() + per - 1) / per;
+                int pg = Math.min(pages - 1, p.getInt("page_" + wid, 0));
+                JSONArray slice = new JSONArray();
+                for (int k = pg * per; k < Math.min(all.length(), (pg + 1) * per); k++) slice.put(all.opt(k));
+                try { r.put("items", slice).put("pageText", (pg + 1) + "/" + pages).put("total", all.length()); } catch (Exception ignored) { }
+            }
+        }
+        return r;
+    }
+
+    static boolean paged(String kind) {
+        return "reciters".equals(kind) || "channels".equals(kind);
     }
 
     private static JSONObject root(Context ctx, String kind) {
@@ -436,6 +455,38 @@ final class MediaBrowser {
             done.finish();
             return;
         }
+        if ("reciter".equals(kind) || "channel".equals(kind) || "playlist".equals(kind)) {
+            // full screen, like the voice search results: a reciter's surahs, a channel's videos, a folder's videos
+            Intent x = new Intent();
+            if ("reciter".equals(kind)) x.putExtra("reciter", name);
+            else if ("channel".equals(kind)) x.putExtra("channel", id).putExtra("title", "📺 " + name);
+            else {
+                JSONArray pl = Widgets.playlists(ctx);
+                for (int k = 0; k < pl.length(); k++) {
+                    JSONObject p = pl.optJSONObject(k);
+                    if (p != null && id.equals(p.optString("id"))) {
+                        JSONArray v = p.optJSONArray("videos");
+                        x.putExtra("items", (v != null ? v : new JSONArray()).toString()).putExtra("title", "📁 " + name);
+                    }
+                }
+                if (!x.hasExtra("items")) x.putExtra("items", "[]").putExtra("title", "📁 " + name);
+            }
+            SearchResultsActivity.open(ctx, x);
+            done.finish();
+            return;
+        }
+        if ("pager".equals(kind)) {
+            // the reciters / subscriptions widget's ‹ ›: the next n (as many as the widget shows), round and round
+            android.content.SharedPreferences p = NativeIslandPlugin.prefs(ctx);
+            int per = Math.max(1, p.getInt("pageSize_" + wid, 8));
+            int total = root(ctx, rootKind(ctx, wid)).optJSONArray("items") != null ? root(ctx, rootKind(ctx, wid)).optJSONArray("items").length() : 0;
+            int pages = Math.max(1, (total + per - 1) / per);
+            int pg = (p.getInt("page_" + wid, 0) + i.getIntExtra("delta", 1) + pages) % pages;
+            p.edit().putInt("page_" + wid, pg).apply();
+            Widgets.updateAll(ctx);
+            done.finish();
+            return;
+        }
         if ("playlist".equals(kind)) {
             // the folder's videos (kept from the cloud)
             JSONArray pl = Widgets.playlists(ctx);
@@ -533,8 +584,26 @@ final class MediaBrowser {
         float k = h / (float) Math.max(1, realH);
         int hh = Math.max(1, Math.round(40 * d * k));
         boolean deep = stack(ctx, wid).length() > 0;
-        int hw = Math.max(1, Math.round(w - 20 * d * k - 116 * d * k - (deep ? 46 * d * k : 0)));
-        v.setImageViewBitmap(R.id.browse_header, WidgetArt.browseHeader(ctx, hw, hh, t.optString("title"), items.length(), rootKind(ctx, wid)));
+        String rk = rootKind(ctx, wid);
+        boolean pager = !deep && paged(rk) && layout == R.layout.widget_browse;
+        if (pager) {
+            // the page size from the widget's size: columns of ~94 dp, rows of ~112 dp
+            float wDp = w / (d * k), hDp = (h / (d * k)) - 68;
+            int per = Math.max(1, (int) ((wDp - 20) / 94)) * Math.max(1, (int) (hDp / 112));
+            NativeIslandPlugin.prefs(ctx).edit().putInt("pageSize_" + wid, per).apply();
+        }
+        boolean showPager = pager && !t.optString("pageText").isEmpty();
+        int hw = Math.max(1, Math.round(w - 20 * d * k - 116 * d * k - (deep ? 46 * d * k : 0) - (showPager ? 92 * d * k : 0)));
+        v.setImageViewBitmap(R.id.browse_header, WidgetArt.browseHeader(ctx, hw, hh, t.optString("title") + (showPager ? "  " + t.optString("pageText") : ""), t.optInt("total", items.length()), rk));
+        v.setViewVisibility(R.id.browse_prev, showPager ? View.VISIBLE : View.GONE);
+        v.setViewVisibility(R.id.browse_next, showPager ? View.VISIBLE : View.GONE);
+        if (showPager) {
+            for (int dir : new int[]{-1, 1}) {
+                Intent pi = new Intent(ctx, WidgetActionReceiver.class).setAction(BROWSE).putExtra("wid", wid).putExtra("kind", "pager").putExtra("delta", dir);
+                pi.setData(Uri.parse("drivecast://pager/" + wid + "/" + dir));
+                v.setOnClickPendingIntent(dir < 0 ? R.id.browse_prev : R.id.browse_next, PendingIntent.getBroadcast(ctx, 1500 + wid * 2 + (dir < 0 ? 0 : 1), pi, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT));
+            }
+        }
         v.setImageViewBitmap(R.id.browse_search, WidgetArt.searchButton(ctx, Math.round(110 * d * k), hh));
         v.setViewVisibility(R.id.browse_back, deep ? View.VISIBLE : View.GONE);
         if (deep) {
