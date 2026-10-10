@@ -43,7 +43,14 @@ public class TripMenuActivity extends Activity {
         status.setVisibility(View.GONE);
         list.addView(status);
 
-        if (Intent.ACTION_SEND.equals(getIntent().getAction())) sharedPlace(getIntent().getStringExtra(Intent.EXTRA_TEXT));
+        if (Intent.ACTION_SEND.equals(getIntent().getAction())) sharedPlace(getIntent().getStringExtra(Intent.EXTRA_TEXT), false);
+        // a map link opened from WhatsApp / anywhere ("فتح بواسطة DriveCast"): straight to an island with the distance
+        if (Intent.ACTION_VIEW.equals(getIntent().getAction()) && getIntent().getData() != null) {
+            android.net.Uri d = getIntent().getData();
+            String q = d.getQueryParameter("q");
+            String label = "geo".equals(d.getScheme()) && q != null && q.contains("(") ? q.substring(q.indexOf('(') + 1).replace(")", "") : "الموقع المرسل";
+            sharedPlace(label + "\n" + d.toString(), true);
+        }
 
         JSONObject t = Trip.current(this);
         if (t != null) {
@@ -100,7 +107,7 @@ public class TripMenuActivity extends Activity {
      * A place shared from Google Maps (Share → DriveCast): "Name\nAddress\nhttps://maps.app.goo.gl/..." - the link is
      * followed to its coordinates, then: go there now (route + the mosques on the way) or keep it as a place.
      */
-    private void sharedPlace(String text) {
+    private void sharedPlace(String text, boolean auto) {
         if (text == null) return;
         String[] lines = text.trim().split("\n");
         String name = lines.length > 1 ? lines[0].trim() : "المكان المشارك";
@@ -121,6 +128,7 @@ public class TripMenuActivity extends Activity {
                 } catch (Exception ignored) {
                 }
                 LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+                if (auto) { Hub.set(this, "places", places); go(id); return; }
                 int at = list.indexOfChild(info) + 1;
                 list.addView(row("🧭 انطلق الآن (المسار والمساجد)", true, () -> { Hub.set(this, "places", places); go(id); }), at);
                 list.addView(row("💾 احفظه في أماكني", false, () -> {

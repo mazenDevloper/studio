@@ -342,9 +342,9 @@ export function LiveMatchIsland() {
                          {/^\d/.test(alert.minuteStr) ? `د${alert.minuteStr.replace(/'/g, "")}` : alert.minuteStr}
                        </span>
                      )}
-                     <div className={cn("rounded-full bg-white/5 flex items-center justify-center border border-white/10 overflow-hidden shrink-0 shadow-lg relative", isMatchCollapsed ? "w-12 h-12" : "w-20 h-20")}>{alert.homeLogo ? <img src={alert.homeLogo} className={cn("object-contain drop-shadow-md", isMatchCollapsed ? "w-10 h-10" : "w-16 h-16")} alt="" /> : <Trophy className={cn("text-white/10", isMatchCollapsed ? "w-5 h-5" : "w-8 h-8")} />}{!isMatchCollapsed && <span className="absolute bottom-0 left-0 right-0 bg-black/60 text-[6px] font-black text-white text-center truncate px-1">{alert.homeName || "HOME"}</span>}</div>
+                     <div className={cn("rounded-full bg-white/5 flex items-center justify-center border border-white/10 overflow-hidden shrink-0 shadow-lg relative", isMatchCollapsed ? "w-12 h-12" : "w-20 h-20")}><TeamLogo src={alert.homeLogo} name={alert.homeName} small={isMatchCollapsed} />{!isMatchCollapsed && <span className="absolute bottom-0 left-0 right-0 bg-black/60 text-[6px] font-black text-white text-center truncate px-1">{alert.homeName || "HOME"}</span>}</div>
                      <div className={cn("flex-1 flex flex-col items-center justify-center p-0 m-0", isMatchCollapsed ? "min-w-[6rem] max-[639px]:min-w-0 max-[639px]:flex-none max-[639px]:w-[5.5rem]" : "min-w-[12rem] max-[639px]:min-w-0 max-[639px]:flex-none max-[639px]:w-[9rem]")}><div className={cn("w-full p-0 m-0 flex items-center justify-center", isMatchCollapsed ? "h-14" : "h-24")}><GlassNumber text={alert.matchTimeStr || "--:--"} id={`match-${alert.id}`} size={isMatchCollapsed ? (isPhone ? "3.4rem" : "4.5rem") : (isPhone ? "4.4rem" : "5.6rem")} colorClass={alert.isExpired ? "text-emerald-400 animate-pulse" : "text-white"} /></div>{alert.minuteStr && !alert.isExpired && <span className={cn("font-black leading-none tabular-nums -mt-1", isMatchCollapsed ? "text-[0.65rem]" : "text-[0.9rem]", alert.isExpired ? "text-red-400" : "text-white/50")}>{alert.minuteStr}</span>}</div>
-                     <div className={cn("rounded-full bg-white/5 flex items-center justify-center border border-white/10 overflow-hidden shrink-0 shadow-lg relative", isMatchCollapsed ? "w-12 h-12" : "w-20 h-20")}>{alert.awayLogo ? <img src={alert.awayLogo} className={cn("object-contain drop-shadow-md", isMatchCollapsed ? "w-10 h-10" : "w-16 h-16")} alt="" /> : <Trophy className={cn("text-white/10", isMatchCollapsed ? "w-5 h-5" : "w-8 h-8")} />}{!isMatchCollapsed && <span className="absolute bottom-0 left-0 right-0 bg-black/60 text-[6px] font-black text-white text-center truncate px-1">{alert.awayName || "AWAY"}</span>}</div>
+                     <div className={cn("rounded-full bg-white/5 flex items-center justify-center border border-white/10 overflow-hidden shrink-0 shadow-lg relative", isMatchCollapsed ? "w-12 h-12" : "w-20 h-20")}><TeamLogo src={alert.awayLogo} name={alert.awayName} small={isMatchCollapsed} />{!isMatchCollapsed && <span className="absolute bottom-0 left-0 right-0 bg-black/60 text-[6px] font-black text-white text-center truncate px-1">{alert.awayName || "AWAY"}</span>}</div>
                    </div>
                  );
                }
@@ -378,6 +378,20 @@ export function LiveMatchIsland() {
     </div>
     </>
   );
+}
+
+/**
+ * A club's logo that never disappears: the source's picture, then the same picture through an image proxy (some
+ * sources block other sites or are http), then the club's initials.
+ */
+function TeamLogo({ src, name, small }: { src?: string; name?: string; small: boolean }) {
+  const [step, setStep] = useState(0);
+  useEffect(() => setStep(0), [src]);
+  const cls = cn("object-contain drop-shadow-md", small ? "w-10 h-10" : "w-16 h-16");
+  const url = !src ? "" : step === 0 ? src : step === 1 ? `https://images.weserv.nl/?url=${encodeURIComponent(src.replace(/^https?:\/\//, ""))}&w=128&h=128&fit=contain` : "";
+  if (url) return <img src={url} className={cls} alt="" referrerPolicy="no-referrer" onError={() => setStep(x => x + 1)} />;
+  const initials = (name || "").replace(/^(ال|FC |CF |AC )/i, "").trim().split(/\s+/).slice(0, 2).map(w => w[0]).join("").toUpperCase();
+  return initials ? <span className={cn("font-black text-white/80", small ? "text-base" : "text-2xl")}>{initials}</span> : <Trophy className={cn("text-white/10", small ? "w-5 h-5" : "w-8 h-8")} />;
 }
 
 /** The occasions one by one: ‹ the previous / the next ›, from three months back to six ahead. */

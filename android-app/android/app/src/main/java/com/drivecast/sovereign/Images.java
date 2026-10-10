@@ -117,7 +117,19 @@ final class Images {
         return new File(dir, sha1(url));
     }
 
+    /** the picture, or - when its site refuses / it is an SVG - the same picture through an image proxy (as PNG) */
     private static boolean fetch(Context ctx, String url, File out) {
+        if (fetchOnce(ctx, url, out)) return true;
+        if (!url.startsWith("http") && !url.startsWith("//")) return false;
+        String bare = url.replaceFirst("^(https?:)?//", "");
+        try {
+            return fetchOnce(ctx, "https://images.weserv.nl/?url=" + java.net.URLEncoder.encode(bare, "UTF-8") + "&w=160&h=160&fit=contain&output=png", out);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private static boolean fetchOnce(Context ctx, String url, File out) {
         if (url.startsWith("file://")) return out.exists();
         File tmp = new File(out.getPath() + ".part");
         try {
