@@ -47,7 +47,7 @@ public class TripMenuActivity extends Activity {
         // a map link opened from WhatsApp / anywhere ("فتح بواسطة DriveCast"): straight to an island with the distance
         if (Intent.ACTION_VIEW.equals(getIntent().getAction()) && getIntent().getData() != null) {
             android.net.Uri link = getIntent().getData();
-            String q = link.getQueryParameter("q");
+            String ls = link.toString(); String q = ls.contains("q=") ? android.net.Uri.decode(ls.substring(ls.indexOf("q=") + 2)) : null;
             String label = "geo".equals(link.getScheme()) && q != null && q.contains("(") ? q.substring(q.indexOf('(') + 1).replace(")", "") : "الموقع المرسل";
             sharedPlace(label + "\n" + link.toString(), true);
         }
