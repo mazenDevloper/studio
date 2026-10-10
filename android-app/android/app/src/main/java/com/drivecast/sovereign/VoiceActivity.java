@@ -151,6 +151,17 @@ public class VoiceActivity extends Activity {
 
     /** What was heard (null: nothing). */
     private void onHeard(String heardText) {
+        String replyKey = getIntent().getStringExtra("reply");
+        if (replyKey != null) {
+            // a voice answer to a WhatsApp / Telegram / SMS message (the island's «رد صوتي»)
+            if (heardText == null) { finish(); return; }
+            Notify.Msg m = Notify.find(replyKey);
+            boolean sent = Notify.reply(getApplicationContext(), m, heardText);
+            String ans = sent ? "أرسلت إلى " + m.from + ": " + heardText : "تعذّر الإرسال - افتح المحادثة";
+            view.setText(ans);
+            done(sent ? "أرسلت" : ans, true);
+            return;
+        }
         boolean azkar = IslandService.azkarActive();
         if (heardText == null) {
             // the azkar: keep listening a while (silence between repetitions)
@@ -263,6 +274,41 @@ public class VoiceActivity extends Activity {
                 ui.post(() -> { view.setText(plan); say(plan); ui.postDelayed(this::finish, 6000); });
             }).start();
             return "@أخطط الطريق إلى " + Trip.placeName(dest) + " وأبحث عن المساجد عليه...";
+        }
+
+        // the other apps: Google Maps, WhatsApp, messages
+        if ((s.contains("خرايط") || s.contains("قوقل ماب") || s.contains("جوجل ماب") || s.contains("الملاحه")) && !s.contains("مسجد")) {
+            if (Notify.navigateTrip(this)) return "#فتحت خرائط جوجل إلى وجهتك";
+            Intent maps = getPackageManager().getLaunchIntentForPackage(Notify.MAPS);
+            if (maps != null) { maps.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK); startActivity(maps); return "#فتحت خرائط جوجل"; }
+            return "خرائط جوجل غير مثبتة";
+        }
+        if (s.contains("شارك") && (s.contains("وصول") || s.contains("موقع") || s.contains("مكاني"))) {
+            Notify.shareEta(this);
+            return "#اختر المحادثة في واتساب";
+        }
+        if ((s.contains("اقرا") || s.contains("وش") || s.contains("ايش") || s.contains("اخر")) && (s.contains("رساله") || s.contains("رسايل") || s.contains("الواتس"))) {
+            if (!Notify.allowed(this)) { Notify.askAccess(this); return "اسمح لي بالوصول للإشعارات أولاً ثم أعد الطلب"; }
+            java.util.List<Notify.Msg> ms = Notify.recent();
+            if (ms.isEmpty()) return "لا رسائل جديدة";
+            StringBuilder b = new StringBuilder();
+            for (int i = 0; i < Math.min(3, ms.size()); i++) b.append("من ").append(ms.get(i).from).append(": ").append(ms.get(i).text).append(". ");
+            return b.toString();
+        }
+        if (s.startsWith("رد ") || s.startsWith("رد عليه") || s.startsWith("قل له") || s.startsWith("قول له")) {
+            Notify.Msg m = Notify.latest();
+            if (m == null) return "لا رسالة أرد عليها";
+            String text = said.replaceFirst("^\\s*(رد عليه[ا]?|ردّ عليه[ا]?|رد|ردّ|قل له|قول له|قله)\\s*(ب|بـ)?\\s*", "").trim();
+            if (text.isEmpty()) {
+                getIntent().putExtra("reply", m.key);
+                ui.postDelayed(this::listen, 1200);
+                return "@ماذا أرد على " + m.from + "؟";
+            }
+            return Notify.reply(getApplicationContext(), m, text) ? "أرسلت إلى " + m.from : "تعذّر الإرسال";
+        }
+        if (s.contains("واتس") && (s.contains("افتح") || s.contains("شغل"))) {
+            Intent wa = getPackageManager().getLaunchIntentForPackage("com.whatsapp");
+            if (wa != null) { wa.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK); startActivity(wa); return "#فتحت واتساب"; }
         }
 
         // the day, the date, the time

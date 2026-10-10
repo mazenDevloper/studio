@@ -310,6 +310,7 @@ public class IslandService extends Service {
             quranPlayer = null;
         }
         removeIsland();
+        removeControls();
         updateBubble(false, false);
         hideMap();
         stopAudio();
@@ -377,8 +378,9 @@ public class IslandService extends Service {
         bubbleAlert = hidden && (critical || !visible.isEmpty() || hasUrgent(items, now));
         boolean controls = Hub.bool(this, "islandBubble", true);
         // hidden: the islands' row keeps just its controls (eye / microphone) so they can come back
-        if (allowed && (!visible.isEmpty() || celebration != null || controls)) showIsland(visible, now); // the eye / microphone stay even with no island
+        if (allowed && (!visible.isEmpty() || celebration != null)) showIsland(visible, now);
         else removeIsland();
+        showControls(allowed && controls); // the eye / microphone: their own fixed windows, even with no island
         updateBubble(false, hidden); // the controls now sit beside the islands
         updateControls(hidden);
     }
@@ -723,6 +725,7 @@ public class IslandService extends Service {
         voiceReminderItems(out, now);
         roadItem(out, now);
         tripItem(out, now);
+        messageItems(out);
         {
             // the day's dhikr: always shown, like the site (hidden once marked done today)
             JSONArray az = Cloud.master(this).optJSONArray("generalAzkar");
@@ -838,6 +841,7 @@ public class IslandService extends Service {
 
     private static long distance(IslandArt.Item it, long now) {
         if ("match".equals(it.kind)) return it.live() ? 0 : it.kickoff - now;
+        if (it.id.startsWith("msg-")) return 1;
         if ("azkar".equals(it.kind)) return Long.MAX_VALUE / 4;
         return it.at - now;
     }
@@ -976,9 +980,15 @@ public class IslandService extends Service {
         }
 
         float heightPx() {
-            if ("goal".equals(item.kind)) return dp(item.scorer.isEmpty() ? 170 : 210);
-            if (item.mini) return dp(40);
-            return dp(big ? 60 : 44);
+            // a phone: smaller islands (the time and the score shrink with them), a tablet / car screen: as before
+            boolean phone = isPhone();
+            if ("goal".equals(item.kind)) return dp(item.scorer.isEmpty() ? (phone ? 150 : 170) : (phone ? 186 : 210));
+            if (item.mini) return dp(phone ? 32 : 40);
+            return dp(big ? (phone ? 48 : 60) : (phone ? 36 : 44));
+        }
+
+        int glow() {
+            return isPhone() ? dp(3) : dp(8);
         }
 
         @Override
@@ -987,13 +997,13 @@ public class IslandService extends Service {
             float w = "goal".equals(item.kind) ? Math.min(dp(520), getResources().getDisplayMetrics().widthPixels - dp(24))
                     : IslandArt.measure(getContext(), item, h, big, now);
             // room for the glow around the pill
-            int g = Math.round(dp(8));
+            int g = glow();
             setMeasuredDimension(Math.round(w) + g * 2, Math.round(h) + g * 2);
         }
 
         @Override
         protected void onDraw(Canvas c) {
-            float g = dp(8);
+            float g = glow();
             RectF r = new RectF(g, g, getWidth() - g, getHeight() - g);
             if ("goal".equals(item.kind)) {
                 // the site's two-act animation, drawn frame by frame
@@ -1204,7 +1214,8 @@ public class IslandService extends Service {
     private void rebuildPills(List<IslandArt.Item> shown, IslandArt.Item focused) {
         island.removeAllViews();
         pills.clear();
-        int maxW = getResources().getDisplayMetrics().widthPixels - dp(16);
+        // the fixed eye / microphone sit in the top corners: the islands keep to the middle
+        int maxW = getResources().getDisplayMetrics().widthPixels - dp(16) - (controlsOn() ? 2 * dp(CTRL + 8) : 0);
         LinearLayout row = null;
         int rowW = 0;
         long now = System.currentTimeMillis();
@@ -1234,64 +1245,101 @@ public class IslandService extends Service {
             }
             first = false;
         }
-        // the controls at the end of the islands: hide / show (eye) and voice commands (microphone)
-        if (Hub.bool(this, "islandBubble", true) && celebration == null) {
-            if (row == null) {
-                row = new LinearLayout(this);
-                row.setOrientation(LinearLayout.HORIZONTAL);
-                row.setGravity(Gravity.CENTER);
-                row.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
-                island.addView(row, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
-            }
-            row.addView(controlsView(), new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
-        }
     }
 
     private android.widget.ImageView eyeView;
     private View eyeDot;
     private Boolean eyeShownHidden;
 
-    private View controlsView() {
-        LinearLayout box = new LinearLayout(this);
-        box.setOrientation(LinearLayout.HORIZONTAL);
-        box.setGravity(Gravity.CENTER_VERTICAL);
-        box.setPadding(dp(6), dp(8), dp(6), dp(8));
-        FrameLayout eye = new FrameLayout(this);
+    /** the eye and the microphone: fixed in the top corners (not dragged with the islands), a little bigger */
+    private static final int CTRL = 44;
+    private FrameLayout ctrlEye, ctrlMic;
+    private boolean ctrlOnAcc;
+
+    private boolean controlsOn() {
+        return Hub.bool(this, "islandBubble", true) && celebration == null;
+    }
+
+    private void showControls(boolean on) {
+        IslandAccessibilityService acc = IslandAccessibilityService.instance;
+        boolean useAcc = acc != null;
+        if (ctrlEye != null && (!on || useAcc != ctrlOnAcc)) removeControls();
+        if (!on || ctrlEye != null) return;
+        WindowManager wm = useAcc ? acc.windowManager() : windowManager;
+        ctrlEye = new FrameLayout(this);
         eyeView = roundIcon();
-        eye.addView(eyeView, new FrameLayout.LayoutParams(dp(34), dp(34), Gravity.CENTER));
+        ctrlEye.addView(eyeView, new FrameLayout.LayoutParams(dp(CTRL), dp(CTRL), Gravity.CENTER));
         eyeDot = new View(this);
         android.graphics.drawable.GradientDrawable dg = new android.graphics.drawable.GradientDrawable();
         dg.setShape(android.graphics.drawable.GradientDrawable.OVAL);
         dg.setColor(0xFFEF4444);
         eyeDot.setBackground(dg);
         eyeDot.setVisibility(View.GONE);
-        eye.addView(eyeDot, new FrameLayout.LayoutParams(dp(10), dp(10), Gravity.TOP | Gravity.END));
-        eye.setOnClickListener(v -> {
+        ctrlEye.addView(eyeDot, new FrameLayout.LayoutParams(dp(11), dp(11), Gravity.TOP | Gravity.END));
+        ctrlEye.setOnClickListener(v -> {
             v.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP);
             focusedId = null;
             Hub.set(this, "islandsHidden", !Hub.bool(this, "islandsHidden", false));
         });
         eyeShownHidden = null;
-        box.addView(eye, new LinearLayout.LayoutParams(dp(38), dp(38)));
+        ctrlMic = new FrameLayout(this);
         android.widget.ImageView mic = roundIcon();
-        mic.setImageBitmap(PlayerActivity.icon(I_MIC, dp(18), 0xFF34D399, false));
-        mic.setOnClickListener(v -> {
+        mic.setImageBitmap(PlayerActivity.icon(I_MIC, dp(22), 0xFF34D399, false));
+        ctrlMic.addView(mic, new FrameLayout.LayoutParams(dp(CTRL), dp(CTRL), Gravity.CENTER));
+        ctrlMic.setOnClickListener(v -> {
             v.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP);
             Intent vi = new Intent(this, VoiceActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             try { startActivity(vi); } catch (Exception ignored) { }
         });
-        // long press: the trip options (go to a saved place, the current trip's plan / end)
-        mic.setOnLongClickListener(v -> {
+        // long press: the trip options (go to a saved place, the current trip's plan / end, Google Maps, share)
+        ctrlMic.setOnLongClickListener(v -> {
             v.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS);
             Intent tm = new Intent(this, TripMenuActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             try { startActivity(tm); } catch (Exception ignored) { }
             return true;
         });
-        LinearLayout.LayoutParams ml = new LinearLayout.LayoutParams(dp(34), dp(34));
-        ml.setMarginStart(dp(4));
-        box.addView(mic, ml);
+        // RTL: the microphone on the right, the eye on the left - both at the islands' height, never moving
+        if (!addCtrl(wm, ctrlMic, Gravity.TOP | Gravity.RIGHT, useAcc) | !addCtrl(wm, ctrlEye, Gravity.TOP | Gravity.LEFT, useAcc)) {
+            removeControls();
+            return;
+        }
+        ctrlOnAcc = useAcc;
         updateControls(Hub.bool(this, "islandsHidden", false));
-        return box;
+    }
+
+    private boolean addCtrl(WindowManager wm, View v, int gravity, boolean useAcc) {
+        int type = useAcc ? WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY
+                : Build.VERSION.SDK_INT >= 26 ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY : WindowManager.LayoutParams.TYPE_PHONE;
+        WindowManager.LayoutParams lp = new WindowManager.LayoutParams(dp(CTRL + 4), dp(CTRL + 4), type,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
+                        | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS | WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED,
+                PixelFormat.TRANSLUCENT);
+        if (Build.VERSION.SDK_INT >= 28) lp.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+        lp.gravity = gravity;
+        lp.x = dp(6);
+        lp.y = dp(isPhone() ? 2 : 6);
+        try {
+            wm.addView(v, lp);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private void removeControls() {
+        IslandAccessibilityService acc = IslandAccessibilityService.instance;
+        WindowManager wm = ctrlOnAcc && acc != null ? acc.windowManager() : windowManager;
+        for (View v : new View[]{ctrlEye, ctrlMic}) {
+            if (v == null) continue;
+            try { wm.removeView(v); } catch (Exception ignored) { }
+        }
+        ctrlEye = null;
+        ctrlMic = null;
+        eyeView = null;
+    }
+
+    private boolean isPhone() {
+        return getResources().getConfiguration().smallestScreenWidthDp < 600;
     }
 
     private android.widget.ImageView roundIcon() {
@@ -1420,6 +1468,7 @@ public class IslandService extends Service {
         LinearLayout r = hrow();
         r.setGravity(Gravity.CENTER);
         for (android.widget.TextView c : chips) {
+            if (c == null) continue;
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1);
             lp.setMargins(dp(3), 0, dp(3), 0);
             r.addView(c, lp);
@@ -1443,6 +1492,7 @@ public class IslandService extends Service {
             return card;
         }
         if ("trip".equals(it.id)) return tripPanel();
+        if (it.id.startsWith("msg-")) return messagePanel(it);
         if ("mosque".equals(it.id)) {
             if (!roadMosques.isEmpty()) return roadPanel();
             LinearLayout card = panelCard();
@@ -1566,7 +1616,8 @@ public class IslandService extends Service {
         }
         long leftM = pr.optLong("left", -1), eta = pr.optLong("etaSec");
         String leftText = t.optLong("arrivedAt") > 0 ? "وصلت ✓"
-                : (leftM >= 0 ? RoadPrayer.distanceText(leftM) + " · " : "") + "الوصول " + Trip.clock(now + eta * 1000L) + " (" + Trip.duration(eta) + ")";
+                : (leftM >= 0 ? RoadPrayer.distanceText(leftM) + " · " : "") + "الوصول " + Trip.clock(now + eta * 1000L) + " (" + Trip.duration(eta) + ")"
+                + (pr.optBoolean("gmaps") ? " 🗺" : "");
         if (next == null) {
             it.title = "🧭 إلى " + Trip.placeName(t.optString("name"));
             it.minute = leftText;
@@ -1610,9 +1661,17 @@ public class IslandService extends Service {
             }
             card.addView(row);
         }
+        if (MapsNav.active() && !MapsNav.turn.isEmpty()) card.addView(label("🗺 خرائط جوجل: " + MapsNav.distance + " · " + MapsNav.turn, 12, 0xFF34D399, false));
+        addChipRow(card,
+                chip("🗺 خرائط جوجل", true, 0xFF34D399, () -> { Notify.navigateTrip(this); closeFocus(); }),
+                chip("📤 شارك وصولي", false, 0, () -> { closeFocus(); Notify.shareEta(this); }));
         addChipRow(card,
                 chip("🔊 اقرأ الخطة", false, 0, () -> say(Trip.summary(t))),
                 chip("إنهاء الرحلة", false, 0, () -> { Trip.stop(this); closeFocus(); }));
+        if (!Notify.allowed(this)) {
+            card.addView(label("اسمح بالوصول للإشعارات ليأخذ وقت الوصول من خرائط جوجل (مع الزحام) وتظهر رسائل واتساب كجزر", 10, 0x99FFFFFF, false));
+            addChipRow(card, chip("السماح بالإشعارات", false, 0, () -> { closeFocus(); Notify.askAccess(this); }));
+        }
         if (!t.optBoolean("google")) card.addView(label("المسار تقريبي (" + GMaps.lastError + ")", 10, 0x66FFFFFF, false));
         else if (!t.optString("via").isEmpty()) card.addView(label("المسار: " + t.optString("via"), 10, 0x66FFFFFF, false));
         return card;
@@ -2467,6 +2526,45 @@ public class IslandService extends Service {
     static void speak(String text) {
         IslandService s = instance;
         if (s != null) s.handler.post(() -> s.say(text));
+    }
+
+    /** the phone's last known position (the road / trip listener), null when unknown */
+    static android.location.Location location() {
+        IslandService s = instance;
+        return s != null && s.road != null ? s.road.location() : null;
+    }
+
+    // ---- messages from WhatsApp / Telegram / SMS (Notify) ----
+
+    private void messageItems(List<IslandArt.Item> out) {
+        for (Notify.Msg m : Notify.recent()) {
+            IslandArt.Item it = new IslandArt.Item();
+            it.kind = "azkar";
+            it.id = "msg-" + m.key;
+            String t = m.text.length() > 40 ? m.text.substring(0, 40) + "…" : m.text;
+            it.title = "💬 " + m.from + ": " + t;
+            out.add(it);
+        }
+    }
+
+    private View messagePanel(IslandArt.Item it) {
+        Notify.Msg m = Notify.find(it.id.substring(4));
+        if (m == null) return null;
+        LinearLayout card = panelCard();
+        card.addView(label("💬 " + m.from + " · " + m.app, 15, 0xFFFFFFFF, true));
+        android.widget.TextView body = label(m.text, 13, 0xDDFFFFFF, false);
+        body.setMaxLines(6);
+        card.addView(body);
+        addChipRow(card,
+                chip("🔊 اقرأ", false, 0, () -> say("رسالة من " + m.from + ": " + m.text)),
+                m.reply != null ? chip("🎤 رد صوتي", true, 0xFF34D399, () -> {
+                    closeFocus();
+                    Intent vi = new Intent(this, VoiceActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK).putExtra("reply", m.key);
+                    try { startActivity(vi); } catch (Exception ignored) { }
+                }) : null,
+                chip("افتح", false, 0, () -> { closeFocus(); Notify.open(this, m); }),
+                chip("✕", false, 0, () -> { closeFocus(); Notify.dismiss(m.key); }));
+        return card;
     }
 
     private PillView pillAt(float x, float y) {

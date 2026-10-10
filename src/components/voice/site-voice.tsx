@@ -55,9 +55,9 @@ export function SiteVoiceButton() {
   return (
     <div className="relative pointer-events-auto">
       <button onClick={start} title="أمر صوتي"
-        className={cn("shadow-2xl w-12 h-12 rounded-full flex items-center justify-center premium-glass cursor-pointer border active:scale-90 transition-all",
+        className={cn("shadow-2xl w-14 h-14 max-[639px]:w-12 max-[639px]:h-12 rounded-full flex items-center justify-center premium-glass cursor-pointer border active:scale-90 transition-all",
           listening ? "border-red-400 bg-red-600/40 animate-pulse" : "border-white/10")}>
-        <Mic className={cn("w-5 h-5", listening ? "text-white" : "text-emerald-400")} />
+        <Mic className={cn("w-6 h-6", listening ? "text-white" : "text-emerald-400")} />
       </button>
       {heard && (
         <div className="absolute top-14 right-0 min-w-[12rem] max-w-[20rem] rounded-2xl bg-black/85 border border-white/10 px-4 py-2 text-sm font-black text-white" dir="rtl">🎤 {heard}</div>

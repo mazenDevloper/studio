@@ -85,7 +85,8 @@ final class IslandArt {
             case "azkar": {
                 TextPaint n = Art.text(bold, h * 0.24f, Art.WHITE);
                 TextPaint t = Art.text(black, h * 0.46f, Art.WHITE);
-                float text = Math.max(n.measureText(it.title), t.measureText(countdownText(it, now)));
+                // a long title (an occasion, a message) is cut with "…" - the island stays phone-sized
+                float text = Math.max(Math.min(n.measureText(it.title), h * (expanded ? 7f : 4.4f)), t.measureText(countdownText(it, now)));
                 return h * 0.3f + h * 0.66f + h * 0.22f + Math.max(text, h * 1.6f) + h * 0.38f;
             }
             case "goal":

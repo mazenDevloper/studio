@@ -64,7 +64,10 @@ final class RoadPrayer {
                 if (d / (dt / 1000f) > 5) lastMoving = System.currentTimeMillis();
             }
             if (l.hasSpeed() && l.getSpeed() > 5) lastMoving = System.currentTimeMillis(); // > 18 km/h
-            if (last == null || l.getAccuracy() < 200) {
+            // a coarse network fix must not pull a fresh GPS one back (the trip's minutes then stood still)
+            boolean staleOverGps = last != null && LocationManager.GPS_PROVIDER.equals(last.getProvider())
+                    && !LocationManager.GPS_PROVIDER.equals(l.getProvider()) && l.getTime() - last.getTime() < 20_000;
+            if (!staleOverGps && (last == null || l.getAccuracy() < 200) && (last == null || l.getTime() >= last.getTime())) {
                 if (last != null && !l.hasBearing() && last.distanceTo(l) > 30) l.setBearing(last.bearingTo(l));
                 last = l;
             }

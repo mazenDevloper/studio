@@ -220,6 +220,8 @@ final class Trip {
      * left is the distance left at the route's own average speed - stops simply make it come later, never "arrived"
      * before you are within 300 m of the destination.
      */
+    private static final java.util.Map<String, Double> DONE = new java.util.HashMap<>();
+
     static JSONObject progress(JSONObject t, android.location.Location here) {
         JSONObject o = new JSONObject();
         try {
@@ -232,16 +234,36 @@ final class Trip {
             float[] d = new float[1];
             android.location.Location.distanceBetween(here.getLatitude(), here.getLongitude(), t.optDouble("toLat"), t.optDouble("toLon"), d);
             JSONArray path = t.optJSONArray("path");
+            // project the position onto every segment of the route (not the nearest of the ~300 kept points, which
+            // only moved every few km): the "done" distance then changes with every metre driven
             double done = 0, best = Double.MAX_VALUE;
-            for (int i = 0; path != null && i < path.length(); i++) {
-                JSONArray p = path.optJSONArray(i);
-                float[] e = new float[1];
-                android.location.Location.distanceBetween(here.getLatitude(), here.getLongitude(), p.optDouble(0), p.optDouble(1), e);
-                if (e[0] < best) { best = e[0]; done = p.optDouble(2); }
+            double lat0 = Math.toRadians(here.getLatitude()), kx = 111320 * Math.cos(lat0), ky = 110540;
+            for (int i = 0; path != null && i + 1 < path.length(); i++) {
+                JSONArray a = path.optJSONArray(i), b = path.optJSONArray(i + 1);
+                double ax = (a.optDouble(1) - here.getLongitude()) * kx, ay = (a.optDouble(0) - here.getLatitude()) * ky;
+                double bx = (b.optDouble(1) - here.getLongitude()) * kx, by = (b.optDouble(0) - here.getLatitude()) * ky;
+                double vx = bx - ax, vy = by - ay, len2 = vx * vx + vy * vy;
+                double f = len2 > 0 ? Math.max(0, Math.min(1, -(ax * vx + ay * vy) / len2)) : 0;
+                double px = ax + f * vx, py = ay + f * vy, dist = Math.sqrt(px * px + py * py);
+                if (dist < best) {
+                    best = dist;
+                    done = a.optDouble(2) + f * (b.optDouble(2) - a.optDouble(2));
+                }
             }
-            double left = path != null && path.length() > 1 ? Math.max(d[0], total - done) : d[0] * 1.3;
+            // never backwards by GPS jitter (a few hundred metres), and off the route: straight line × 1.3
+            String key = t.optLong("startAt") + "";
+            Double was = DONE.get(key);
+            if (was != null && done < was && was - done < 500) done = was;
+            DONE.put(key, done);
+            double left;
+            if (path == null || path.length() < 2 || best > 1500) left = d[0] * 1.3;
+            else left = Math.max(d[0], total - done);
             boolean arrived = d[0] < 300;
-            return o.put("left", Math.round(left)).put("done", Math.round(done)).put("etaSec", Math.round(left / Math.max(5, avg))).put("arrived", arrived);
+            long eta = Math.round(left / Math.max(5, avg));
+            // Google Maps navigating to the same place knows the traffic: its time wins
+            long gm = MapsNav.etaSec();
+            if (gm > 0) eta = gm;
+            return o.put("left", Math.round(left)).put("done", Math.round(done)).put("etaSec", eta).put("arrived", arrived).put("gmaps", gm > 0);
         } catch (Exception e) {
             return o;
         }

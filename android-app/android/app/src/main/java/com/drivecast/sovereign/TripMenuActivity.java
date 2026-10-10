@@ -43,11 +43,20 @@ public class TripMenuActivity extends Activity {
         status.setVisibility(View.GONE);
         list.addView(status);
 
+        if (Intent.ACTION_SEND.equals(getIntent().getAction())) sharedPlace(getIntent().getStringExtra(Intent.EXTRA_TEXT));
+
         JSONObject t = Trip.current(this);
         if (t != null) {
             list.addView(section("الرحلة الحالية: " + Trip.placeName(this, t.optString("dest", t.optString("name")))));
             list.addView(row("🔊 خطة الرحلة والمساجد", true, () -> { IslandService.speak(Trip.summary(t)); finish(); }));
+            list.addView(row("🗺 الملاحة في خرائط جوجل", true, () -> { Notify.navigateTrip(this); finish(); }));
+            list.addView(row("📤 شارك وقت وصولي (واتساب)", false, () -> { Notify.shareEta(this); finish(); }));
             list.addView(row("⏹ إنهاء الرحلة", false, () -> { Trip.stop(this); finish(); }));
+        }
+        if (!Notify.allowed(this)) {
+            list.addView(section("الربط مع التطبيقات"));
+            list.addView(text("اسمح بالوصول للإشعارات: يأخذ وقت الوصول من خرائط جوجل (مع الزحام)، وتظهر رسائل واتساب وتيليجرام كجزر تُقرأ ويُرد عليها بالصوت", 12, 0x99FFFFFF));
+            list.addView(row("🔔 السماح بالوصول للإشعارات", false, () -> { Notify.askAccess(this); finish(); }));
         }
         list.addView(section("اذهب إلى"));
         JSONObject places = Trip.places(this);
@@ -85,6 +94,83 @@ public class TripMenuActivity extends Activity {
         getWindow().setLayout(Math.round(Math.min(getResources().getDisplayMetrics().widthPixels - 32 * d, 520 * d)),
                 android.view.ViewGroup.LayoutParams.WRAP_CONTENT);
         getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+    }
+
+    /**
+     * A place shared from Google Maps (Share → DriveCast): "Name\nAddress\nhttps://maps.app.goo.gl/..." - the link is
+     * followed to its coordinates, then: go there now (route + the mosques on the way) or keep it as a place.
+     */
+    private void sharedPlace(String text) {
+        if (text == null) return;
+        String[] lines = text.trim().split("\n");
+        String name = lines.length > 1 ? lines[0].trim() : "المكان المشارك";
+        java.util.regex.Matcher u = java.util.regex.Pattern.compile("https?://\\S+").matcher(text);
+        String url = u.find() ? u.group() : null;
+        list.addView(section("📍 من خرائط جوجل: " + name));
+        TextView info = text("أقرأ الموقع...", 12, 0x99FFFFFF);
+        list.addView(info);
+        new Thread(() -> {
+            double[] ll = url != null ? coords(url) : coords(text);
+            ui.post(() -> {
+                if (ll == null) { info.setText("لم أستطع قراءة الإحداثيات من الرابط"); return; }
+                info.setText(String.format(java.util.Locale.ROOT, "%.5f, %.5f", ll[0], ll[1]));
+                String id = "p" + System.currentTimeMillis();
+                JSONObject places = Trip.places(this);
+                try {
+                    places.put(id, new JSONObject().put("name", name).put("lat", ll[0]).put("lon", ll[1]));
+                } catch (Exception ignored) {
+                }
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+                int at = list.indexOfChild(info) + 1;
+                list.addView(row("🧭 انطلق الآن (المسار والمساجد)", true, () -> { Hub.set(this, "places", places); go(id); }), at);
+                list.addView(row("💾 احفظه في أماكني", false, () -> {
+                    Hub.set(this, "places", places);
+                    status.setVisibility(View.VISIBLE);
+                    status.setText("✓ حفظت «" + name + "» في أماكني");
+                }), at + 1);
+            });
+        }).start();
+    }
+
+    /** lat/lon in a Google Maps link (short links followed) */
+    static double[] coords(String url) {
+        String s = url;
+        for (int hop = 0; hop < 5 && s != null; hop++) {
+            double[] ll = parse(s);
+            if (ll != null) return ll;
+            if (!s.startsWith("http")) return null;
+            try {
+                java.net.HttpURLConnection c = (java.net.HttpURLConnection) new java.net.URL(s).openConnection();
+                c.setInstanceFollowRedirects(false);
+                c.setConnectTimeout(8000);
+                c.setReadTimeout(8000);
+                c.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 13)");
+                int code = c.getResponseCode();
+                String loc = c.getHeaderField("Location");
+                if (code >= 300 && code < 400 && loc != null) { s = loc; continue; }
+                // the page itself may hold the coordinates
+                java.io.InputStream in = c.getInputStream();
+                byte[] buf = new byte[200_000];
+                int n = 0, r;
+                while (n < buf.length && (r = in.read(buf, n, buf.length - n)) > 0) n += r;
+                in.close();
+                return parse(new String(buf, 0, n, "UTF-8"));
+            } catch (Exception e) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    private static double[] parse(String s) {
+        try { s = java.net.URLDecoder.decode(s, "UTF-8"); } catch (Exception ignored) { }
+        String[] pats = {"!3d(-?\\d+\\.\\d+)!4d(-?\\d+\\.\\d+)", "@(-?\\d+\\.\\d+),(-?\\d+\\.\\d+)", "[?&](?:q|query|ll|destination|center)=(-?\\d+\\.\\d+),\\s*(-?\\d+\\.\\d+)",
+                "geo:(-?\\d+\\.\\d+),(-?\\d+\\.\\d+)", "/(-?\\d{1,2}\\.\\d{4,}),\\s*\\+?(-?\\d{1,3}\\.\\d{4,})"};
+        for (String p : pats) {
+            java.util.regex.Matcher m = java.util.regex.Pattern.compile(p).matcher(s);
+            if (m.find()) return new double[]{Double.parseDouble(m.group(1)), Double.parseDouble(m.group(2))};
+        }
+        return null;
     }
 
     private void addPlace(String key, JSONObject p) {

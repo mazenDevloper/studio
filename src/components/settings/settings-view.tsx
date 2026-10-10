@@ -21,6 +21,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FootballSettings } from "@/components/settings/football-settings";
 import { NativePermissions } from "@/components/native/native-permissions";
 import { TripsSettings } from "@/components/settings/trips-settings";
+import { uploadImage, ensureHosted } from "@/lib/upload-image";
 import { OccasionRulesSettings } from "@/components/settings/occasion-rules";
 import { ManuscriptInkSettings } from "@/components/manuscript/manuscript-ink-settings";
 import { Trophy as TabTrophy } from "lucide-react";
@@ -1082,9 +1083,13 @@ export function SettingsView() {
                     <button onClick={() => document.getElementById('bg-upload-input')?.click()} className="h-14 px-8 bg-pink-600 text-white rounded-full font-black shadow-glow focusable"><Upload className="w-5 h-5 ml-2" /> رفع خلفية جديدة</button>
                     <input id="bg-upload-input" type="file" className="hidden" accept="image/*" onChange={(e) => {
                        const file = e.target.files?.[0]; if (!file) return;
-                       const reader = new FileReader();
-                       reader.onload = (res) => { addCustomWallBackground(res.target?.result as string); toast({ title: "تم الرفع سحابياً" }); };
-                       reader.readAsDataURL(file);
+                       // a short public link (not the multi-MB photo): the cloud keeps it and every device loads it
+                       toast({ title: "جاري رفع الخلفية..." });
+                       uploadImage(file).then(({ url, hosted }) => {
+                         addCustomWallBackground(url);
+                         toast({ title: hosted ? "تم الرفع سحابياً" : "تم الحفظ بنسخة مصغّرة", description: hosted ? "اضغط «تطبيق كخلفية» لتعيينها" : "تعذّر الرفع لخادم الصور - حُفظت نسخة أصغر" });
+                       }).catch(() => toast({ variant: "destructive", title: "تعذّر رفع الصورة" }));
+                       e.target.value = "";
                     }} />
                  </div>
               </div>
@@ -1093,7 +1098,14 @@ export function SettingsView() {
                     <div key={idx} className="relative aspect-video rounded-[2.5rem] overflow-hidden border-4 border-white/5 group shadow-2xl transition-all hover:border-pink-500/20">
                        <img src={url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="" />
                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
-                          <Button onClick={async () => { updateMapSettings({ manuscriptBgUrl: url, showManuscriptBg: true }); await syncMasterBin(); toast({ title: "تم تعيين الخلفية سحابياً" }); }} className="bg-white text-black font-black rounded-xl focusable">تطبيق كخلفية</Button>
+                          <Button onClick={async () => {
+                            // a big inline picture would make the cloud save fail (and the old background come back): upload it first
+                            const short = await ensureHosted(url);
+                            if (short !== url) { removeCustomWallBackground(url); addCustomWallBackground(short); }
+                            updateMapSettings({ manuscriptBgUrl: short, showManuscriptBg: true });
+                            await syncMasterBin();
+                            toast({ title: "تم تعيين الخلفية سحابياً" });
+                          }} className="bg-white text-black font-black rounded-xl focusable">تطبيق كخلفية</Button>
                           <Button onClick={() => removeCustomWallBackground(url)} variant="ghost" className="w-12 h-12 rounded-full bg-red-600 text-white"><Trash2 className="w-6 h-6" /></Button>
                        </div>
                     </div>

@@ -1,6 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <queries>
+        <package android:name="com.google.android.apps.maps" />
+        <package android:name="com.whatsapp" />
+        <package android:name="com.whatsapp.w4b" />
+        <package android:name="org.telegram.messenger" />
+        <intent>
+            <action android:name="android.intent.action.SEND" />
+            <data android:mimeType="text/plain" />
+        </intent>
+    </queries>
+
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
@@ -215,9 +226,16 @@
         <activity
             android:name=".TripMenuActivity"
             android:excludeFromRecents="true"
-            android:exported="false"
+            android:exported="true"
             android:taskAffinity=".trips"
-            android:theme="@android:style/Theme.DeviceDefault.Dialog.NoActionBar" />
+            android:theme="@android:style/Theme.DeviceDefault.Dialog.NoActionBar">
+            <!-- Google Maps → Share → «رحلة إلى هنا» -->
+            <intent-filter android:label="رحلة إلى هنا · DriveCast">
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity>
 
         <!-- choose / pin the manuscript of one manuscript widget -->
         <activity
@@ -311,6 +329,15 @@
         </receiver>
 
         <!-- the folders widget's scrolling grid of cards -->
+        <service
+            android:name=".Notify"
+            android:exported="true"
+            android:label="DriveCast · خرائط جوجل وواتساب"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
         <service
             android:name=".FoldersWidgetService"
             android:exported="false"
