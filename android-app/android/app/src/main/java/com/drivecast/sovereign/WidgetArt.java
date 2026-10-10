@@ -193,24 +193,32 @@ final class WidgetArt {
             Art.centerText(c, "لا مباريات لفرقك اليوم", w / 2f, top + avail / 2, e);
             return b;
         }
-        float minRow = Math.max(unit * 0.2f, h * 0.15f);
-        int rows = Math.max(1, Math.min(list.length(), (int) (avail / minRow)));
-        if (rows < list.length()) {
-            // keep a line for "+n أخرى" under the rows
+        // all your teams' matches: smaller rows, and two columns when they still don't fit (a wide widget)
+        float minRow = Math.max(unit * 0.15f, h * 0.1f);
+        int cap = Math.max(1, (int) (avail / minRow));
+        int cols = list.length() > cap && w > h * 1.1f ? 2 : 1;
+        int rows = Math.max(1, Math.min((list.length() + cols - 1) / cols, cap));
+        int shown = Math.min(list.length(), rows * cols);
+        if (shown < list.length()) {
             avail -= headH * 0.45f;
-            rows = Math.max(1, Math.min(list.length(), (int) (avail / minRow)));
+            rows = Math.max(1, Math.min(rows, (int) (avail / minRow)));
+            shown = Math.min(list.length(), rows * cols);
         }
         float rowH = Math.min(avail / rows, unit * 0.34f);
         float gap = rowH * 0.1f;
-        for (int i = 0; i < rows; i++) {
+        float colW = (w - pad * 1.4f) / cols;
+        for (int i = 0; i < shown; i++) {
             JSONObject m = list.optJSONObject(i);
-            RectF row = new RectF(pad * 0.7f, top + i * rowH + gap / 2, w - pad * 0.7f, top + (i + 1) * rowH - gap / 2);
+            int col = i / rows, r = i % rows;
+            // RTL: the first column on the right
+            float right = w - pad * 0.7f - col * colW, left = right - colW + (cols > 1 ? pad * 0.3f : 0);
+            RectF row = new RectF(left, top + r * rowH + gap / 2, right, top + (r + 1) * rowH - gap / 2);
             drawMatchRow(ctx, c, row, m, black, bold, medium);
         }
-        if (list.length() > rows) {
+        if (list.length() > shown) {
             TextPaint more = Art.text(bold, headH * 0.3f, Art.alpha(Art.WHITE, 0.35f));
             more.setTextAlign(Paint.Align.LEFT);
-            c.drawText("+" + (list.length() - rows), pad, Art.baseline(more, top + avail + headH * 0.25f), more);
+            c.drawText("+" + (list.length() - shown), pad, Art.baseline(more, top + avail + headH * 0.25f), more);
         }
         return b;
     }

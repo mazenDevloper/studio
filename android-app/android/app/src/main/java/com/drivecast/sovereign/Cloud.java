@@ -243,7 +243,7 @@ final class Cloud {
         }
         for (int attempt = 0; attempt < 2; attempt++) {
             try {
-                HttpURLConnection c = (HttpURLConnection) new URL(origin + "/api/matches?limit=12&teams=" + java.net.URLEncoder.encode(t.toString(), "UTF-8")
+                HttpURLConnection c = (HttpURLConnection) new URL(origin + "/api/matches?limit=30&teams=" + java.net.URLEncoder.encode(t.toString(), "UTF-8")
                         + (pn.length() > 0 ? "&pins=" + java.net.URLEncoder.encode(pn.toString(), "UTF-8") : "")).openConnection();
                 c.setConnectTimeout(15_000);
                 c.setReadTimeout(40_000);

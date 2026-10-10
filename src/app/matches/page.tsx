@@ -1,5 +1,6 @@
 "use client";
 
+import { flagUrl } from "@/lib/flags";
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Loader2, RefreshCw, Trophy, AlertTriangle, Star, PartyPopper, Pin, Eye, EyeOff, Tv, MapPin, Flag, LayoutGrid, Server, BellRing, BellOff, Pencil, X, RotateCcw, BookmarkCheck, BookmarkPlus, CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import { useLiveMatches, useLiveMatchesStore, MATCHES_LIMIT } from "@/lib/live-matches";
@@ -280,6 +281,7 @@ function MatchCard({ m, hidden = false }: { m: TopMatch; hidden?: boolean }) {
 
       <div className="flex items-center justify-between text-[11px] text-white/50 mb-3">
         <span className="flex items-center gap-2 min-w-0">
+          {flagUrl(m.league.country) && <img src={flagUrl(m.league.country)!} alt="" title={m.league.country} className="w-5 h-3.5 object-cover rounded-[2px] shrink-0" />}
           {m.league.logo && <img src={m.league.logo} alt="" className="w-4 h-4 object-contain" />}
           <span className="truncate">{m.league.name}</span>
           <FollowLeague league={m.league} navId={`match-follow-${m.id}`} />

@@ -378,9 +378,9 @@ public class IslandService extends Service {
         bubbleAlert = hidden && (critical || !visible.isEmpty() || hasUrgent(items, now));
         boolean controls = Hub.bool(this, "islandBubble", true);
         // hidden: the islands' row keeps just its controls (eye / microphone) so they can come back
-        if (allowed && (!visible.isEmpty() || celebration != null)) showIsland(visible, now);
+        if (allowed && (!visible.isEmpty() || celebration != null || controls)) showIsland(visible, now); // the eye / microphone stay beside the islands
         else removeIsland();
-        showControls(allowed && controls); // the eye / microphone: their own fixed windows, even with no island
+        showControls(false); // (the fixed corner buttons: back beside the islands as before)
         updateBubble(false, hidden); // the controls now sit beside the islands
         updateControls(hidden);
     }
@@ -442,7 +442,7 @@ public class IslandService extends Service {
                     JSONObject pn = pins.optJSONObject(i);
                     if (pn != null) p.append(p.length() > 0 ? "|" : "").append(pn.optString("home")).append("|").append(pn.optString("away"));
                 }
-                apiUrl = origin + "/api/matches?limit=12&teams=" + enc(t.toString()) + (p.length() > 0 ? "&pins=" + enc(p.toString()) : "");
+                apiUrl = origin + "/api/matches?limit=30&teams=" + enc(t.toString()) + (p.length() > 0 ? "&pins=" + enc(p.toString()) : "");
             }
             if (apiUrl.isEmpty()) return;
             List<JSONObject> mine = new ArrayList<>();
@@ -698,10 +698,8 @@ public class IslandService extends Service {
             if (it.finished()) {
                 // the API has no end time: about 2 hours after kick-off, shown for half an hour
                 if (now - it.kickoff > 150 * 60_000L) continue;
-            } else if (!it.live()) {
-                long left = it.kickoff - now;
-                if (left > 60 * 60_000L || left < -15 * 60_000L) continue;
             }
+            // a team with its island on: its match shows all day (the countdown to kick-off, live, then the result)
             out.add(it);
         }
         JSONArray list = Widgets.countdowns(this);
@@ -992,8 +990,8 @@ public class IslandService extends Service {
             // a phone: smaller islands (the time and the score shrink with them), a tablet / car screen: as before
             boolean phone = isPhone();
             if ("goal".equals(item.kind)) return dp(item.scorer.isEmpty() ? (phone ? 150 : 170) : (phone ? 186 : 210));
-            if (item.mini) return dp(phone ? 32 : 40);
-            return dp(big ? (phone ? 48 : 60) : (phone ? 36 : 44));
+            if (item.mini) return dp(phone ? 29 : 36);
+            return dp(big ? (phone ? 43 : 54) : (phone ? 32 : 40));
         }
 
         int glow() {
@@ -1224,7 +1222,7 @@ public class IslandService extends Service {
         island.removeAllViews();
         pills.clear();
         // the fixed eye / microphone sit in the top corners: the islands keep to the middle
-        int maxW = getResources().getDisplayMetrics().widthPixels - dp(16) - (controlsOn() ? 2 * dp(CTRL + 8) : 0);
+        int maxW = getResources().getDisplayMetrics().widthPixels - dp(16) - (controlsOn() ? dp(90) : 0);
         LinearLayout row = null;
         int rowW = 0;
         long now = System.currentTimeMillis();
@@ -1254,7 +1252,19 @@ public class IslandService extends Service {
             }
             first = false;
         }
+        // the controls at the end of the islands: hide / show (eye) and voice commands (microphone)
+        if (Hub.bool(this, "islandBubble", true) && celebration == null) {
+            if (row == null) {
+                row = new LinearLayout(this);
+                row.setOrientation(LinearLayout.HORIZONTAL);
+                row.setGravity(Gravity.CENTER);
+                row.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+                island.addView(row, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+            }
+            row.addView(controlsView(), new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        }
     }
+
 
     private android.widget.ImageView eyeView;
     private View eyeDot;
@@ -1349,6 +1359,49 @@ public class IslandService extends Service {
 
     private boolean isPhone() {
         return getResources().getConfiguration().smallestScreenWidthDp < 600;
+    }
+
+    private View controlsView() {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.HORIZONTAL);
+        box.setGravity(Gravity.CENTER_VERTICAL);
+        box.setPadding(dp(6), dp(8), dp(6), dp(8));
+        FrameLayout eye = new FrameLayout(this);
+        eyeView = roundIcon();
+        eye.addView(eyeView, new FrameLayout.LayoutParams(dp(34), dp(34), Gravity.CENTER));
+        eyeDot = new View(this);
+        android.graphics.drawable.GradientDrawable dg = new android.graphics.drawable.GradientDrawable();
+        dg.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+        dg.setColor(0xFFEF4444);
+        eyeDot.setBackground(dg);
+        eyeDot.setVisibility(View.GONE);
+        eye.addView(eyeDot, new FrameLayout.LayoutParams(dp(10), dp(10), Gravity.TOP | Gravity.END));
+        eye.setOnClickListener(v -> {
+            v.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP);
+            focusedId = null;
+            Hub.set(this, "islandsHidden", !Hub.bool(this, "islandsHidden", false));
+        });
+        eyeShownHidden = null;
+        box.addView(eye, new LinearLayout.LayoutParams(dp(38), dp(38)));
+        android.widget.ImageView mic = roundIcon();
+        mic.setImageBitmap(PlayerActivity.icon(I_MIC, dp(18), 0xFF34D399, false));
+        mic.setOnClickListener(v -> {
+            v.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP);
+            Intent vi = new Intent(this, VoiceActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            try { startActivity(vi); } catch (Exception ignored) { }
+        });
+        // long press: the trip options (go to a saved place, the current trip's plan / end)
+        mic.setOnLongClickListener(v -> {
+            v.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS);
+            Intent tm = new Intent(this, TripMenuActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            try { startActivity(tm); } catch (Exception ignored) { }
+            return true;
+        });
+        LinearLayout.LayoutParams ml = new LinearLayout.LayoutParams(dp(34), dp(34));
+        ml.setMarginStart(dp(4));
+        box.addView(mic, ml);
+        updateControls(Hub.bool(this, "islandsHidden", false));
+        return box;
     }
 
     private android.widget.ImageView roundIcon() {
