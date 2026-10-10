@@ -226,39 +226,68 @@ function LeagueChannelsSection() {
 /** Followed competitions: every match listed on the matches page, without counting as favourites. */
 function FollowedLeaguesSection() {
   const followed = useMediaStore(s => s.followedLeagues) || [];
+  const meta = useMediaStore(s => s.leagueMeta) || {};
   const toggle = useMediaStore(s => s.toggleFollowLeague);
+  const setMeta = useMediaStore(s => s.setLeagueMeta);
   const known = useKnownLeagues();
-  const [name, setName] = useState("");
-  const [country, setCountry] = useState("");
-  const pick = (v: string) => { setName(v); const l = known.find(x => x.name === v); if (l?.country) setCountry(l.country); };
-  const add = () => {
-    const n = name.trim();
-    if (!n) return;
-    const key = leagueKey({ id: "", name: n, country: country.trim() || undefined });
+  const [q, setQ] = useState("");
+  const [found, setFound] = useState<{ name: string; country?: string; logo?: string }[]>([]);
+  const [busy, setBusy] = useState(false);
+  // search as you type: today's competitions + every competition ESPN knows, each with its country and logo
+  // (many leagues are called "Premier League" - the country tells them apart)
+  useEffect(() => {
+    const t = q.trim().toLowerCase();
+    if (t.length < 2) { setFound([]); return; }
+    const local = known.filter(l => l.name.toLowerCase().includes(t) || (l.country ?? "").toLowerCase().includes(t)).map(l => ({ name: l.name, country: l.country, logo: l.logo }));
+    setFound(local);
+    setBusy(true);
+    const ctl = new AbortController();
+    const h = setTimeout(() => {
+      fetch(`/api/leagues?q=${encodeURIComponent(t)}`, { signal: ctl.signal }).then(r => r.json()).then(j => {
+        const seen = new Set(local.map(l => leagueKey({ id: "", name: l.name, country: l.country })));
+        setFound([...local, ...(j.leagues ?? []).filter((l: any) => !seen.has(leagueKey({ id: "", name: l.name, country: l.country })))]);
+      }).catch(() => {}).finally(() => setBusy(false));
+    }, 350);
+    return () => { clearTimeout(h); ctl.abort(); };
+  }, [q, known]);
+  const follow = (l: { name: string; country?: string; logo?: string }) => {
+    const key = leagueKey({ id: "", name: l.name, country: l.country });
+    setMeta(key, { name: l.name, country: l.country, logo: l.logo });
     if (!followed.includes(key)) toggle(key);
-    setName(""); setCountry("");
+    setQ("");
   };
   const title = (x: string) => x.replace(/(^|\s)([a-z])/g, (_, a, c) => a + c.toUpperCase());
   return (
     <section className={cn(box, "lg:col-span-2")}>
       <h2 className="text-2xl font-black text-white flex items-center gap-3"><BookmarkCheck className="w-7 h-7 text-sky-400" /> البطولات المتابعة</h2>
-      <p className="text-sm text-white/40 font-bold">كل مبارياتها تظهر في صفحة المباريات، دون اعتبارها مفضلة (لا جرس ولا جزيرة عائمة). أو اضغط «متابعة» بجانب اسم البطولة في كرت المباراة</p>
-      <form onSubmit={e => { e.preventDefault(); add(); }} className="flex flex-wrap gap-2">
-        <input value={name} onChange={e => pick(e.target.value)} list="known-leagues-follow" placeholder="اسم البطولة كما يظهر في صفحة المباريات" dir="auto" className={input} data-nav-id="follow-add-name" />
-        <datalist id="known-leagues-follow">{known.map(l => <option key={leagueKey(l)} value={l.name}>{l.country ?? ""}</option>)}</datalist>
-        <input value={country} onChange={e => setCountry(e.target.value)} placeholder="الدولة (اختياري)" dir="auto" className={cn(input, "max-w-[11rem]")} />
-        <button type="submit" disabled={!name.trim()} data-nav-id="follow-add-save" className="focusable no-focus-scale h-12 px-6 rounded-full bg-sky-500 text-black font-black flex items-center gap-2 disabled:opacity-40">
-          <Plus className="w-5 h-5" /> متابعة
-        </button>
-      </form>
+      <p className="text-sm text-white/40 font-bold">ابحث عن البطولة، تظهر بشعارها ودولتها، اضغطها لمتابعتها. كل مبارياتها تظهر في صفحة المباريات دون اعتبارها مفضلة</p>
+      <input value={q} onChange={e => setQ(e.target.value)} placeholder="ابحث: Premier League، Saudi، Oman..." dir="auto" className={input} data-nav-id="follow-add-name" />
+      {q.trim().length >= 2 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-80 overflow-y-auto">
+          {found.map((l, i) => {
+            const key = leagueKey({ id: "", name: l.name, country: l.country });
+            const on = followed.includes(key);
+            return (
+              <button key={key + i} onClick={() => follow(l)} data-nav-id={`follow-found-${i}`} className={cn("focusable no-focus-scale flex items-center gap-3 h-14 px-3 rounded-2xl border text-right", on ? "bg-sky-500/20 border-sky-400/50" : "bg-white/5 border-white/10 hover:bg-white/10")}>
+                <span className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center overflow-hidden shrink-0">{l.logo ? <img src={l.logo} alt="" className="w-8 h-8 object-contain" /> : <BookmarkCheck className="w-5 h-5 text-white/30" />}</span>
+                <span className="flex-1 min-w-0"><span className="block text-sm font-black text-white truncate" dir="auto">{l.name}</span><span className="block text-xs font-bold text-white/40 truncate" dir="auto">{l.country || "—"}</span></span>
+                {on ? <BookmarkCheck className="w-5 h-5 text-sky-300" /> : <Plus className="w-5 h-5 text-white/50" />}
+              </button>
+            );
+          })}
+          {!found.length && <p className="text-sm text-white/30 font-bold">{busy ? "أبحث..." : "لا نتائج"}</p>}
+        </div>
+      )}
       <div className="flex flex-wrap gap-2">
         {followed.length === 0 && <p className="text-sm text-white/30 font-bold">لا توجد بطولات متابعة</p>}
         {followed.map((k, i) => {
           const j = k.indexOf("|");
+          const m = meta[k];
           return (
-            <span key={k} className="flex items-center gap-2 h-11 pr-4 pl-1.5 rounded-full bg-sky-500/10 border border-sky-400/30">
-              <span className="text-sm font-black text-white" dir="auto">{title(k.slice(j + 1))}{k.slice(0, j) && <span className="text-white/40 font-bold"> · {title(k.slice(0, j))}</span>}</span>
-              <button onClick={() => toggle(k)} title="إلغاء المتابعة" data-nav-id={`follow-del-${i}`} className="focusable no-focus-scale w-8 h-8 rounded-full hover:bg-red-500/20 text-white/40 hover:text-red-300 flex items-center justify-center">
+            <span key={k} className="flex items-center gap-2 h-11 pr-1.5 pl-1.5 rounded-full bg-sky-500/10 border border-sky-400/30">
+              <span className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center overflow-hidden">{m?.logo ? <img src={m.logo} alt="" className="w-6 h-6 object-contain" /> : <BookmarkCheck className="w-4 h-4 text-sky-300" />}</span>
+              <span className="text-sm font-black text-white" dir="auto">{m?.name ?? title(k.slice(j + 1))}{(m?.country ?? k.slice(0, j)) && <span className="text-white/40 font-bold"> · {m?.country ?? title(k.slice(0, j))}</span>}</span>
+              <button onClick={() => { toggle(k); setMeta(k, null); }} title="إلغاء المتابعة" data-nav-id={`follow-del-${i}`} className="focusable no-focus-scale w-8 h-8 rounded-full hover:bg-red-500/20 text-white/40 hover:text-red-300 flex items-center justify-center">
                 <X className="w-4 h-4" />
               </button>
             </span>

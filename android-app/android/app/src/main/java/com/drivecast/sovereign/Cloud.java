@@ -309,7 +309,7 @@ final class Cloud {
         }
         JSONArray sv = m.optJSONArray("savedVideos");
         if (sv != null) o.put("savedVideos", slimVideos(sv, 80));
-        for (String k : new String[]{"favoriteTeams", "pinnedMatches", "generalAzkar", "reminders", "prayerSettings", "belledMatchIds", "followedLeagues", "occasionRules"}) {
+        for (String k : new String[]{"favoriteTeams", "pinnedMatches", "generalAzkar", "reminders", "prayerSettings", "belledMatchIds", "followedLeagues", "leagueMeta", "occasionRules"}) {
             if (m.optJSONArray(k) != null) o.put(k, m.getJSONArray(k));
         }
         if (m.optJSONObject("manuscriptScales") != null) o.put("manuscriptScales", m.getJSONObject("manuscriptScales"));
