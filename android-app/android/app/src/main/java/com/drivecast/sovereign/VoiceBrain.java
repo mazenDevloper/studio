@@ -123,7 +123,8 @@ final class VoiceBrain {
             + "scores: نتيجة المباراة المباشرة الآن\n"
             + "matches_day: a=0 اليوم، 1 غداً، -1 أمس، 2 بعد غد؛ b=top عند السؤال عن أهم/أبرز المباريات\n"
             + "prayer_time: a=الفجر|الظهر|العصر|المغرب|العشاء أو فارغ للصلاة القادمة\n"
-            + "date_today / time_now\n"
+            + "date_today / time_now: فقط إذا سأل صراحة عن التاريخ أو اليوم أو الوقت\n"
+            + "مهم: اسم قارئ أو منشد أو برنامج (حتى مع كلمة اليوم) = play_youtube. لا تضع تاريخاً من عندك في نص البحث؛ اترك كلمة «اليوم» كما قالها\n"
             + "azkar: a=morning|evening أو فارغ (قراءة الأذكار صوتياً)\n"
             + "open_screen: a=واحد من /dashboard /matches /media /football /iptv /quran /settings\n"
             + "hide_islands / show_islands\n"
@@ -159,7 +160,23 @@ final class VoiceBrain {
         String text = parts != null && parts.length() > 0 ? parts.optJSONObject(0).optString("text") : "";
         text = text.replaceAll("^```(json)?", "").replaceAll("```$", "").trim();
         JSONObject j = new JSONObject(text);
-        return runner.run(j.optString("intent"), j.optString("a", ""), j.optString("b", ""));
+        String intent = j.optString("intent"), a = j.optString("a", ""), b = j.optString("b", "");
+        String n = VoiceActivity.norm(said);
+        // "ياسر الدوسري اليوم" is not a question about the date: only an explicit one is
+        boolean asksDate = n.contains("التاريخ") || n.contains("اي يوم") || n.contains("ايش اليوم") || n.contains("وش اليوم") || n.contains("كم اليوم")
+                || n.contains("اليوم كم") || n.contains("هجري") || n.contains("ميلادي") || n.equals("اليوم");
+        if ("date_today".equals(intent) && !asksDate) { intent = "play_youtube"; a = said; }
+        if ("play_youtube".equals(intent)) {
+            // the words as said: never a date the AI made up in place of "اليوم" (it was often yesterday's)
+            String clean = a.replaceAll("\\d{1,4}\\s*[-/.]\\s*\\d{1,2}\\s*[-/.]\\s*\\d{1,4}", "")
+                    .replaceAll("\\d{1,2}\\s+(يناير|فبراير|مارس|أبريل|ابريل|مايو|يونيو|يوليو|أغسطس|اغسطس|سبتمبر|أكتوبر|اكتوبر|نوفمبر|ديسمبر)(\\s+\\d{4})?", "")
+                    .replaceAll("\\s+", " ").trim();
+            if (!clean.equals(a) || (n.contains("اليوم") && !VoiceActivity.norm(a).contains("اليوم"))) {
+                clean = said.replaceAll("^\\s*(شغّل|شغل|شغلي|شغّلي|ابحث عن|ابحث|سمعني|سمّعني|أبي|ابي|ابغى|أبغى|حط)\\s*", "").trim();
+            }
+            a = clean.isEmpty() ? said : clean;
+        }
+        return runner.run(intent, a, b);
     }
 
     private static JSONObject post(String url, JSONObject body) throws Exception {

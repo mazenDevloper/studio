@@ -1093,6 +1093,14 @@ export function SettingsView() {
                     }} />
                  </div>
               </div>
+              <div className="flex items-center gap-4 rounded-3xl bg-white/5 border border-white/10 px-6 py-4">
+                 <span className="text-white font-black whitespace-nowrap">وضوح الخلفية في اللوحة</span>
+                 <input type="range" min={10} max={100} step={5} value={mapSettings.bgOpacity ?? 80}
+                   onChange={(e) => updateMapSettings({ bgOpacity: Number(e.target.value) })}
+                   onPointerUp={() => syncMasterBin()} onKeyUp={() => syncMasterBin()}
+                   className="flex-1 accent-pink-500" />
+                 <span className="text-pink-300 font-black tabular-nums w-14 text-center">{mapSettings.bgOpacity ?? 80}%</span>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                  {customWallBackgrounds.map((url, idx) => (
                     <div key={idx} className="relative aspect-video rounded-[2.5rem] overflow-hidden border-4 border-white/5 group shadow-2xl transition-all hover:border-pink-500/20">

@@ -1611,6 +1611,8 @@ public class IslandService extends Service {
             JSONObject r = plan.optJSONObject(i);
             if (r != null && r.optLong("at") > now - 20 * 60_000L) { next = r; break; }
         }
+        // the prayer on the way is near (from 10 minutes before): the sound stops by itself, once
+        if (next != null && !next.optBoolean("after") && now >= next.optLong("at") - 10 * 60_000L) quietFor("trip-" + next.optLong("at"));
         IslandArt.Item it = new IslandArt.Item();
         it.kind = "countdown";
         it.ckind = "mosque";
@@ -1697,6 +1699,19 @@ public class IslandService extends Service {
         closeFocus();
     }
 
+    private final java.util.Set<String> quieted = new java.util.HashSet<>();
+
+    /** By default the mosque island (and a trip's prayer) stops any sound playing - once per prayer (setting prayerQuiet). */
+    private void quietFor(String key) {
+        if (!Hub.bool(this, "prayerQuiet", true) || !quieted.add(key)) return;
+        boolean any = audioView != null || (quranPlayer != null && quranPlayer.isPlaying());
+        if (!any) return;
+        stopAudio();
+        QuranState q = QuranState.load(this);
+        if (q.playing || (quranPlayer != null && quranPlayer.isPlaying())) pauseQuran(q);
+        islandSignature = "";
+    }
+
     // ---- prayer on the road ----
 
     private RoadPrayer road;
@@ -1747,6 +1762,7 @@ public class IslandService extends Service {
             if (roadMosques.isEmpty()) wait = road.searching() ? "أبحث عن المساجد القريبة..." : road.failed() ? "تعذّر جلب المساجد · سأعيد المحاولة" : "لا مساجد قريبة في اتجاهك";
         }
         if (!Hub.bool(this, "roadPrayer", true)) return;
+        quietFor("mosque-" + name + iq);
         if (wait != null) {
             it.id = RoadPrayer.permitted(this) ? "mosque" : "mosque-perm";
             it.title = "🕌 " + roadPrayer;

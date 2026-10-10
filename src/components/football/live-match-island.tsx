@@ -330,7 +330,7 @@ export function LiveMatchIsland() {
     <div ref={islandRootRef} className={cn("fixed top-6 max-[639px]:top-2 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3 pointer-events-none scale-[0.7] max-[639px]:scale-[0.5] min-[968px]:scale-[0.80] origin-top dir-rtl transition-all duration-700", hasOnTop ? "z-[100002]" : "z-[10001]", (showIslands || activeAlerts.length) ? "translate-y-0 opacity-100" : "-translate-y-20 opacity-0")}>
       <div className="flex items-start gap-3">
         {showIslands && (
-          <div className="flex flex-wrap justify-center items-center gap-2 max-[639px]:gap-1 w-max max-w-[calc(100vw/0.7-180px)] min-[968px]:max-w-[calc(100vw/0.8-180px)] max-[639px]:flex-nowrap max-[639px]:justify-start max-[639px]:overflow-x-auto max-[639px]:no-scrollbar max-[639px]:pointer-events-auto max-[639px]:max-w-[calc(200vw-240px)] [&>*]:shrink-0 max-[639px]:[&>*]:min-w-0 max-[639px]:[&>*]:px-2">
+          <div className="flex flex-nowrap justify-start items-center gap-2 max-[639px]:gap-1 w-max max-w-[calc(100vw/0.7-180px)] min-[968px]:max-w-[calc(100vw/0.8-180px)] overflow-x-auto overflow-y-visible no-scrollbar pointer-events-auto py-2 snap-x max-[639px]:max-w-[calc(200vw-240px)] [&>*]:shrink-0 max-[639px]:[&>*]:min-w-0 max-[639px]:[&>*]:px-2">
             {visibleAlerts.map((alert) => {
                if (alert.type === 'match') {
                  return (

@@ -84,7 +84,7 @@ export interface PrayerSetting {
   showCountup: boolean; countupWindow: number; iqamahDuration: number;
 }
 
-export interface MapSettings { googleKey?: string;
+export interface MapSettings { googleKey?: string; /** how much of the board's background shows (0-100, the rest is black) */ bgOpacity?: number;
   zoom: number; tilt: number; carScale: number; backgroundIndex: number; showManuscriptBg: boolean;
   manuscriptBgUrl: string; fontScale: number; manuscriptColor: string; showManuscriptOnMoon: boolean;
   moonManuIdx: number; hue: number; saturation: number; brightness: number;

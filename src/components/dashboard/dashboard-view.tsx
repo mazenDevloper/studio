@@ -121,7 +121,7 @@ function WallPlate({ manuscript, manuscriptScale }: { manuscript: any; manuscrip
       ) : (
         <div className="relative w-full h-full flex items-center justify-center">
           {mapSettings.manuscriptBgUrl && mapSettings.showManuscriptBg !== false && (
-            <img src={mapSettings.manuscriptBgUrl} alt="" className="absolute inset-0 w-full h-full object-cover opacity-80" />
+            <img src={mapSettings.manuscriptBgUrl} alt="" className="absolute inset-0 w-full h-full object-cover" style={{ opacity: (mapSettings.bgOpacity ?? 80) / 100 }} />
           )}
           <div className="relative w-[86vw] h-[76vh] flex items-center justify-center">
             {item ? <ManuscriptArt item={item} scale={manuscriptScale} textClassName="text-5xl md:text-7xl" /> : <p className="text-white/30 font-black">لا توجد مخطوطات</p>}
