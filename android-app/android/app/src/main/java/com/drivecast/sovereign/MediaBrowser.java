@@ -199,13 +199,16 @@ final class MediaBrowser {
     /** The screen on top (the root screen when nothing was opened). */
     static JSONObject top(Context ctx, int wid) {
         JSONArray st = stack(ctx, wid);
-        if (st.length() > 0) return st.optJSONObject(st.length() - 1);
         String kind = rootKind(ctx, wid);
+        // the reciters / subscriptions / folders open their content full screen: the widget stays on its list
+        if (st.length() > 0 && (paged(kind) || "folders".equals(kind))) { save(ctx, wid, new JSONArray()); st = new JSONArray(); }
+        if (st.length() > 0) return st.optJSONObject(st.length() - 1);
         JSONObject r = root(ctx, kind);
         if (paged(kind)) {
             // one page: as many as the widget shows, ‹ › for the others
             android.content.SharedPreferences p = NativeIslandPlugin.prefs(ctx);
-            int per = Math.max(1, p.getInt("pageSize_" + wid, 8));
+            int per = perPage(ctx, wid);
+            p.edit().putInt("pageSize_" + wid, per).apply();
             JSONArray all = r.optJSONArray("items");
             if (all != null && all.length() > per) {
                 int pages = (all.length() + per - 1) / per;
@@ -216,6 +219,15 @@ final class MediaBrowser {
             }
         }
         return r;
+    }
+
+    /** one row: as many tiles as the widget's width holds (~96 dp each) */
+    static int perPage(Context ctx, int wid) {
+        android.os.Bundle o = AppWidgetManager.getInstance(ctx).getAppWidgetOptions(wid);
+        boolean land = ctx.getResources().getConfiguration().orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE;
+        int wDp = o == null ? 0 : o.getInt(land ? AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH : AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH);
+        if (wDp <= 0) wDp = 250;
+        return Math.max(2, (wDp - 20) / 96);
     }
 
     static boolean paged(String kind) {
@@ -586,12 +598,6 @@ final class MediaBrowser {
         boolean deep = stack(ctx, wid).length() > 0;
         String rk = rootKind(ctx, wid);
         boolean pager = !deep && paged(rk) && layout == R.layout.widget_browse;
-        if (pager) {
-            // the page size from the widget's size: columns of ~94 dp, rows of ~112 dp
-            float wDp = w / (d * k), hDp = (h / (d * k)) - 68;
-            int per = Math.max(1, (int) ((wDp - 20) / 94)) * Math.max(1, (int) (hDp / 112));
-            NativeIslandPlugin.prefs(ctx).edit().putInt("pageSize_" + wid, per).apply();
-        }
         boolean showPager = pager && !t.optString("pageText").isEmpty();
         int hw = Math.max(1, Math.round(w - 20 * d * k - 116 * d * k - (deep ? 46 * d * k : 0) - (showPager ? 92 * d * k : 0)));
         v.setImageViewBitmap(R.id.browse_header, WidgetArt.browseHeader(ctx, hw, hh, t.optString("title") + (showPager ? "  " + t.optString("pageText") : ""), t.optInt("total", items.length()), rk));

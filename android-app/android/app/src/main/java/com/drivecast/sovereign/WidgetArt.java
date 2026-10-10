@@ -168,7 +168,7 @@ final class WidgetArt {
         float unit = Math.min(h, w * 0.5f);
         float pad = Math.max(unit * 0.07f, w * 0.03f);
         float headH = Math.max(h * 0.16f, Math.min(h * 0.22f, unit * 0.2f));
-        float avail = h - (pad * 0.5f + headH + pad * 0.2f) - pad * 0.7f - headH * 0.45f;
+        float avail = h - (pad * 0.5f + headH + pad * 0.2f) - pad * 0.7f - headH * 0.45f - h * 0.13f; // the ‹ › row
         float minRow = Math.max(unit * 0.15f, h * 0.1f);
         int rows = Math.max(1, (int) (avail / minRow));
         return rows * (w > h * 1.6f ? 2 : 1);
@@ -202,7 +202,7 @@ final class WidgetArt {
         }
 
         float top = pad * 0.5f + headH + pad * 0.2f;
-        float avail = h - top - pad * 0.7f;
+        float avail = h - top - pad * 0.7f - h * 0.13f; // room for the ‹ › buttons
         if (list.length() == 0) {
             TextPaint e = Art.text(bold, unit * 0.09f, Art.alpha(Art.WHITE, 0.35f));
             Art.centerText(c, heading.startsWith("المنتهية") ? "لا مباريات منتهية" : "لا مباريات لفرقك اليوم", w / 2f, top + avail / 2, e);

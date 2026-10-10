@@ -67,8 +67,8 @@ final class IslandArt {
             case "match": {
                 float w = h * 0.25f;
                 if (it.live()) w += Art.minuteBadgeWidth(minuteText(it), h * 0.56f, black) + h * 0.16f;
-                w += h * 0.86f * 2; // logos
-                TextPaint sp = Art.text(black, h * 0.56f, Art.WHITE);
+                w += h * 0.96f * 2; // logos
+                TextPaint sp = Art.text(black, h * 0.62f, Art.WHITE);
                 w += Math.max(h * 1.3f, sp.measureText(centerText(it, now))) + h * 0.36f;
                 if (expanded) {
                     TextPaint np = Art.text(bold, h * 0.26f, Art.WHITE);
@@ -155,7 +155,7 @@ final class IslandArt {
             Art.minuteBadge(c, m, x + bw / 2, cy, h * 0.56f, black);
             x += bw + h * 0.16f;
         }
-        float lr = h * 0.4f;
+        float lr = h * 0.45f;
         int px = Math.round(lr * 2.2f);
         Bitmap hl = Images.cached(ctx, it.homeLogo, px), al = Images.cached(ctx, it.awayLogo, px);
         float hcx = x + lr + h * 0.03f;
@@ -163,7 +163,7 @@ final class IslandArt {
         Art.logo(c, hl, hcx, cy, lr, it.home, bold);
         Art.logo(c, al, acx, cy, lr, it.away, bold);
         String center = centerText(it, now);
-        TextPaint sp = Art.text(black, h * 0.56f, Art.WHITE);
+        TextPaint sp = Art.text(black, h * 0.62f, Art.WHITE);
         sp.setTextAlign(Paint.Align.CENTER);
         float mid;
         if (expanded) {
@@ -188,7 +188,7 @@ final class IslandArt {
             TextPaint f = Art.text(bold, h * 0.17f, Art.alpha(Art.WHITE, 0.5f));
             Art.centerText(c, "انتهت", mid, cy + h * 0.32f, f);
         } else {
-            if (center.startsWith("-")) sp.setTextSize(h * 0.44f);
+            if (center.startsWith("-")) sp.setTextSize(h * 0.5f);
             Art.glassText(c, center, mid, cy, sp);
         }
     }

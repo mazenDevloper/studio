@@ -113,7 +113,8 @@ public class SearchActivity extends Activity {
     private void submit() {
         String q = input.getText().toString().trim();
         if (q.isEmpty()) return;
-        MediaBrowser.load(getApplicationContext(), wid, "بحث: " + q, q, null, null);
+        // the results full screen (like the voice search), not inside the widget
+        SearchResultsActivity.open(getApplicationContext(), new Intent().putExtra("query", q));
         finish();
     }
 }
