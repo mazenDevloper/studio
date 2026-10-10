@@ -236,9 +236,10 @@ final class MediaBrowser {
         Intent s = new Intent(ctx, SearchActivity.class).putExtra("wid", wid).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         s.setData(Uri.parse("drivecast://search/" + wid));
         v.setOnClickPendingIntent(R.id.browse_search_round, PendingIntent.getActivity(ctx, 1200 + wid, s, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT));
+        // the column stays (the avatars keep their place); without more pages the arrows are just dim
         boolean more = !t.optString("pageText").isEmpty();
-        v.setViewVisibility(R.id.browse_prev, more ? View.VISIBLE : View.GONE);
-        v.setViewVisibility(R.id.browse_next, more ? View.VISIBLE : View.GONE);
+        v.setTextColor(R.id.browse_prev, more ? 0xFFFFFFFF : 0x33FFFFFF);
+        v.setTextColor(R.id.browse_next, more ? 0xFFFFFFFF : 0x33FFFFFF);
         for (int dir : new int[]{-1, 1}) {
             Intent pi = new Intent(ctx, WidgetActionReceiver.class).setAction(BROWSE).putExtra("wid", wid).putExtra("kind", "pager").putExtra("delta", dir);
             pi.setData(Uri.parse("drivecast://pager/" + wid + "/" + dir));

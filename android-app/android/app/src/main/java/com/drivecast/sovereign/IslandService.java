@@ -471,6 +471,11 @@ public class IslandService extends Service {
                     boolean onIsland = !bellOnly && pinned || (m.optBoolean("favorite") && (islandTeams.isEmpty() && teams == null
                             || involves(islandTeams, h.optString("name"), a.optString("name"))));
                     m.put("island", onIsland);
+                    // both teams favourites: the same match may come twice - keep one
+                    boolean dup = false;
+                    for (JSONObject o : mine) if (o.optString("id").equals(m.optString("id"))
+                            || (same(o.optJSONObject("home").optString("name"), h.optString("name")) && same(o.optJSONObject("away").optString("name"), a.optString("name")))) dup = true;
+                    if (dup) continue;
                     mine.add(m);
                     widgetData.put(m);
                 }

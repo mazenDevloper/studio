@@ -43,7 +43,9 @@ export async function fillTeamLogos(data: any): Promise<any> {
 export async function freshenLive(data: any): Promise<any> {
   const matches: any[] = data?.matches ?? [];
   const now = Date.now() / 1000;
-  const due = matches.filter(m => m?.status === "live" || (m?.status === "upcoming" && m.timestamp < now && now - m.timestamp < 3 * 3600));
+  // live ones, ones that should have started, and finished ones whose score is missing or 0-0 (often a source's blank)
+  const due = matches.filter(m => m?.status === "live" || (m?.status === "upcoming" && m.timestamp < now && now - m.timestamp < 3 * 3600)
+    || (m?.status === "finished" && now - m.timestamp < 36 * 3600 && (m.score?.home == null || m.score?.away == null || (m.score.home === 0 && m.score.away === 0))));
   if (!due.length) return data;
   let games: any[] = [];
   try {
