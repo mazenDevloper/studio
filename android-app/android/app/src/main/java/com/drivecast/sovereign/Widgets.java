@@ -708,15 +708,20 @@ public final class Widgets {
         String hijriText = hj[0] + " " + HIJRI_MONTHS[Math.max(0, Math.min(11, hj[1]))] + "، " + hj[2] + " هـ";
         int h12 = g.get(Calendar.HOUR) == 0 ? 12 : g.get(Calendar.HOUR);
         String now = h12 + ":" + String.format(Locale.ROOT, "%02d", g.get(Calendar.MINUTE));
-        // the next adhan
-        JSONArray list = countdowns(ctx);
+        // the next adhan / iqamah (the whole day's computed times)
+        JSONArray list = dayCountdowns(ctx);
         long t = System.currentTimeMillis(), nextAt = 0;
         String next = null;
         for (int i = 0; list != null && i < list.length(); i++) {
             JSONObject c = list.optJSONObject(i);
-            if (c == null || !"azan".equals(c.optString("kind"))) continue;
+            // the next adhan - or, between an adhan and its iqamah, the time left to the iqamah
+            if (c == null) continue;
+            boolean iq = "iqamah".equals(c.optString("kind"));
+            if (!("azan".equals(c.optString("kind")) || iq)) continue;
             long at = c.optLong("at");
-            if (at > t && (next == null || at < nextAt)) { next = c.optString("title"); nextAt = at; }
+            String ti = c.optString("title");
+            if (iq && !ti.contains("إقامة")) ti = "إقامة " + ti;
+            if (at > t && (next == null || at < nextAt)) { next = ti; nextAt = at; }
         }
         String occasion = Occasions.label(ctx);
         if (occasion != null) hijriText = hijriText + "  •  " + occasion;

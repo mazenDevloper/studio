@@ -230,6 +230,32 @@ final class MediaBrowser {
         return Math.max(2, (wDp - 20) / 96);
     }
 
+    /** the reciters / subscriptions: just the row of avatars, with 🔍 ‹ › at the bottom left */
+    private static RemoteViews buildPaged(Context ctx, int wid, JSONObject t, JSONArray items) {
+        RemoteViews v = new RemoteViews(ctx.getPackageName(), R.layout.widget_browse_paged);
+        Intent s = new Intent(ctx, SearchActivity.class).putExtra("wid", wid).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        s.setData(Uri.parse("drivecast://search/" + wid));
+        v.setOnClickPendingIntent(R.id.browse_search_round, PendingIntent.getActivity(ctx, 1200 + wid, s, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT));
+        boolean more = !t.optString("pageText").isEmpty();
+        v.setViewVisibility(R.id.browse_prev, more ? View.VISIBLE : View.GONE);
+        v.setViewVisibility(R.id.browse_next, more ? View.VISIBLE : View.GONE);
+        for (int dir : new int[]{-1, 1}) {
+            Intent pi = new Intent(ctx, WidgetActionReceiver.class).setAction(BROWSE).putExtra("wid", wid).putExtra("kind", "pager").putExtra("delta", dir);
+            pi.setData(Uri.parse("drivecast://pager/" + wid + "/" + dir));
+            v.setOnClickPendingIntent(dir < 0 ? R.id.browse_prev : R.id.browse_next, PendingIntent.getBroadcast(ctx, 1500 + wid * 2 + (dir < 0 ? 0 : 1), pi, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT));
+        }
+        Intent svc = new Intent(ctx, FoldersWidgetService.class);
+        svc.setData(Uri.parse("drivecast://browse/" + wid + "/" + items.toString().hashCode() + "/paged"));
+        v.setRemoteAdapter(R.id.folders_grid, svc);
+        v.setEmptyView(R.id.folders_grid, R.id.folders_empty);
+        v.setTextViewText(R.id.folders_empty, t.optString("empty", ""));
+        Intent tpl = new Intent(ctx, WidgetActionReceiver.class).setAction(BROWSE).putExtra("wid", wid);
+        tpl.setData(Uri.parse("drivecast://tap/" + wid));
+        int flags = PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= 31 ? PendingIntent.FLAG_MUTABLE : 0);
+        v.setPendingIntentTemplate(R.id.folders_grid, PendingIntent.getBroadcast(ctx, 1400 + wid, tpl, flags));
+        return v;
+    }
+
     static boolean paged(String kind) {
         return "reciters".equals(kind) || "channels".equals(kind);
     }
@@ -592,6 +618,7 @@ final class MediaBrowser {
         boolean surahs = "surahs".equals(t.optString("view")) || "iptv".equals(firstKind);
         int layout = t.optBoolean("rows") ? R.layout.widget_browse_list : videos ? R.layout.widget_browse_wide : surahs ? R.layout.widget_browse_mid : R.layout.widget_browse;
         RemoteViews v = new RemoteViews(ctx.getPackageName(), layout);
+        if (paged(rootKind(ctx, wid)) && stack(ctx, wid).length() == 0) return buildPaged(ctx, wid, t, items);
         float d = ctx.getResources().getDisplayMetrics().density;
         float k = h / (float) Math.max(1, realH);
         int hh = Math.max(1, Math.round(40 * d * k));
