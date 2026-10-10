@@ -876,6 +876,15 @@ public class IslandService extends Service {
         long d = IslandArt.goalDuration(g);
         celebration = g;
         celebrationUntil = g.shownAt + d;
+        // a goal: the phone vibrates (three pulses)
+        try {
+            android.os.Vibrator vib = (android.os.Vibrator) getSystemService(VIBRATOR_SERVICE);
+            long[] pat = {0, 300, 150, 300, 150, 600};
+            if (vib != null) {
+                if (Build.VERSION.SDK_INT >= 26) vib.vibrate(android.os.VibrationEffect.createWaveform(pat, -1));
+                else vib.vibrate(pat, -1);
+            }
+        } catch (Exception ignored) { }
         islandSignature = ""; // rebuild
         handler.postDelayed(() -> {
             if (celebration == g) {

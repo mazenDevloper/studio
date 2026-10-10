@@ -60,7 +60,7 @@ export function ActiveAzkarWidget() {
     <div className="h-full w-full rounded-[2.5rem] border border-white/10 flex flex-col relative overflow-hidden group focusable outline-none bg-black p-0 m-0" tabIndex={0}>
       {mapSettings.showManuscriptBg !== false && mapSettings.manuscriptBgUrl && (
         <div className="absolute inset-0 z-0">
-          <Image src={mapSettings.manuscriptBgUrl} alt="Bg" fill className="object-cover opacity-40" unoptimized />
+          <Image src={mapSettings.manuscriptBgUrl} alt="Bg" fill className="object-cover opacity-80" unoptimized />
         </div>
       )}
       

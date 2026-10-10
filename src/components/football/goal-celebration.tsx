@@ -97,6 +97,7 @@ export function GoalCelebration() {
   useEffect(() => {
     setCelebrating(!!current);
     if (!current) return;
+    try { navigator.vibrate?.([300, 150, 300, 150, 600]); } catch {}
     const D = showMs(current);
     const t = setTimeout(() => setQueue(q => q.slice(1)), D);
     // give the stage back to the other islands as soon as the card starts shrinking, not after it has gone
