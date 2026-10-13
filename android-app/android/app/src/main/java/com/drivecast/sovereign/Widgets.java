@@ -79,6 +79,14 @@ public final class Widgets {
 
     public static class RecitersWidget extends Base { }
 
+    /** the reciters / subscriptions as one tall scrolling column */
+    public static class RecitersVWidget extends Base { }
+
+    public static class ChannelsVWidget extends Base { }
+
+    /** the microphone and show / hide the islands, any size */
+    public static class ControlsWidget extends Base { }
+
     public static class SearchWidget extends Base { }
 
     public static class SavedWidget extends Base { }
@@ -252,6 +260,9 @@ public final class Widgets {
         render(ctx, m, ClockWidget.class, 250, 110, Widgets::clock);
         renderBrowse(ctx, m, ChannelsWidget.class);
         renderBrowse(ctx, m, RecitersWidget.class);
+        renderBrowse(ctx, m, RecitersVWidget.class);
+        renderBrowse(ctx, m, ChannelsVWidget.class);
+        render(ctx, m, ControlsWidget.class, 110, 60, Widgets::controls);
         renderBrowse(ctx, m, SearchWidget.class);
         render(ctx, m, MapWidget.class, 250, 180, Widgets::map);
         render(ctx, m, DayWidget.class, 300, 170, Widgets::day);
@@ -361,6 +372,22 @@ public final class Widgets {
             if (Build.VERSION.SDK_INT >= 24) v.setChronometerCountDown(R.id.prayer_countdown, true);
             v.setTextViewTextSize(R.id.prayer_countdown, TypedValue.COMPLEX_UNIT_PX, realH * WidgetArt.PRAYER_COUNT * 0.72f);
         }
+        return v;
+    }
+
+    // ---- the islands' controls ----
+
+    private static RemoteViews controls(Context ctx, int w, int h, int realH) {
+        // tall: the two buttons one above the other; wide (or square): side by side
+        RemoteViews v = new RemoteViews(ctx.getPackageName(), h > w * 1.3f ? R.layout.widget_controls_v : R.layout.widget_controls);
+        boolean hidden = Hub.bool(ctx, "islandsHidden", false);
+        v.setTextViewText(R.id.ctrl_eye, hidden ? "🙈" : "👁");
+        float sp = Math.max(16, Math.min(40, Math.min(w, h) / ctx.getResources().getDisplayMetrics().density / 3.2f));
+        v.setTextViewTextSize(R.id.ctrl_eye, TypedValue.COMPLEX_UNIT_SP, sp);
+        v.setTextViewTextSize(R.id.ctrl_mic, TypedValue.COMPLEX_UNIT_SP, sp);
+        Intent vi = new Intent(ctx, VoiceActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        v.setOnClickPendingIntent(R.id.ctrl_mic, PendingIntent.getActivity(ctx, 106, vi, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT));
+        v.setOnClickPendingIntent(R.id.ctrl_eye, action(ctx, WidgetActionReceiver.ISLANDS_TOGGLE, 107));
         return v;
     }
 

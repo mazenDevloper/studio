@@ -54,4 +54,10 @@
     <string name="island_accessibility_label">DriveCast · الجزيرة العائمة</string>
     <string name="island_accessibility_desc">يرسم الجزيرة العائمة (المباريات المباشرة وعدّاد الصلاة) فوق شريط الحالة وشاشة القفل مثل تطبيقات Dynamic Island. لا يقرأ أي محتوى من الشاشة.</string>
     <string name="shortcut_voice">أمر صوتي</string>
+    <string name="widget_reciters_v_label">DriveCast · القرّاء (طولي)</string>
+    <string name="widget_reciters_v_desc">عمود واحد من القرّاء يمرّر للأسفل</string>
+    <string name="widget_channels_v_label">DriveCast · الاشتراكات (طولي)</string>
+    <string name="widget_channels_v_desc">عمود واحد من الاشتراكات يمرّر للأسفل</string>
+    <string name="widget_controls_label">DriveCast · المايك والجزر</string>
+    <string name="widget_controls_desc">زر المايكروفون وإظهار/إخفاء الجزر بأي حجم</string>
 </resources>

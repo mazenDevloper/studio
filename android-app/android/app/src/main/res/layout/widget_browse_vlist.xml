@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- the reciters / subscriptions as a tall widget: one column of avatars that scrolls, 🔍 at the top -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_bg"
+    android:orientation="vertical"
+    android:padding="6dp">
+
+    <TextView
+        android:id="@+id/browse_search_round"
+        android:layout_width="match_parent"
+        android:layout_height="36dp"
+        android:layout_marginBottom="6dp"
+        android:background="@drawable/widget_btn_pill"
+        android:gravity="center"
+        android:includeFontPadding="false"
+        android:text="🔍"
+        android:textSize="15sp" />
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <GridView
+            android:id="@+id/folders_grid"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:numColumns="1"
+            android:verticalSpacing="6dp" />
+
+        <TextView
+            android:id="@+id/folders_empty"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:textColor="#80FFFFFF"
+            android:textSize="12sp" />
+    </FrameLayout>
+</LinearLayout>

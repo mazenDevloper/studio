@@ -23,6 +23,7 @@ public class WidgetActionReceiver extends BroadcastReceiver {
     static final String MANU_NEXT = "com.drivecast.MANU_NEXT";
     static final String MAP_TOGGLE = "com.drivecast.MAP_TOGGLE";
     static final String MATCHES_REFRESH = "com.drivecast.MATCHES_REFRESH";
+    static final String ISLANDS_TOGGLE = "com.drivecast.ISLANDS_TOGGLE";
     static final String MATCHES_PREV = "com.drivecast.MATCHES_PREV";
     static final String MATCHES_NEXT = "com.drivecast.MATCHES_NEXT";
 
@@ -47,6 +48,11 @@ public class WidgetActionReceiver extends BroadcastReceiver {
                 open.putExtra("arg", cmd);
                 ctx.startActivity(open);
             }
+        } else if (ISLANDS_TOGGLE.equals(a)) {
+            // the controls widget's 👁: hide / show the floating islands (the service, the page and the widgets follow)
+            Context app = ctx.getApplicationContext();
+            Hub.set(app, "islandsHidden", !Hub.bool(app, "islandsHidden", false));
+            IslandService.start(app);
         } else if (MATCHES_PREV.equals(a) || MATCHES_NEXT.equals(a)) {
             // the matches widget's ‹ (the finished) / › (the next ones by kick-off)
             android.content.SharedPreferences p = NativeIslandPlugin.prefs(ctx);

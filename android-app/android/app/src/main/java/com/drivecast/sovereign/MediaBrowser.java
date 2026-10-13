@@ -178,7 +178,8 @@ final class MediaBrowser {
     static String rootKind(Context ctx, int wid) {
         AppWidgetProviderInfo info = AppWidgetManager.getInstance(ctx).getAppWidgetInfo(wid);
         String cls = info != null && info.provider != null ? info.provider.getClassName() : "";
-        if (cls.endsWith("RecitersWidget")) return "reciters";
+        if (cls.endsWith("RecitersWidget") || cls.endsWith("RecitersVWidget")) return "reciters";
+        if (cls.endsWith("ChannelsVWidget")) return "channels";
         if (cls.endsWith("SearchWidget")) return "search";
         if (cls.endsWith("FoldersWidget")) return "folders";
         if (cls.endsWith("SavedWidget")) return "saved";
@@ -204,7 +205,7 @@ final class MediaBrowser {
         if (st.length() > 0 && (paged(kind) || "folders".equals(kind))) { save(ctx, wid, new JSONArray()); st = new JSONArray(); }
         if (st.length() > 0) return st.optJSONObject(st.length() - 1);
         JSONObject r = root(ctx, kind);
-        if (paged(kind)) {
+        if (paged(kind) && !vertical(ctx, wid)) {
             // one page: as many as the widget shows, ‹ › for the others
             android.content.SharedPreferences p = NativeIslandPlugin.prefs(ctx);
             int per = perPage(ctx, wid);
@@ -227,7 +228,7 @@ final class MediaBrowser {
         boolean land = ctx.getResources().getConfiguration().orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE;
         int wDp = o == null ? 0 : o.getInt(land ? AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH : AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH);
         if (wDp <= 0) wDp = 250;
-        return Math.max(2, (wDp - 20) / 96);
+        return Math.max(1, (int) ((wDp - 16 - 50 + 6) / 94f)); // the columns beside the side buttons
     }
 
     /** the reciters / subscriptions: just the row of avatars, with 🔍 ‹ › at the bottom left */
@@ -245,8 +246,44 @@ final class MediaBrowser {
             pi.setData(Uri.parse("drivecast://pager/" + wid + "/" + dir));
             v.setOnClickPendingIntent(dir < 0 ? R.id.browse_prev : R.id.browse_next, PendingIntent.getBroadcast(ctx, 1500 + wid * 2 + (dir < 0 ? 0 : 1), pi, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT));
         }
+        if (Build.VERSION.SDK_INT >= 31) {
+            // the side column as tall as one avatar tile: grid width → columns of ~88 dp (+6 dp gaps), tile = width × 1.05
+            android.os.Bundle o = AppWidgetManager.getInstance(ctx).getAppWidgetOptions(wid);
+            boolean land = ctx.getResources().getConfiguration().orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE;
+            int wDp = o == null ? 0 : o.getInt(land ? AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH : AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH);
+            if (wDp > 0) {
+                float grid = wDp - 16 - 50;
+                int cols = Math.max(1, (int) ((grid + 6) / 94));
+                float colW = (grid - (cols - 1) * 6) / cols;
+                v.setViewLayoutHeight(R.id.browse_ctrl_col, colW * 1.05f, android.util.TypedValue.COMPLEX_UNIT_DIP);
+            }
+        }
         Intent svc = new Intent(ctx, FoldersWidgetService.class);
         svc.setData(Uri.parse("drivecast://browse/" + wid + "/" + items.toString().hashCode() + "/paged"));
+        v.setRemoteAdapter(R.id.folders_grid, svc);
+        v.setEmptyView(R.id.folders_grid, R.id.folders_empty);
+        v.setTextViewText(R.id.folders_empty, t.optString("empty", ""));
+        Intent tpl = new Intent(ctx, WidgetActionReceiver.class).setAction(BROWSE).putExtra("wid", wid);
+        tpl.setData(Uri.parse("drivecast://tap/" + wid));
+        int flags = PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= 31 ? PendingIntent.FLAG_MUTABLE : 0);
+        v.setPendingIntentTemplate(R.id.folders_grid, PendingIntent.getBroadcast(ctx, 1400 + wid, tpl, flags));
+        return v;
+    }
+
+    /** the tall one-column versions: all the avatars, scrolling */
+    static boolean vertical(Context ctx, int wid) {
+        AppWidgetProviderInfo info = AppWidgetManager.getInstance(ctx).getAppWidgetInfo(wid);
+        String cls = info != null && info.provider != null ? info.provider.getClassName() : "";
+        return cls.endsWith("VWidget");
+    }
+
+    private static RemoteViews buildVertical(Context ctx, int wid, JSONObject t, JSONArray items) {
+        RemoteViews v = new RemoteViews(ctx.getPackageName(), R.layout.widget_browse_vlist);
+        Intent s = new Intent(ctx, SearchActivity.class).putExtra("wid", wid).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        s.setData(Uri.parse("drivecast://search/" + wid));
+        v.setOnClickPendingIntent(R.id.browse_search_round, PendingIntent.getActivity(ctx, 1200 + wid, s, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT));
+        Intent svc = new Intent(ctx, FoldersWidgetService.class);
+        svc.setData(Uri.parse("drivecast://browse/" + wid + "/" + items.toString().hashCode() + "/vlist"));
         v.setRemoteAdapter(R.id.folders_grid, svc);
         v.setEmptyView(R.id.folders_grid, R.id.folders_empty);
         v.setTextViewText(R.id.folders_empty, t.optString("empty", ""));
@@ -619,7 +656,7 @@ final class MediaBrowser {
         boolean surahs = "surahs".equals(t.optString("view")) || "iptv".equals(firstKind);
         int layout = t.optBoolean("rows") ? R.layout.widget_browse_list : videos ? R.layout.widget_browse_wide : surahs ? R.layout.widget_browse_mid : R.layout.widget_browse;
         RemoteViews v = new RemoteViews(ctx.getPackageName(), layout);
-        if (paged(rootKind(ctx, wid)) && stack(ctx, wid).length() == 0) return buildPaged(ctx, wid, t, items);
+        if (paged(rootKind(ctx, wid)) && stack(ctx, wid).length() == 0) return vertical(ctx, wid) ? buildVertical(ctx, wid, t, items) : buildPaged(ctx, wid, t, items);
         float d = ctx.getResources().getDisplayMetrics().density;
         float k = h / (float) Math.max(1, realH);
         int hh = Math.max(1, Math.round(40 * d * k));
