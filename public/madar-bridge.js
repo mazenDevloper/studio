@@ -13,6 +13,35 @@
 
   if (window.parent === window) return;
 
+  // Inside Madar the page runs twice (one copy per eye) on an iPhone that is also running the camera and 3D.
+  // Light mode: no blur/shadow/animation effects (the heaviest work for the iPhone's GPU), and the
+  // right-eye copy stays silent so sound and video decoding happen once.
+  var EYE = /^madar-eye-(\d)$/.exec(window.name || '');
+  if (EYE) {
+    var css = '*,*::before,*::after{-webkit-backdrop-filter:none!important;backdrop-filter:none!important;' +
+      'box-shadow:none!important;text-shadow:none!important;filter:none!important;' +
+      'transition-duration:0s!important;transition-delay:0s!important;animation-duration:0s!important;animation-delay:0s!important;animation-iteration-count:1!important;' +
+      'will-change:auto!important}' +
+      'img{content-visibility:auto}';
+    var addStyle = function () {
+      if (document.getElementById('madar-lite')) return;
+      var st = document.createElement('style'); st.id = 'madar-lite'; st.textContent = css;
+      (document.head || document.documentElement).appendChild(st);
+    };
+    addStyle(); document.addEventListener('DOMContentLoaded', addStyle);
+    document.documentElement.classList.add('madar');
+    if (EYE[1] === '1') {
+      var play = HTMLMediaElement.prototype.play;
+      HTMLMediaElement.prototype.play = function () { try { this.muted = true; this.volume = 0; } catch (e) {} return play.apply(this, arguments); };
+      setInterval(function () {
+        document.querySelectorAll('video,audio').forEach(function (m) { if (!m.muted) { m.muted = true; } });
+        document.querySelectorAll('iframe[src*="youtube"]').forEach(function (f) {
+          try { f.contentWindow.postMessage('{"event":"command","func":"mute","args":[]}', '*'); } catch (e) {}
+        });
+      }, 1500);
+    }
+  }
+
   function canScroll(el, dx, dy) {
     var s = getComputedStyle(el);
     var y = /(auto|scroll|overlay)/.test(s.overflowY) && el.scrollHeight > el.clientHeight + 1;
