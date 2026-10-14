@@ -1,0 +1,10 @@
+# Netlify build for the Next.js app (cplay3.netlify.app)
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
