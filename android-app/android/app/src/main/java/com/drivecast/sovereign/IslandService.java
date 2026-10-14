@@ -293,7 +293,7 @@ public class IslandService extends Service {
             URL u = new URL(config.optString("apiUrl", ""));
             return u.getProtocol() + "://" + u.getAuthority();
         } catch (Exception e) {
-            return "https://cplay2.vercel.app";
+            return "https://cplay3.netlify.app";
         }
     }
 

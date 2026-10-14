@@ -5,7 +5,7 @@ import WebKit
 /// (window.Capacitor.Plugins.NativeIsland), so the page sends its prayer times, reminders and teams to the islands.
 final class WebViewController: UIViewController, WKScriptMessageHandler, WKUIDelegate, WKNavigationDelegate {
 
-    static let siteURL = URL(string: "https://cplay2.vercel.app")!
+    static let siteURL = URL(string: "https://cplay3.netlify.app")!
     private(set) var web: WKWebView!
 
     override var preferredStatusBarStyle: UIStatusBarStyle { .lightContent }

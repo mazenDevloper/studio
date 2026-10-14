@@ -171,7 +171,7 @@ public class PreviewRender {
     private JSONArray sampleMatches() throws Exception {
         JSONArray src = new JSONArray();
         try {
-            HttpURLConnection c = (HttpURLConnection) new URL("https://cplay2.vercel.app/api/matches?limit=12").openConnection();
+            HttpURLConnection c = (HttpURLConnection) new URL("https://cplay3.netlify.app/api/matches?limit=12").openConnection();
             c.setConnectTimeout(20_000);
             c.setReadTimeout(40_000);
             StringBuilder sb = new StringBuilder();

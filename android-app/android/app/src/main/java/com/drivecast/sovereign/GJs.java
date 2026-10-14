@@ -67,7 +67,7 @@ final class GJs {
         view.addJavascriptInterface(new Bridge(), "DCG");
         String html = "<!doctype html><html><head><meta charset='utf-8'></head><body><div id='m' style='width:10px;height:10px'></div><script>" + JS
                 + "</script><script async src='https://maps.googleapis.com/maps/api/js?key=" + GMaps.key(ctx) + "&libraries=places&language=ar&callback=init'></script></body></html>";
-        view.loadDataWithBaseURL(Widgets.json(ctx, "widgets").optString("origin", "https://cplay2.vercel.app") + "/", html, "text/html", "UTF-8", null);
+        view.loadDataWithBaseURL(Widgets.json(ctx, "widgets").optString("origin", "https://cplay3.netlify.app") + "/", html, "text/html", "UTF-8", null);
     }
 
     /** Run a call in the page and wait for its answer (null on failure / timeout). */

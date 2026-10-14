@@ -4,7 +4,7 @@ import type { CapacitorConfig } from "@capacitor/cli";
  * The app opens the live site (updates to the site reach the app without a new APK). Change APP_URL when the
  * site moves (e.g. to the main production domain) and rebuild.
  */
-const APP_URL = process.env.APP_URL || "https://cplay2.vercel.app";
+const APP_URL = process.env.APP_URL || "https://cplay3.netlify.app";
 
 const config: CapacitorConfig = {
   appId: "com.drivecast.sovereign",

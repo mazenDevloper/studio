@@ -139,7 +139,7 @@ final class GMaps {
         c.setRequestProperty("X-Goog-Api-Key", key);
         c.setRequestProperty("X-Goog-FieldMask", fieldMask);
         // the key may be limited to the site's address
-        c.setRequestProperty("Referer", "https://cplay2.vercel.app/");
+        c.setRequestProperty("Referer", "https://cplay3.netlify.app/");
         c.setRequestProperty("X-Android-Package", "com.drivecast.sovereign");
         try (OutputStream o = c.getOutputStream()) {
             o.write(body.toString().getBytes("UTF-8"));

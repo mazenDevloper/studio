@@ -499,7 +499,7 @@ public class PlayerActivity extends Activity {
     /** The page's origin: the site's address (YouTube's player refuses pages without one). */
     static String base(android.content.Context ctx, String type) {
         if ("stream".equals(type)) return "http://localhost/";
-        return Widgets.json(ctx, "widgets").optString("origin", "https://cplay2.vercel.app") + "/";
+        return Widgets.json(ctx, "widgets").optString("origin", "https://cplay3.netlify.app") + "/";
     }
 
     /** Switch to the floating window or to audio only in the island (the list goes along for next / previous). */

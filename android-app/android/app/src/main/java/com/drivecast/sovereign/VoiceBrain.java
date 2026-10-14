@@ -78,7 +78,7 @@ final class VoiceBrain {
     static String matchesOn(Context ctx, int day, boolean topOnly) {
         String when = day == 1 ? "غداً" : day == -1 ? "أمس" : "اليوم";
         try {
-            String origin = Widgets.json(ctx, "widgets").optString("origin", "https://cplay2.vercel.app");
+            String origin = Widgets.json(ctx, "widgets").optString("origin", "https://cplay3.netlify.app");
             JSONArray teams = Cloud.master(ctx).optJSONArray("favoriteTeams");
             StringBuilder t = new StringBuilder();
             for (int i = 0; teams != null && i < teams.length(); i++) {
@@ -186,7 +186,7 @@ final class VoiceBrain {
         c.setRequestMethod("POST");
         c.setDoOutput(true);
         c.setRequestProperty("Content-Type", "application/json; charset=utf-8");
-        c.setRequestProperty("Referer", "https://cplay2.vercel.app/");
+        c.setRequestProperty("Referer", "https://cplay3.netlify.app/");
         try (OutputStream o = c.getOutputStream()) {
             o.write(body.toString().getBytes("UTF-8"));
         }
