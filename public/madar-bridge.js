@@ -57,6 +57,16 @@
       if (a) a.click(); else location.assign(d.path);
     }
     else if (d.type === 'back') history.back();
+    else if (d.type === 'text') {
+      // Type into the focused field (works with React-controlled inputs).
+      var el = document.activeElement;
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) {
+        var proto = el.tagName === 'INPUT' ? HTMLInputElement.prototype : HTMLTextAreaElement.prototype;
+        var setter = Object.getOwnPropertyDescriptor(proto, 'value').set;
+        setter.call(el, (el.value || '') + d.value);
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+      } else if (el && el.isContentEditable) document.execCommand('insertText', false, d.value);
+    }
   });
   post({ type: 'ready', path: location.pathname });
 })();
