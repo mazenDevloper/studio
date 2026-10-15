@@ -70,12 +70,13 @@
   function post(msg) { msg.madar = 1; try { window.parent.postMessage(msg, MADAR); } catch (e) {} }
 
   var lastPath = '';
-  setInterval(function () { if (location.pathname !== lastPath) { lastPath = location.pathname; post({ type: 'path', path: lastPath }); } }, 500);
+  function where() { return window.__MADAR_PROXY ? window.__MADAR_PROXY.url : location.pathname; }
+  setInterval(function () { var w = where(); if (w !== lastPath) { lastPath = w; post({ type: 'path', path: location.pathname, url: window.__MADAR_PROXY ? w : undefined }); } }, 500);
 
   window.addEventListener('message', function (e) {
     if (e.origin !== MADAR) return;
     var d = e.data; if (!d || d.madar !== 1) return;
-    if (d.type === 'hello') post({ type: 'ready', path: location.pathname });
+    if (d.type === 'hello') post({ type: 'ready', path: location.pathname, url: window.__MADAR_PROXY ? window.__MADAR_PROXY.url : undefined });
     else if (d.type === 'tap') tap(d.x, d.y);
     else if (d.type === 'scroll') {
       var el = document.elementFromPoint(d.x, d.y) || document.body;
@@ -97,5 +98,5 @@
       } else if (el && el.isContentEditable) document.execCommand('insertText', false, d.value);
     }
   });
-  post({ type: 'ready', path: location.pathname });
+  post({ type: 'ready', path: location.pathname, url: window.__MADAR_PROXY ? window.__MADAR_PROXY.url : undefined });
 })();
