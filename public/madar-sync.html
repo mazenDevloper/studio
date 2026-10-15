@@ -1,0 +1,23 @@
+<!doctype html><meta charset="utf-8"><title>madar sync</title>
+<script>
+// Tells Madar (mazendevloper.github.io) your favourite teams saved in cplay3 on this device, so its live
+// match island follows the same teams. Only answers the Madar page that embeds it.
+(function () {
+  var MADAR = 'https://mazendevloper.github.io';
+  if (window.parent === window) return;
+  var teams = [], pins = [];
+  try {
+    for (var i = 0; i < localStorage.length; i++) {
+      var k = localStorage.key(i);
+      if (k.indexOf('drivecast-sovereign') !== 0) continue;
+      var s = JSON.parse(localStorage.getItem(k) || 'null');
+      var st = s && (s.state || s);
+      if (st && Array.isArray(st.favoriteTeams) && st.favoriteTeams.length) {
+        teams = st.favoriteTeams.map(function (t) { return { name: t.name, country: t.country || '', island: t.island !== false }; });
+        pins = (st.pinnedMatches || []).map(function (p) { return { home: p.home, away: p.away }; });
+      }
+    }
+  } catch (e) {}
+  parent.postMessage({ madar: 1, type: 'favorites', teams: teams, pins: pins }, MADAR);
+})();
+</script>

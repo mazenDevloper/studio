@@ -8,3 +8,10 @@
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
+
+# Madar (mazendevloper.github.io) reads today's matches for its live island.
+[[headers]]
+  for = "/api/matches*"
+  [headers.values]
+    Access-Control-Allow-Origin = "https://mazendevloper.github.io"
+    Vary = "Origin"
