@@ -70,7 +70,8 @@
   // Picture of the visible page for Madar's curved screen and 360° view (drawn with html2canvas,
   // loaded only when asked). Only the left-eye copy answers.
   var ME = (function () { try { return new URL(document.currentScript.src).origin; } catch (e) { return location.origin; } })();
-  var h2c = null, snapping = false;
+  var h2c = null, snapping = false, skipMedia = false;
+  function playing() { var v = document.querySelectorAll('video'); for (var i = 0; i < v.length; i++) if (!v[i].paused && v[i].readyState > 2) return true; return !!document.querySelector('iframe[src*="youtube"],iframe[src*="player"],iframe[allowfullscreen]'); }
   function loadH2C() {
     if (window.html2canvas) return Promise.resolve();
     if (!h2c) h2c = new Promise(function (res, rej) {
@@ -91,10 +92,16 @@
         x: window.scrollX, y: window.scrollY, width: W, height: H, windowWidth: W, windowHeight: H,
         scale: 1, logging: false, imageTimeout: 3000, backgroundColor: bg,
         useCORS: false, proxy: window.__MADAR_PROXY ? ME + '/api/madar-browse' : undefined,
+        ignoreElements: function (el) { return skipMedia && (el.tagName === 'VIDEO' || el.tagName === 'CANVAS'); },
       });
     }).then(function (c) {
-      c.toBlob(function (b) { snapping = false; post({ type: 'snap', id: d.id, blob: b }); }, 'image/jpeg', d.q || 0.8);
-    }).catch(function (e) { snapping = false; post({ type: 'snap', id: d.id, error: String(e && e.message || e) }); });
+      c.toBlob(function (b) { snapping = false; post({ type: 'snap', id: d.id, blob: b, media: playing() }); }, 'image/jpeg', d.q || 0.8);
+    }).catch(function (e) {
+      snapping = false;
+      // A video from another site can't be copied into the picture: leave videos out and try again.
+      if (!skipMedia) { skipMedia = true; setTimeout(function () { snap(d); }, 0); return; }
+      post({ type: 'snap', id: d.id, error: String(e && e.message || e) });
+    });
   }
 
   function post(msg) { msg.madar = 1; try { window.parent.postMessage(msg, MADAR); } catch (e) {} }
@@ -108,6 +115,16 @@
     var d = e.data; if (!d || d.madar !== 1) return;
     if (d.type === 'hello') post({ type: 'ready', path: location.pathname, url: window.__MADAR_PROXY ? window.__MADAR_PROXY.url : undefined });
     else if (d.type === 'snap') snap(d);
+    else if (d.type === 'zoom') { document.documentElement.style.zoom = String(d.value || 1); }
+    else if (d.type === 'night') {
+      if (!document.getElementById('madar-night')) {
+        var st = document.createElement('style'); st.id = 'madar-night';
+        st.textContent = 'html.madar-night{filter:invert(.92) hue-rotate(180deg)!important;background:#fff!important}' +
+          'html.madar-night img,html.madar-night video,html.madar-night picture,html.madar-night canvas,html.madar-night iframe,html.madar-night [style*="background-image"]{filter:invert(1) hue-rotate(180deg)!important}';
+        (document.head || document.documentElement).appendChild(st);
+      }
+      document.documentElement.classList.toggle('madar-night', !!d.on);
+    }
     else if (d.type === 'tap') tap(d.x, d.y);
     else if (d.type === 'scroll') {
       var el = document.elementFromPoint(d.x, d.y) || document.body;
