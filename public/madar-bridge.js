@@ -67,6 +67,36 @@
     if (/^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) target.focus();
     if (typeof target.click === 'function') target.click(); else fire(target, 'click', x, y);
   }
+  // Picture of the visible page for Madar's curved screen and 360° view (drawn with html2canvas,
+  // loaded only when asked). Only the left-eye copy answers.
+  var ME = (function () { try { return new URL(document.currentScript.src).origin; } catch (e) { return location.origin; } })();
+  var h2c = null, snapping = false;
+  function loadH2C() {
+    if (window.html2canvas) return Promise.resolve();
+    if (!h2c) h2c = new Promise(function (res, rej) {
+      var s = document.createElement('script'); s.src = ME + '/html2canvas.min.js'; s.onload = res; s.onerror = function () { h2c = null; rej(new Error('html2canvas')); };
+      (document.head || document.documentElement).appendChild(s);
+    });
+    return h2c;
+  }
+  function snap(d) {
+    if (snapping) return;
+    snapping = true;
+    var W = window.innerWidth, H = window.innerHeight;
+    loadH2C().then(function () {
+      var bg = getComputedStyle(document.body).backgroundColor;
+      if (!bg || bg === 'rgba(0, 0, 0, 0)' || bg === 'transparent') bg = getComputedStyle(document.documentElement).backgroundColor;
+      if (!bg || bg === 'rgba(0, 0, 0, 0)' || bg === 'transparent') bg = '#ffffff';
+      return window.html2canvas(document.body, {
+        x: window.scrollX, y: window.scrollY, width: W, height: H, windowWidth: W, windowHeight: H,
+        scale: 1, logging: false, imageTimeout: 3000, backgroundColor: bg,
+        useCORS: false, proxy: window.__MADAR_PROXY ? ME + '/api/madar-browse' : undefined,
+      });
+    }).then(function (c) {
+      c.toBlob(function (b) { snapping = false; post({ type: 'snap', id: d.id, blob: b }); }, 'image/jpeg', d.q || 0.8);
+    }).catch(function (e) { snapping = false; post({ type: 'snap', id: d.id, error: String(e && e.message || e) }); });
+  }
+
   function post(msg) { msg.madar = 1; try { window.parent.postMessage(msg, MADAR); } catch (e) {} }
 
   var lastPath = '';
@@ -77,6 +107,7 @@
     if (e.origin !== MADAR) return;
     var d = e.data; if (!d || d.madar !== 1) return;
     if (d.type === 'hello') post({ type: 'ready', path: location.pathname, url: window.__MADAR_PROXY ? window.__MADAR_PROXY.url : undefined });
+    else if (d.type === 'snap') snap(d);
     else if (d.type === 'tap') tap(d.x, d.y);
     else if (d.type === 'scroll') {
       var el = document.elementFromPoint(d.x, d.y) || document.body;
