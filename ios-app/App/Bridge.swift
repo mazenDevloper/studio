@@ -35,6 +35,8 @@ final class Bridge {
                     "overlay": true, "background": true, "accessibility": true, "overlayEnabled": true,
                     "notifications": st.authorizationStatus == .authorized || st.authorizationStatus == .provisional,
                     "liveActivities": ActivityAuthorizationInfo().areActivitiesEnabled,
+                    "appGroup": DCShared.group,
+                    "appGroupWorks": DCShared.groupWorks,
                     "prayerIsland": UserDefaults.standard.bool(forKey: "prayerIsland"),
                     "matchesIsland": UserDefaults.standard.bool(forKey: "matchesIsland"),
                     "version": (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String) ?? "1.0",

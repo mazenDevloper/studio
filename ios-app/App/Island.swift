@@ -59,7 +59,8 @@ final class Island {
     // MARK: prayers + reminders
 
     private func prayerActivity() -> Activity<IslandAttributes>? {
-        Activity<IslandAttributes>.activities.first { $0.attributes.type == "prayer" }
+        // only a running one: iOS ends a Live Activity after 8 hours (or the user swipes it away) - then a new one starts
+        Activity<IslandAttributes>.activities.first { $0.attributes.type == "prayer" && $0.activityState == .active }
     }
 
     private func updatePrayerActivity() {
@@ -195,7 +196,7 @@ final class Island {
             state.league = state.title
             state.scored = scored
             let content = ActivityContent(state: state, staleDate: now.addingTimeInterval(st == "live" ? 10 * 60 : 3 * 3600))
-            if let a = Activity<IslandAttributes>.activities.first(where: { $0.attributes.type == "match" && $0.attributes.matchId == id }) {
+            if let a = Activity<IslandAttributes>.activities.first(where: { $0.attributes.type == "match" && $0.attributes.matchId == id && $0.activityState == .active }) {
                 if a.content.state != state {
                     Task {
                         if !scored.isEmpty {

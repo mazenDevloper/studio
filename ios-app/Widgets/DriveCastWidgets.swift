@@ -66,7 +66,7 @@ struct PrayerWidgetView: View {
                 }
                 Spacer()
                 VStack(alignment: .trailing, spacing: 0) {
-                    Text(e.title.isEmpty ? "افتح التطبيق" : e.title).font(DC.font(22)).foregroundColor(.white)
+                    Text(e.title.isEmpty ? (DCShared.groupWorks ? "افتح التطبيق مرة" : "أعد التثبيت") : e.title).font(DC.font(22)).foregroundColor(.white)
                     if let at = e.at { Text("الأذان · " + DCShared.time12(at)).font(DC.font(11, "Bold")).foregroundColor(.white.opacity(0.45)) }
                 }
                 IconSquare(kind: "azan", size: 40)
@@ -100,7 +100,7 @@ struct PrayerWidget: Widget {
                 PrayerWidgetView(e: e).padding().background(DC.card)
             }
         }
-        .configurationDisplayName("DriveCast · الصلاة")
+        .configurationDisplayName("الصلاة")
         .description("الصلاة القادمة مع عدّاد ومواقيت اليوم")
         .supportedFamilies([.systemSmall, .systemMedium])
     }

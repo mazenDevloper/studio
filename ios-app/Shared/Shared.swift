@@ -5,7 +5,41 @@ import CoreText
 
 /// Data shared by the app and the widget extension (an App Group).
 enum DCShared {
-    static let group = "group.com.drivecast.sovereign"
+    static let baseGroup = "group.com.drivecast.sovereign"
+
+    /**
+     The App Group the app and the widget really share. Sideloading tools (AltStore, Sideloadly) sign with a free
+     account and rename it (e.g. "group.com.drivecast.sovereign.KZ7R4K8247"): the name is read from the signing
+     profile inside the app, then guessed from the renamed bundle id, and the first one iOS actually opens wins. With
+     the wrong name the widget and the Dynamic Island would read an empty store (no prayers, no logos).
+     */
+    static let group: String = {
+        var candidates: [String] = profileGroups()
+        if let id = Bundle.main.bundleIdentifier, let r = id.range(of: "com.drivecast.sovereign") {
+            // "com.drivecast.sovereign.TEAM" (app) / "com.drivecast.sovereign.TEAM.widgets" (widget)
+            let rest = id[r.upperBound...].split(separator: ".").map(String.init).filter { $0 != "widgets" }
+            if let team = rest.first { candidates += [baseGroup + "." + team, "group." + team + ".com.drivecast.sovereign"] }
+        }
+        candidates.append(baseGroup)
+        for c in candidates where FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: c) != nil { return c }
+        return candidates.first ?? baseGroup
+    }()
+
+    /// application-groups listed in embedded.mobileprovision (the sideloaded app's real entitlements)
+    private static func profileGroups() -> [String] {
+        guard let url = Bundle.main.url(forResource: "embedded", withExtension: "mobileprovision"),
+              let data = try? Data(contentsOf: url),
+              let start = data.range(of: Data("<?xml".utf8)),
+              let end = data.range(of: Data("</plist>".utf8), in: start.lowerBound..<data.endIndex) else { return [] }
+        let plistData = data.subdata(in: start.lowerBound..<end.upperBound)
+        guard let plist = try? PropertyListSerialization.propertyList(from: plistData, format: nil) as? [String: Any],
+              let ent = plist["Entitlements"] as? [String: Any],
+              let groups = ent["com.apple.security.application-groups"] as? [String] else { return [] }
+        return groups.filter { !$0.contains("*") }
+    }
+
+    /// true when the app and the widget really share a folder
+    static var groupWorks: Bool { FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: group) != nil }
 
     static var defaults: UserDefaults { UserDefaults(suiteName: group) ?? .standard }
 
