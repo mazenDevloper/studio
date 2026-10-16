@@ -50,6 +50,12 @@ jobs:
           for ex in Payload/DriveCast.app/PlugIns/*.appex; do codesign --force --sign - "$ex"; done
           codesign --force --sign - Payload/DriveCast.app
           zip -qry DriveCast.ipa Payload
+          # no signature at all (the sideloading tool signs every part fresh: a widget part crashing with
+          # "CODESIGNING Invalid Page" points at a re-signed binary whose page hashes no longer match)
+          mkdir -p NoSign/Payload && cp -R "$APP" NoSign/Payload/
+          for b in NoSign/Payload/DriveCast.app/PlugIns/*.appex/DriveCastWidgets NoSign/Payload/DriveCast.app/DriveCast; do codesign --remove-signature "$b" || true; done
+          rm -rf NoSign/Payload/DriveCast.app/_CodeSignature NoSign/Payload/DriveCast.app/PlugIns/*.appex/_CodeSignature
+          (cd NoSign && zip -qry ../DriveCast-nosign.ipa Payload)
           # with the App Group (logos in the island) for AltStore setups that grant it
           mkdir -p Group/Payload && cp -R "$APP" Group/Payload/
           for ex in Group/Payload/DriveCast.app/PlugIns/*.appex; do codesign --force --sign - --entitlements Widgets/DriveCastWidgets.entitlements "$ex"; done
@@ -81,6 +87,6 @@ jobs:
           TAG=ios-latest
           case "$GITHUB_REF_NAME" in main) ;; *) TAG=ios-preview ;; esac
           gh release delete "$TAG" --yes --cleanup-tag || true
-          gh release create "$TAG" DriveCast.ipa DriveCast-group.ipa DriveCast-lite.ipa --target "$GITHUB_SHA" --prerelease \
+          gh release create "$TAG" DriveCast.ipa DriveCast-nosign.ipa DriveCast-group.ipa DriveCast-lite.ipa --target "$GITHUB_SHA" --prerelease \
             --title "DriveCast iPhone (build ${{ github.run_number }})" \
             --notes "Built from ${GITHUB_REF_NAME} @ ${GITHUB_SHA::7}. Unsigned: install with Sideloadly or AltStore (iOS 16.2+; the Dynamic Island needs iPhone 14 Pro or newer)."
