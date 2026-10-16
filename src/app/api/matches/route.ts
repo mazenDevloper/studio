@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   try {
     return NextResponse.json(dedupeMatches(await freshenLive(await fillTeamLogos(await getTopMatchesToday(limit, req.nextUrl.searchParams.get("source") || undefined, req.nextUrl.searchParams.get("all") === "1", (req.nextUrl.searchParams.get("teams") || "").split("|").map(s => s.trim()).filter(Boolean).slice(0, 80), Math.max(-60, Math.min(60, Math.trunc(Number(req.nextUrl.searchParams.get("day")) || 0))),
       (req.nextUrl.searchParams.get("pins") || "").split("|").map(s => s.trim()).filter(Boolean).slice(0, 40),
-      req.nextUrl.searchParams.getAll("follow").map(s => s.trim()).filter(Boolean).slice(0, 60)))), { headers: MADAR });
+      req.nextUrl.searchParams.getAll("follow").map(s => s.trim()).filter(Boolean).slice(0, 60))))), { headers: MADAR });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || "Failed to fetch matches" }, { status: 502, headers: MADAR });
   }
