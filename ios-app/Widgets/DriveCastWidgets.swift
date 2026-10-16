@@ -25,17 +25,25 @@ struct PrayerProvider: TimelineProvider {
     }
 
     func getSnapshot(in context: Context, completion: @escaping (PrayerEntry) -> Void) {
-        completion(entries(from: Date()).first ?? placeholder(in: context))
+        completion(entries(from: Date(), events: DCShared.events()).first ?? placeholder(in: context))
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<PrayerEntry>) -> Void) {
-        let list = entries(from: Date())
-        completion(Timeline(entries: list.isEmpty ? [placeholder(in: context)] : list, policy: .after(Date().addingTimeInterval(6 * 3600))))
+        let list = entries(from: Date(), events: DCShared.events())
+        if !list.isEmpty && list.first?.at != nil {
+            completion(Timeline(entries: list, policy: .after(Date().addingTimeInterval(6 * 3600))))
+            return
+        }
+        // nothing shared by the app (sideloaded without an App Group): the widget reads the prayer times itself
+        CloudPrayers.fetch { events in
+            let l = entries(from: Date(), events: events)
+            completion(Timeline(entries: l.isEmpty ? [placeholder(in: context)] : l, policy: .after(Date().addingTimeInterval(l.isEmpty ? 1800 : 6 * 3600))))
+        }
     }
 
     /// One entry now and one at each adhan, so the widget moves on to the next prayer by itself.
-    private func entries(from now: Date) -> [PrayerEntry] {
-        let all = DCShared.events().filter { $0.kind == "azan" }
+    private func entries(from now: Date, events: [(title: String, at: Date, kind: String)]) -> [PrayerEntry] {
+        let all = events.filter { $0.kind == "azan" }
         let cal = Calendar.current
         var out: [PrayerEntry] = []
         var moments = [now]
@@ -103,5 +111,43 @@ struct PrayerWidget: Widget {
         .configurationDisplayName("الصلاة")
         .description("الصلاة القادمة مع عدّاد ومواقيت اليوم")
         .supportedFamilies([.systemSmall, .systemMedium])
+    }
+}
+
+
+/// The prayer times straight from the cloud (the same bin the site and the Android app read), for when the app
+/// can't share them with the widget.
+enum CloudPrayers {
+    static let bin = "69a00f6eae596e708f4b7291"
+    static let key = "$2a$10$SYrYv.ct8hiMU9YeUxEQ.ecRkOrTqs.TDchJRV3wW.aKJnDXy2oVy"
+    static let names: [(String, String)] = [("fajr", "الفجر"), ("sunrise", "الشروق"), ("dhuhr", "الظهر"), ("asr", "العصر"), ("maghrib", "المغرب"), ("isha", "العشاء")]
+
+    static func fetch(_ done: @escaping ([(title: String, at: Date, kind: String)]) -> Void) {
+        guard let u = URL(string: "https://api.jsonbin.io/v3/b/\(bin)/latest") else { done([]); return }
+        var r = URLRequest(url: u, timeoutInterval: 20)
+        r.setValue(key, forHTTPHeaderField: "X-Master-Key")
+        r.setValue("false", forHTTPHeaderField: "X-Bin-Meta")
+        URLSession.shared.dataTask(with: r) { data, _, _ in
+            var out: [(title: String, at: Date, kind: String)] = []
+            if let data, let o = try? JSONSerialization.jsonObject(with: data) {
+                let rows = (o as? [[String: Any]]) ?? ((o as? [String: Any])?["prayers"] as? [[String: Any]]) ?? []
+                let cal = Calendar.current
+                let f = DateFormatter()
+                f.locale = Locale(identifier: "en_US_POSIX")
+                f.dateFormat = "yyyy-MM-dd"
+                for off in 0...1 {
+                    guard let day = cal.date(byAdding: .day, value: off, to: cal.startOfDay(for: Date())) else { continue }
+                    let key = f.string(from: day)
+                    guard let row = rows.first(where: { ($0["date"] as? String) == key }) else { continue }
+                    for (id, name) in names {
+                        guard let t = row[id] as? String else { continue }
+                        let p = t.split(separator: ":")
+                        guard p.count >= 2, let h = Int(p[0].trimmingCharacters(in: .whitespaces)), let m = Int(p[1].prefix(2)) else { continue }
+                        out.append((name, day.addingTimeInterval(TimeInterval(h * 3600 + m * 60)), "azan"))
+                    }
+                }
+            }
+            done(out.sorted { $0.at < $1.at })
+        }.resume()
     }
 }

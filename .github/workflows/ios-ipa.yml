@@ -43,10 +43,18 @@ jobs:
         run: |
           APP=build/Release-iphoneos/DriveCast.app
           ls -la "$APP" "$APP/PlugIns" || true
-          for ex in "$APP"/PlugIns/*.appex; do codesign --force --sign - --entitlements Widgets/DriveCastWidgets.entitlements "$ex"; done
-          codesign --force --sign - --entitlements App/DriveCast.entitlements "$APP"
+          # the default IPA: no App Group entitlement - sideloading with a free account often can't provision one,
+          # and an entitlement the profile doesn't grant stops iOS from running the widget part (no widgets, a
+          # blank Dynamic Island). The widget then reads the prayer times from the cloud itself.
           mkdir -p Payload && cp -R "$APP" Payload/
+          for ex in Payload/DriveCast.app/PlugIns/*.appex; do codesign --force --sign - "$ex"; done
+          codesign --force --sign - Payload/DriveCast.app
           zip -qry DriveCast.ipa Payload
+          # with the App Group (logos in the island) for AltStore setups that grant it
+          mkdir -p Group/Payload && cp -R "$APP" Group/Payload/
+          for ex in Group/Payload/DriveCast.app/PlugIns/*.appex; do codesign --force --sign - --entitlements Widgets/DriveCastWidgets.entitlements "$ex"; done
+          codesign --force --sign - --entitlements App/DriveCast.entitlements Group/Payload/DriveCast.app
+          (cd Group && zip -qry ../DriveCast-group.ipa Payload)
           # a "lite" copy: no widget extension, no app-group entitlement (some AltStore setups fail on those)
           mkdir -p Lite/Payload && cp -R "$APP" Lite/Payload/
           rm -rf Lite/Payload/DriveCast.app/PlugIns Lite/Payload/DriveCast.app/_CodeSignature
@@ -73,6 +81,6 @@ jobs:
           TAG=ios-latest
           case "$GITHUB_REF_NAME" in main) ;; *) TAG=ios-preview ;; esac
           gh release delete "$TAG" --yes --cleanup-tag || true
-          gh release create "$TAG" DriveCast.ipa DriveCast-lite.ipa --target "$GITHUB_SHA" --prerelease \
+          gh release create "$TAG" DriveCast.ipa DriveCast-group.ipa DriveCast-lite.ipa --target "$GITHUB_SHA" --prerelease \
             --title "DriveCast iPhone (build ${{ github.run_number }})" \
             --notes "Built from ${GITHUB_REF_NAME} @ ${GITHUB_SHA::7}. Unsigned: install with Sideloadly or AltStore (iOS 16.2+; the Dynamic Island needs iPhone 14 Pro or newer)."
