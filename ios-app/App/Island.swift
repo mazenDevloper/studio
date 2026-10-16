@@ -17,6 +17,32 @@ import WidgetKit
  */
 final class Island {
     static let shared = Island()
+    /// the last reason iOS refused to start a Live Activity (shown in the diagnostics)
+    static var lastError = ""
+
+    /// What the phone really has: the widget part inside the app, the shared folder, the Live Activities switch.
+    static func diagnostics() -> String {
+        let app = Bundle.main.bundleIdentifier ?? "?"
+        var ext = "غير موجود ✗"
+        if let dir = Bundle.main.builtInPlugInsURL,
+           let items = try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil) {
+            let names = items.compactMap { Bundle(url: $0)?.bundleIdentifier }
+            if !names.isEmpty { ext = names.joined(separator: ", ") + (names.allSatisfy { $0.hasPrefix(app + ".") } ? " ✓" : " ✗ (لا يبدأ بمعرّف التطبيق)") }
+        }
+        let cfg = DCShared.json("config")
+        let events = DCShared.events().filter { $0.at > Date() }.count
+        let running = Activity<IslandAttributes>.activities.filter { $0.activityState == .active }.count
+        return [
+            "التطبيق: \(app)",
+            "جزء الودجت: \(ext)",
+            "المجلد المشترك: \(DCShared.group) " + (DCShared.groupWorks ? "✓" : "✗"),
+            "الأنشطة المباشرة: " + (ActivityAuthorizationInfo().areActivitiesEnabled ? "مفعّلة ✓" : "مطفأة ✗"),
+            "مواقيت وصلت من الموقع: \(events)" + (cfg.isEmpty ? " (لم يصل شيء ✗)" : ""),
+            "جزر تعمل الآن: \(running)",
+            "آخر خطأ: " + (lastError.isEmpty ? "لا يوجد" : lastError),
+            "iOS \(UIDevice.current.systemVersion)",
+        ].joined(separator: "\n")
+    }
     private let refreshTask = "com.drivecast.sovereign.refresh"
     private var timer: Timer?
     private var lastPoll: Date = .distantPast
@@ -79,7 +105,8 @@ final class Island {
         if let a = current {
             if a.content.state != state { Task { await a.update(content) } }
         } else if ActivityAuthorizationInfo().areActivitiesEnabled && UIApplication.shared.applicationState == .active {
-            _ = try? Activity.request(attributes: IslandAttributes(type: "prayer", matchId: ""), content: content, pushType: nil)
+            do { _ = try Activity.request(attributes: IslandAttributes(type: "prayer", matchId: ""), content: content, pushType: nil); Island.lastError = "" }
+            catch { Island.lastError = "\(error)" }
         }
     }
 
@@ -210,7 +237,8 @@ final class Island {
                     }
                 }
             } else if st != "finished", ActivityAuthorizationInfo().areActivitiesEnabled, UIApplication.shared.applicationState == .active {
-                _ = try? Activity.request(attributes: IslandAttributes(type: "match", matchId: id), content: content, pushType: nil)
+                do { _ = try Activity.request(attributes: IslandAttributes(type: "match", matchId: id), content: content, pushType: nil) }
+                catch { Island.lastError = "\(error)" }
             }
             if !scored.isEmpty { notifyGoal(state, scored: scored) }
         }

@@ -21,11 +21,23 @@ final class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationC
         w.rootViewController = WebViewController()
         w.makeKeyAndVisible()
         window = w
+        // shake the phone: what the widget / island really have on this phone (to find why they don't show)
         return true
     }
 
     func applicationDidBecomeActive(_ application: UIApplication) {
         Island.shared.appActive()
+    }
+
+    /// the diagnostics (after the page had time to send the prayer times)
+    static func showDiagnostics() {
+        guard let root = UIApplication.shared.connectedScenes.compactMap({ ($0 as? UIWindowScene)?.keyWindow }).first?.rootViewController
+                ?? (UIApplication.shared.delegate as? AppDelegate)?.window?.rootViewController else { return }
+        let text = Island.diagnostics()
+        let a = UIAlertController(title: "تشخيص الجزيرة والودجت", message: text, preferredStyle: .alert)
+        a.addAction(UIAlertAction(title: "نسخ", style: .default) { _ in UIPasteboard.general.string = text })
+        a.addAction(UIAlertAction(title: "إغلاق", style: .cancel))
+        root.present(a, animated: true)
     }
 
     func applicationDidEnterBackground(_ application: UIApplication) {

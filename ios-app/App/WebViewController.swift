@@ -10,6 +10,21 @@ final class WebViewController: UIViewController, WKScriptMessageHandler, WKUIDel
 
     override var preferredStatusBarStyle: UIStatusBarStyle { .lightContent }
 
+    /// shake: the island / widget diagnostics
+    override func motionEnded(_ motion: UIEvent.EventSubtype, with event: UIEvent?) {
+        if motion == .motionShake { AppDelegate.showDiagnostics() } else { super.motionEnded(motion, with: event) }
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        // once per build: show the diagnostics after the page had time to send the prayer times
+        let build = "diag-\(Bundle.main.infoDictionary?["CFBundleVersion"] ?? "")-6954"
+        if !UserDefaults.standard.bool(forKey: build) {
+            UserDefaults.standard.set(true, forKey: build)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 10) { AppDelegate.showDiagnostics() }
+        }
+    }
+
     /// The page sees a native platform with the NativeIsland plugin; every call is a promise answered by Bridge.
     private static let shim = """
     (function(){if(window.Capacitor)return;var seq=0,cbs={},ls={};
