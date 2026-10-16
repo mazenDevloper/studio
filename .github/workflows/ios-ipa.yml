@@ -47,7 +47,12 @@ jobs:
           codesign --force --sign - --entitlements App/DriveCast.entitlements "$APP"
           mkdir -p Payload && cp -R "$APP" Payload/
           zip -qry DriveCast.ipa Payload
-          ls -la DriveCast.ipa
+          # a "lite" copy: no widget extension, no app-group entitlement (some AltStore setups fail on those)
+          mkdir -p Lite/Payload && cp -R "$APP" Lite/Payload/
+          rm -rf Lite/Payload/DriveCast.app/PlugIns Lite/Payload/DriveCast.app/_CodeSignature
+          codesign --force --sign - Lite/Payload/DriveCast.app
+          (cd Lite && zip -qry ../DriveCast-lite.ipa Payload)
+          ls -la DriveCast.ipa DriveCast-lite.ipa
 
       - name: Publish the build log (on failure)
         if: failure()
@@ -68,6 +73,6 @@ jobs:
           TAG=ios-latest
           case "$GITHUB_REF_NAME" in main) ;; *) TAG=ios-preview ;; esac
           gh release delete "$TAG" --yes --cleanup-tag || true
-          gh release create "$TAG" DriveCast.ipa --target "$GITHUB_SHA" --prerelease \
+          gh release create "$TAG" DriveCast.ipa DriveCast-lite.ipa --target "$GITHUB_SHA" --prerelease \
             --title "DriveCast iPhone (build ${{ github.run_number }})" \
             --notes "Built from ${GITHUB_REF_NAME} @ ${GITHUB_SHA::7}. Unsigned: install with Sideloadly or AltStore (iOS 16.2+; the Dynamic Island needs iPhone 14 Pro or newer)."
