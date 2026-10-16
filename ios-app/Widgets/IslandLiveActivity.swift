@@ -18,14 +18,14 @@ struct IslandLiveActivity: Widget {
             return DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
                     if match {
-                        TeamView(name: s.home, logo: s.homeLogo, size: 44, bright: s.scored == "home")
+                        TeamView(name: s.home, logo: s.homeLogo, data: s.homeLogoData, size: 44, bright: s.scored == "home")
                     } else {
                         IconSquare(kind: s.kind, size: 44)
                     }
                 }
                 DynamicIslandExpandedRegion(.trailing) {
                     if match {
-                        TeamView(name: s.away, logo: s.awayLogo, size: 44, bright: s.scored == "away")
+                        TeamView(name: s.away, logo: s.awayLogo, data: s.awayLogoData, size: 44, bright: s.scored == "away")
                     } else {
                         Text(s.timeText)
                             .font(LA.font(15, "Bold"))
@@ -61,7 +61,7 @@ struct IslandLiveActivity: Widget {
             } compactLeading: {
                 if match {
                     HStack(spacing: 4) {
-                        Logo(file: s.homeLogo, name: s.home, size: 22)
+                        Logo(file: s.homeLogo, data: s.homeLogoData, name: s.home, size: 22)
                         if s.status == "live" { MinuteBadge(text: s.minute, size: 10) }
                     }
                 } else {
@@ -71,7 +71,7 @@ struct IslandLiveActivity: Widget {
                 if match {
                     HStack(spacing: 4) {
                         ScoreText(s: s, size: 15)
-                        Logo(file: s.awayLogo, name: s.away, size: 22)
+                        Logo(file: s.awayLogo, data: s.awayLogoData, name: s.away, size: 22)
                     }
                 } else {
                     CountdownText(s: s, stale: stale, size: 15)
@@ -143,6 +143,7 @@ struct IconSquare: View {
 /// A team logo on the site's round plate (initials when there is no logo).
 struct Logo: View {
     let file: String
+    var data: Data? = nil
     let name: String
     let size: CGFloat
 
@@ -150,7 +151,7 @@ struct Logo: View {
         ZStack {
             Circle().fill(Color.white.opacity(0.07))
             Circle().stroke(Color.white.opacity(0.14), lineWidth: max(1, size / 22))
-            if let img = DCShared.logo(file) {
+            if let img = DCShared.logo(file) ?? data.flatMap({ UIImage(data: $0) }) {
                 Image(uiImage: img).resizable().scaledToFit().frame(width: size * 0.78, height: size * 0.78)
             } else {
                 Text(initials(name)).font(LA.font(size * 0.38)).foregroundColor(.white.opacity(0.6))
@@ -169,12 +170,13 @@ struct Logo: View {
 struct TeamView: View {
     let name: String
     let logo: String
+    var data: Data? = nil
     let size: CGFloat
     let bright: Bool
 
     var body: some View {
         VStack(spacing: 3) {
-            Logo(file: logo, name: name, size: size)
+            Logo(file: logo, data: data, name: name, size: size)
                 .shadow(color: bright ? DC.emerald.opacity(0.8) : .clear, radius: 8)
             Text(name).font(LA.font(10, "Bold")).foregroundColor(.white.opacity(0.85)).lineLimit(1).frame(maxWidth: size * 1.9)
         }
@@ -232,13 +234,13 @@ struct LockScreenView: View {
         if s.kind == "match" {
             HStack(spacing: 10) {
                 if s.status == "live" { MinuteBadge(text: s.minute, size: 14) }
-                Logo(file: s.homeLogo, name: s.home, size: 40)
+                Logo(file: s.homeLogo, data: s.homeLogoData, name: s.home, size: 40)
                 Text(s.home).font(LA.font(14, "Bold")).foregroundColor(.white).lineLimit(1).minimumScaleFactor(0.7)
                 Spacer(minLength: 4)
                 ScoreText(s: s, size: 28)
                 Spacer(minLength: 4)
                 Text(s.away).font(LA.font(14, "Bold")).foregroundColor(.white).lineLimit(1).minimumScaleFactor(0.7)
-                Logo(file: s.awayLogo, name: s.away, size: 40)
+                Logo(file: s.awayLogo, data: s.awayLogoData, name: s.away, size: 40)
             }
             .environment(\.layoutDirection, .leftToRight)
             .padding(.horizontal, 16)

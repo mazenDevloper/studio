@@ -18,6 +18,10 @@ struct IslandAttributes: ActivityAttributes {
         /// logo file names in the shared folder
         var homeLogo: String = ""
         var awayLogo: String = ""
+        /// the logos themselves, tiny (~1 KB each), carried inside the Live Activity: shown even when the app and
+        /// the widget part share no folder (sideloaded without an App Group)
+        var homeLogoData: Data? = nil
+        var awayLogoData: Data? = nil
         var sh: Int = 0
         var sa: Int = 0
         /// upcoming | live | finished

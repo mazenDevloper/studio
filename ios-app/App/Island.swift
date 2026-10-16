@@ -215,6 +215,10 @@ final class Island {
             state.away = away["name"] as? String ?? ""
             state.homeLogo = Self.logoFile(home["logo"] as? String)
             state.awayLogo = Self.logoFile(away["logo"] as? String)
+            if !DCShared.groupWorks {
+                state.homeLogoData = Self.tinyLogo(home["logo"] as? String)
+                state.awayLogoData = Self.tinyLogo(away["logo"] as? String)
+            }
             state.sh = sh
             state.sa = sa
             state.status = st
@@ -274,6 +278,34 @@ final class Island {
         guard let url, !url.isEmpty else { return "" }
         let name = SHA256.hash(data: Data(url.utf8)).map { String(format: "%02x", $0) }.joined().prefix(24) + ".png"
         return FileManager.default.fileExists(atPath: DCShared.dir("logos").appendingPathComponent(String(name)).path) ? String(name) : ""
+    }
+
+    private static var tinyCache: [String: Data] = [:]
+
+    /// A logo small enough to travel inside the Live Activity (its data has a ~4 KB limit): 30 px PNG, or a JPEG on
+    /// the island's black when the PNG is too big.
+    static func tinyLogo(_ url: String?) -> Data? {
+        guard let url, !url.isEmpty else { return nil }
+        if let d = tinyCache[url] { return d }
+        let name = SHA256.hash(data: Data(url.utf8)).map { String(format: "%02x", $0) }.joined().prefix(24) + ".png"
+        guard let img = UIImage(contentsOfFile: DCShared.dir("logos").appendingPathComponent(String(name)).path) else { return nil }
+        for px in [30.0, 24.0, 20.0] {
+            let scale = min(px / img.size.width, px / img.size.height, 1)
+            let size = CGSize(width: max(1, (img.size.width * scale).rounded()), height: max(1, (img.size.height * scale).rounded()))
+            let fmt = UIGraphicsImageRendererFormat()
+            fmt.scale = 1
+            let small = UIGraphicsImageRenderer(size: size, format: fmt).image { _ in img.draw(in: CGRect(origin: .zero, size: size)) }
+            if let png = small.pngData(), png.count <= 1100 { tinyCache[url] = png; return png }
+            fmt.opaque = true
+            let flat = UIGraphicsImageRenderer(size: size, format: fmt).image { c in
+                UIColor(white: 0.07, alpha: 1).setFill(); c.fill(CGRect(origin: .zero, size: size))
+                img.draw(in: CGRect(origin: .zero, size: size))
+            }
+            for q in [0.7, 0.5, 0.35] {
+                if let jpg = flat.jpegData(compressionQuality: q), jpg.count <= 1100 { tinyCache[url] = jpg; return jpg }
+            }
+        }
+        return nil
     }
 
     private func saveLogos(_ m: [String: Any]) {
