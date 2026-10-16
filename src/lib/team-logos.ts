@@ -75,3 +75,20 @@ export async function freshenLive(data: any): Promise<any> {
   }
   return data;
 }
+
+/** The same match from two sources ("1. FC Köln" / "FC Cologne"): kept once - the one with more detail. */
+export function dedupeMatches(data: any): any {
+  const list: any[] = data?.matches ?? [];
+  const out: any[] = [];
+  const near = (a: any, b: any) => Math.abs((a.timestamp ?? 0) - (b.timestamp ?? 0)) < 3 * 3600;
+  const sameSide = (x: string, y: string) => sameTeam(x, y) || norm(x).split(" ").some(w => w.length > 3 && norm(y).includes(w));
+  for (const m of list) {
+    const i = out.findIndex(o => near(o, m) && sameSide(o.home?.name ?? "", m.home?.name ?? "") && sameSide(o.away?.name ?? "", m.away?.name ?? ""));
+    if (i < 0) { out.push(m); continue; }
+    const score = (x: any) => (x.elapsed != null ? 2 : 0) + (x.home?.logo ? 1 : 0) + (x.league?.country ? 1 : 0) + (x.channels?.length ? 1 : 0) + (x.favorite ? 4 : 0);
+    if (score(m) > score(out[i])) out[i] = { ...m, favorite: m.favorite || out[i].favorite };
+    else out[i] = { ...out[i], favorite: m.favorite || out[i].favorite };
+  }
+  if (data?.matches) data.matches = out;
+  return data;
+}

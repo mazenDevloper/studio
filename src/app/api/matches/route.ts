@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTopMatchesToday } from "@/lib/top-matches";
-import { fillTeamLogos, freshenLive } from "@/lib/team-logos";
+import { fillTeamLogos, freshenLive, dedupeMatches } from "@/lib/team-logos";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60; // many sources are queried in parallel
@@ -11,7 +11,7 @@ const MADAR = { "Access-Control-Allow-Origin": "https://mazendevloper.github.io"
 export async function GET(req: NextRequest) {
   const limit = Math.min(30, Math.max(1, Number(req.nextUrl.searchParams.get("limit")) || 10));
   try {
-    return NextResponse.json(await freshenLive(await fillTeamLogos(await getTopMatchesToday(limit, req.nextUrl.searchParams.get("source") || undefined, req.nextUrl.searchParams.get("all") === "1", (req.nextUrl.searchParams.get("teams") || "").split("|").map(s => s.trim()).filter(Boolean).slice(0, 80), Math.max(-60, Math.min(60, Math.trunc(Number(req.nextUrl.searchParams.get("day")) || 0))),
+    return NextResponse.json(dedupeMatches(await freshenLive(await fillTeamLogos(await getTopMatchesToday(limit, req.nextUrl.searchParams.get("source") || undefined, req.nextUrl.searchParams.get("all") === "1", (req.nextUrl.searchParams.get("teams") || "").split("|").map(s => s.trim()).filter(Boolean).slice(0, 80), Math.max(-60, Math.min(60, Math.trunc(Number(req.nextUrl.searchParams.get("day")) || 0))),
       (req.nextUrl.searchParams.get("pins") || "").split("|").map(s => s.trim()).filter(Boolean).slice(0, 40),
       req.nextUrl.searchParams.getAll("follow").map(s => s.trim()).filter(Boolean).slice(0, 60)))), { headers: MADAR });
   } catch (e: any) {
