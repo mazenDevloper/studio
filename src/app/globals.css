@@ -283,3 +283,7 @@ body { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%;
 @media (max-width: 968px) {
   input, select, textarea { font-size: 16px !important; }
 }
+
+/* Nothing may make the page wider than the screen (iPhone app / phones: the content slid off to one side). */
+html, body { max-width: 100%; overflow-x: hidden; overscroll-behavior-x: none; }
+@supports (overflow: clip) { html, body { overflow-x: clip; } }

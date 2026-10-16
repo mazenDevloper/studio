@@ -3,7 +3,13 @@ import WebKit
 
 /// The site in a full-screen web view, with the same `NativeIsland` bridge the Android app gives the page
 /// (window.Capacitor.Plugins.NativeIsland), so the page sends its prayer times, reminders and teams to the islands.
-final class WebViewController: UIViewController, WKScriptMessageHandler, WKUIDelegate, WKNavigationDelegate {
+final class WebViewController: UIViewController, WKScriptMessageHandler, WKUIDelegate, WKNavigationDelegate, UIScrollViewDelegate {
+
+    /// keep the page pinned to its left edge (it never scrolls sideways)
+    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        if scrollView.contentOffset.x != 0 { scrollView.contentOffset.x = 0 }
+    }
+
 
     static let siteURL = URL(string: "https://cplay3.netlify.app")!
     private(set) var web: WKWebView!
@@ -48,6 +54,10 @@ final class WebViewController: UIViewController, WKScriptMessageHandler, WKUIDel
         web.isOpaque = false
         web.backgroundColor = .black
         web.scrollView.backgroundColor = .black
+        // the page scrolls up / down only: no sideways drift of the whole content
+        web.scrollView.alwaysBounceHorizontal = false
+        web.scrollView.showsHorizontalScrollIndicator = false
+        web.scrollView.delegate = self
         web.uiDelegate = self
         web.navigationDelegate = self
         web.allowsBackForwardNavigationGestures = true
