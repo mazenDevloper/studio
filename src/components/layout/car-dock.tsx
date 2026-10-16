@@ -163,7 +163,7 @@ export function CarDock() {
         dockSide === 'left' ? "left-0 border-r" : "right-0 border-l",
         // below 968px the dock is a bottom bar: switching direction also reverses the order of its buttons
         dockSide === 'right' && "dock-reversed"
-      )} style={{ zoom: dockScale || 1.0, willChange: 'transform' }}>
+      )} style={{ zoom: typeof window !== "undefined" && window.innerWidth <= 968 ? 1 : (dockScale || 1.0), willChange: 'transform' }}>
         <div className="flex flex-col items-center flex-1 justify-start gap-2">
           {apps.map((app) => {
             const isActive = pathname === app.href;
