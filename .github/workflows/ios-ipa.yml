@@ -91,6 +91,27 @@ jobs:
           (cd Lite && zip -qry ../DriveCast-lite.ipa Payload)
           ls -la DriveCast.ipa DriveCast-lite.ipa
 
+      - name: Previews (every widget and island, drawn in the simulator)
+        continue-on-error: true
+        timeout-minutes: 15
+        working-directory: ios-app
+        run: |
+          set -o pipefail
+          xcodebuild -project DriveCast.xcodeproj -target Snapshots -configuration Debug -sdk iphonesimulator ARCHS=arm64 \
+            CODE_SIGNING_ALLOWED=NO SYMROOT="$PWD/build-snap" build 2>&1 | tee build-snap.log | grep -E "error:|BUILD" || true
+          APP=build-snap/Debug-iphonesimulator/Snapshots.app
+          if [ ! -d "$APP" ]; then grep -n -B2 -A6 "error:" build-snap.log | head -150 > snap-errors.txt; exit 0; fi
+          codesign --force --sign - "$APP" || true
+          UDID=$(xcrun simctl list devices available -j | python3 -c "import json,sys;d=json.load(sys.stdin)['devices'];print(next(x['udid'] for k,v in d.items() if 'iOS' in k for x in v if 'iPhone' in x['name'] and 'Pro' in x['name']))")
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl install "$UDID" "$APP"
+          xcrun simctl launch "$UDID" com.drivecast.snapshots
+          DATA=$(xcrun simctl get_app_container "$UDID" com.drivecast.snapshots data)
+          for i in $(seq 1 90); do [ -f "$DATA/Documents/snaps/done" ] && break; sleep 2; done
+          ls "$DATA/Documents/snaps" | head -80
+          (cd "$DATA/Documents" && zip -qr "$GITHUB_WORKSPACE/ios-app/snapshots.zip" snaps)
+
       - name: Publish the build log (on failure)
         if: failure()
         env:
@@ -110,6 +131,6 @@ jobs:
           TAG=ios-latest
           case "$GITHUB_REF_NAME" in main) ;; *) TAG=ios-preview ;; esac
           gh release delete "$TAG" --yes --cleanup-tag || true
-          gh release create "$TAG" DriveCast.ipa $(ls DriveCast-xcode.ipa DriveCast-widget-test.ipa variant-errors.txt 2>/dev/null) DriveCast-nosign.ipa DriveCast-group.ipa DriveCast-lite.ipa --target "$GITHUB_SHA" --prerelease \
+          gh release create "$TAG" DriveCast.ipa $(ls DriveCast-xcode.ipa DriveCast-widget-test.ipa variant-errors.txt snapshots.zip snap-errors.txt 2>/dev/null) DriveCast-nosign.ipa DriveCast-group.ipa DriveCast-lite.ipa --target "$GITHUB_SHA" --prerelease \
             --title "DriveCast iPhone (build ${{ github.run_number }})" \
             --notes "Built from ${GITHUB_REF_NAME} @ ${GITHUB_SHA::7}. Unsigned: install with Sideloadly or AltStore (iOS 16.2+; the Dynamic Island needs iPhone 14 Pro or newer)."

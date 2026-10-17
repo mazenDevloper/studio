@@ -33,7 +33,7 @@ struct ManuscriptProvider: TimelineProvider {
         }
     }
 
-    private func entries(family: WidgetFamily, count: Int) async -> [ManuscriptEntry] {
+    func entries(family: WidgetFamily, count: Int) async -> [ManuscriptEntry] {
         let items = await Cloud.list(Cloud.manuscripts, "manuscripts", maxAge: 3 * 3600)
         let m = await Cloud.masterData(maxAge: 3 * 3600)
         let ms = (m["mapSettings"] as? [String: Any]) ?? m

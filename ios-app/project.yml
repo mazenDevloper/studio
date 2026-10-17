@@ -80,3 +80,23 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.drivecast.sovereign.widgets
         TARGETED_DEVICE_FAMILY: "1,2"
+  # not shipped: CI runs it in the simulator to draw every widget and island state as pictures (the previews)
+  Snapshots:
+    type: application
+    platform: iOS
+    sources:
+      - path: Snapshots
+      - path: Shared
+      - path: Widgets
+        excludes: [DriveCastWidgets.swift, Info.plist, "*.entitlements"]
+    info:
+      path: Snapshots/Info.plist
+      properties:
+        CFBundleDisplayName: Snapshots
+        UILaunchScreen: {}
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.drivecast.snapshots
+        TARGETED_DEVICE_FAMILY: "1"

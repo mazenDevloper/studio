@@ -33,6 +33,7 @@ final class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationC
     }
 
     func applicationDidBecomeActive(_ application: UIApplication) {
+        KeepAlive.shared.enterForeground()
         Island.shared.appActive()
     }
 
@@ -49,6 +50,7 @@ final class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationC
 
     func applicationDidEnterBackground(_ application: UIApplication) {
         Island.shared.scheduleBackgroundRefresh()
+        KeepAlive.shared.enterBackground()
     }
 
     /// Notifications also show while the app is open.

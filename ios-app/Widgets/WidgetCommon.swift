@@ -200,3 +200,10 @@ func clockText(_ d: Date) -> String {
     let h = (c.hour ?? 0) % 12
     return "\(h == 0 ? 12 : h):" + String(format: "%02d", c.minute ?? 0)
 }
+
+/// The widget's size handed to a view as a value (so the same views can be drawn outside a widget, for the previews)
+struct WithFamily<V: View>: View {
+    @Environment(\.widgetFamily) private var f
+    let make: (WidgetFamily) -> V
+    var body: some View { make(f) }
+}

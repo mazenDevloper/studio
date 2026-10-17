@@ -83,6 +83,7 @@ final class Island {
     func settingsChanged() {
         if !matchesOn { endMatchActivities(now: true) } else { poll(force: true) }
         configChanged()
+        KeepAlive.shared.stopIfIdle()
     }
 
     /// every 5 s while the app runs (open, or in the background playing media)
@@ -138,6 +139,81 @@ final class Island {
                 c.add(UNNotificationRequest(identifier: id, content: n, trigger: UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)))
             }
         }
+    }
+
+    /// an island is (or will soon be) showing: keep the app running behind other apps to move it on
+    var needsKeepAlive: Bool {
+        if hidden { return false }
+        if prayerOn && DCShared.events().contains(where: { $0.at > Date() }) { return true }
+        if matchesOn {
+            let now = Date()
+            return matches.contains { m in
+                let st = m["status"] as? String ?? ""
+                let k = Date(timeIntervalSince1970: (m["timestamp"] as? NSNumber)?.doubleValue ?? 0)
+                return st == "live" || (st == "upcoming" && k.timeIntervalSince(now) < 3 * 3600)
+            }
+        }
+        return false
+    }
+
+    // MARK: test (the settings' buttons): sample islands, and four goals 3 s apart
+
+    private var testTimers: [Timer] = []
+
+    func test(kind: String) {
+        guard ActivityAuthorizationInfo().areActivitiesEnabled else { Island.lastError = "الأنشطة المباشرة مطفأة"; return }
+        testTimers.forEach { $0.invalidate() }
+        testTimers.removeAll()
+        for a in Activity<IslandAttributes>.activities where a.attributes.matchId.hasPrefix("test") {
+            Task { await a.end(nil, dismissalPolicy: .immediate) }
+        }
+        let home = "https://media.api-sports.io/football/teams/2939.png", away = "https://media.api-sports.io/football/teams/2932.png"
+        let m: [String: Any] = ["home": ["logo": home], "away": ["logo": away]]
+        DispatchQueue.global().async {
+            self.saveLogos(m)
+            DispatchQueue.main.async { self.startTest(kind: kind, home: home, away: away) }
+        }
+    }
+
+    private func startTest(kind: String, home: String, away: String) {
+        func state(_ sh: Int, _ sa: Int, _ minute: Int, _ scored: String) -> IslandAttributes.ContentState {
+            var st = IslandAttributes.ContentState(kind: "match", title: "دوري روشن السعودي", start: Date(), end: Date(), timeText: "9:00")
+            st.home = "النصر"; st.away = "الهلال"
+            st.homeLogo = Self.logoFile(home); st.awayLogo = Self.logoFile(away)
+            if !DCShared.groupWorks { st.homeLogoData = Self.tinyLogo(home); st.awayLogoData = Self.tinyLogo(away) }
+            st.sh = sh; st.sa = sa; st.status = "live"; st.minute = "د\(minute)"; st.fav = true; st.league = st.title; st.scored = scored
+            return st
+        }
+        var activity: Activity<IslandAttributes>?
+        do {
+            activity = try Activity.request(attributes: IslandAttributes(type: "match", matchId: "test-match"),
+                                            content: ActivityContent(state: state(0, 0, 30, ""), staleDate: nil), pushType: nil)
+        } catch { Island.lastError = "\(error)"; return }
+        var extra: Activity<IslandAttributes>?
+        if kind == "islands" {
+            // a reminder counting down two minutes, beside the match
+            let r = IslandAttributes.ContentState(kind: "reminder", title: "تذكير تجريبي", start: Date(), end: Date().addingTimeInterval(120),
+                                                  timeText: DCShared.time12(Date().addingTimeInterval(120)), note: Hijri.occasionLine())
+            extra = try? Activity.request(attributes: IslandAttributes(type: "test", matchId: "test-reminder"),
+                                          content: ActivityContent(state: r, staleDate: Date().addingTimeInterval(120)), pushType: nil)
+        }
+        let goals: [(Int, Int, Int, String)] = kind == "goal" ? [(1, 0, 34, "home"), (1, 1, 41, "away"), (2, 1, 67, "home"), (2, 2, 88, "away")] : []
+        for (i, g) in goals.enumerated() {
+            testTimers.append(Timer.scheduledTimer(withTimeInterval: Double(i + 1) * 3, repeats: false) { _ in
+                let st = state(g.0, g.1, g.2, g.3)
+                let team = g.3 == "home" ? st.home : st.away
+                Task {
+                    await activity?.update(ActivityContent(state: st, staleDate: nil),
+                                           alertConfiguration: AlertConfiguration(title: "⚽ هدف! \(team)", body: "\(st.home) \(g.0)-\(g.1) \(st.away)", sound: .default))
+                }
+            })
+        }
+        testTimers.append(Timer.scheduledTimer(withTimeInterval: 60, repeats: false) { _ in
+            Task {
+                await activity?.end(nil, dismissalPolicy: .immediate)
+                await extra?.end(nil, dismissalPolicy: .immediate)
+            }
+        })
     }
 
     // MARK: matches
@@ -257,7 +333,7 @@ final class Island {
             if !scored.isEmpty { notifyGoal(state, scored: scored) }
         }
         DCShared.defaults.set(nextScores, forKey: "goalScores")
-        for a in Activity<IslandAttributes>.activities where a.attributes.type == "match" && !seen.contains(a.attributes.matchId) {
+        for a in Activity<IslandAttributes>.activities where a.attributes.type == "match" && !seen.contains(a.attributes.matchId) && !a.attributes.matchId.hasPrefix("test") {
             Task { await a.end(nil, dismissalPolicy: .default) }
         }
     }

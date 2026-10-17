@@ -83,7 +83,7 @@ struct MatchesProvider: TimelineProvider {
         }
     }
 
-    private func entry(family: WidgetFamily, maxAge: TimeInterval) async -> MatchesEntry {
+    func entry(family: WidgetFamily, maxAge: TimeInterval) async -> MatchesEntry {
         let list = await MatchesStore.load(maxAge: maxAge).sorted {
             let a = MatchesStore.rank($0), b = MatchesStore.rank($1)
             if a != b { return a < b }
@@ -138,7 +138,7 @@ struct MatchesProvider: TimelineProvider {
 
 struct MatchesWidgetView: View {
     let e: MatchesEntry
-    @Environment(\.widgetFamily) var family
+    var family: WidgetFamily = .systemMedium
 
     var body: some View {
         let small = family == .systemSmall
@@ -220,7 +220,7 @@ struct MatchesWidgetView: View {
 struct MatchesWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "DriveCastMatches", provider: MatchesProvider()) { e in
-            MatchesWidgetView(e: e).dcBackground()
+            WithFamily { MatchesWidgetView(e: e, family: $0) }.dcBackground()
         }
         .configurationDisplayName("المباريات")
         .description("مباريات فرقك اليوم: المباشرة أولاً، صفحات ‹ ›، تحديث ⟳")

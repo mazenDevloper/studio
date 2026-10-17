@@ -47,7 +47,7 @@ struct DayProvider: TimelineProvider {
 
 struct DayWidgetView: View {
     let e: DayEntry
-    @Environment(\.widgetFamily) var family
+    var family: WidgetFamily = .systemMedium
 
     var body: some View {
         let small = family == .systemSmall
@@ -77,7 +77,7 @@ struct DayWidgetView: View {
 struct DayWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "DriveCastDay", provider: DayProvider()) { e in
-            DayWidgetView(e: e).dcBackground()
+            WithFamily { DayWidgetView(e: e, family: $0) }.dcBackground()
         }
         .configurationDisplayName("اليوم")
         .description("التاريخ الهجري والمناسبة، اسم اليوم، الوقت، والمتبقي للأذان أو الإقامة")
@@ -99,7 +99,7 @@ struct ClockProvider: TimelineProvider {
 
 struct ClockWidgetView: View {
     let e: ClockEntry
-    @Environment(\.widgetFamily) var family
+    var family: WidgetFamily = .systemMedium
 
     var body: some View {
         let d = e.date
@@ -121,7 +121,7 @@ struct ClockWidgetView: View {
 struct ClockWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "DriveCastClock", provider: ClockProvider()) { e in
-            ClockWidgetView(e: e).dcBackground()
+            WithFamily { ClockWidgetView(e: e, family: $0) }.dcBackground()
         }
         .configurationDisplayName("الساعة")
         .description("ساعة اللوحة")
@@ -157,7 +157,7 @@ struct MoonProvider: TimelineProvider {
         }
     }
 
-    private func entry() async -> MoonEntry {
+    func entry() async -> MoonEntry {
         let mode = WState.d.integer(forKey: "moonMode") % 3
         let h = Hijri.date()
         let photo = await Cloud.image("https://phasesmoon.com/moonpng/220/moon-phase-\(max(1, min(30, h.day))).webp", maxPx: 260)
@@ -204,7 +204,7 @@ func arabicDigits(_ s: String) -> String {
 
 struct MoonWidgetView: View {
     let e: MoonEntry
-    @Environment(\.widgetFamily) var family
+    var family: WidgetFamily = .systemMedium
 
     var body: some View {
         WButton(intent: stepIntent, fallback: nil) {
@@ -234,7 +234,7 @@ struct MoonWidgetView: View {
 struct MoonWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "DriveCastMoon", provider: MoonProvider()) { e in
-            MoonWidgetView(e: e).dcBackground(.black)
+            WithFamily { MoonWidgetView(e: e, family: $0) }.dcBackground(.black)
         }
         .configurationDisplayName("القمر")
         .description("طور القمر الليلة مع التاريخ الهجري / الميلادي / الطقس (اضغط للتبديل)")

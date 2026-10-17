@@ -64,7 +64,7 @@ struct AzkarProvider: TimelineProvider {
 
 struct AzkarWidgetView: View {
     let e: AzkarEntry
-    @Environment(\.widgetFamily) var family
+    var family: WidgetFamily = .systemMedium
 
     var body: some View {
         let large = family == .systemLarge
@@ -117,7 +117,7 @@ struct AzkarWidgetView: View {
 struct AzkarWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "DriveCastAzkar", provider: AzkarProvider()) { e in
-            AzkarWidgetView(e: e).dcBackground()
+            WithFamily { AzkarWidgetView(e: e, family: $0) }.dcBackground()
         }
         .configurationDisplayName("الأذكار")
         .description("أذكار الصباح والمساء، اضغط على الذكر ليُحسب")

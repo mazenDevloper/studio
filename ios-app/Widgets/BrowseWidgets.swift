@@ -81,7 +81,7 @@ struct BrowseProvider: TimelineProvider {
         }
     }
 
-    private func entry(_ f: WidgetFamily) async -> BrowseEntry {
+    func entry(_ f: WidgetFamily) async -> BrowseEntry {
         let all = await raw()
         let per = Self.perPage(f)
         let pages = max(1, (all.count + per - 1) / per)
@@ -100,7 +100,7 @@ struct BrowseProvider: TimelineProvider {
 
 struct BrowseWidgetView: View {
     let e: BrowseEntry
-    @Environment(\.widgetFamily) var family
+    var family: WidgetFamily = .systemMedium
 
     var body: some View {
         VStack(spacing: 6) {
@@ -169,7 +169,7 @@ struct BrowseWidgetView: View {
 struct RecitersWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "DriveCastReciters", provider: BrowseProvider(kind: "reciters")) { e in
-            BrowseWidgetView(e: e).dcBackground()
+            WithFamily { BrowseWidgetView(e: e, family: $0) }.dcBackground()
         }
         .configurationDisplayName("القرّاء")
         .description("نخبة القرّاء، الأكثر استماعاً أولاً، اضغط على القارئ ليفتح")
@@ -180,7 +180,7 @@ struct RecitersWidget: Widget {
 struct ChannelsWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "DriveCastChannels", provider: BrowseProvider(kind: "channels")) { e in
-            BrowseWidgetView(e: e).dcBackground()
+            WithFamily { BrowseWidgetView(e: e, family: $0) }.dcBackground()
         }
         .configurationDisplayName("الاشتراكات")
         .description("قنواتك المفضلة (المميّزة ★ أولاً)، اضغط على القناة لتفتح")
@@ -191,7 +191,7 @@ struct ChannelsWidget: Widget {
 struct FoldersWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "DriveCastFolders", provider: BrowseProvider(kind: "folders")) { e in
-            BrowseWidgetView(e: e).dcBackground()
+            WithFamily { BrowseWidgetView(e: e, family: $0) }.dcBackground()
         }
         .configurationDisplayName("المجلدات")
         .description("مجلدات الفيديو، اضغط على المجلد ليُشغَّل")
@@ -212,7 +212,7 @@ struct ControlsProvider: TimelineProvider {
 }
 
 struct ControlsWidgetView: View {
-    @Environment(\.widgetFamily) var family
+    var family: WidgetFamily = .systemMedium
 
     var body: some View {
         if family == .systemSmall {
@@ -240,7 +240,7 @@ struct ControlsWidgetView: View {
 struct ControlsWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "DriveCastControls", provider: ControlsProvider()) { _ in
-            ControlsWidgetView().dcBackground()
+            WithFamily { ControlsWidgetView(family: $0) }.dcBackground()
         }
         .configurationDisplayName("التحكم")
         .description("المايكروفون، وإظهار أو إخفاء الجزر")
