@@ -61,6 +61,8 @@ jobs:
           if [ -d build-test/Release-iphoneos/DriveCast.app ]; then
             mkdir -p WT/Payload && cp -R build-test/Release-iphoneos/DriveCast.app WT/Payload/ && (cd WT && zip -qry ../DriveCast-widget-test.ipa Payload)
           fi
+          grep -n -B2 -A4 "error:" build-signed.log build-test.log | head -80 > variant-errors.txt || true
+          tail -c 4000 build-signed.log >> variant-errors.txt || true
           # the default IPA: no App Group entitlement - sideloading with a free account often can't provision one,
           # and an entitlement the profile doesn't grant stops iOS from running the widget part (no widgets, a
           # blank Dynamic Island). The widget then reads the prayer times from the cloud itself.
@@ -105,6 +107,6 @@ jobs:
           TAG=ios-latest
           case "$GITHUB_REF_NAME" in main) ;; *) TAG=ios-preview ;; esac
           gh release delete "$TAG" --yes --cleanup-tag || true
-          gh release create "$TAG" DriveCast.ipa $(ls DriveCast-xcode.ipa DriveCast-widget-test.ipa 2>/dev/null) DriveCast-nosign.ipa DriveCast-group.ipa DriveCast-lite.ipa --target "$GITHUB_SHA" --prerelease \
+          gh release create "$TAG" DriveCast.ipa $(ls DriveCast-xcode.ipa DriveCast-widget-test.ipa variant-errors.txt 2>/dev/null) DriveCast-nosign.ipa DriveCast-group.ipa DriveCast-lite.ipa --target "$GITHUB_SHA" --prerelease \
             --title "DriveCast iPhone (build ${{ github.run_number }})" \
             --notes "Built from ${GITHUB_REF_NAME} @ ${GITHUB_SHA::7}. Unsigned: install with Sideloadly or AltStore (iOS 16.2+; the Dynamic Island needs iPhone 14 Pro or newer)."
