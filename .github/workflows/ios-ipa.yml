@@ -42,12 +42,12 @@ jobs:
           xcodebuild -project DriveCast.xcodeproj -target DriveCast -configuration Release -sdk iphoneos \
             CURRENT_PROJECT_VERSION=${{ github.run_number }} \
             CODE_SIGNING_ALLOWED=YES CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="-" CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM="" \
-            CODE_SIGN_ENTITLEMENTS="" SYMROOT="$PWD/build-signed" build 2>&1 | tee build-signed.log | grep -E "error:|BUILD" || true
+            AD_HOC_CODE_SIGNING_ALLOWED=YES CODE_SIGN_ENTITLEMENTS="" SYMROOT="$PWD/build-signed" build 2>&1 | tee build-signed.log | grep -E "error:|BUILD" || true
           # a test build: the widget alone, without the Live Activity (to tell which part iOS rejects)
           xcodebuild -project DriveCast.xcodeproj -target DriveCast -configuration Release -sdk iphoneos \
             CURRENT_PROJECT_VERSION=${{ github.run_number }} \
-            CODE_SIGNING_ALLOWED=YES CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="-" CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM="" \
-            CODE_SIGN_ENTITLEMENTS="" SWIFT_ACTIVE_COMPILATION_CONDITIONS="NO_LIVE_ACTIVITY" SYMROOT="$PWD/build-test" build 2>&1 | tee build-test.log | grep -E "error:|BUILD" || true
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            SWIFT_ACTIVE_COMPILATION_CONDITIONS="NO_LIVE_ACTIVITY" SYMROOT="$PWD/build-test" build 2>&1 | tee build-test.log | grep -E "error:|BUILD" || true
 
       - name: Package the IPA
         working-directory: ios-app
@@ -59,7 +59,10 @@ jobs:
             mkdir -p XS/Payload && cp -R build-signed/Release-iphoneos/DriveCast.app XS/Payload/ && (cd XS && zip -qry ../DriveCast-xcode.ipa Payload)
           fi
           if [ -d build-test/Release-iphoneos/DriveCast.app ]; then
-            mkdir -p WT/Payload && cp -R build-test/Release-iphoneos/DriveCast.app WT/Payload/ && (cd WT && zip -qry ../DriveCast-widget-test.ipa Payload)
+            mkdir -p WT/Payload && cp -R build-test/Release-iphoneos/DriveCast.app WT/Payload/
+            for ex in WT/Payload/DriveCast.app/PlugIns/*.appex; do codesign --force --sign - "$ex"; done
+            codesign --force --sign - WT/Payload/DriveCast.app
+            (cd WT && zip -qry ../DriveCast-widget-test.ipa Payload)
           fi
           grep -n -B2 -A4 "error:" build-signed.log build-test.log | head -80 > variant-errors.txt || true
           tail -c 4000 build-signed.log >> variant-errors.txt || true
