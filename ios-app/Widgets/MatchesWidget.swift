@@ -77,8 +77,8 @@ struct MatchesProvider: TimelineProvider {
 
     static func perPage(_ f: WidgetFamily) -> Int {
         switch f {
-        case .systemSmall: return 2
-        case .systemLarge, .systemExtraLarge: return 6
+        case .systemSmall: return 3
+        case .systemLarge, .systemExtraLarge: return 7
         default: return 3
         }
     }
