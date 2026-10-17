@@ -5,6 +5,9 @@
  * Also registers a service worker so cplay2 keeps opening without internet.
  */
 (function () {
+  // Runs once per page (cplay3 includes it itself; Madar's iPhone app also injects it into every frame).
+  if (window.__madarBridge) return;
+  window.__madarBridge = 1;
   var MADAR = 'https://mazendevloper.github.io';
 
   if ('serviceWorker' in navigator && location.protocol === 'https:') {
@@ -74,6 +77,18 @@
   function playing() { var v = document.querySelectorAll('video'); for (var i = 0; i < v.length; i++) if (!v[i].paused && v[i].readyState > 2) return true; return !!document.querySelector('iframe[src*="youtube"],iframe[src*="player"],iframe[allowfullscreen]'); }
   function loadH2C() {
     if (window.html2canvas) return Promise.resolve();
+    // Inside Madar's iPhone app: the app hands html2canvas to this frame (any website, no server).
+    var native = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.madar;
+    if (native && !window.__MADAR_PROXY) {
+      if (!h2c) h2c = new Promise(function (res, rej) {
+        try { native.postMessage({ cmd: 'h2c', data: {} }); } catch (e) {}
+        var n = 0, iv = setInterval(function () {
+          if (window.html2canvas) { clearInterval(iv); res(); }
+          else if (++n > 100) { clearInterval(iv); h2c = null; rej(new Error('html2canvas')); }
+        }, 50);
+      });
+      return h2c;
+    }
     if (!h2c) h2c = new Promise(function (res, rej) {
       var s = document.createElement('script'); s.src = ME + '/html2canvas.min.js'; s.onload = res; s.onerror = function () { h2c = null; rej(new Error('html2canvas')); };
       (document.head || document.documentElement).appendChild(s);
