@@ -4,8 +4,12 @@ import WidgetKit
 @main
 struct DriveCastWidgets: WidgetBundle {
     var body: some Widget {
+        #if NO_LIVE_ACTIVITY
+        PrayerWidget()
+        #else
         IslandLiveActivity()
         PrayerWidget()
+        #endif
     }
 }
 

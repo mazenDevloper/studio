@@ -37,12 +37,30 @@ jobs:
             CURRENT_PROJECT_VERSION=${{ github.run_number }} \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" SYMROOT="$PWD/build" build 2>&1 | tee build.log | grep -E "error:|warning: .*deprecated|BUILD" || true
           test -d build/Release-iphoneos/DriveCast.app
+          # the same app signed by Xcode itself (ad-hoc, like a normal developer build, no App Group): the widget
+          # part's signature is made by the linker/codesign together, not patched afterwards
+          xcodebuild -project DriveCast.xcodeproj -target DriveCast -configuration Release -sdk iphoneos \
+            CURRENT_PROJECT_VERSION=${{ github.run_number }} \
+            CODE_SIGNING_ALLOWED=YES CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="-" CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM="" \
+            CODE_SIGN_ENTITLEMENTS="" SYMROOT="$PWD/build-signed" build 2>&1 | tee build-signed.log | grep -E "error:|BUILD" || true
+          # a test build: the widget alone, without the Live Activity (to tell which part iOS rejects)
+          xcodebuild -project DriveCast.xcodeproj -target DriveCast -configuration Release -sdk iphoneos \
+            CURRENT_PROJECT_VERSION=${{ github.run_number }} \
+            CODE_SIGNING_ALLOWED=YES CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="-" CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM="" \
+            CODE_SIGN_ENTITLEMENTS="" SWIFT_ACTIVE_COMPILATION_CONDITIONS="NO_LIVE_ACTIVITY" SYMROOT="$PWD/build-test" build 2>&1 | tee build-test.log | grep -E "error:|BUILD" || true
 
       - name: Package the IPA
         working-directory: ios-app
         run: |
           APP=build/Release-iphoneos/DriveCast.app
           ls -la "$APP" "$APP/PlugIns" || true
+          # Xcode-signed builds (the default from now on) and the widget-only test
+          if [ -d build-signed/Release-iphoneos/DriveCast.app ]; then
+            mkdir -p XS/Payload && cp -R build-signed/Release-iphoneos/DriveCast.app XS/Payload/ && (cd XS && zip -qry ../DriveCast-xcode.ipa Payload)
+          fi
+          if [ -d build-test/Release-iphoneos/DriveCast.app ]; then
+            mkdir -p WT/Payload && cp -R build-test/Release-iphoneos/DriveCast.app WT/Payload/ && (cd WT && zip -qry ../DriveCast-widget-test.ipa Payload)
+          fi
           # the default IPA: no App Group entitlement - sideloading with a free account often can't provision one,
           # and an entitlement the profile doesn't grant stops iOS from running the widget part (no widgets, a
           # blank Dynamic Island). The widget then reads the prayer times from the cloud itself.
@@ -87,6 +105,6 @@ jobs:
           TAG=ios-latest
           case "$GITHUB_REF_NAME" in main) ;; *) TAG=ios-preview ;; esac
           gh release delete "$TAG" --yes --cleanup-tag || true
-          gh release create "$TAG" DriveCast.ipa DriveCast-nosign.ipa DriveCast-group.ipa DriveCast-lite.ipa --target "$GITHUB_SHA" --prerelease \
+          gh release create "$TAG" DriveCast.ipa $(ls DriveCast-xcode.ipa DriveCast-widget-test.ipa 2>/dev/null) DriveCast-nosign.ipa DriveCast-group.ipa DriveCast-lite.ipa --target "$GITHUB_SHA" --prerelease \
             --title "DriveCast iPhone (build ${{ github.run_number }})" \
             --notes "Built from ${GITHUB_REF_NAME} @ ${GITHUB_SHA::7}. Unsigned: install with Sideloadly or AltStore (iOS 16.2+; the Dynamic Island needs iPhone 14 Pro or newer)."
