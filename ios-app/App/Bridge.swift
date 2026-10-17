@@ -49,12 +49,6 @@ final class Bridge {
         case "cmd":
             if let r = q["route"], !r.isEmpty { open(route: r) }
             if let c = q["cmd"], !c.isEmpty { emit(c, q["arg"] ?? "") }
-        case "setVideoPlaying":
-            KeepAlive.shared.pageMedia = (args["playing"] as? Bool) ?? false
-            reply([:])
-        case "testIslands":
-            DispatchQueue.main.async { Island.shared.test(kind: (args["kind"] as? String) ?? "islands") }
-            reply([:])
         case "voice":
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { VoiceController.present() }
         case "islands":
@@ -138,6 +132,12 @@ final class Bridge {
             let p = max(50, min(200, (args["percent"] as? NSNumber)?.intValue ?? 100))
             UserDefaults.standard.set(p, forKey: "textZoom")
             DispatchQueue.main.async { self.web?.pageZoom = CGFloat(p) / 100 }
+            reply([:])
+        case "setVideoPlaying":
+            KeepAlive.shared.pageMedia = (args["playing"] as? Bool) ?? false
+            reply([:])
+        case "testIslands":
+            DispatchQueue.main.async { Island.shared.test(kind: (args["kind"] as? String) ?? "islands") }
             reply([:])
         case "takePendingCommands":
             let list = pending
