@@ -10,7 +10,7 @@
   window.__madarBridge = 1;
   var MADAR = 'https://mazendevloper.github.io';
 
-  if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  if ('serviceWorker' in navigator && location.protocol === 'https:' && /cplay/.test(location.host)) {
     window.addEventListener('load', function () { navigator.serviceWorker.register('/cplay2-sw.js').catch(function () {}); });
   }
 
