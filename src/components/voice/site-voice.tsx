@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Mic } from "lucide-react";
 import { nativeIsland } from "@/lib/native-app";
@@ -28,6 +28,20 @@ export function SiteVoiceButton() {
     if (path === "/media") window.dispatchEvent(new CustomEvent("native-media-action"));
     else router.push("/media");
   };
+
+  // the iPhone app listens itself and sends the sentence here
+  const actRef = useRef(act);
+  actRef.current = act;
+  useEffect(() => {
+    const on = (e: Event) => {
+      const t = String((e as CustomEvent).detail || "");
+      setHeard(t);
+      setTimeout(() => setHeard(""), 2500);
+      actRef.current(t);
+    };
+    window.addEventListener("native-voice", on);
+    return () => window.removeEventListener("native-voice", on);
+  }, []);
 
   const start = () => {
     const plugin: any = nativeIsland();

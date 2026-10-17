@@ -35,7 +35,7 @@ final class WebViewController: UIViewController, WKScriptMessageHandler, WKUIDel
     private static let shim = """
     (function(){if(window.Capacitor)return;var seq=0,cbs={},ls={};
     window.__dcResolve=function(id,r){var c=cbs[id];delete cbs[id];if(c)c(r)};
-    window.__dcEmit=function(ev,d){(ls[ev]||[]).forEach(function(f){try{f(d)}catch(e){}})};
+    window.__dcEmit=function(ev,d){var l=ls[ev]||[];l.forEach(function(f){try{f(d)}catch(e){}});return l.length>0};
     function call(m,a){return new Promise(function(res){var id=++seq;cbs[id]=res;try{window.webkit.messageHandlers.dc.postMessage({id:id,method:String(m),args:a||{}})}catch(e){res({})}})}
     var plugin=new Proxy({},{get:function(t,m){if(m==='then'||typeof m!=='string')return undefined;
     if(m==='addListener')return function(ev,f){(ls[ev]=ls[ev]||[]).push(f);return Promise.resolve({remove:function(){ls[ev]=(ls[ev]||[]).filter(function(x){return x!==f})}})};

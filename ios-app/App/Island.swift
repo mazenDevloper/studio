@@ -52,8 +52,16 @@ final class Island {
     private var polling = false
     private(set) var matches: [[String: Any]] = []
 
-    private var prayerOn: Bool { UserDefaults.standard.bool(forKey: "prayerIsland") }
-    private var matchesOn: Bool { UserDefaults.standard.bool(forKey: "matchesIsland") }
+    /// the controls widget's eye: every island hidden until shown again
+    var hidden: Bool { UserDefaults.standard.bool(forKey: "islandsHidden") }
+    private var prayerOn: Bool { UserDefaults.standard.bool(forKey: "prayerIsland") && !hidden }
+    private var matchesOn: Bool { UserDefaults.standard.bool(forKey: "matchesIsland") && !hidden }
+
+    /// show / hide all the islands (the controls widget)
+    func toggleHidden() {
+        UserDefaults.standard.set(!hidden, forKey: "islandsHidden")
+        settingsChanged()
+    }
 
     // MARK: lifecycle
 
@@ -100,8 +108,9 @@ final class Island {
         let all = DCShared.events()
         guard let next = all.first(where: { $0.at > now }) else { return }
         let prev = all.last(where: { $0.at <= now })?.at ?? now.addingTimeInterval(-3600)
-        let state = IslandAttributes.ContentState(kind: next.kind, title: next.title, start: max(prev, next.at.addingTimeInterval(-6 * 3600)),
+        var state = IslandAttributes.ContentState(kind: next.kind, title: next.title, start: max(prev, next.at.addingTimeInterval(-6 * 3600)),
                                                   end: next.at, timeText: DCShared.time12(next.at))
+        state.note = Hijri.occasionLine(now)
         let content = ActivityContent(state: state, staleDate: next.at)
         if let a = current {
             if a.content.state != state { Task { await a.update(content) } }
@@ -116,7 +125,7 @@ final class Island {
         let c = UNUserNotificationCenter.current()
         c.getPendingNotificationRequests { pending in
             c.removePendingNotificationRequests(withIdentifiers: pending.map(\.identifier).filter { $0.hasPrefix("dc-") })
-            guard self.prayerOn else { return }
+            guard UserDefaults.standard.bool(forKey: "prayerIsland") else { return }
             let now = Date()
             for e in DCShared.events().filter({ $0.at > now && $0.at < now.addingTimeInterval(48 * 3600) }).prefix(50) {
                 let n = UNMutableNotificationContent()

@@ -31,6 +31,8 @@ struct IslandAttributes: ActivityAttributes {
         var league: String = ""
         /// side that just scored ("home" / "away"), shown bright for a while
         var scored: String = ""
+        /// the day's occasion / a saying under the prayer countdown (like Android's occasion islands)
+        var note: String = ""
     }
 
     /// prayer | match

@@ -49,6 +49,10 @@ targets:
         NSLocationWhenInUseUsageDescription: "خريطة لوحة السيارة تعرض موقعك"
         NSMicrophoneUsageDescription: "الأوامر الصوتية والبحث بالصوت"
         NSCameraUsageDescription: "مسح الرموز داخل التطبيق"
+        NSSpeechRecognitionUsageDescription: "تحويل أوامرك الصوتية إلى نص (شغّل، ابحث، المباريات...)"
+        CFBundleURLTypes:
+          - CFBundleURLName: com.drivecast.sovereign
+            CFBundleURLSchemes: [drivecast]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.drivecast.sovereign

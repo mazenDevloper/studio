@@ -271,6 +271,12 @@ export function MediaView() {
           if (r?.[0]) setActiveVideo(r[0], r);
           autoFocusResults();
         }).catch(() => {}).finally(() => setLoading(false));
+      } else if (act.type === "reciter") {
+        // the iPhone's reciters widget: the tapped reciter's surahs
+        const r = (favoriteReciters || []).find(x => x.channelid === act.id || x.name === act.id);
+        if (!r) return; // reciters still loading: tried again when they arrive
+        (window as any).__nativeMediaAction = undefined;
+        handleReciterClick(r);
       } else if (act.type === "channel") {
         const ch = (favoriteChannels || []).find(c => c.channelid === act.id);
         if (!ch) return; // channels still loading: tried again when they arrive
@@ -282,7 +288,7 @@ export function MediaView() {
     window.addEventListener("native-media-action", run);
     return () => window.removeEventListener("native-media-action", run);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [favoriteChannels]);
+  }, [favoriteChannels, favoriteReciters]);
 
   useEffect(() => { fetch("https://api.quran.com/api/v4/chapters?language=ar").then(r => r.json()).then(d => { setSurahs(d.chapters || []); setAllSurahs(d.chapters || []); }).catch(() => {}); }, []);
 

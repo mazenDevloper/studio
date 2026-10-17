@@ -25,6 +25,13 @@ final class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationC
         return true
     }
 
+    /// drivecast://... from a widget (open a screen, a channel, the microphone, show / hide the islands)
+    func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey: Any] = [:]) -> Bool {
+        guard url.scheme == "drivecast" else { return false }
+        Bridge.shared.handle(url: url)
+        return true
+    }
+
     func applicationDidBecomeActive(_ application: UIApplication) {
         Island.shared.appActive()
     }

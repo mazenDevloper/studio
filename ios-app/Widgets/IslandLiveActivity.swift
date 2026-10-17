@@ -52,10 +52,17 @@ struct IslandLiveActivity: Widget {
                         if !s.league.isEmpty {
                             Text(s.league).font(LA.font(11, "Bold")).foregroundColor(.white.opacity(0.4)).lineLimit(1)
                         }
-                    } else if !stale && s.end > Date() && s.start < s.end {
-                        ProgressView(timerInterval: s.start...s.end, countsDown: true) { EmptyView() } currentValueLabel: { EmptyView() }
-                            .tint(DC.color(for: s.kind))
-                            .padding(.horizontal, 8)
+                    } else {
+                        VStack(spacing: 4) {
+                            if !stale && s.end > Date() && s.start < s.end {
+                                ProgressView(timerInterval: s.start...s.end, countsDown: true) { EmptyView() } currentValueLabel: { EmptyView() }
+                                    .tint(DC.color(for: s.kind))
+                            }
+                            if !s.note.isEmpty {
+                                Text(s.note).font(LA.font(11, "Bold")).foregroundColor(DC.emerald.opacity(0.85)).lineLimit(1).minimumScaleFactor(0.7)
+                            }
+                        }
+                        .padding(.horizontal, 8)
                     }
                 }
             } compactLeading: {
@@ -266,6 +273,9 @@ struct LockScreenView: View {
                     Text(s.title).font(LA.font(18)).foregroundColor(.white).lineLimit(1)
                     Text((s.kind == "azan" ? "الأذان · " : s.kind == "iqamah" ? "الإقامة · " : "التذكير · ") + s.timeText)
                         .font(LA.font(12, "Bold")).foregroundColor(.white.opacity(0.45))
+                    if !s.note.isEmpty {
+                        Text(s.note).font(LA.font(11, "Bold")).foregroundColor(DC.emerald.opacity(0.85)).lineLimit(1).minimumScaleFactor(0.7)
+                    }
                 }
                 Spacer()
                 CountdownText(s: s, stale: stale, size: 36)
