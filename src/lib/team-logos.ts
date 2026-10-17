@@ -81,7 +81,12 @@ export function dedupeMatches(data: any): any {
   const list: any[] = data?.matches ?? [];
   const out: any[] = [];
   const near = (a: any, b: any) => Math.abs((a.timestamp ?? 0) - (b.timestamp ?? 0)) < 3 * 3600;
-  const sameSide = (x: string, y: string) => sameTeam(x, y) || norm(x).split(" ").some(w => w.length > 3 && norm(y).includes(w));
+  // the same team spelled two ways by two sources ("Espanyol" / "Espanol", "Atletico Madrid" / "Ath Madrid"): a shared
+  // long word, or the same first 4 letters (both sides must match and the kick-offs be close, so no real match merges)
+  const sameSide = (x: string, y: string) => {
+    const a = norm(x), b = norm(y);
+    return sameTeam(x, y) || a.split(" ").some(w => w.length > 3 && b.includes(w)) || (a.length >= 4 && b.length >= 4 && a.slice(0, 4) === b.slice(0, 4));
+  };
   for (const m of list) {
     const i = out.findIndex(o => near(o, m) && sameSide(o.home?.name ?? "", m.home?.name ?? "") && sameSide(o.away?.name ?? "", m.away?.name ?? ""));
     if (i < 0) { out.push(m); continue; }

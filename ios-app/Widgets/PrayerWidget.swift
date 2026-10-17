@@ -52,6 +52,30 @@ struct PrayerWidgetView: View {
 
     var body: some View {
         let color = DC.color(for: e.kind)
+        if family == .systemSmall {
+            // small: the name on top, the countdown big underneath (side by side it doesn't fit)
+            VStack(alignment: .trailing, spacing: 4) {
+                HStack {
+                    IconSquare(kind: e.kind, size: 34)
+                    Spacer()
+                }
+                Spacer(minLength: 0)
+                Text(e.title.isEmpty ? "جاري التحميل…" : e.title).font(DC.font(20)).foregroundColor(.white).lineLimit(1).minimumScaleFactor(0.6)
+                if let at = e.at {
+                    Text((e.kind == "iqamah" ? "الإقامة · " : "الأذان · ") + DCShared.time12(at)).font(DC.font(11, "Bold")).foregroundColor(.white.opacity(0.45))
+                    Text(at, style: .timer).font(DC.font(28)).foregroundColor(color).monospacedDigit()
+                        .lineLimit(1).minimumScaleFactor(0.5).frame(maxWidth: .infinity, alignment: .trailing)
+                        .environment(\.layoutDirection, .leftToRight)
+                }
+            }
+            .environment(\.layoutDirection, .leftToRight)
+            .widgetURL(DCLink.open("/dashboard"))
+        } else {
+            wide(color)
+        }
+    }
+
+    private func wide(_ color: Color) -> some View {
         VStack(alignment: .trailing, spacing: 6) {
             HStack {
                 if let at = e.at {

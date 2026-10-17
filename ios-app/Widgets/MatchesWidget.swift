@@ -142,12 +142,16 @@ struct MatchesWidgetView: View {
 
     var body: some View {
         let small = family == .systemSmall
-        VStack(spacing: small ? 4 : 6) {
-            HStack {
-                Text(e.pageText).font(DC.font(11, "Bold")).foregroundColor(.white.opacity(0.4))
-                Spacer()
-                Text(e.heading).font(DC.font(small ? 12 : 14)).foregroundColor(.white.opacity(0.85))
+        VStack(spacing: small ? 4 : 5) {
+            // one bar on top: ⟳ ‹ › on the left, the title and page on the right (the rows get the rest)
+            HStack(spacing: 6) {
+                refresh
+                PagerButtons(kind: "matches", hasPrev: e.hasPrev, hasNext: e.hasNext, size: small ? 20 : 22)
+                Spacer(minLength: 2)
+                if !small { Text(e.pageText).font(DC.font(10, "Bold")).foregroundColor(.white.opacity(0.4)).monospacedDigit() }
+                Text(small ? (e.pageText.isEmpty ? "⚽" : e.pageText) : e.heading).font(DC.font(small ? 11 : 13)).foregroundColor(.white.opacity(0.85)).lineLimit(1)
             }
+            .environment(\.layoutDirection, .leftToRight)
             if e.rows.isEmpty {
                 Spacer()
                 Text(e.empty.isEmpty ? "جاري تحميل المباريات..." : e.empty).font(DC.font(13, "Bold")).foregroundColor(.white.opacity(0.5))
@@ -156,14 +160,6 @@ struct MatchesWidgetView: View {
                 ForEach(e.rows) { r in row(r, small: small) }
                 Spacer(minLength: 0)
             }
-            HStack {
-                refresh
-                Spacer()
-                PagerButtons(kind: "matches", hasPrev: e.hasPrev, hasNext: e.hasNext, size: small ? 22 : 26)
-                Spacer()
-                Color.clear.frame(width: small ? 22 : 30, height: 1)
-            }
-            .environment(\.layoutDirection, .leftToRight)
         }
         .widgetURL(DCLink.open("/matches"))
     }
@@ -171,7 +167,7 @@ struct MatchesWidgetView: View {
     private var refresh: some View {
         WButton(intent: refreshIntent, fallback: nil) {
             Text("⟳").font(.system(size: family == .systemSmall ? 14 : 17, weight: .heavy)).foregroundColor(.white.opacity(0.7))
-                .frame(width: family == .systemSmall ? 22 : 30, height: family == .systemSmall ? 22 : 26)
+                .frame(width: family == .systemSmall ? 20 : 24, height: family == .systemSmall ? 20 : 22)
                 .background(Circle().fill(Color.white.opacity(0.1)))
         }
     }
@@ -182,36 +178,38 @@ struct MatchesWidgetView: View {
     }
 
     @ViewBuilder private func row(_ r: MatchRow, small: Bool) -> some View {
-        let logo: CGFloat = small ? 24 : 30
-        HStack(spacing: 6) {
+        let logo: CGFloat = small ? 22 : 26
+        HStack(spacing: 5) {
             RoundPic(image: r.homeLogo, name: r.home, size: logo)
             if !small { Text(r.home).font(DC.font(12, "Bold")).foregroundColor(.white).lineLimit(1).minimumScaleFactor(0.7).frame(maxWidth: .infinity, alignment: .leading) }
-            VStack(spacing: 1) {
+            HStack(spacing: 3) {
                 if r.status == "upcoming" {
-                    Text(r.time).font(DC.font(small ? 15 : 18)).foregroundColor(.white.opacity(0.9))
+                    Text(r.time).font(DC.font(small ? 14 : 17)).foregroundColor(.white.opacity(0.9))
                 } else {
-                    Text("\(r.sh)-\(r.sa)").font(DC.font(small ? 16 : 19))
+                    Text("\(r.sh)-\(r.sa)").font(DC.font(small ? 15 : 18))
                         .foregroundColor(r.status == "live" ? DC.emerald : .white.opacity(0.75))
                 }
                 if r.status == "live" {
-                    Text(r.minute).font(DC.font(9)).foregroundColor(.white)
-                        .padding(.horizontal, 5).background(Capsule().fill(DC.red))
-                } else if r.status == "finished" {
+                    Text(r.minute).font(DC.font(small ? 8 : 9)).foregroundColor(.white)
+                        .padding(.horizontal, 4).padding(.vertical, 1).background(Capsule().fill(DC.red))
+                } else if r.status == "finished" && !small {
                     Text("انتهت").font(DC.font(9, "Bold")).foregroundColor(.white.opacity(0.4))
                 }
             }
             .monospacedDigit()
-            .frame(minWidth: small ? 44 : 56)
+            .lineLimit(1)
+            .frame(minWidth: small ? 40 : 64)
             if !small { Text(r.away).font(DC.font(12, "Bold")).foregroundColor(.white).lineLimit(1).minimumScaleFactor(0.7).frame(maxWidth: .infinity, alignment: .trailing) }
             RoundPic(image: r.awayLogo, name: r.away, size: logo)
         }
         .environment(\.layoutDirection, .leftToRight)
-        .padding(.horizontal, 6)
-        .padding(.vertical, small ? 2 : 4)
+        .padding(.horizontal, 5)
+        .padding(.vertical, 3)
+        .frame(maxWidth: .infinity)
         .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
+            RoundedRectangle(cornerRadius: 11, style: .continuous)
                 .fill(Color.white.opacity(r.status == "live" ? 0.09 : 0.04))
-                .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .overlay(RoundedRectangle(cornerRadius: 11, style: .continuous)
                     .stroke(r.fav && r.status == "live" ? DC.yellow.opacity(0.6) : .clear, lineWidth: 1.2))
         )
     }
