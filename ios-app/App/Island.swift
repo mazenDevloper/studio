@@ -39,6 +39,7 @@ final class Island {
             "الأنشطة المباشرة: " + (ActivityAuthorizationInfo().areActivitiesEnabled ? "مفعّلة ✓" : "مطفأة ✗"),
             "مواقيت وصلت من الموقع: \(events)" + (cfg.isEmpty ? " (لم يصل شيء ✗)" : ""),
             "جزر تعمل الآن: \(running)",
+            "جزيرة المباريات: " + (UserDefaults.standard.bool(forKey: "matchesIsland") ? "مفعّلة" : "مطفأة") + " · مباريات فرقك اليوم: \(Island.shared.matches.count)" + ((cfg["apiUrl"] as? String) == nil ? " (لم يصل رابط المباريات ✗)" : ""),
             "آخر خطأ: " + (lastError.isEmpty ? "لا يوجد" : lastError),
             "iOS \(UIDevice.current.systemVersion)",
         ].joined(separator: "\n")
@@ -49,7 +50,7 @@ final class Island {
     private var lastPollOk: Date = .distantPast
     private var pollFailed = false
     private var polling = false
-    private var matches: [[String: Any]] = []
+    private(set) var matches: [[String: Any]] = []
 
     private var prayerOn: Bool { UserDefaults.standard.bool(forKey: "prayerIsland") }
     private var matchesOn: Bool { UserDefaults.standard.bool(forKey: "matchesIsland") }
@@ -196,7 +197,7 @@ final class Island {
             let st = m["status"] as? String ?? ""
             let kick = Date(timeIntervalSince1970: (m["timestamp"] as? NSNumber)?.doubleValue ?? 0)
             // live, or starting within 15 minutes, or finished less than half an hour ago
-            let show = st == "live" || (st == "upcoming" && kick.timeIntervalSince(now) < 15 * 60 && kick.timeIntervalSince(now) > -20 * 60)
+            let show = st == "live" || (st == "upcoming" && kick.timeIntervalSince(now) < 3 * 3600 && kick.timeIntervalSince(now) > -20 * 60)
                 || (st == "finished" && now.timeIntervalSince(kick) < 150 * 60)
             guard show else { continue }
             seen.insert(id)

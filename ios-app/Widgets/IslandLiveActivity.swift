@@ -74,8 +74,18 @@ struct IslandLiveActivity: Widget {
                         Logo(file: s.awayLogo, data: s.awayLogoData, name: s.away, size: 22)
                     }
                 } else {
-                    CountdownText(s: s, stale: stale, size: 15)
-                        .frame(maxWidth: 64)
+                    // compact: a plain timer with a fixed width (a gradient / flexible width can leave it invisible)
+                    if stale || s.end <= Date() {
+                        Text("الآن").font(LA.font(14)).foregroundColor(DC.color(for: s.kind))
+                    } else {
+                        Text(timerInterval: Date()...max(Date(), s.end), countsDown: true)
+                            .font(LA.font(14))
+                            .monospacedDigit()
+                            .foregroundColor(DC.color(for: s.kind))
+                            .multilineTextAlignment(.center)
+                            .frame(width: s.end.timeIntervalSinceNow >= 3600 ? 62 : 46)
+                            .environment(\.layoutDirection, .leftToRight)
+                    }
                 }
             } minimal: {
                 if match {
