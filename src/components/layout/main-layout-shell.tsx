@@ -33,7 +33,7 @@ export function MainLayoutShell({ children }: { children: React.ReactNode }) {
       "max-[968px]:!px-0"
     )}>
       {/* content starts below the floating islands (--island-space is their measured height, 0 when none) */}
-      <div className="w-full h-full overflow-y-auto overflow-x-hidden relative no-scrollbar transition-[padding] duration-300" style={{ zoom: zoomFactor, willChange: 'transform, opacity', paddingTop: `calc(var(--island-space, 0px) / ${zoomFactor})` }}>{children}</div>
+      <div className="w-full h-full overflow-y-auto overflow-x-hidden relative no-scrollbar transition-[padding] duration-300" style={{ zoom: zoomFactor, WebkitOverflowScrolling: "touch", touchAction: "pan-x pan-y", paddingTop: `calc(var(--island-space, 0px) / ${zoomFactor})` }}>{children}</div>
     </div>
   );
 }

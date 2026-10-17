@@ -32,6 +32,10 @@ final class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationC
         return true
     }
 
+    func application(_ application: UIApplication, supportedInterfaceOrientationsFor window: UIWindow?) -> UIInterfaceOrientationMask {
+        UIDevice.current.userInterfaceIdiom == .pad ? .all : .allButUpsideDown
+    }
+
     func applicationDidBecomeActive(_ application: UIApplication) {
         KeepAlive.shared.enterForeground()
         Island.shared.appActive()

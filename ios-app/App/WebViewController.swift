@@ -15,6 +15,9 @@ final class WebViewController: UIViewController, WKScriptMessageHandler, WKUIDel
     private(set) var web: WKWebView!
 
     override var preferredStatusBarStyle: UIStatusBarStyle { .lightContent }
+    // the phone turns both ways: upright (portrait) and on its side
+    override var supportedInterfaceOrientations: UIInterfaceOrientationMask { .allButUpsideDown }
+    override var shouldAutorotate: Bool { true }
 
     /// shake: the island / widget diagnostics
     override func motionEnded(_ motion: UIEvent.EventSubtype, with event: UIEvent?) {
@@ -75,10 +78,15 @@ final class WebViewController: UIViewController, WKScriptMessageHandler, WKUIDel
         ])
         view = root
         Bridge.shared.web = web
-        // the site is laid out for the car's big screen: on a phone it is shown a bit smaller so everything fits
-        // (the font size in the app's settings changes it)
+        // full size: a smaller zoom made a phone on its side look like the car's wide screen (the desktop layout with
+        // its fixed panels, no scrolling). The font size in the app's settings still changes it.
+        // once: an old smaller zoom (it turned the phone on its side into the wide car layout) back to full size
+        if !UserDefaults.standard.bool(forKey: "zoomReset1") {
+            UserDefaults.standard.set(true, forKey: "zoomReset1")
+            UserDefaults.standard.removeObject(forKey: "textZoom")
+        }
         let saved = UserDefaults.standard.integer(forKey: "textZoom")
-        web.pageZoom = CGFloat(saved > 0 ? saved : (UIDevice.current.userInterfaceIdiom == .phone ? 80 : 100)) / 100
+        web.pageZoom = CGFloat(saved > 0 ? saved : 100) / 100
         web.load(URLRequest(url: Self.siteURL))
     }
 
