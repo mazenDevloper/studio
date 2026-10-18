@@ -5,3 +5,7 @@ compatibility_date = "2026-09-01"
 # every minute: watch your teams' live games (goals → push later, when an Apple developer key is added)
 [triggers]
 crons = ["* * * * *"]
+
+# the cloud bin's key (already inside the apps, so not a secret); a dashboard Secret of the same name overrides it
+[vars]
+BIN_KEY = "$2a$10$SYrYv.ct8hiMU9YeUxEQ.ecRkOrTqs.TDchJRV3wW.aKJnDXy2oVy"
