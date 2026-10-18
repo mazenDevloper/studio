@@ -37,7 +37,7 @@ jobs:
             CURRENT_PROJECT_VERSION=${{ github.run_number }} \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" SYMROOT="$PWD/build" build 2>&1 | tee build.log | grep -E "error:|warning: .*deprecated|BUILD" || true
           grep -E "error|Undefined|FAILED|\*\* BUILD" build.log | sort -u | head -25 | sed 's/^/::error::/' || true
-          test -d build/Release-iphoneos/DriveCast.app/DriveCast
+          test -d build/Release-iphoneos/DriveCast.app
           # the same app signed by Xcode itself (ad-hoc, like a normal developer build, no App Group): the widget
           # part's signature is made by the linker/codesign together, not patched afterwards
           xcodebuild -project DriveCast.xcodeproj -target DriveCast -configuration Release -sdk iphoneos \
