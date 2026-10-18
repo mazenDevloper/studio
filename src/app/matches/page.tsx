@@ -1,5 +1,6 @@
 "use client";
 
+import { fastImg } from "@/lib/fast-img";
 import { flagUrl } from "@/lib/flags";
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Loader2, RefreshCw, Trophy, AlertTriangle, Star, PartyPopper, Pin, Eye, EyeOff, Tv, MapPin, Flag, LayoutGrid, Server, BellRing, BellOff, Pencil, X, RotateCcw, BookmarkCheck, BookmarkPlus, CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
@@ -41,13 +42,18 @@ function useOtherDay(tab: DayTab, teams: string[]) {
       const q = new URLSearchParams(tab === "fav" ? { days: "14" } : tab === "live" ? {} : { limit: String(MATCHES_LIMIT), day: String(tab) });
       if (teams.length) q.set("teams", teams.join("|"));
       for (const k of follow) q.append("follow", k);
-      const res = await fetch(tab === "fav" ? `/api/matches/favorites?${q}` : tab === "live" ? `/api/matches/live?${q}` : `/api/matches?${q}`, { cache: "no-store" });
-      const json = await res.json();
+      const url = tab === "fav" ? `/api/matches/favorites?${q}` : tab === "live" ? `/api/matches/live?${q}` : `/api/matches?${q}`;
+      // a server hiccup can answer with an HTML error page: try once more before saying anything
+      const get = async () => { const r = await fetch(url, { cache: "no-store" }); const t = await r.text(); let j: any = null; try { j = JSON.parse(t); } catch {} return { r, j }; };
+      let { r: res, j: json } = await get();
+      if (!json) { await new Promise(ok => setTimeout(ok, 1500)); ({ r: res, j: json } = await get()); }
+      if (!json) throw new Error("الخادم مشغول، حاول بعد لحظات");
       if (!res.ok) throw new Error(json?.error || "تعذر التحميل");
       otherDays.set(key, { at: Date.now(), data: json });
       setState({ key, data: json, error: null, loading: false });
     } catch (e: any) {
-      setState(s => ({ ...s, key, error: e?.message || "تعذر التحميل", loading: false }));
+      // matches already on screen stay there: a failed refresh doesn't need a red box
+      setState(s => ({ ...s, key, error: s.key === key && s.data ? null : e?.message || "تعذر التحميل", loading: false }));
     }
   };
   useEffect(() => {
@@ -282,7 +288,7 @@ function MatchCard({ m, hidden = false }: { m: TopMatch; hidden?: boolean }) {
       <div className="flex flex-wrap-reverse items-center justify-between gap-2 text-[11px] text-white/50 mb-3">
         <span className="flex items-center gap-2 min-w-0 max-w-full">
           {flagUrl(m.league.country) && <img src={flagUrl(m.league.country)!} alt="" title={m.league.country} className="w-5 h-3.5 object-cover rounded-[2px] shrink-0" />}
-          {m.league.logo && <img src={m.league.logo} alt="" className="w-4 h-4 object-contain" />}
+          {m.league.logo && <img src={fastImg(m.league.logo)} decoding="async" alt="" className="w-4 h-4 object-contain" />}
           <span className="truncate">{m.league.name}</span>
           <FollowLeague league={m.league} navId={`match-follow-${m.id}`} />
         </span>
@@ -400,7 +406,7 @@ function Team({ team, league, navId }: { team: TopMatch["home"]; league: TopMatc
   return (
     <div className="flex flex-col items-center gap-2 min-w-0">
       <div className="relative">
-        {team.logo ? <img src={team.logo} alt="" className="w-12 h-12 object-contain" loading="lazy" /> : <div className="w-12 h-12 rounded-full bg-white/10" />}
+        {team.logo ? <img src={fastImg(team.logo)} decoding="async" alt="" className="w-12 h-12 object-contain" loading="lazy" /> : <div className="w-12 h-12 rounded-full bg-white/10" />}
         <button onClick={toggle} title={fav ? "إزالة من فرقي المفضلة" : "إضافة إلى فرقي المفضلة"} data-nav-id={navId}
           className={cn("focusable no-focus-scale absolute -top-2 -right-3 w-7 h-7 rounded-full border flex items-center justify-center",
             fav ? "bg-yellow-400 border-yellow-300 text-black shadow-[0_0_10px_rgba(250,204,21,0.5)]" : "bg-black/70 border-white/15 text-white/40 hover:text-yellow-300")}>

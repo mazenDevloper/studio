@@ -99,12 +99,26 @@ async function events(env) {
   return { events: out.filter(e => e.at > now - 60e3).sort((a, b) => a.at - b.at), at: now };
 }
 
+// team / league logos through Cloudflare's cache (kept close to Oman for a month): they appear at once
+async function image(src, ctx) {
+  if (!src || !/^https:\/\//.test(src)) return new Response('bad url', { status: 400 });
+  const key = new Request('https://img.cache/' + encodeURIComponent(src));
+  const hit = await caches.default.match(key); if (hit) return hit;
+  const r = await fetch(src, { headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'image/*' }, cf: { cacheTtl: 2592000, cacheEverything: true } });
+  const type = r.headers.get('content-type') || '';
+  if (!r.ok || !type.startsWith('image/')) return new Response('not an image', { status: 404 });
+  const res = new Response(r.body, { headers: { 'content-type': type, 'cache-control': 'public, max-age=2592000, immutable', 'access-control-allow-origin': '*' } });
+  ctx.waitUntil(caches.default.put(key, res.clone()));
+  return res;
+}
+
 export default {
   async fetch(req, env, ctx) {
     const u = new URL(req.url);
     if (req.method === 'OPTIONS') return new Response(null, { headers: { ...H, 'access-control-allow-headers': '*' } });
     try {
       if (u.pathname === '/matches') return await cached(req, ctx, 10, () => matches(env, u.searchParams.get('lang') === '1' ? 1 : 27));
+      if (u.pathname === '/img') return await image(u.searchParams.get('u'), ctx);
       if (u.pathname === '/events') return await cached(req, ctx, 60, () => events(env));
       if (u.pathname === '/favourites') return await cached(req, ctx, 600, () => favourites(env));
       return new Response(JSON.stringify({ ok: true, endpoints: ['/matches', '/favourites'] }), { headers: H });
