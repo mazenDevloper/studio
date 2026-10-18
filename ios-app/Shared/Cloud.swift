@@ -65,6 +65,8 @@ enum Cloud {
 
     /// Today's favourite matches (the site's /api/matches, logos filled in, live minute fresh).
     static func matches() async -> [[String: Any]]? {
+        // Straight from 365Scores first (no site in between); the site only when that fails.
+        if let direct = await Direct365.matches() { return direct }
         let m = await masterData(maxAge: 6 * 3600)
         var c = URLComponents(string: site + "/api/matches")!
         c.queryItems = [URLQueryItem(name: "limit", value: "30"), URLQueryItem(name: "teams", value: teamsSpec(m))]

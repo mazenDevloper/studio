@@ -236,10 +236,34 @@ final class Island {
 
     func poll(force: Bool, done: (() -> Void)? = nil) {
         let cfg = DCShared.json("config")
-        guard matchesOn, !polling, let api = cfg["apiUrl"] as? String, let url = URL(string: api) else { done?(); return }
+        guard matchesOn, !polling else { done?(); return }
         polling = true
         lastPoll = Date()
         let pins = (cfg["pins"] as? [[String: Any]]) ?? []
+        // Straight from 365Scores (favourites from the cloud): no waiting for the site, works with the app in the background.
+        Task {
+            if let list = await Direct365.matches() {
+                var mine = list.filter { ($0["favorite"] as? Bool) ?? false }
+                for m in list where !(m["favorite"] as? Bool ?? false) {
+                    let h = (m["home"] as? [String: Any])?["name"] as? String ?? "", a = (m["away"] as? [String: Any])?["name"] as? String ?? ""
+                    if pins.contains(where: { Self.same($0["home"] as? String ?? "", h) && Self.same($0["away"] as? String ?? "", a) }) { mine.append(m) }
+                }
+                for m in mine { self.saveLogos(m) }
+                await MainActor.run {
+                    self.polling = false; self.pollFailed = false; self.lastPollOk = Date()
+                    self.matches = mine
+                    self.updateMatchActivities()
+                    done?()
+                }
+                return
+            }
+            await MainActor.run { self.polling = false; self.pollViaSite(cfg: cfg, pins: pins, done: done) }
+        }
+    }
+
+    private func pollViaSite(cfg: [String: Any], pins: [[String: Any]], done: (() -> Void)?) {
+        guard let api = cfg["apiUrl"] as? String, let url = URL(string: api) else { pollFailed = true; done?(); return }
+        polling = true
         var req = URLRequest(url: url, timeoutInterval: 40)
         req.setValue("application/json", forHTTPHeaderField: "Accept")
         URLSession.shared.dataTask(with: req) { data, _, err in
