@@ -55,7 +55,7 @@ public class IslandService extends Service {
     static final String STOP_ALL = "com.drivecast.STOP_ALL";
     private static final String CHANNEL = "drivecast_island";
     private static final int NOTIFICATION_ID = 4101;
-    private static final long POLL_MS = 30_000;
+    private static final long POLL_MS = 10_000;
 
     private static IslandService instance;
     private static volatile boolean appVisible = true;
@@ -342,7 +342,7 @@ public class IslandService extends Service {
         boolean critical = false;
         for (JSONObject m : matches) if (matchItem(m, now).critical) critical = true;
         // the deciding minutes: every 15 s
-        long every = appVisible ? 4 * POLL_MS : critical ? POLL_MS / 2 : POLL_MS;
+        long every = appVisible ? 6 * POLL_MS : POLL_MS;   // 10 s behind other apps, 1 min with the app open
         if (now - lastPoll > every && pollDue(now)) {
             lastPoll = now;
             pollMatches();
@@ -444,6 +444,9 @@ public class IslandService extends Service {
                 }
                 apiUrl = origin + "/api/matches?limit=30&teams=" + enc(t.toString()) + (p.length() > 0 ? "&pins=" + enc(p.toString()) : "");
             }
+            // our server (one small ready file) when nothing is pinned by hand
+            final boolean viaServer = pins == null || pins.length() == 0;
+            if (viaServer) apiUrl = "https://studio.c-p.workers.dev/matches?lang=1";
             if (apiUrl.isEmpty()) return;
             List<JSONObject> mine = new ArrayList<>();
             JSONArray widgetData = new JSONArray();
@@ -460,6 +463,7 @@ public class IslandService extends Service {
                 JSONArray list = new JSONObject(sb.toString()).optJSONArray("matches");
                 for (int i = 0; list != null && i < list.length(); i++) {
                     JSONObject m = list.getJSONObject(i);
+                    if (viaServer && m.optBoolean("mine")) m.put("favorite", true);
                     JSONObject h = m.optJSONObject("home"), a = m.optJSONObject("away");
                     if (h == null || a == null) continue;
                     boolean pinned = isPinned(pins, h.optString("name"), a.optString("name"));

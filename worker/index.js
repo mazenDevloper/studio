@@ -46,7 +46,7 @@ async function matches(env, lang) {
       home: { id: '' + h.id, name: h.name, logo: LOGO(h.id) }, away: { id: '' + a.id, name: a.name, logo: LOGO(a.id) },
       score: { home: sc(h.score), away: sc(a.score) }, league: { id: '' + g.competitionId, name: g.competitionDisplayName || '' },
       omanTime: new Date(t).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Muscat' }),
-      favorite: isl.has(h.id) || isl.has(a.id), elapsed: status === 'live' && g.gameTime >= 0 ? Math.floor(g.gameTime) : undefined });
+      favorite: isl.has(h.id) || isl.has(a.id), mine: true, elapsed: status === 'live' && g.gameTime >= 0 ? Math.floor(g.gameTime) : undefined });
   }
   out.sort((x, y) => (y.status === 'live') - (x.status === 'live') || x.timestamp - y.timestamp);
   return { matches: out, teams, at: now };
@@ -57,7 +57,7 @@ export default {
     const u = new URL(req.url);
     if (req.method === 'OPTIONS') return new Response(null, { headers: { ...H, 'access-control-allow-headers': '*' } });
     try {
-      if (u.pathname === '/matches') return await cached(req, ctx, 20, () => matches(env, u.searchParams.get('lang') === '1' ? 1 : 27));
+      if (u.pathname === '/matches') return await cached(req, ctx, 10, () => matches(env, u.searchParams.get('lang') === '1' ? 1 : 27));
       if (u.pathname === '/favourites') return await cached(req, ctx, 600, () => favourites(env));
       return new Response(JSON.stringify({ ok: true, endpoints: ['/matches', '/favourites'] }), { headers: H });
     } catch (e) {
