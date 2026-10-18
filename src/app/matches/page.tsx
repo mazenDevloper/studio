@@ -92,8 +92,8 @@ function DayTabs({ tab, setTab }: { tab: DayTab; setTab: (t: DayTab) => void }) 
         <button onClick={() => step(-1)} title="اليوم السابق" data-nav-id="matches-day-prev" className={cn(btn(false), "px-3 flex items-center gap-1 text-white/80")}>
           <ChevronRight className="w-5 h-5" /><span className="text-xs">السابق</span>
         </button>
-        <span className="relative">
-          <button role="tab" aria-selected={dated} onClick={openPicker} tabIndex={0} data-nav-id="matches-day-date" className={cn(btn(dated), "flex items-center gap-1.5")}>
+        <span className="relative min-w-0">
+          <button role="tab" aria-selected={dated} onClick={openPicker} tabIndex={0} data-nav-id="matches-day-date" className={cn(btn(dated), "flex items-center gap-1.5 max-w-full overflow-hidden text-ellipsis")}>
             <CalendarDays className="w-4 h-4" /> {shown === 2 ? `${DAY_NAMES[2]} · ` : ""}{shortDate(shown)}
           </button>
           {/* the real date input covers the tab, so a tap opens the phone's own date picker */}
@@ -143,10 +143,10 @@ export default function MatchesTestPage() {
   useEffect(() => { if (!favCount) ensureScreenData("/iptv"); }, [favCount, ensureScreenData]);
 
   return (
-    <div className="min-h-full bg-black text-white p-6 md:p-10 space-y-6" dir="rtl">
+    <div className="min-h-full bg-black text-white p-4 sm:p-6 md:p-10 space-y-6 overflow-x-hidden" dir="rtl">
       <header className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-black flex items-center gap-3">{title} <Trophy className="w-8 h-8 text-yellow-400" /></h1>
+        <div className="min-w-0 max-w-full">
+          <h1 className="text-2xl sm:text-3xl font-black flex items-center gap-3">{title} <Trophy className="w-8 h-8 text-yellow-400" /></h1>
           <p className="text-white/50 text-sm mt-1">{tab === "fav" ? `من الغد ولمدة 14 يوماً · ${favoriteNames.length} فريق` : tab === "live" ? `${matches.length} مباراة · من الأقوى للأضعف · تحديث كل 30 ثانية` : omanDateLabel(dayDate(tab))} · التوقيت: عُمان (GMT+4) · اليوم الكروي حتى 5 فجراً</p>
           <DayTabs tab={tab} setTab={setTab} />
         </div>
@@ -174,7 +174,7 @@ export default function MatchesTestPage() {
             <div className="py-20 text-center text-white/30 font-bold">{tab === "live" ? "لا توجد مباريات مباشرة الآن" : tab === "fav" ? (favoriteNames.length ? "لا توجد مباريات قادمة لفرقك في الأيام القادمة" : "لم تضف فرقاً مفضلة بعد") : `لا توجد مباريات مهمة ${DAY_NAMES[tab] ?? shortDate(tab)}`}</div>
           ) : (
             <>
-              <div className="grid gap-3 md:grid-cols-2">
+              <div className="grid grid-cols-[minmax(0,1fr)] gap-3 md:grid-cols-2">
                 {matches.map((m: TopMatch, i: number) => {
                   // my teams' tab: a date heading before each new day
                   const day = tab === "fav" ? footballDay(new Date(m.timestamp * 1000)) : "";
@@ -277,16 +277,16 @@ function MatchCard({ m, hidden = false }: { m: TopMatch; hidden?: boolean }) {
   const scorers = (side: "home" | "away") => (details?.scorers ?? []).filter(s => s.side === side);
 
   return (
-    <div className={cn("rounded-3xl border p-4 bg-white/5 relative", live ? "border-red-500/50" : isPinned ? "border-emerald-400/60" : m.favorite ? "border-yellow-400/50" : "border-white/10")}>
+    <div className={cn("rounded-3xl border p-3 sm:p-4 bg-white/5 relative min-w-0 max-w-full overflow-hidden", live ? "border-red-500/50" : isPinned ? "border-emerald-400/60" : m.favorite ? "border-yellow-400/50" : "border-white/10")}>
 
-      <div className="flex items-center justify-between text-[11px] text-white/50 mb-3">
-        <span className="flex items-center gap-2 min-w-0">
+      <div className="flex flex-wrap-reverse items-center justify-between gap-2 text-[11px] text-white/50 mb-3">
+        <span className="flex items-center gap-2 min-w-0 max-w-full">
           {flagUrl(m.league.country) && <img src={flagUrl(m.league.country)!} alt="" title={m.league.country} className="w-5 h-3.5 object-cover rounded-[2px] shrink-0" />}
           {m.league.logo && <img src={m.league.logo} alt="" className="w-4 h-4 object-contain" />}
           <span className="truncate">{m.league.name}</span>
           <FollowLeague league={m.league} navId={`match-follow-${m.id}`} />
         </span>
-        <span className="flex items-center gap-2 shrink-0">
+        <span className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           {m.favorite && <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />}
           <span className={cn("font-black", live ? "text-red-300 text-base tabular-nums bg-red-600/20 border border-red-500/40 rounded-full px-2.5 leading-7" : m.status === "finished" ? "text-white/40" : "text-emerald-400")}>
             {live ? `مباشر ${m.elapsed ?? ""}'` : m.status === "finished" ? "انتهت" : "قريباً"}
@@ -311,9 +311,9 @@ function MatchCard({ m, hidden = false }: { m: TopMatch; hidden?: boolean }) {
         </span>
       </div>
       {/* LTR so the home team sits on the left of "home - away" (in RTL it ended up on the right, reversing the score) */}
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3" dir="ltr">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:gap-3" dir="ltr">
         <Team team={m.home} league={m.league} navId={`match-star-home-${m.id}`} />
-        <div className="text-center min-w-[72px]">
+        <div className="text-center min-w-[64px] shrink-0">
           {started
             ? <div className="text-2xl font-black tabular-nums" dir="ltr">{m.score.home ?? 0} - {m.score.away ?? 0}</div>
             : <div className="text-2xl font-black tabular-nums text-emerald-400" dir="ltr">{m.omanTime}</div>}
@@ -407,7 +407,7 @@ function Team({ team, league, navId }: { team: TopMatch["home"]; league: TopMatc
           <Star className={cn("w-3.5 h-3.5", fav && "fill-current")} />
         </button>
       </div>
-      <span className="text-xs font-black text-center truncate w-full" dir="ltr">{team.name}</span>
+      <span className="text-xs font-black text-center w-full break-words line-clamp-2 leading-tight" dir="ltr" title={team.name}>{team.name}</span>
     </div>
   );
 }
