@@ -33,9 +33,36 @@ struct IslandAttributes: ActivityAttributes {
         var scored: String = ""
         /// the day's occasion / a saying under the prayer countdown (like Android's occasion islands)
         var note: String = ""
+        /// the event after this one: the island moves on to it by itself when the first is due (no app needed)
+        var nKind: String = ""
+        var nTitle: String = ""
+        var nEnd: Date? = nil
+        var nTime: String = ""
+        /// a match island also carrying the next prayer / reminder (one island for both)
+        var pKind: String = ""
+        var pTitle: String = ""
+        var pEnd: Date? = nil
+        var pTime: String = ""
+        var pnKind: String = ""
+        var pnTitle: String = ""
+        var pnEnd: Date? = nil
     }
 
     /// prayer | match
     var type: String
     var matchId: String
+}
+
+extension IslandAttributes.ContentState {
+    /// The countdown to show now: this event, or the next one once this is due.
+    func countdown(stale: Bool) -> (kind: String, title: String, end: Date, time: String) {
+        if (stale || end <= Date()), let n = nEnd, n > Date() { return (nKind, nTitle, n, nTime) }
+        return (kind, title, end, timeText)
+    }
+    /// A match island's prayer / reminder part (nil: none).
+    var prayerPart: (kind: String, title: String, end: Date)? {
+        guard let e = pEnd else { return nil }
+        if e <= Date(), let n = pnEnd, n > Date() { return (pnKind, pnTitle, n) }
+        return (pKind, pTitle, e)
+    }
 }

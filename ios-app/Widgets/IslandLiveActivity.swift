@@ -40,7 +40,7 @@ struct IslandLeading: View {
         if s.kind == "match" {
             TeamView(name: s.home, logo: s.homeLogo, data: s.homeLogoData, size: 44, bright: s.scored == "home")
         } else {
-            IconSquare(kind: s.kind, size: 44)
+            IconSquare(kind: s.countdown(stale: false).kind, size: 44)
         }
     }
 }
@@ -51,7 +51,7 @@ struct IslandTrailing: View {
         if s.kind == "match" {
             TeamView(name: s.away, logo: s.awayLogo, data: s.awayLogoData, size: 44, bright: s.scored == "away")
         } else {
-            Text(s.timeText).font(LA.font(15, "Bold")).foregroundColor(.white.opacity(0.5)).padding(.top, 12)
+            Text(s.countdown(stale: false).time).font(LA.font(15, "Bold")).foregroundColor(.white.opacity(0.5)).padding(.top, 12)
         }
     }
 }
@@ -67,10 +67,8 @@ struct IslandCenter: View {
                 else if s.status == "finished" { Text("انتهت").font(LA.font(12, "Bold")).foregroundColor(.white.opacity(0.5)) }
             }
         } else {
-            VStack(spacing: 0) {
-                Text(s.title).font(LA.font(15, "Bold")).foregroundColor(.white.opacity(0.8)).lineLimit(1)
-                CountdownText(s: s, stale: stale, size: 34)
-            }
+            let c = s.countdown(stale: stale)
+            Text(c.title).font(LA.font(20)).foregroundColor(.white).lineLimit(1).minimumScaleFactor(0.6).padding(.top, 8)
         }
     }
 }
@@ -85,10 +83,22 @@ struct IslandBottom: View {
                 if !s.league.isEmpty {
                     Text(s.league).font(LA.font(11, "Bold")).foregroundColor(.white.opacity(0.4)).lineLimit(1)
                 }
+                if let p = s.prayerPart {
+                    HStack(spacing: 8) {
+                        IconSquare(kind: p.kind, size: 22)
+                        Text(p.title).font(LA.font(15)).foregroundColor(.white).lineLimit(1).minimumScaleFactor(0.7)
+                        Spacer(minLength: 4)
+                        CountTimer(end: p.end, color: DC.color(for: p.kind), size: 22)
+                    }
+                    .padding(.horizontal, 10).padding(.vertical, 5)
+                    .background(Capsule().fill(Color.white.opacity(0.07)))
+                }
             }
         } else {
+            let c = s.countdown(stale: stale)
             VStack(spacing: 4) {
-                if !stale && s.end > Date() && s.start < s.end {
+                CountTimer(end: c.end, color: DC.color(for: c.kind), size: 44).frame(maxWidth: .infinity)
+                if c.end == s.end && !stale && s.end > Date() && s.start < s.end {
                     ProgressView(timerInterval: s.start...s.end, countsDown: true) { EmptyView() } currentValueLabel: { EmptyView() }
                         .tint(DC.color(for: s.kind))
                 }
@@ -104,14 +114,24 @@ struct IslandBottom: View {
 struct IslandCompactLeading: View {
     let s: IslandAttributes.ContentState
     var body: some View {
-        if s.kind == "match" {
+        if s.kind == "match" && s.prayerPart != nil {
+            HStack(spacing: 3) {
+                Logo(file: s.homeLogo, data: s.homeLogoData, name: s.home, size: 18)
+                if !s.scored.isEmpty && s.status == "live" { Text("⚽").font(.system(size: 12)) } else { ScoreText(s: s, size: 13) }
+                Logo(file: s.awayLogo, data: s.awayLogoData, name: s.away, size: 18)
+            }
+        } else if s.kind == "match" {
             HStack(spacing: 4) {
                 Logo(file: s.homeLogo, data: s.homeLogoData, name: s.home, size: 22)
                 if !s.scored.isEmpty && s.status == "live" { Text("⚽").font(.system(size: 14)) }
                 else if s.status == "live" { MinuteBadge(text: s.minute, size: 10) }
             }
         } else {
-            IconSquare(kind: s.kind, size: 22)
+            let c = s.countdown(stale: false)
+            HStack(spacing: 4) {
+                IconSquare(kind: c.kind, size: 20)
+                Text(c.title).font(LA.font(12)).foregroundColor(.white).lineLimit(1).minimumScaleFactor(0.6).frame(maxWidth: 58)
+            }
         }
     }
 }
@@ -120,22 +140,19 @@ struct IslandCompactTrailing: View {
     let s: IslandAttributes.ContentState
     let stale: Bool
     var body: some View {
-        if s.kind == "match" {
+        if s.kind == "match", let p = s.prayerPart {
+            HStack(spacing: 3) {
+                Text(p.title).font(LA.font(10, "Bold")).foregroundColor(.white.opacity(0.75)).lineLimit(1).frame(maxWidth: 40)
+                CountTimer(end: p.end, color: DC.color(for: p.kind), size: 13, compact: true)
+            }
+        } else if s.kind == "match" {
             HStack(spacing: 4) {
                 ScoreText(s: s, size: 15)
                 Logo(file: s.awayLogo, data: s.awayLogoData, name: s.away, size: 22)
             }
-        } else if stale || s.end <= Date() {
-            Text("الآن").font(LA.font(14)).foregroundColor(DC.color(for: s.kind))
         } else {
-            // a plain timer with a fixed width, one solid colour: a gradient / mask turns a timer into a still picture
-            Text(timerInterval: Date()...max(Date(), s.end), countsDown: true)
-                .font(LA.font(14))
-                .monospacedDigit()
-                .foregroundColor(DC.color(for: s.kind))
-                .multilineTextAlignment(.center)
-                .frame(width: s.end.timeIntervalSinceNow >= 3600 ? 62 : 46)
-                .environment(\.layoutDirection, .leftToRight)
+            let c = s.countdown(stale: stale)
+            CountTimer(end: c.end, color: DC.color(for: c.kind), size: 14, compact: true)
         }
     }
 }
@@ -146,7 +163,7 @@ struct IslandMinimal: View {
         if s.kind == "match" {
             if !s.scored.isEmpty && s.status == "live" { Text("⚽").font(.system(size: 14)) } else { ScoreText(s: s, size: 12) }
         } else {
-            IconSquare(kind: s.kind, size: 22)
+            IconSquare(kind: s.countdown(stale: false).kind, size: 22)
         }
     }
 }
@@ -202,6 +219,31 @@ struct CountdownText: View {
         .multilineTextAlignment(.center)
         .lineLimit(1)
         .minimumScaleFactor(0.6)
+    }
+}
+
+/// A countdown that ticks by itself ("الآن" once due); one solid colour so iOS keeps it counting.
+struct CountTimer: View {
+    let end: Date
+    let color: Color
+    let size: CGFloat
+    var compact = false
+    var body: some View {
+        Group {
+            if end <= Date() {
+                Text("الآن")
+            } else {
+                Text(timerInterval: Date()...end, countsDown: true).monospacedDigit()
+            }
+        }
+        .font(LA.font(size))
+        .foregroundColor(color)
+        .shadow(color: compact ? .clear : color.opacity(0.55), radius: 6)
+        .multilineTextAlignment(.center)
+        .lineLimit(1)
+        .minimumScaleFactor(0.6)
+        .frame(width: compact ? (end.timeIntervalSinceNow >= 3600 ? 62 : 46) : nil)
+        .environment(\.layoutDirection, .leftToRight)
     }
 }
 
@@ -335,19 +377,28 @@ struct LockScreenView: View {
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
                     .stroke(s.fav && s.status == "live" ? DC.yellow.opacity(0.7) : Color.white.opacity(0.1), lineWidth: 1.5)
             )
+            .overlay(alignment: .bottom) {
+                if let p = s.prayerPart {
+                    HStack(spacing: 6) {
+                        Text(p.title).font(LA.font(11, "Bold")).foregroundColor(.white.opacity(0.8))
+                        CountTimer(end: p.end, color: DC.color(for: p.kind), size: 12, compact: true)
+                    }.offset(y: 4)
+                }
+            }
         } else {
             HStack(spacing: 14) {
-                IconSquare(kind: s.kind, size: 46)
+                let c = s.countdown(stale: stale)
+                IconSquare(kind: c.kind, size: 46)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(s.title).font(LA.font(18)).foregroundColor(.white).lineLimit(1)
-                    Text((s.kind == "azan" ? "الأذان · " : s.kind == "iqamah" ? "الإقامة · " : "التذكير · ") + s.timeText)
+                    Text(c.title).font(LA.font(18)).foregroundColor(.white).lineLimit(1)
+                    Text((c.kind == "azan" ? "الأذان · " : c.kind == "iqamah" ? "الإقامة · " : "التذكير · ") + c.time)
                         .font(LA.font(12, "Bold")).foregroundColor(.white.opacity(0.45))
                     if !s.note.isEmpty {
                         Text(s.note).font(LA.font(11, "Bold")).foregroundColor(DC.emerald.opacity(0.85)).lineLimit(1).minimumScaleFactor(0.7)
                     }
                 }
                 Spacer()
-                CountdownText(s: s, stale: stale, size: 36)
+                CountTimer(end: c.end, color: DC.color(for: c.kind), size: 36)
             }
             .padding(.horizontal, 18)
             .padding(.vertical, 14)

@@ -99,8 +99,23 @@ final class Island {
         Activity<IslandAttributes>.activities.first { $0.attributes.type == "prayer" && $0.activityState == .active }
     }
 
+    /// the next two prayers / reminders (the island moves to the second by itself)
+    private func nextEvents() -> [(title: String, at: Date, kind: String)] {
+        let now = Date()
+        return Array(DCShared.events().filter { $0.at > now }.prefix(3))
+    }
+
+    /// a match is on the island now (it carries the prayer too: one island)
+    private var matchActive = false
+
     private func updatePrayerActivity() {
         let current = prayerActivity()
+        if matchActive && matchesOn {
+            // the match lives in the prayer island itself, or in its own island (then this one goes)
+            if current?.content.state.kind == "match" { return }
+            if let a = current { Task { await a.end(nil, dismissalPolicy: .immediate) } }
+            return
+        }
         guard prayerOn else {
             if let a = current { Task { await a.end(nil, dismissalPolicy: .immediate) } }
             return
@@ -112,6 +127,9 @@ final class Island {
         var state = IslandAttributes.ContentState(kind: next.kind, title: next.title, start: max(prev, next.at.addingTimeInterval(-6 * 3600)),
                                                   end: next.at, timeText: DCShared.time12(next.at))
         state.note = Hijri.occasionLine(now)
+        if let n = nextEvents().dropFirst().first {
+            state.nKind = n.kind; state.nTitle = n.title; state.nEnd = n.at; state.nTime = DCShared.time12(n.at)
+        }
         let content = ActivityContent(state: state, staleDate: next.at)
         if let a = current {
             if a.content.state != state { Task { await a.update(content) } }
@@ -144,13 +162,14 @@ final class Island {
     /// an island is (or will soon be) showing: keep the app running behind other apps to move it on
     var needsKeepAlive: Bool {
         if hidden { return false }
-        if prayerOn && DCShared.events().contains(where: { $0.at > Date() }) { return true }
+        // prayers / reminders: the island moves on by itself (two events inside it) and iOS's background refresh
+        // brings the next ones - no need to keep the app running for them
         if matchesOn {
             let now = Date()
             return matches.contains { m in
                 let st = m["status"] as? String ?? ""
                 let k = Date(timeIntervalSince1970: (m["timestamp"] as? NSNumber)?.doubleValue ?? 0)
-                return st == "live" || (st == "upcoming" && k.timeIntervalSince(now) < 3 * 3600)
+                return st == "live" || (st == "upcoming" && k.timeIntervalSince(now) < 15 * 60)
             }
         }
         return false
@@ -296,7 +315,14 @@ final class Island {
         var seen = Set<String>()
         let scores = (DCShared.defaults.dictionary(forKey: "goalScores") as? [String: String]) ?? [:]
         var nextScores: [String: String] = [:]
-        for m in matches.prefix(4) {
+        // one island: the most important match (live first), with the next prayer / reminder inside it
+        let ordered = matches.sorted { a, b in
+            let la = (a["status"] as? String) == "live", lb = (b["status"] as? String) == "live"
+            if la != lb { return la }
+            return ((a["favorite"] as? Bool) ?? false) && !((b["favorite"] as? Bool) ?? false)
+        }
+        let ev = prayerOn ? nextEvents() : []
+        for m in ordered where seen.isEmpty {
             let id = "\(m["id"] ?? "")"
             let st = m["status"] as? String ?? ""
             let kick = Date(timeIntervalSince1970: (m["timestamp"] as? NSNumber)?.doubleValue ?? 0)
@@ -331,8 +357,15 @@ final class Island {
             state.fav = m["favorite"] as? Bool ?? false
             state.league = state.title
             state.scored = scored
+            if let e = ev.first {
+                state.pKind = e.kind; state.pTitle = e.title; state.pEnd = e.at; state.pTime = DCShared.time12(e.at)
+                if let n = ev.dropFirst().first { state.pnKind = n.kind; state.pnTitle = n.title; state.pnEnd = n.at }
+            }
             let content = ActivityContent(state: state, staleDate: now.addingTimeInterval(st == "live" ? 10 * 60 : 3 * 3600))
-            if let a = Activity<IslandAttributes>.activities.first(where: { $0.attributes.type == "match" && $0.attributes.matchId == id && $0.activityState == .active }) {
+            // the match goes into the island already showing (the prayer one): iOS lets a running island change at
+            // any time, while a new one can only start with the app open
+            if let a = Activity<IslandAttributes>.activities.first(where: { $0.attributes.type == "match" && $0.attributes.matchId == id && $0.activityState == .active })
+                ?? prayerActivity() {
                 if a.content.state != state {
                     Task {
                         if !scored.isEmpty {
@@ -342,7 +375,7 @@ final class Island {
                         } else {
                             await a.update(content)
                         }
-                        if st == "finished" { await a.end(content, dismissalPolicy: .after(now.addingTimeInterval(30 * 60))) }
+                        if st == "finished" && a.attributes.type == "match" { await a.end(content, dismissalPolicy: .after(now.addingTimeInterval(30 * 60))) }
                     }
                 }
             } else if st != "finished", ActivityAuthorizationInfo().areActivitiesEnabled, UIApplication.shared.applicationState == .active {
@@ -352,12 +385,15 @@ final class Island {
             if !scored.isEmpty { notifyGoal(state, scored: scored) }
         }
         DCShared.defaults.set(nextScores, forKey: "goalScores")
+        matchActive = !seen.isEmpty
+        defer { DispatchQueue.main.asyncAfter(deadline: .now() + 1) { self.updatePrayerActivity() } }   // the prayer island again when no match
         for a in Activity<IslandAttributes>.activities where a.attributes.type == "match" && !seen.contains(a.attributes.matchId) && !a.attributes.matchId.hasPrefix("test") {
             Task { await a.end(nil, dismissalPolicy: .default) }
         }
     }
 
     private func endMatchActivities(now: Bool) {
+        matchActive = false
         for a in Activity<IslandAttributes>.activities where a.attributes.type == "match" {
             Task { await a.end(nil, dismissalPolicy: now ? .immediate : .default) }
         }
