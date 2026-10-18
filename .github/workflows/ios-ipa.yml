@@ -140,6 +140,7 @@ jobs:
           TAG=ios-latest
           case "$GITHUB_REF_NAME" in main) ;; *) TAG=ios-preview ;; esac
           gh release delete "$TAG" --yes --cleanup-tag || true
-          gh release create "$TAG" DriveCast.ipa $(ls DriveCast-xcode.ipa DriveCast-widget-test.ipa variant-errors.txt snapshots.zip snap-errors.txt 2>/dev/null) DriveCast-nosign.ipa DriveCast-group.ipa DriveCast-lite.ipa --target "$GITHUB_SHA" --prerelease \
+          echo ${{ github.run_number }} > build.txt
+          gh release create "$TAG" DriveCast.ipa build.txt $(ls DriveCast-xcode.ipa DriveCast-widget-test.ipa variant-errors.txt snapshots.zip snap-errors.txt 2>/dev/null) DriveCast-nosign.ipa DriveCast-group.ipa DriveCast-lite.ipa --target "$GITHUB_SHA" --prerelease \
             --title "DriveCast iPhone (build ${{ github.run_number }})" \
             --notes "Built from ${GITHUB_REF_NAME} @ ${GITHUB_SHA::7}. Unsigned: install with Sideloadly or AltStore (iOS 16.2+; the Dynamic Island needs iPhone 14 Pro or newer)."

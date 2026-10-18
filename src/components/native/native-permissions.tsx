@@ -49,6 +49,12 @@ export function NativePermissions() {
     return (
       <section className="rounded-[2.5rem] bg-white/5 border border-white/10 p-6 md:p-8 space-y-4">
         <h2 className="text-2xl font-black text-white flex items-center gap-3"><Smartphone className="w-7 h-7 text-emerald-400" /> الجزيرة الديناميكية</h2>
+        {plugin.checkUpdate && (
+          <button onClick={() => plugin.checkUpdate?.()} data-nav-id="native-update"
+            className="focusable no-focus-scale w-full text-right rounded-3xl border border-emerald-400/40 bg-emerald-500/10 p-4 text-base font-black text-emerald-300">
+            تحديث التطبيق - البحث عن نسخة أحدث
+          </button>
+        )}
         {!status.liveActivities && (
           <button onClick={() => plugin.requestOverlay()} className="focusable no-focus-scale w-full text-right rounded-3xl border border-yellow-400/40 bg-black/30 p-4 text-sm font-bold text-yellow-300">
             الأنشطة المباشرة متوقفة لهذا التطبيق - اضغط لفتح الإعدادات وتفعيل «الأنشطة المباشرة»

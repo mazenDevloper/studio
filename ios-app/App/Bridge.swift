@@ -44,6 +44,8 @@ final class Bridge {
     func handle(url: URL) {
         let q = Dictionary((URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []).map { ($0.name, $0.value ?? "") }) { a, _ in a }
         switch url.host ?? "" {
+        case "update":
+            DispatchQueue.main.async { Updater.check(silent: false) }
         case "open":
             open(route: q["route"] ?? "/")
         case "cmd":
@@ -139,6 +141,9 @@ final class Bridge {
         case "testIslands":
             DispatchQueue.main.async { Island.shared.test(kind: (args["kind"] as? String) ?? "islands") }
             reply([:])
+        case "checkUpdate":
+            DispatchQueue.main.async { Updater.check(silent: false) }
+            reply(["build": Updater.current])
         case "takePendingCommands":
             let list = pending
             pending.removeAll()

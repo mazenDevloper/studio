@@ -21,6 +21,10 @@ final class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationC
         w.rootViewController = WebViewController()
         w.makeKeyAndVisible()
         window = w
+        Updater.repo = "mazenDevloper/studio"; Updater.ipa = "DriveCast.ipa"; Updater.appName = "DriveCast"
+        Updater.installShortcut()
+        let fromShortcut = (launchOptions?[.shortcutItem] as? UIApplicationShortcutItem)?.type == "update"
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) { Updater.check(silent: !fromShortcut) }
         // shake the phone: what the widget / island really have on this phone (to find why they don't show)
         return true
     }
@@ -36,7 +40,13 @@ final class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationC
         UIDevice.current.userInterfaceIdiom == .pad ? .all : .allButUpsideDown
     }
 
+    func application(_ application: UIApplication, performActionFor shortcutItem: UIApplicationShortcutItem, completionHandler: @escaping (Bool) -> Void) {
+        if shortcutItem.type == "update" { Updater.check(silent: false) }
+        completionHandler(true)
+    }
+
     func applicationDidBecomeActive(_ application: UIApplication) {
+        Updater.check(silent: true)
         KeepAlive.shared.enterForeground()
         Island.shared.appActive()
     }
