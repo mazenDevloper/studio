@@ -474,7 +474,19 @@ export async function getFavoriteUpcoming(teams: string[], days = 14): Promise<{
 
   // 1) 365Scores fixtures, all teams in one call
   const ids: (number | null)[] = [];
-  for (let i = 0; i < teams.length; i += 8) ids.push(...await Promise.all(specs.slice(i, i + 8).map(f => find365TeamId(f.name, f.country))));
+  if (ON_WORKERS) {
+    // Cloudflare allows ~50 outgoing requests per call: take the teams' 365Scores ids from the cloud list (one
+    // request, cached by the DriveCast server) and only look up the few it doesn't know
+    let cloud: { id: number; name: string }[] = [];
+    try { cloud = await getJson("https://studio.c-p.workers.dev/favourites", {}, 600); } catch { /* look them up below */ }
+    let lookups = 0;
+    for (const f of specs) {
+      const c = Array.isArray(cloud) ? cloud.find(t => sameTeam(t.name, f.name)) : undefined;
+      ids.push(c?.id ?? (lookups++ < 10 ? await find365TeamId(f.name, f.country) : null));
+    }
+  } else {
+    for (let i = 0; i < teams.length; i += 8) ids.push(...await Promise.all(specs.slice(i, i + 8).map(f => find365TeamId(f.name, f.country))));
+  }
   const known = [...new Set(ids.filter((x): x is number => !!x))];
   let fixturesOk = false;
   if (known.length) {
@@ -489,7 +501,7 @@ export async function getFavoriteUpcoming(teams: string[], days = 14): Promise<{
 
   // 2) the day lists for the rest (teams 365Scores doesn't know, or everything if the fixtures call failed)
   const rest = fixturesOk ? teams.filter((_, i) => !ids[i]) : teams;
-  if (rest.length) {
+  if (rest.length && !(ON_WORKERS && fixturesOk)) {
     const deadline = Date.now() + 20_000;
     const restSpecs = rest.map(parseFavSpec);
     const restFav = (m: TopMatch) => restSpecs.some(f => favoriteOf(f, m));
