@@ -1,0 +1,7 @@
+{
+  "name": "drivecast-api",
+  "private": true,
+  "description": "The small DriveCast / Madar server (Cloudflare Worker) - built on its own, apart from the site",
+  "scripts": { "deploy": "wrangler deploy --config wrangler.toml" },
+  "devDependencies": { "wrangler": "^4.151.1" }
+}
