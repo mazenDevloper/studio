@@ -52,12 +52,60 @@ async function matches(env, lang) {
   return { matches: out, teams, at: now };
 }
 
+// ---- prayers + reminders (the same rules as the site's island bridge), Oman time (UTC+4) ----
+const PRAYER_BIN = 'https://api.jsonbin.io/v3/b/69a00f6eae596e708f4b7291/latest';
+const DEFAULT_SETTINGS = [
+  { id: 'fajr', name: 'الفجر', offsetMinutes: 0, iqamahDuration: 25 }, { id: 'dhuhr', name: 'الظهر', offsetMinutes: 0, iqamahDuration: 20 },
+  { id: 'asr', name: 'العصر', offsetMinutes: 0, iqamahDuration: 20 }, { id: 'maghrib', name: 'المغرب', offsetMinutes: 0, iqamahDuration: 10 },
+  { id: 'isha', name: 'العشاء', offsetMinutes: 0, iqamahDuration: 20 },
+];
+const tToM = t => { if (!t) return -1; const [h, m] = String(t).split(':').map(Number); return h * 60 + m; };
+async function bin(url, env) {
+  const r = await fetch(url, { headers: { 'X-Master-Key': env.BIN_KEY, 'X-Bin-Meta': 'false' } });
+  if (!r.ok) throw new Error('jsonbin ' + r.status);
+  const d = await r.json(); return d.record || d;
+}
+let evCache = null, evAt = 0;
+async function events(env) {
+  if (!evCache || Date.now() - evAt > 30 * 60e3) {
+    const [master, pt] = await Promise.all([bin(BIN, env), bin(PRAYER_BIN, env)]);
+    evCache = { master, rows: Array.isArray(pt) ? pt : (pt.prayers || []) }; evAt = Date.now();
+  }
+  const { master, rows } = evCache;
+  const settings = Array.isArray(master.prayerSettings) && master.prayerSettings.length ? master.prayerSettings : DEFAULT_SETTINGS;
+  const out = [], now = Date.now();
+  for (const off of [0, 1]) {
+    const local = new Date(now + 4 * 3.6e6 + off * 864e5), ymd = local.toISOString().slice(0, 10);
+    const base = Date.parse(ymd + 'T00:00:00Z') - 4 * 3.6e6;   // Oman midnight
+    const row = rows.find(r => r && r.date === ymd)
+      || rows.reduce((b, r) => (!b || Math.abs(Date.parse(r.date) - Date.parse(ymd)) < Math.abs(Date.parse(b.date) - Date.parse(ymd))) ? r : b, null);
+    if (row) for (const s of settings) {
+      const ref = s.id === 'duha' ? row.sunrise : row[s.id]; if (!ref) continue;
+      const azan = base + (tToM(ref) + (s.id === 'duha' ? 15 : 0) + (s.offsetMinutes || 0)) * 6e4;
+      if (s.showCountdown !== false) out.push({ title: s.name, at: azan, kind: 'azan' });
+      if (s.iqamahDuration > 0) out.push({ title: 'إقامة ' + s.name, at: azan + s.iqamahDuration * 6e4, kind: 'iqamah' });
+    }
+    for (const r of master.reminders || []) {
+      if (!r || !r.label) continue;
+      if (r.iconType === 'match' && r.matchDate && r.matchDate !== ymd) continue;
+      let mins = -1;
+      if (r.startType === 'manual' && r.manualStartTime) mins = tToM(r.manualStartTime);
+      else if (row && r.startReference && row[r.startReference]) {
+        mins = tToM(row[r.startReference]) + (r.startType === 'iqamah' ? (settings.find(x => x.id === r.startReference) || {}).iqamahDuration || 0 : 0) + (r.startOffset || 0);
+      }
+      if (mins >= 0) out.push({ title: r.label, at: base + mins * 6e4, kind: 'reminder' });
+    }
+  }
+  return { events: out.filter(e => e.at > now - 60e3).sort((a, b) => a.at - b.at), at: now };
+}
+
 export default {
   async fetch(req, env, ctx) {
     const u = new URL(req.url);
     if (req.method === 'OPTIONS') return new Response(null, { headers: { ...H, 'access-control-allow-headers': '*' } });
     try {
       if (u.pathname === '/matches') return await cached(req, ctx, 10, () => matches(env, u.searchParams.get('lang') === '1' ? 1 : 27));
+      if (u.pathname === '/events') return await cached(req, ctx, 60, () => events(env));
       if (u.pathname === '/favourites') return await cached(req, ctx, 600, () => favourites(env));
       return new Response(JSON.stringify({ ok: true, endpoints: ['/matches', '/favourites'] }), { headers: H });
     } catch (e) {
