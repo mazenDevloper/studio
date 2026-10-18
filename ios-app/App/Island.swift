@@ -37,9 +37,9 @@ final class Island {
             "جزء الودجت: \(ext)",
             "المجلد المشترك: \(DCShared.group) " + (DCShared.groupWorks ? "✓" : "✗"),
             "الأنشطة المباشرة: " + (ActivityAuthorizationInfo().areActivitiesEnabled ? "مفعّلة ✓" : "مطفأة ✗"),
-            "مواقيت وصلت من الموقع: \(events)" + (cfg.isEmpty ? " (لم يصل شيء ✗)" : ""),
+            "المواقيت القادمة: \(events) · المصدر: " + (cfg.isEmpty ? "السيرفر (الموقع لم يرسل بعد)" : "الموقع") + (events > 0 ? " ✓" : " ✗"),
             "جزر تعمل الآن: \(running)",
-            "جزيرة المباريات: " + (UserDefaults.standard.bool(forKey: "matchesIsland") ? "مفعّلة" : "مطفأة") + " · مباريات فرقك اليوم: \(Island.shared.matches.count)" + ((cfg["apiUrl"] as? String) == nil ? " (لم يصل رابط المباريات ✗)" : ""),
+            "جزيرة المباريات: " + (UserDefaults.standard.bool(forKey: "matchesIsland") ? "مفعّلة" : "مطفأة") + " · مباريات فرقك اليوم: \(Island.shared.matches.count)" + " · المصدر: سيرفر DriveCast ✓",
             "آخر خطأ: " + (lastError.isEmpty ? "لا يوجد" : lastError),
             "iOS \(UIDevice.current.systemVersion)",
         ].joined(separator: "\n")

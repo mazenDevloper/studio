@@ -78,7 +78,7 @@ final class VoiceBrain {
     static String matchesOn(Context ctx, int day, boolean topOnly) {
         String when = day == 1 ? "غداً" : day == -1 ? "أمس" : "اليوم";
         try {
-            String origin = Widgets.json(ctx, "widgets").optString("origin", "https://cplay3.netlify.app");
+            String origin = Widgets.json(ctx, "widgets").optString("origin", "https://drivecast.c-p.workers.dev");
             JSONArray teams = Cloud.master(ctx).optJSONArray("favoriteTeams");
             StringBuilder t = new StringBuilder();
             for (int i = 0; teams != null && i < teams.length(); i++) {

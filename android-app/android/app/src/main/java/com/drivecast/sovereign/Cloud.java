@@ -234,7 +234,7 @@ final class Cloud {
             JSONObject f = teams.optJSONObject(i);
             if (f != null && !f.optString("name").isEmpty()) t.append(t.length() > 0 ? "|" : "").append(favSpec(f));
         }
-        String origin = Widgets.json(ctx, "widgets").optString("origin", "https://cplay3.netlify.app");
+        String origin = Widgets.json(ctx, "widgets").optString("origin", "https://drivecast.c-p.workers.dev");
         JSONArray pins = pinsWithBells(ctx, master(ctx).optJSONArray("pinnedMatches"));
         StringBuilder pn = new StringBuilder();
         for (int i = 0; pins != null && i < pins.length(); i++) {

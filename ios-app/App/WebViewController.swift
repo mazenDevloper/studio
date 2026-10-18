@@ -11,7 +11,7 @@ final class WebViewController: UIViewController, WKScriptMessageHandler, WKUIDel
     }
 
 
-    static let siteURL = URL(string: "https://cplay3.netlify.app")!
+    static let siteURL = URL(string: "https://drivecast.c-p.workers.dev")!
     private(set) var web: WKWebView!
 
     override var preferredStatusBarStyle: UIStatusBarStyle { .lightContent }

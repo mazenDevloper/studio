@@ -11,7 +11,7 @@ enum Cloud {
     static let channels = "68ef1b3dd0ea881f40a38bd1"
     static let prayers = "69a00f6eae596e708f4b7291"
     static let reciters = "6909c1cd43b1c97be997b522"
-    static let site = "https://cplay3.netlify.app"
+    static let site = "https://drivecast.c-p.workers.dev"
 
     private static var cacheDir: URL {
         let u = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent("dc-cloud", isDirectory: true)
