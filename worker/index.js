@@ -8,7 +8,7 @@ const H = { 'content-type': 'application/json; charset=utf-8', 'access-control-a
 
 async function cached(req, ctx, ttl, make) {
   const cache = caches.default, key = new Request(req.url);
-  const hit = await cache.match(key); if (hit) return hit;
+  const hit = new URL(req.url).searchParams.has('fresh') ? null : await cache.match(key); if (hit) return hit;
   const res = new Response(JSON.stringify(await make()), { headers: { ...H, 'cache-control': `public, max-age=${ttl}` } });
   ctx.waitUntil(cache.put(key, res.clone()));
   return res;
@@ -16,7 +16,10 @@ async function cached(req, ctx, ttl, make) {
 
 async function favourites(env) {
   const r = await fetch(BIN, { headers: { 'X-Master-Key': env.BIN_KEY, 'X-Bin-Meta': 'false' }, cf: { cacheTtl: 600 } });
-  const d = await r.json();
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error('jsonbin ' + r.status + (env.BIN_KEY ? '' : ' (BIN_KEY missing)') + ': ' + (d.message || ''));
+  const list = (d.record || d).favoriteTeams;
+  if (!Array.isArray(list)) throw new Error('no favoriteTeams in bin (keys: ' + Object.keys(d.record || d).slice(0, 12).join(',') + ')');
   return ((d.record || d).favoriteTeams || []).filter(t => t && +t.id > 0)
     .map(t => ({ id: +t.id, name: t.name || '', country: t.country || '', island: t.island !== false, logo: LOGO(t.id) }));
 }
