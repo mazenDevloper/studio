@@ -1,0 +1,7 @@
+name = "drivecast-api"
+main = "index.js"
+compatibility_date = "2026-09-01"
+
+# every minute: watch your teams' live games (goals → push later, when an Apple developer key is added)
+[triggers]
+crons = ["* * * * *"]
