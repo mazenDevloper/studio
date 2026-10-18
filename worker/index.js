@@ -28,6 +28,28 @@ async function favourites(env) {
   return favCache;
 }
 
+// goals with scorer and minute for the live (and just-finished) games: one detail request per game, at most 8
+async function goalsOf(list, lang) {
+  const out = {};
+  const want = list.filter(m => m.status === 'live' || (m.status === 'finished' && Date.now() / 1000 - m.timestamp < 3 * 3600))
+    .filter(m => (m.score.home ?? 0) + (m.score.away ?? 0) > 0).slice(0, 8);
+  await Promise.all(want.map(async m => {
+    try {
+      const id = m.id.replace(/^365/, '');
+      const d = await (await fetch(`https://webws.365scores.com/web/game/?appTypeId=5&langId=${lang}&timezoneName=Asia/Muscat&userCountryId=1&gameId=${id}`,
+        { headers: { origin: 'https://www.365scores.com', referer: 'https://www.365scores.com/' }, cf: { cacheTtl: 15 } })).json();
+      const g = d.game || {}, members = new Map((g.members || []).map(x => [x.id, x.shortName || x.name]));
+      out[m.id] = (g.events || []).filter(e => e.eventType && e.eventType.id === 1).map(e => ({
+        side: e.competitorId === m.homeNum ? 'home' : 'away',
+        minute: e.gameTimeDisplay || (Math.round(e.gameTime || 0) + "'"),
+        player: members.get(e.playerId) || '',
+        type: e.eventType.subTypeId === 2 ? 'own' : e.eventType.subTypeId === 3 ? 'penalty' : 'goal',
+      }));
+    } catch (e) { /* no details: the score still moves */ }
+  }));
+  return out;
+}
+
 async function matches(env, lang) {
   const teams = await favourites(env);
   if (!teams.length) return { matches: [], teams };
@@ -42,7 +64,7 @@ async function matches(env, lang) {
     if (status === 'upcoming' && (t - now > 36 * 3.6e6 || now - t > 3 * 3.6e6)) continue;
     if (status === 'finished' && now - t > 8 * 3.6e6) continue;
     const st = status !== 'upcoming', sc = v => st && typeof v === 'number' && v >= 0 ? v : null;
-    out.push({ id: '365' + g.id, status, statusText: txt, timestamp: t / 1000,
+    out.push({ id: '365' + g.id, homeNum: h.id, status, statusText: txt, timestamp: t / 1000,
       home: { id: '' + h.id, name: h.name, logo: LOGO(h.id) }, away: { id: '' + a.id, name: a.name, logo: LOGO(a.id) },
       score: { home: sc(h.score), away: sc(a.score) }, league: { id: '' + g.competitionId, name: g.competitionDisplayName || '' },
       omanTime: new Date(t).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Muscat' }),
@@ -118,6 +140,12 @@ export default {
     if (req.method === 'OPTIONS') return new Response(null, { headers: { ...H, 'access-control-allow-headers': '*' } });
     try {
       if (u.pathname === '/matches') return await cached(req, ctx, 10, () => matches(env, u.searchParams.get('lang') === '1' ? 1 : 27));
+      // everything the apps show, in one answer: matches (+ goals with scorers) and today's / tomorrow's prayers and reminders
+      if (u.pathname === '/now') return await cached(req, ctx, 10, async () => {
+        const lang = u.searchParams.get('lang') === '1' ? 1 : 27;
+        const [m, ev] = await Promise.all([matches(env, lang), events(env).catch(() => ({ events: [] }))]);
+        return { ...m, goals: await goalsOf(m.matches, lang), events: ev.events };
+      });
       if (u.pathname === '/img') return await image(u.searchParams.get('u'), ctx);
       if (u.pathname === '/events') return await cached(req, ctx, 60, () => events(env));
       if (u.pathname === '/favourites') return await cached(req, ctx, 600, () => favourites(env));
