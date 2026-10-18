@@ -77,6 +77,14 @@ enum DCShared {
                 out.append((t, Date(timeIntervalSince1970: at / 1000), (c["kind"] as? String) ?? (key == "reminders" ? "reminder" : "azan")))
             }
         }
+        // the page hasn't sent upcoming times (app not opened lately): the DriveCast server's list
+        if !out.contains(where: { $0.1 > Date() }), let s = defaults.string(forKey: "serverEvents"), let d = s.data(using: .utf8),
+           let list = try? JSONSerialization.jsonObject(with: d) as? [[String: Any]] {
+            for c in list {
+                guard let t = c["title"] as? String, let at = (c["at"] as? NSNumber)?.doubleValue else { continue }
+                out.append((t, Date(timeIntervalSince1970: at / 1000), (c["kind"] as? String) ?? "azan"))
+            }
+        }
         return out.sorted { $0.1 < $1.1 }.map { (title: $0.0, at: $0.1, kind: $0.2) }
     }
 

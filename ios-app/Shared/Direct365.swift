@@ -20,11 +20,18 @@ enum Direct365 {
 
     static func matches(lang: Int = 1) async -> [[String: Any]]? {
         // 1) our server: one small ready file (it does the cloud + 365Scores work)
-        if let u = URL(string: "\(server)/matches?lang=\(lang)"),
+        //    /now = matches + goals (scorer, minute) + today's prayers and reminders, in one request
+        if let u = URL(string: "\(server)/now?lang=\(lang)"),
            let (d, res) = try? await URLSession.shared.data(for: URLRequest(url: u, timeoutInterval: 12)),
            (res as? HTTPURLResponse)?.statusCode == 200,
            let o = try? JSONSerialization.jsonObject(with: d) as? [String: Any],
-           let list = o["matches"] as? [[String: Any]], !((o["teams"] as? [Any]) ?? []).isEmpty {
+           var list = o["matches"] as? [[String: Any]], !((o["teams"] as? [Any]) ?? []).isEmpty {
+            let goals = o["goals"] as? [String: Any] ?? [:]
+            for i in list.indices { if let g = goals["\(list[i]["id"] ?? "")"] { list[i]["goals"] = g } }
+            if let ev = o["events"] as? [[String: Any]], !ev.isEmpty,
+               let data = try? JSONSerialization.data(withJSONObject: ev) {
+                DCShared.defaults.set(String(decoding: data, as: UTF8.self), forKey: "serverEvents")
+            }
             return list
         }
         // 2) straight from the sources

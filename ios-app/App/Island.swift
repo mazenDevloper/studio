@@ -357,6 +357,11 @@ final class Island {
             state.fav = m["favorite"] as? Bool ?? false
             state.league = state.title
             state.scored = scored
+            if !scored.isEmpty, let last = (m["goals"] as? [[String: Any]])?.last(where: { ($0["side"] as? String) == scored }) {
+                let who = (last["player"] as? String) ?? "", min = (last["minute"] as? String) ?? ""
+                let kind = (last["type"] as? String) == "own" ? " (عكسي)" : (last["type"] as? String) == "penalty" ? " (جزاء)" : ""
+                state.scorer = [who + kind, min].filter { !$0.isEmpty }.joined(separator: " ")
+            }
             if let e = ev.first {
                 state.pKind = e.kind; state.pTitle = e.title; state.pEnd = e.at; state.pTime = DCShared.time12(e.at)
                 if let n = ev.dropFirst().first { state.pnKind = n.kind; state.pnTitle = n.title; state.pnEnd = n.at }
@@ -371,7 +376,7 @@ final class Island {
                         if !scored.isEmpty {
                             // a goal: the island opens up with a sound, like the goal card on Android
                             let team = scored == "home" ? state.home : state.away
-                            await a.update(content, alertConfiguration: AlertConfiguration(title: "⚽ هدف! \(team)", body: "\(state.home) \(sh)-\(sa) \(state.away)", sound: .default))
+                            await a.update(content, alertConfiguration: AlertConfiguration(title: "⚽ هدف! \(team)", body: (state.scorer.isEmpty ? "" : state.scorer + " · ") + "\(state.home) \(sh)-\(sa) \(state.away)", sound: .default))
                         } else {
                             await a.update(content)
                         }
@@ -403,6 +408,7 @@ final class Island {
         let n = UNMutableNotificationContent()
         n.title = "⚽ هدف! \(scored == "home" ? s.home : s.away)"
         n.body = "\(s.home) \(s.sh) - \(s.sa) \(s.away)" + (s.minute.isEmpty ? "" : " · \(s.minute)")
+        if !s.scorer.isEmpty { n.subtitle = s.scorer }
         n.sound = .default
         UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: "goal-\(UUID().uuidString)", content: n, trigger: nil))
     }

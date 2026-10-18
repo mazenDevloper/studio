@@ -446,7 +446,7 @@ public class IslandService extends Service {
             }
             // our server (one small ready file) when nothing is pinned by hand
             final boolean viaServer = pins == null || pins.length() == 0;
-            if (viaServer) apiUrl = "https://studio.c-p.workers.dev/matches?lang=1";
+            if (viaServer) apiUrl = "https://studio.c-p.workers.dev/now?lang=1";   // matches + goals with scorers + prayers
             if (apiUrl.isEmpty()) return;
             List<JSONObject> mine = new ArrayList<>();
             JSONArray widgetData = new JSONArray();
@@ -460,7 +460,9 @@ public class IslandService extends Service {
                     String line;
                     while ((line = r.readLine()) != null) sb.append(line);
                 }
-                JSONArray list = new JSONObject(sb.toString()).optJSONArray("matches");
+                JSONObject root = new JSONObject(sb.toString());
+                JSONArray list = root.optJSONArray("matches");
+                serverGoals = root.optJSONObject("goals");
                 for (int i = 0; list != null && i < list.length(); i++) {
                     JSONObject m = list.getJSONObject(i);
                     if (viaServer && m.optBoolean("mine")) m.put("favorite", true);
@@ -561,7 +563,19 @@ public class IslandService extends Service {
     }
 
     /** Who scored (name, photo, minute) from the match details, like the site; gives up after 3 seconds. */
+    /** goals with scorer and minute, from the DriveCast server's /now (one request for every match) */
+    private volatile JSONObject serverGoals;
+
     private void findScorer(String origin, IslandArt.Item g) {
+        JSONArray sg = serverGoals != null ? serverGoals.optJSONArray(g.matchId) : null;
+        for (int i = sg == null ? -1 : sg.length() - 1; i >= 0; i--) {
+            JSONObject e = sg.optJSONObject(i);
+            if (e == null || !g.side.equals(e.optString("side")) || e.optString("player").isEmpty()) continue;
+            String t = e.optString("type");
+            g.scorer = e.optString("player") + ("own".equals(t) ? " (عكسي)" : "penalty".equals(t) ? " (جزاء)" : "");
+            if (!e.optString("minute").isEmpty()) g.minute = e.optString("minute");
+            return;
+        }
         try {
             String q = "id=" + enc(g.matchId) + "&league=" + enc(g.leagueId) + "&homeId=" + enc(g.homeId)
                     + "&home=" + enc(g.home) + "&away=" + enc(g.away) + "&fresh=1";

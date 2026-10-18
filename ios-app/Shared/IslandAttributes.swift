@@ -31,6 +31,8 @@ struct IslandAttributes: ActivityAttributes {
         var league: String = ""
         /// side that just scored ("home" / "away"), shown bright for a while
         var scored: String = ""
+        /// who scored it and when ("Salah 67'")
+        var scorer: String = ""
         /// the day's occasion / a saying under the prayer countdown (like Android's occasion islands)
         var note: String = ""
         /// the event after this one: the island moves on to it by itself when the first is due (no app needed)

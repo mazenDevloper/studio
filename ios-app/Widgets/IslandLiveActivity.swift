@@ -177,7 +177,7 @@ struct GoalCard: View {
         HStack(spacing: 6) {
             Text("⚽").font(.system(size: big ? 18 : 15))
             Text("هدف!").font(LA.font(big ? 18 : 15)).foregroundColor(.black)
-            Text(team).font(LA.font(big ? 14 : 12, "Bold")).foregroundColor(.black.opacity(0.75)).lineLimit(1)
+            Text(s.scorer.isEmpty ? team : s.scorer).font(LA.font(big ? 14 : 12, "Bold")).foregroundColor(.black.opacity(0.75)).lineLimit(1)
             Text("\(s.sh)-\(s.sa)").font(LA.font(big ? 16 : 13)).foregroundColor(.black).monospacedDigit()
                 .environment(\.layoutDirection, .leftToRight)
         }
