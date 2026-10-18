@@ -16,7 +16,18 @@ enum Direct365 {
     }
 
     /// Today's games of the favourite teams (live first), or nil when 365Scores can't be reached.
+    static let server = "https://studio.c-p.workers.dev"
+
     static func matches(lang: Int = 1) async -> [[String: Any]]? {
+        // 1) our server: one small ready file (it does the cloud + 365Scores work)
+        if let u = URL(string: "\(server)/matches?lang=\(lang)"),
+           let (d, res) = try? await URLSession.shared.data(for: URLRequest(url: u, timeoutInterval: 12)),
+           (res as? HTTPURLResponse)?.statusCode == 200,
+           let o = try? JSONSerialization.jsonObject(with: d) as? [String: Any],
+           let list = o["matches"] as? [[String: Any]], !((o["teams"] as? [Any]) ?? []).isEmpty {
+            return list
+        }
+        // 2) straight from the sources
         let favs = await favourites(maxAge: 6 * 3600)
         guard !favs.isEmpty else { return nil }
         var c = URLComponents(string: api)!
