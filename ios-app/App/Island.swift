@@ -376,7 +376,7 @@ final class Island {
                         if !scored.isEmpty {
                             // a goal: the island opens up with a sound, like the goal card on Android
                             let team = scored == "home" ? state.home : state.away
-                            await a.update(content, alertConfiguration: AlertConfiguration(title: "⚽ هدف! \(team)", body: (state.scorer.isEmpty ? "" : state.scorer + " · ") + "\(state.home) \(sh)-\(sa) \(state.away)", sound: .default))
+                            await a.update(content, alertConfiguration: AlertConfiguration(title: "⚽ هدف! \(team)", body: "\(state.scorer.isEmpty ? "" : state.scorer + " · ")\(state.home) \(sh)-\(sa) \(state.away)", sound: .default))
                         } else {
                             await a.update(content)
                         }
