@@ -9,6 +9,15 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  // On the server use Firestore's browser build (WebChannel): its Node build compiles protobuf code at run time,
+  // which Cloudflare Workers don't allow. The site only talks to Firestore from the browser anyway.
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      config.resolve = config.resolve || {};
+      config.resolve.alias = { ...(config.resolve.alias || {}), '@firebase/firestore$': require('path').join(process.cwd(), 'node_modules/@firebase/firestore/dist/index.esm2017.js') };
+    }
+    return config;
+  },
   transpilePackages: ['@react-three/fiber', '@react-three/drei', 'three'],
   images: {
     remotePatterns: [
