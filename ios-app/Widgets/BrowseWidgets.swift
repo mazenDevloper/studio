@@ -187,10 +187,11 @@ struct BrowseWidgetView: View {
 
     /// A reciter opens his surahs inside the widget (iOS 17); other items open their link.
     @ViewBuilder private func tap<V: View>(_ it: BrowseItem, @ViewBuilder _ label: () -> V) -> some View {
+        let v = label()
         if e.kind == "reciters", #available(iOS 17.0, *) {
-            WButton(intent: ReciterIntent(it.name), fallback: it.link) { label() }
+            WButton(intent: ReciterIntent(it.name), fallback: it.link) { v }
         } else {
-            Link(destination: it.link) { label() }
+            Link(destination: it.link) { v }
         }
     }
 
