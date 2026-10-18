@@ -48,6 +48,16 @@ enum Direct365 {
         }
     }
 
+    /// Callback form for older code: the result arrives on the main thread.
+    static func fetch(_ done: @escaping ([[String: Any]]?) -> Void) {
+        nonisolated(unsafe) let cb = done
+        Task.detached {
+            let r = await matches()
+            nonisolated(unsafe) let out = r
+            DispatchQueue.main.async { cb(out) }
+        }
+    }
+
     static func logo(_ kind: String, _ id: Any?) -> String {
         "https://imagecache.365scores.com/image/upload/f_png,w_64,h_64,c_limit,q_auto:eco/\(kind)/\(id ?? "")"
     }

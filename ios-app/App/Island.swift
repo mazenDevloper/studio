@@ -241,23 +241,18 @@ final class Island {
         lastPoll = Date()
         let pins = (cfg["pins"] as? [[String: Any]]) ?? []
         // Straight from 365Scores (favourites from the cloud): no waiting for the site, works with the app in the background.
-        Task {
-            if let list = await Direct365.matches() {
-                var mine = list.filter { ($0["favorite"] as? Bool) ?? false }
-                for m in list where !(m["favorite"] as? Bool ?? false) {
-                    let h = (m["home"] as? [String: Any])?["name"] as? String ?? "", a = (m["away"] as? [String: Any])?["name"] as? String ?? ""
-                    if pins.contains(where: { Self.same($0["home"] as? String ?? "", h) && Self.same($0["away"] as? String ?? "", a) }) { mine.append(m) }
-                }
-                for m in mine { self.saveLogos(m) }
-                await MainActor.run {
-                    self.polling = false; self.pollFailed = false; self.lastPollOk = Date()
-                    self.matches = mine
-                    self.updateMatchActivities()
-                    done?()
-                }
-                return
+        Direct365.fetch { list in
+            guard let list else { self.polling = false; self.pollViaSite(cfg: cfg, pins: pins, done: done); return }
+            var mine = list.filter { ($0["favorite"] as? Bool) ?? false }
+            for m in list where !(m["favorite"] as? Bool ?? false) {
+                let h = (m["home"] as? [String: Any])?["name"] as? String ?? "", a = (m["away"] as? [String: Any])?["name"] as? String ?? ""
+                if pins.contains(where: { Self.same($0["home"] as? String ?? "", h) && Self.same($0["away"] as? String ?? "", a) }) { mine.append(m) }
             }
-            await MainActor.run { self.polling = false; self.pollViaSite(cfg: cfg, pins: pins, done: done) }
+            for m in mine { self.saveLogos(m) }
+            self.polling = false; self.pollFailed = false; self.lastPollOk = Date()
+            self.matches = mine
+            self.updateMatchActivities()
+            done?()
         }
     }
 
