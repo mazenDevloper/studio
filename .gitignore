@@ -49,3 +49,4 @@ firestore-debug.log
 # Cloudflare (OpenNext) build output
 .open-next
 .wrangler
+worker/node_modules
