@@ -3,7 +3,7 @@ import { S365_HEADERS, remember365Countries, s365Url } from "@/lib/scores365";
 import { leagueAlwaysListed, leagueTopClubs, leagueKeyMatches } from "@/lib/match-channels";
 import { EXTRA_SOURCES } from "@/lib/match-sources-extra";
 import {
-  BROWSER_HEADERS, build, getJson, sortMatches, favoriteOf, parseFavSpec, isYouthMatch, isExcludedLeague, AMERICAS_CUP, importanceOf, leagueWeightByName, num, pickTop, sameTeam, shiftedDash, shiftedYmd,
+  BROWSER_HEADERS, ON_WORKERS, build, getJson, sortMatches, favoriteOf, parseFavSpec, isYouthMatch, isExcludedLeague, AMERICAS_CUP, importanceOf, leagueWeightByName, num, pickTop, sameTeam, shiftedDash, shiftedYmd,
   type SourceAttempt, type TopMatch, type TopMatchesResult,
 } from "@/lib/match-core";
 import { omanTime } from "@/lib/oman-time";
@@ -252,6 +252,21 @@ async function collectDay(date: string, only?: string): Promise<DayData> {
       return { attempt: { source: src.name, kind: src.kind, ok: false, ms: Date.now() - t0, total: 0, important: 0, error: e?.message || "failed" }, matches: [], priority, importantCount: 0 };
     }
   };
+
+  // Cloudflare Workers allow ~50 outgoing requests per call: try the sources one after another (365Scores first,
+  // a single request) and stop at the first that fills the list, instead of asking all of them at once.
+  if (ON_WORKERS && !only) {
+    const order = [...chosen].sort((a, b) => (a.name === "365scores" ? -1 : b.name === "365scores" ? 1 : 0));
+    const tried: Raw[] = [];
+    for (let i = 0; i < order.length; i++) {
+      const r = await runOne(order[i], i);
+      const { importantCount, ...raw } = r; tried.push(raw);
+      if (r.attempt.ok && importantCount > 0) break;
+    }
+    if (!tried.some(r => r.attempt.ok)) throw new Error(`no source reachable: ${tried.map(r => `${r.attempt.source}: ${r.attempt.error}`).join(" | ")}`);
+    const live = tried.some(r => r.matches.some(m => m.status === "live" && m.importance > 0 && footballDay(new Date(m.timestamp * 1000)) === date));
+    return { date, at: Date.now(), raws: tried, live };
+  }
 
   // Don't wait for the slowest source: once the preferred one (or, without it, any) has filled the list, give the
   // others a short grace period.

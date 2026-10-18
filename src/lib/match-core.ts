@@ -90,13 +90,19 @@ export const BROWSER_HEADERS = (origin: string) => ({
 });
 
 /** `revalidate` (seconds) is short by default so live scores stay fresh; static schedule files pass a longer one. */
+/** running on Cloudflare Workers (DriveCast's Cloudflare build) */
+export const ON_WORKERS = typeof navigator !== "undefined" && (navigator as any).userAgent === "Cloudflare-Workers";
+
 export async function getJson(url: string, headers: Record<string, string> = UA, revalidate = 20): Promise<any> {
   let res: Response;
   try {
-    res = await fetch(url, { headers, next: { revalidate }, signal: AbortSignal.timeout(12000) });
+    // On Cloudflare Workers Next's fetch cache isn't available: let Cloudflare's edge cache keep the answer instead.
+    res = ON_WORKERS
+      ? await fetch(url, { headers, signal: AbortSignal.timeout(12000), cf: { cacheTtl: revalidate, cacheEverything: true } } as any)
+      : await fetch(url, { headers, next: { revalidate }, signal: AbortSignal.timeout(12000) });
   } catch (e: any) {
     // Surface the real network cause (ENOTFOUND, ECONNRESET, timeout...) instead of a generic "fetch failed".
-    throw new Error(e?.cause?.code || e?.cause?.message || e?.name || e?.message || "network error");
+    throw new Error(e?.cause?.code || e?.cause?.message || e?.message || e?.name || "network error");
   }
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
