@@ -28,7 +28,11 @@ const dayDate = (offset: number) => { const [y, m, d] = footballDay().split("-")
 const shortDate = (offset: number) => new Intl.DateTimeFormat("ar", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" }).format(dayDate(offset));
 
 /** Other days / favourites (favourite teams + the important ones), cached for the session. */
-const otherDays = new Map<string, { at: number; data: any }>();
+// kept on the phone too, so a tab opened again shows its last list instantly while the fresh one loads
+const otherDays: Map<string, { at: number; data: any }> = (() => {
+  try { return new Map(JSON.parse(sessionStorage.getItem("matches-other-days") || "[]")); } catch { return new Map(); }
+})();
+const keepOtherDays = () => { try { sessionStorage.setItem("matches-other-days", JSON.stringify(Array.from(otherDays).slice(-12))); } catch {} };
 function useOtherDay(tab: DayTab, teams: string[]) {
   const follow = useMediaStore(s => s.followedLeagues) || [];
   const key = `${tab}|${teams.join("|")}|${follow.join(";")}`;
@@ -36,7 +40,7 @@ function useOtherDay(tab: DayTab, teams: string[]) {
   const load = async (force = false) => {
     if (tab === 0) return;
     const hit = otherDays.get(key);
-    if (hit && !force && Date.now() - hit.at < (tab === "live" ? 25_000 : 10 * 60_000)) { setState({ key, data: hit.data, error: null, loading: false }); return; }
+    if (hit && !force && Date.now() - hit.at < (tab === "live" ? 6_000 : 10 * 60_000)) { setState({ key, data: hit.data, error: null, loading: false }); return; }
     setState(s => ({ key, data: s.key === key ? s.data : hit?.data ?? null, error: null, loading: true }));
     try {
       const q = new URLSearchParams(tab === "fav" ? { days: "14" } : tab === "live" ? {} : { limit: String(MATCHES_LIMIT), day: String(tab) });
@@ -49,7 +53,7 @@ function useOtherDay(tab: DayTab, teams: string[]) {
       if (!json) { await new Promise(ok => setTimeout(ok, 1500)); ({ r: res, j: json } = await get()); }
       if (!json) throw new Error("الخادم مشغول، حاول بعد لحظات");
       if (!res.ok) throw new Error(json?.error || "تعذر التحميل");
-      otherDays.set(key, { at: Date.now(), data: json });
+      otherDays.set(key, { at: Date.now(), data: json }); keepOtherDays();
       setState({ key, data: json, error: null, loading: false });
     } catch (e: any) {
       // matches already on screen stay there: a failed refresh doesn't need a red box
@@ -60,8 +64,10 @@ function useOtherDay(tab: DayTab, teams: string[]) {
     load();
     // the live tab keeps itself up to date
     if (tab !== "live") return;
-    const t = setInterval(() => { if (document.visibilityState === "visible") load(true); }, 30_000);
-    return () => clearInterval(t);
+    const t = setInterval(() => { if (document.visibilityState === "visible") load(true); }, 8_000);
+    const back = () => { if (document.visibilityState === "visible") load(true); };
+    document.addEventListener("visibilitychange", back);
+    return () => { clearInterval(t); document.removeEventListener("visibilitychange", back); };
   }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
   const mine = state.key === key;
   return { data: mine ? state.data : otherDays.get(key)?.data ?? null, error: mine ? state.error : null, loading: !mine || state.loading, refresh: () => load(true) };

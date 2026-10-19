@@ -22,7 +22,7 @@ enum Direct365 {
         // 1) our server: one small ready file (it does the cloud + 365Scores work)
         //    /now = matches + goals (scorer, minute) + today's prayers and reminders, in one request
         if let u = URL(string: "\(server)/now?lang=\(lang)"),
-           let (d, res) = try? await URLSession.shared.data(for: URLRequest(url: u, timeoutInterval: 12)),
+           let (d, res) = try? await URLSession.shared.data(for: URLRequest(url: u, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 8)),
            (res as? HTTPURLResponse)?.statusCode == 200,
            let o = try? JSONSerialization.jsonObject(with: d) as? [String: Any],
            var list = o["matches"] as? [[String: Any]], !((o["teams"] as? [Any]) ?? []).isEmpty {
@@ -44,7 +44,7 @@ enum Direct365 {
             URLQueryItem(name: "competitors", value: favs.map { "\($0.id)" }.joined(separator: ",")),
         ]
         guard let u = c.url else { return nil }
-        var r = URLRequest(url: u, timeoutInterval: 20)
+        var r = URLRequest(url: u, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 10)
         r.setValue("application/json", forHTTPHeaderField: "Accept")
         r.setValue("https://www.365scores.com", forHTTPHeaderField: "Origin")
         r.setValue("https://www.365scores.com/", forHTTPHeaderField: "Referer")

@@ -15,7 +15,7 @@ import type { TopMatchesResult } from "@/lib/match-core";
  * tiny script in <head> (see MATCHES_PREFETCH_SCRIPT) before React has even loaded; the store takes that answer.
  */
 
-const POLL_MS = 30_000;
+const POLL_MS = 8_000;   // live scores: a new look every 8 s while a match is on (nothing when none is)
 const CACHE_KEY = "live-matches-v1";
 export const MATCHES_LIMIT = 12;
 
@@ -142,6 +142,12 @@ export function useLiveMatches(teams?: string[]) {
         const { refresh, updatedAt, loading } = useLiveMatchesStore.getState();
         if (!loading && (!updatedAt || Date.now() - updatedAt > 5_000)) refresh();
       }, 0);
+      // back to the app (from the background / another app): fresh scores at once, not at the next tick
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState !== "visible") return;
+        const { updatedAt, loading } = useLiveMatchesStore.getState();
+        if (!loading && (!updatedAt || Date.now() - updatedAt > 4_000)) useLiveMatchesStore.getState().refresh();
+      });
       timer = setInterval(() => {
         if (document.visibilityState !== "visible") return;
         const { data, updatedAt } = useLiveMatchesStore.getState();

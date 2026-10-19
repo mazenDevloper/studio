@@ -37,7 +37,7 @@ async function goalsOf(list, lang) {
     try {
       const id = m.id.replace(/^365/, '');
       const d = await (await fetch(`https://webws.365scores.com/web/game/?appTypeId=5&langId=${lang}&timezoneName=Asia/Muscat&userCountryId=1&gameId=${id}`,
-        { headers: { origin: 'https://www.365scores.com', referer: 'https://www.365scores.com/' }, cf: { cacheTtl: 15 } })).json();
+        { headers: { origin: 'https://www.365scores.com', referer: 'https://www.365scores.com/' }, cf: { cacheTtl: 8 } })).json();
       const g = d.game || {}, members = new Map((g.members || []).map(x => [x.id, x.shortName || x.name]));
       out[m.id] = (g.events || []).filter(e => e.eventType && e.eventType.id === 1).map(e => ({
         side: e.competitorId === m.homeNum ? 'home' : 'away',
@@ -140,9 +140,9 @@ export default {
     const u = new URL(req.url);
     if (req.method === 'OPTIONS') return new Response(null, { headers: { ...H, 'access-control-allow-headers': '*' } });
     try {
-      if (u.pathname === '/matches') return await cached(req, ctx, 10, () => matches(env, u.searchParams.get('lang') === '1' ? 1 : 27));
+      if (u.pathname === '/matches') return await cached(req, ctx, 5, () => matches(env, u.searchParams.get('lang') === '1' ? 1 : 27));
       // everything the apps show, in one answer: matches (+ goals with scorers) and today's / tomorrow's prayers and reminders
-      if (u.pathname === '/now') return await cached(req, ctx, 10, async () => {
+      if (u.pathname === '/now') return await cached(req, ctx, 5, async () => {
         const lang = u.searchParams.get('lang') === '1' ? 1 : 27;
         const [m, ev] = await Promise.all([matches(env, lang), events(env).catch(() => ({ events: [] }))]);
         return { ...m, goals: await goalsOf(m.matches, lang), events: ev.events };

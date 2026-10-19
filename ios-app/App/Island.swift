@@ -240,7 +240,9 @@ final class Island {
     /// every 30 s while a match is live or about to start; otherwise not before 5 minutes ahead of the next kick-off
     private func pollDue() -> Bool {
         let now = Date()
-        if now.timeIntervalSince(lastPoll) < 10 { return false }
+        // a live match: every 5 s (the server keeps 5 s; the tick runs every 5 s)
+        if now.timeIntervalSince(lastPoll) < 4.5 { return false }
+        if now.timeIntervalSince(lastPoll) < 10 && !matches.contains(where: { ($0["status"] as? String) == "live" }) { return false }
         if pollFailed || lastPollOk == .distantPast { return true }
         var next = Date.distantFuture
         for m in matches {
