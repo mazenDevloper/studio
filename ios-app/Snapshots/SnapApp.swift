@@ -102,6 +102,19 @@ enum Snap {
         save("island-minimal", AnyView(HStack(spacing: 20) { pill(IslandMinimal(s: azan)); pill(IslandMinimal(s: live)); pill(IslandMinimal(s: goal)) }
             .padding(20).background(Color(white: 0.85))))
 
+        // the goal / full-time alerts (SofaScore style)
+        let rm = await Cloud.image("https://imagecache.365scores.com/image/upload/f_png,w_64,h_64,c_limit,q_auto:eco/Competitors/131", maxPx: 120)
+        let sev = await Cloud.image("https://imagecache.365scores.com/image/upload/f_png,w_64,h_64,c_limit,q_auto:eco/Competitors/138", maxPx: 120)
+        let pic = GoalAlert.badges(home: rm, away: sev)
+        for (n, t) in [
+            ("goal-home", GoalAlert.text(kind: "goal", home: "ريال مدريد", away: "إشبيلية", sh: 2, sa: 0, scored: "home", minute: "د45", scorer: "كيليان مبابي 45'")),
+            ("goal-away", GoalAlert.text(kind: "goal", home: "ريال مدريد", away: "إشبيلية", sh: 3, sa: 1, scored: "away", minute: "د78", scorer: "إيساك روميرو 78' (جزاء)")),
+            ("end", GoalAlert.text(kind: "end", home: "ريال مدريد", away: "إشبيلية", sh: 4, sa: 1, scored: "", minute: "", scorer: "")),
+        ] {
+            save("notification-\(n)", AnyView(GoalAlert.Banner(t: t, badges: pic).padding(16)
+                .background(LinearGradient(colors: [Color(red: 0.25, green: 0.3, blue: 0.45), Color(red: 0.55, green: 0.4, blue: 0.5)], startPoint: .top, endPoint: .bottom))))
+        }
+
         try? log.joined(separator: "\n").write(to: dir.appendingPathComponent("log.txt"), atomically: true, encoding: .utf8)
         try? "ok".write(to: dir.appendingPathComponent("done"), atomically: true, encoding: .utf8)
         print("SNAP done")

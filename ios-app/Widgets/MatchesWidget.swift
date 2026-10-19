@@ -13,15 +13,15 @@ struct MatchRow: Identifiable {
     let sh: Int
     let sa: Int
     let status: String
-    let minute: String
+    var minute: String
     let time: String
     let fav: Bool
     let league: String
 }
 
 struct MatchesEntry: TimelineEntry {
-    let date: Date
-    let rows: [MatchRow]
+    var date: Date
+    var rows: [MatchRow]
     let heading: String
     let pageText: String
     let hasPrev: Bool
@@ -32,6 +32,13 @@ struct MatchesEntry: TimelineEntry {
 enum MatchesStore {
     private static var file: URL {
         FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent("dc-matches.json")
+    }
+
+    /// the kept copy has a live match (then the widget fetches more often)
+    static func cachedLive() -> Bool {
+        guard let d = try? Data(contentsOf: file), let o = try? JSONSerialization.jsonObject(with: d) as? [String: Any],
+              let l = o["matches"] as? [[String: Any]] else { return false }
+        return l.contains { ($0["status"] as? String) == "live" }
     }
 
     /// The matches (fresh after `maxAge`, the kept copy for a page change or when offline).
@@ -68,10 +75,23 @@ struct MatchesProvider: TimelineProvider {
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<MatchesEntry>) -> Void) {
         Task {
-            let e = await entry(family: context.family, maxAge: 120)
-            // live: fresh scores every few minutes (iOS may space them out); otherwise every half hour
+            // a live match: never more than 15 s old (the app also asks for a reload on every goal / minute)
+            let wasLive = MatchesStore.cachedLive()
+            let e = await entry(family: context.family, maxAge: wasLive ? 15 : 120)
             let live = e.rows.contains { $0.status == "live" }
-            completion(Timeline(entries: [e], policy: .after(Date().addingTimeInterval(live ? 300 : 1800))))
+            guard live else { completion(Timeline(entries: [e], policy: .after(Date().addingTimeInterval(1800)))); return }
+            // the minute moves on by itself between fetches (one entry a minute), a new fetch after a minute
+            var list: [MatchesEntry] = [e]
+            for i in 1...4 {
+                var n = e
+                n.date = e.date.addingTimeInterval(Double(i) * 60)
+                n.rows = e.rows.map { r in
+                    guard r.status == "live", let m = Int(r.minute.dropLast()) else { return r }
+                    var x = r; x.minute = (m == 45 || m >= 90) ? r.minute : "\(min(m + i, m < 45 ? 45 : 90))'"; return x
+                }
+                list.append(n)
+            }
+            completion(Timeline(entries: list, policy: .after(Date().addingTimeInterval(60))))
         }
     }
 

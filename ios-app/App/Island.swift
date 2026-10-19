@@ -315,6 +315,28 @@ final class Island {
         var seen = Set<String>()
         let scores = (DCShared.defaults.dictionary(forKey: "goalScores") as? [String: String]) ?? [:]
         var nextScores: [String: String] = [:]
+        let oldStatus = (DCShared.defaults.dictionary(forKey: "matchStatus") as? [String: String]) ?? [:]
+        var nextStatus: [String: String] = [:]
+        var changed = false
+        // every favourite match, not only the island's: the full-time alert and the widget reload
+        for m in matches {
+            let id = "\(m["id"] ?? "")", st = m["status"] as? String ?? ""
+            let sc = m["score"] as? [String: Any]
+            nextStatus[id] = st + "|" + "\((sc?["home"] as? NSNumber)?.intValue ?? 0):\((sc?["away"] as? NSNumber)?.intValue ?? 0)|\((m["elapsed"] as? NSNumber)?.intValue ?? -1)"
+            let was = oldStatus[id]?.split(separator: "|").first.map(String.init)
+            if was == "live" && st == "finished" {
+                var s = IslandAttributes.ContentState(kind: "match", title: "", start: now, end: now, timeText: "")
+                s.home = (m["home"] as? [String: Any])?["name"] as? String ?? ""; s.away = (m["away"] as? [String: Any])?["name"] as? String ?? ""
+                s.homeLogo = Self.logoFile((m["home"] as? [String: Any])?["logo"] as? String)
+                s.awayLogo = Self.logoFile((m["away"] as? [String: Any])?["logo"] as? String)
+                s.sh = (sc?["home"] as? NSNumber)?.intValue ?? 0; s.sa = (sc?["away"] as? NSNumber)?.intValue ?? 0
+                notify(kind: "end", s, scored: "")
+            }
+            if oldStatus[id] != nextStatus[id] { changed = true }
+        }
+        DCShared.defaults.set(nextStatus, forKey: "matchStatus")
+        // a goal / new minute / full time: the widget redraws now instead of in a few minutes
+        if changed { WidgetCenter.shared.reloadTimelines(ofKind: "DriveCastMatches") }
         // one island: the most important match (live first), with the next prayer / reminder inside it
         let ordered = matches.sorted { a, b in
             let la = (a["status"] as? String) == "live", lb = (b["status"] as? String) == "live"
@@ -405,12 +427,26 @@ final class Island {
     }
 
     private func notifyGoal(_ s: IslandAttributes.ContentState, scored: String) {
+        notify(kind: "goal", s, scored: scored)
+    }
+
+    /// a SofaScore-style alert: the match as the title, the event and scorer under it, both badges on the side
+    private func notify(kind: String, _ s: IslandAttributes.ContentState, scored: String) {
+        let t = GoalAlert.text(kind: kind, home: s.home, away: s.away, sh: s.sh, sa: s.sa, scored: scored, minute: s.minute, scorer: s.scorer)
         let n = UNMutableNotificationContent()
-        n.title = "⚽ هدف! \(scored == "home" ? s.home : s.away)"
-        n.body = "\(s.home) \(s.sh) - \(s.sa) \(s.away)" + (s.minute.isEmpty ? "" : " · \(s.minute)")
-        if !s.scorer.isEmpty { n.subtitle = s.scorer }
+        n.title = t.title
+        if !t.subtitle.isEmpty { n.subtitle = t.subtitle }
+        n.body = t.body
         n.sound = .default
-        UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: "goal-\(UUID().uuidString)", content: n, trigger: nil))
+        n.threadIdentifier = "match-\(s.home)-\(s.away)"
+        n.interruptionLevel = kind == "goal" ? .timeSensitive : .active
+        func logo(_ f: String) -> UIImage? { f.isEmpty ? nil : UIImage(contentsOfFile: DCShared.dir("logos").appendingPathComponent(f).path) }
+        let pic = GoalAlert.badges(home: logo(s.homeLogo) ?? s.homeLogoData.flatMap(UIImage.init(data:)),
+                                   away: logo(s.awayLogo) ?? s.awayLogoData.flatMap(UIImage.init(data:)))
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("badges-\(UUID().uuidString).png")
+        if let d = pic.pngData(), (try? d.write(to: file)) != nil,
+           let a = try? UNNotificationAttachment(identifier: "badges", url: file, options: nil) { n.attachments = [a] }
+        UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: "\(kind)-\(UUID().uuidString)", content: n, trigger: nil))
     }
 
     private static func omanTime(_ hhmm: String) -> String {
