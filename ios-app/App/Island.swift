@@ -409,7 +409,7 @@ final class Island {
                 do { _ = try Activity.request(attributes: IslandAttributes(type: "match", matchId: id), content: content, pushType: nil) }
                 catch { Island.lastError = "\(error)" }
             }
-            if !scored.isEmpty { notifyGoal(state, scored: scored) }
+            if !scored.isEmpty { notifyGoal(state, scored: scored, gameId: id) }
         }
         DCShared.defaults.set(nextScores, forKey: "goalScores")
         matchActive = !seen.isEmpty
@@ -426,27 +426,36 @@ final class Island {
         }
     }
 
-    private func notifyGoal(_ s: IslandAttributes.ContentState, scored: String) {
-        notify(kind: "goal", s, scored: scored)
+    private func notifyGoal(_ s: IslandAttributes.ContentState, scored: String, gameId: String = "") {
+        notify(kind: "goal", s, scored: scored, gameId: gameId)
     }
 
-    /// a SofaScore-style alert: the match as the title, the event and scorer under it, both badges on the side
-    private func notify(kind: String, _ s: IslandAttributes.ContentState, scored: String) {
-        let t = GoalAlert.text(kind: kind, home: s.home, away: s.away, sh: s.sh, sa: s.sa, scored: scored, minute: s.minute, scorer: s.scorer)
-        let n = UNMutableNotificationContent()
-        n.title = t.title
-        if !t.subtitle.isEmpty { n.subtitle = t.subtitle }
-        n.body = t.body
-        n.sound = .default
-        n.threadIdentifier = "match-\(s.home)-\(s.away)"
-        n.interruptionLevel = kind == "goal" ? .timeSensitive : .active
-        func logo(_ f: String) -> UIImage? { f.isEmpty ? nil : UIImage(contentsOfFile: DCShared.dir("logos").appendingPathComponent(f).path) }
-        let pic = GoalAlert.badges(home: logo(s.homeLogo) ?? s.homeLogoData.flatMap(UIImage.init(data:)),
-                                   away: logo(s.awayLogo) ?? s.awayLogoData.flatMap(UIImage.init(data:)))
-        let file = FileManager.default.temporaryDirectory.appendingPathComponent("badges-\(UUID().uuidString).png")
-        if let d = pic.pngData(), (try? d.write(to: file)) != nil,
-           let a = try? UNNotificationAttachment(identifier: "badges", url: file, options: nil) { n.attachments = [a] }
-        UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: "\(kind)-\(UUID().uuidString)", content: n, trigger: nil))
+    /// a SofaScore-style alert: the match as the title, the event and scorer under it, the scorer's photo + big score as the picture
+    private func notify(kind: String, _ s0: IslandAttributes.ContentState, scored: String, gameId: String = "") {
+        Task {
+            var s = s0
+            var photo: UIImage? = nil
+            if kind == "goal" && !gameId.isEmpty {
+                let (name, p) = await GoalAlert.scorer(gameId: gameId, side: scored)
+                photo = p
+                if s.scorer.isEmpty && !name.isEmpty { s.scorer = name }
+            }
+            let t = GoalAlert.text(kind: kind, home: s.home, away: s.away, sh: s.sh, sa: s.sa, scored: scored, minute: s.minute, scorer: s.scorer)
+            let n = UNMutableNotificationContent()
+            n.title = t.title
+            if !t.subtitle.isEmpty { n.subtitle = t.subtitle }
+            n.body = t.body
+            n.sound = .default
+            n.threadIdentifier = "match-\(s.home)-\(s.away)"
+            n.interruptionLevel = kind == "goal" ? .timeSensitive : .active
+            func logo(_ f: String) -> UIImage? { f.isEmpty ? nil : UIImage(contentsOfFile: DCShared.dir("logos").appendingPathComponent(f).path) }
+            let hl = logo(s.homeLogo) ?? s.homeLogoData.flatMap(UIImage.init(data:)), al = logo(s.awayLogo) ?? s.awayLogoData.flatMap(UIImage.init(data:))
+            let pic = GoalAlert.card(player: photo, home: hl, away: al, sh: s.sh, sa: s.sa, scored: scored)
+            let file = FileManager.default.temporaryDirectory.appendingPathComponent("alert-\(UUID().uuidString).png")
+            if let d = pic.pngData(), (try? d.write(to: file)) != nil,
+               let a = try? UNNotificationAttachment(identifier: "card", url: file, options: nil) { n.attachments = [a] }
+            try? await UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: "\(kind)-\(UUID().uuidString)", content: n, trigger: nil))
+        }
     }
 
     private static func omanTime(_ hhmm: String) -> String {

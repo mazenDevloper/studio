@@ -43,6 +43,7 @@ async function goalsOf(list, lang) {
         side: e.competitorId === m.homeNum ? 'home' : 'away',
         minute: e.gameTimeDisplay || (Math.round(e.gameTime || 0) + "'"),
         player: members.get(e.playerId) || '',
+        photo: e.playerId ? 'https://imagecache.365scores.com/image/upload/f_png,w_160,h_160,c_limit,q_auto:eco,d_Athletes:default.png/Athletes/' + e.playerId : '',
         type: e.eventType.subTypeId === 2 ? 'own' : e.eventType.subTypeId === 3 ? 'penalty' : 'goal',
       }));
     } catch (e) { /* no details: the score still moves */ }

@@ -94,6 +94,9 @@ enum Snap {
         goal.scored = "home"
         var upcoming = live
         upcoming.status = "upcoming"; upcoming.sh = 0; upcoming.sa = 0; upcoming.fav = false
+        var livePrayer = live
+        livePrayer.pKind = "azan"; livePrayer.pTitle = "الظهر"; livePrayer.pEnd = Date().addingTimeInterval(2 * 3600 + 7 * 60)
+        save("island-match-live-prayer-compact", compact(livePrayer))
         for (n, s) in [("azan", azan), ("iqamah", iqamah), ("match-live", live), ("match-goal", goal), ("match-upcoming", upcoming)] {
             save("island-\(n)-expanded", expanded(s))
             save("island-\(n)-compact", compact(s))
@@ -105,7 +108,9 @@ enum Snap {
         // the goal / full-time alerts (SofaScore style)
         let rm = await Cloud.image("https://imagecache.365scores.com/image/upload/f_png,w_64,h_64,c_limit,q_auto:eco/Competitors/131", maxPx: 120)
         let sev = await Cloud.image("https://imagecache.365scores.com/image/upload/f_png,w_64,h_64,c_limit,q_auto:eco/Competitors/138", maxPx: 120)
-        let pic = GoalAlert.badges(home: rm, away: sev)
+        let mbappe = await Cloud.image("https://imagecache.365scores.com/image/upload/f_png,w_200,h_200,c_limit,q_auto:eco,d_Athletes:default.png/Athletes/26911", maxPx: 200)
+        save("notification-card", AnyView(Image(uiImage: GoalAlert.card(player: mbappe, home: rm, away: sev, sh: 2, sa: 0, scored: "home"))))
+        let pic = GoalAlert.card(player: mbappe, home: rm, away: sev, sh: 2, sa: 0, scored: "home")
         for (n, t) in [
             ("goal-home", GoalAlert.text(kind: "goal", home: "ريال مدريد", away: "إشبيلية", sh: 2, sa: 0, scored: "home", minute: "د45", scorer: "كيليان مبابي 45'")),
             ("goal-away", GoalAlert.text(kind: "goal", home: "ريال مدريد", away: "إشبيلية", sh: 3, sa: 1, scored: "away", minute: "د78", scorer: "إيساك روميرو 78' (جزاء)")),
@@ -175,7 +180,7 @@ enum Snap {
         AnyView(
             HStack(spacing: 0) {
                 IslandCompactLeading(s: s)
-                Spacer(minLength: 126)
+                Spacer(minLength: 120)
                 IslandCompactTrailing(s: s, stale: false)
             }
             .padding(.horizontal, 14).frame(height: 37)

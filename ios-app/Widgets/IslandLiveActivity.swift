@@ -111,27 +111,46 @@ struct IslandBottom: View {
     }
 }
 
+/// The compact island, like the floating islands: logos as big as the island allows (30 pt of its 37), the score
+/// between them, the red minute while live. Alone it spreads over both sides; with a prayer / reminder too, the
+/// match packs into the left and the countdown takes the right (the island grows with what it carries).
 struct IslandCompactLeading: View {
     let s: IslandAttributes.ContentState
     var body: some View {
         if s.kind == "match" && s.prayerPart != nil {
             HStack(spacing: 3) {
-                Logo(file: s.homeLogo, data: s.homeLogoData, name: s.home, size: 18)
-                if !s.scored.isEmpty && s.status == "live" { Text("⚽").font(.system(size: 12)) } else { ScoreText(s: s, size: 13) }
-                Logo(file: s.awayLogo, data: s.awayLogoData, name: s.away, size: 18)
+                Logo(file: s.homeLogo, data: s.homeLogoData, name: s.home, size: 28)
+                CompactScore(s: s, size: 15)
+                Logo(file: s.awayLogo, data: s.awayLogoData, name: s.away, size: 28)
             }
         } else if s.kind == "match" {
             HStack(spacing: 4) {
-                Logo(file: s.homeLogo, data: s.homeLogoData, name: s.home, size: 22)
-                if !s.scored.isEmpty && s.status == "live" { Text("⚽").font(.system(size: 14)) }
-                else if s.status == "live" { MinuteBadge(text: s.minute, size: 10) }
+                Logo(file: s.homeLogo, data: s.homeLogoData, name: s.home, size: 30)
+                if s.status == "live" && s.scored.isEmpty { MinuteBadge(text: s.minute, size: 11) }
+                else if s.status == "live" { Text("⚽").font(.system(size: 15)) }
             }
         } else {
             let c = s.countdown(stale: false)
             HStack(spacing: 4) {
-                IconSquare(kind: c.kind, size: 20)
+                IconSquare(kind: c.kind, size: 24)
                 Text(c.title).font(LA.font(12)).foregroundColor(.white).lineLimit(1).minimumScaleFactor(0.6).frame(maxWidth: 58)
             }
+        }
+    }
+}
+
+/// "2-0" (emerald while live) or the kick-off time; the minute sits under a live score when space is short
+struct CompactScore: View {
+    let s: IslandAttributes.ContentState
+    let size: CGFloat
+    var body: some View {
+        if s.status == "live" {
+            VStack(spacing: -2) {
+                ScoreText(s: s, size: size)
+                Text(s.minute.isEmpty ? "مباشر" : s.minute).font(LA.font(8)).foregroundColor(DC.red).lineLimit(1)
+            }
+        } else {
+            ScoreText(s: s, size: size)
         }
     }
 }
@@ -142,13 +161,13 @@ struct IslandCompactTrailing: View {
     var body: some View {
         if s.kind == "match", let p = s.prayerPart {
             HStack(spacing: 3) {
-                Text(p.title).font(LA.font(10, "Bold")).foregroundColor(.white.opacity(0.75)).lineLimit(1).frame(maxWidth: 40)
-                CountTimer(end: p.end, color: DC.color(for: p.kind), size: 13, compact: true)
+                IconSquare(kind: p.kind, size: 22)
+                CountTimer(end: p.end, color: DC.color(for: p.kind), size: 14, compact: true)
             }
         } else if s.kind == "match" {
             HStack(spacing: 4) {
-                ScoreText(s: s, size: 15)
-                Logo(file: s.awayLogo, data: s.awayLogoData, name: s.away, size: 22)
+                ScoreText(s: s, size: 17)
+                Logo(file: s.awayLogo, data: s.awayLogoData, name: s.away, size: 30)
             }
         } else {
             let c = s.countdown(stale: stale)
@@ -161,7 +180,9 @@ struct IslandMinimal: View {
     let s: IslandAttributes.ContentState
     var body: some View {
         if s.kind == "match" {
-            if !s.scored.isEmpty && s.status == "live" { Text("⚽").font(.system(size: 14)) } else { ScoreText(s: s, size: 12) }
+            // the scoring / home team's logo filling the circle (the score is in the bigger views)
+            Logo(file: s.scored == "away" ? s.awayLogo : s.homeLogo, data: s.scored == "away" ? s.awayLogoData : s.homeLogoData,
+                 name: s.scored == "away" ? s.away : s.home, size: 26)
         } else {
             IconSquare(kind: s.countdown(stale: false).kind, size: 22)
         }
