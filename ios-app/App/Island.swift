@@ -338,10 +338,31 @@ final class Island {
         // a goal / new minute / full time: the widget redraws now instead of in a few minutes
         if changed { WidgetCenter.shared.reloadTimelines(ofKind: "DriveCastMatches") }
         // one island: the most important match (live first), with the next prayer / reminder inside it
-        let ordered = matches.sorted { a, b in
+        func goalNow(_ m: [String: Any]) -> Bool {
+            let id = "\(m["id"] ?? "")", sc = m["score"] as? [String: Any]
+            let now = "\((sc?["home"] as? NSNumber)?.intValue ?? 0):\((sc?["away"] as? NSNumber)?.intValue ?? 0)"
+            return scores[id] != nil && scores[id] != now
+        }
+        var ordered = matches.sorted { a, b in
+            let ga = goalNow(a), gb = goalNow(b)
+            if ga != gb { return ga }   // a match that just scored goes on the island first
             let la = (a["status"] as? String) == "live", lb = (b["status"] as? String) == "live"
             if la != lb { return la }
             return ((a["favorite"] as? Bool) ?? false) && !((b["favorite"] as? Bool) ?? false)
+        }
+        // several live matches: the island shows them in turn (a new one every 10 s while the app runs)
+        let liveList = ordered.filter { ($0["status"] as? String) == "live" }
+        var turn = 0
+        if liveList.count > 1 && !ordered.contains(where: goalNow) {
+            turn = Int(now.timeIntervalSince1970 / 10) % liveList.count
+            let pick = liveList[turn]
+            ordered.removeAll { "\($0["id"] ?? "")" == "\(pick["id"] ?? "")" }
+            ordered.insert(pick, at: 0)
+        }
+        // every live match's score is remembered (a goal in a match not shown now is not missed)
+        for m in liveList {
+            let sc = m["score"] as? [String: Any]
+            nextScores["\(m["id"] ?? "")"] = "\((sc?["home"] as? NSNumber)?.intValue ?? 0):\((sc?["away"] as? NSNumber)?.intValue ?? 0)"
         }
         let ev = prayerOn ? nextEvents() : []
         for m in ordered where seen.isEmpty {
@@ -379,6 +400,8 @@ final class Island {
             state.fav = m["favorite"] as? Bool ?? false
             state.league = state.title
             state.scored = scored
+            state.count = max(1, liveList.count)
+            state.index = st == "live" ? (liveList.firstIndex { "\($0["id"] ?? "")" == id } ?? 0) : 0
             if !scored.isEmpty, let last = (m["goals"] as? [[String: Any]])?.last(where: { ($0["side"] as? String) == scored }) {
                 let who = (last["player"] as? String) ?? "", min = (last["minute"] as? String) ?? ""
                 let kind = (last["type"] as? String) == "own" ? " (عكسي)" : (last["type"] as? String) == "penalty" ? " (جزاء)" : ""

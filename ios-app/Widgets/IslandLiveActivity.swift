@@ -114,21 +114,22 @@ struct IslandBottom: View {
 /// The compact island, like the floating islands: logos as big as the island allows (30 pt of its 37), the score
 /// between them, the red minute while live. Alone it spreads over both sides; with a prayer / reminder too, the
 /// match packs into the left and the countdown takes the right (the island grows with what it carries).
+/// The compact island. The black gap in the middle is the camera (iOS always keeps it), so the match sits whole on
+/// one side, logos hugging the score; the other side holds the minute, or the prayer / reminder countdown when there
+/// is one (then the minute goes under the score). Each side is only as wide as what it holds.
 struct IslandCompactLeading: View {
     let s: IslandAttributes.ContentState
     var body: some View {
-        if s.kind == "match" && s.prayerPart != nil {
-            HStack(spacing: 3) {
-                Logo(file: s.homeLogo, data: s.homeLogoData, name: s.home, size: 28)
-                CompactScore(s: s, size: 15)
-                Logo(file: s.awayLogo, data: s.awayLogoData, name: s.away, size: 28)
+        if s.kind == "match", let p = s.prayerPart {
+            HStack(spacing: 4) {
+                IconSquare(kind: p.kind, size: 24)
+                CountTimer(end: p.end, color: DC.color(for: p.kind), size: 14, compact: true)
             }
         } else if s.kind == "match" {
-            HStack(spacing: 4) {
-                Logo(file: s.homeLogo, data: s.homeLogoData, name: s.home, size: 30)
-                if s.status == "live" && s.scored.isEmpty { MinuteBadge(text: s.minute, size: 11) }
-                else if s.status == "live" { Text("⚽").font(.system(size: 15)) }
-            }
+            if s.status == "live" && !s.scored.isEmpty { Text("⚽").font(.system(size: 18)) }
+            else if s.status == "live" { MinuteBadge(text: s.minute, size: 12) }
+            else if s.status == "finished" { Text("انتهت").font(LA.font(12, "Bold")).foregroundColor(.white.opacity(0.6)) }
+            else { Image(systemName: "sportscourt.fill").font(.system(size: 14)).foregroundColor(DC.emerald) }
         } else {
             let c = s.countdown(stale: false)
             HStack(spacing: 4) {
@@ -139,12 +140,13 @@ struct IslandCompactLeading: View {
     }
 }
 
-/// "2-0" (emerald while live) or the kick-off time; the minute sits under a live score when space is short
+/// "2-1" (emerald while live) or the kick-off time; with a countdown on the other side the minute sits under it
 struct CompactScore: View {
     let s: IslandAttributes.ContentState
     let size: CGFloat
+    var minute = false
     var body: some View {
-        if s.status == "live" {
+        if s.status == "live" && minute {
             VStack(spacing: -2) {
                 ScoreText(s: s, size: size)
                 Text(s.minute.isEmpty ? "مباشر" : s.minute).font(LA.font(8)).foregroundColor(DC.red).lineLimit(1)
@@ -155,19 +157,30 @@ struct CompactScore: View {
     }
 }
 
+/// which of the live matches this is (dots under the logos)
+struct TurnDots: View {
+    let count: Int, index: Int
+    var body: some View {
+        if count > 1 {
+            VStack(spacing: 2) {
+                ForEach(0..<min(count, 4), id: \.self) { i in
+                    Circle().fill(i == index ? Color.white : Color.white.opacity(0.3)).frame(width: 3.5, height: 3.5)
+                }
+            }
+        }
+    }
+}
+
 struct IslandCompactTrailing: View {
     let s: IslandAttributes.ContentState
     let stale: Bool
     var body: some View {
-        if s.kind == "match", let p = s.prayerPart {
+        if s.kind == "match" {
             HStack(spacing: 3) {
-                IconSquare(kind: p.kind, size: 22)
-                CountTimer(end: p.end, color: DC.color(for: p.kind), size: 14, compact: true)
-            }
-        } else if s.kind == "match" {
-            HStack(spacing: 4) {
-                ScoreText(s: s, size: 17)
-                Logo(file: s.awayLogo, data: s.awayLogoData, name: s.away, size: 30)
+                Logo(file: s.homeLogo, data: s.homeLogoData, name: s.home, size: 28)
+                CompactScore(s: s, size: 16, minute: s.prayerPart != nil)
+                Logo(file: s.awayLogo, data: s.awayLogoData, name: s.away, size: 28)
+                TurnDots(count: s.count, index: s.index)
             }
         } else {
             let c = s.countdown(stale: stale)

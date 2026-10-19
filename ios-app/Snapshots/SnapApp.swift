@@ -97,6 +97,12 @@ enum Snap {
         var livePrayer = live
         livePrayer.pKind = "azan"; livePrayer.pTitle = "الظهر"; livePrayer.pEnd = Date().addingTimeInterval(2 * 3600 + 7 * 60)
         save("island-match-live-prayer-compact", compact(livePrayer))
+        // three live matches + the evening azkar reminder
+        var three = live
+        three.count = 3; three.index = 0; three.pKind = "reminder"; three.pTitle = "أذكار المساء"; three.pEnd = Date().addingTimeInterval(-5)
+        save("island-3live-azkar-compact", compact(three))
+        var three2 = three; three2.index = 1; three2.sh = 0; three2.sa = 0; three2.minute = "د12"
+        save("island-3live-azkar-compact-2", compact(three2))
         for (n, s) in [("azan", azan), ("iqamah", iqamah), ("match-live", live), ("match-goal", goal), ("match-upcoming", upcoming)] {
             save("island-\(n)-expanded", expanded(s))
             save("island-\(n)-compact", compact(s))

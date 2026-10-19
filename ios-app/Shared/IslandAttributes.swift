@@ -48,6 +48,9 @@ struct IslandAttributes: ActivityAttributes {
         var pnKind: String = ""
         var pnTitle: String = ""
         var pnEnd: Date? = nil
+        /// live matches on the island (it shows them in turn) and which one this is
+        var count: Int = 1
+        var index: Int = 0
     }
 
     /// prayer | match
