@@ -161,8 +161,8 @@ export default {
         return env.LIVE.get(env.LIVE.idFromName('stadium')).fetch(req);
       }
       // short-lived TURN credentials for the screen mirror (Cloudflare Realtime), shared for an hour
+      if (u.pathname === '/turn' && !env.TURN_TOKEN) return new Response(JSON.stringify({ iceServers: [], error: 'TURN_TOKEN secret missing' }), { headers: H });
       if (u.pathname === '/turn') return await cached(req, ctx, 3600, async () => {
-        if (!env.TURN_TOKEN) return { iceServers: [], error: 'TURN_TOKEN secret missing' };
         const r = await fetch(`https://rtc.live.cloudflare.com/v1/turn/keys/${env.TURN_KEY_ID}/credentials/generate-ice-servers`,
           { method: 'POST', headers: { authorization: 'Bearer ' + env.TURN_TOKEN, 'content-type': 'application/json' }, body: JSON.stringify({ ttl: 86400 }) });
         const d = await r.json().catch(() => ({}));
