@@ -9,3 +9,7 @@ crons = ["* * * * *"]
 # the cloud bin's key (already inside the apps, so not a secret); a dashboard Secret of the same name overrides it
 [vars]
 BIN_KEY = "$2a$10$SYrYv.ct8hiMU9YeUxEQ.ecRkOrTqs.TDchJRV3wW.aKJnDXy2oVy"
+
+# Web Push alerts (/push): subscriptions, last scores and alerts. No id: wrangler creates the namespace on deploy.
+[[kv_namespaces]]
+binding = "PUSH"

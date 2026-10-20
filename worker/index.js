@@ -1,3 +1,4 @@
+import { handle as pushPage, watch } from './push.js';
 // DriveCast / Madar server: does the fetching and merging so the phones only download one small, ready file.
 //   GET /matches?lang=27|1   your favourite teams' games (live, coming, finished today), cached 20 s
 //   GET /favourites          favourite teams from the cloud bin, cached 10 min
@@ -139,6 +140,7 @@ export default {
     const u = new URL(req.url);
     if (req.method === 'OPTIONS') return new Response(null, { headers: { ...H, 'access-control-allow-headers': '*' } });
     try {
+      if (u.pathname === '/push' || u.pathname.startsWith('/push/') || u.pathname === '/push-sw.js') { const r = await pushPage(req, env, u); if (r) return r; }
       if (u.pathname === '/matches') return await cached(req, ctx, 10, () => matches(env, u.searchParams.get('lang') === '1' ? 1 : 27));
       // everything the apps show, in one answer: matches (+ goals with scorers) and today's / tomorrow's prayers and reminders
       if (u.pathname === '/now') return await cached(req, ctx, 10, async () => {
@@ -156,6 +158,7 @@ export default {
   },
   async scheduled(_ev, env, ctx) {
     // Keeps the cache warm while games are on; goal detection + APNs push go here (needs APNS_KEY / TEAM_ID / KEY_ID).
-    ctx.waitUntil(matches(env, 27).catch(() => {}));
+    // goals / kick-offs / final whistles → Web Push to the phones that turned alerts on (/push)
+    ctx.waitUntil(watch(env, matches, goalsOf).catch(e => console.log('watch', e && e.message)));
   },
 };
