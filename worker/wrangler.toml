@@ -32,6 +32,6 @@ binding = "AI"
 # [[r2_buckets]]
 # binding = "FILES"
 
-# favourites shared by every server copy - created on deploy
-[[d1_databases]]
-binding = "DB"
+# favourites shared by every server copy (D1) - to be added once a database is created
+# [[d1_databases]]
+# binding = "DB"
