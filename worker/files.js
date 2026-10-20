@@ -86,7 +86,7 @@ export async function binProxy(req, env, u, ctx) {
   const key = 'bin:' + id, jb = 'https://api.jsonbin.io/v3/b/' + id;
   if (req.method === 'GET') {
     const hit = env.PUSH && await env.PUSH.get(key, 'json');
-    if (hit && Date.now() - hit.at < 60e3) return new Response(JSON.stringify(hit.data), { headers: { ...CORS, 'x-from': 'kv' } });
+    if (hit && Date.now() - hit.at < 5 * 60e3) return new Response(JSON.stringify(hit.data), { headers: { ...CORS, 'x-from': 'kv' } });
     const r = await fetch(jb + '/latest', { headers: { 'X-Master-Key': env.BIN_KEY, 'X-Bin-Meta': 'false' } });
     if (!r.ok) return hit ? new Response(JSON.stringify(hit.data), { headers: { ...CORS, 'x-from': 'kv-stale' } }) : new Response(await r.text(), { status: r.status, headers: CORS });
     const data = await r.json();
