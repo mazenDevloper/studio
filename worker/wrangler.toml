@@ -13,3 +13,24 @@ BIN_KEY = "$2a$10$SYrYv.ct8hiMU9YeUxEQ.ecRkOrTqs.TDchJRV3wW.aKJnDXy2oVy"
 # Web Push alerts (/push): subscriptions, last scores and alerts. No id: wrangler creates the namespace on deploy.
 [[kv_namespaces]]
 binding = "PUSH"
+
+# live scores over WebSocket (/live)
+[[durable_objects.bindings]]
+name = "LIVE"
+class_name = "Live"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Live"]
+
+# the assistant (/ask)
+[ai]
+binding = "AI"
+
+# fast copies of the IPAs and Madar's assets (/ipa, /f) - created on deploy
+[[r2_buckets]]
+binding = "FILES"
+
+# favourites shared by every server copy - created on deploy
+[[d1_databases]]
+binding = "DB"

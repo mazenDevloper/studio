@@ -1,4 +1,7 @@
 import { handle as pushPage, watch } from './push.js';
+import { ask } from './assistant.js';
+import { files, favFromDb, favToDb } from './files.js';
+export { Live } from './live.js';
 // DriveCast / Madar server: does the fetching and merging so the phones only download one small, ready file.
 //   GET /matches?lang=27|1   your favourite teams' games (live, coming, finished today), cached 20 s
 //   GET /favourites          favourite teams from the cloud bin, cached 10 min
@@ -18,6 +21,7 @@ async function cached(req, ctx, ttl, make) {
 let favCache = null, favAt = 0;
 async function favourites(env) {
   if (favCache && Date.now() - favAt < 10 * 60e3) return favCache;   // the bin is read at most every 10 minutes
+  const db = await favFromDb(env); if (db && db.length) { favCache = db; favAt = Date.now(); return db; }   // shared by every server copy
   const r = await fetch(BIN, { headers: { 'X-Master-Key': env.BIN_KEY, 'X-Bin-Meta': 'false' }, cf: { cacheTtl: 600 } });
   const d = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error('jsonbin ' + r.status + (env.BIN_KEY ? '' : ' (BIN_KEY missing)') + ': ' + (d.message || ''));
@@ -26,6 +30,7 @@ async function favourites(env) {
   favCache = list.filter(t => t && +t.id > 0)
     .map(t => ({ id: +t.id, name: t.name || '', country: t.country || '', island: t.island !== false, logo: LOGO(t.id) }));
   favAt = Date.now();
+  await favToDb(env, favCache);
   return favCache;
 }
 
@@ -135,6 +140,12 @@ async function image(src, ctx) {
   return res;
 }
 
+// everything the screens show, in one answer (also sent over /live)
+export async function nowData(env, lang) {
+  const [m, ev] = await Promise.all([matches(env, lang), events(env).catch(() => ({ events: [] }))]);
+  return { ...m, goals: await goalsOf(m.matches, lang), events: ev.events };
+}
+
 export default {
   async fetch(req, env, ctx) {
     const u = new URL(req.url);
@@ -143,15 +154,18 @@ export default {
       if (u.pathname === '/push' || u.pathname.startsWith('/push/') || u.pathname === '/push-sw.js') { const r = await pushPage(req, env, u); if (r) return r; }
       if (u.pathname === '/matches') return await cached(req, ctx, 10, () => matches(env, u.searchParams.get('lang') === '1' ? 1 : 27));
       // everything the apps show, in one answer: matches (+ goals with scorers) and today's / tomorrow's prayers and reminders
-      if (u.pathname === '/now') return await cached(req, ctx, 10, async () => {
-        const lang = u.searchParams.get('lang') === '1' ? 1 : 27;
-        const [m, ev] = await Promise.all([matches(env, lang), events(env).catch(() => ({ events: [] }))]);
-        return { ...m, goals: await goalsOf(m.matches, lang), events: ev.events };
-      });
+      if (u.pathname === '/now') return await cached(req, ctx, 10, () => nowData(env, u.searchParams.get('lang') === '1' ? 1 : 27));
+      // live scores over WebSocket (one Durable Object for every screen)
+      if (u.pathname === '/live') {
+        if (req.headers.get('upgrade') !== 'websocket') return new Response('WebSocket only', { status: 426 });
+        return env.LIVE.get(env.LIVE.idFromName('stadium')).fetch(req);
+      }
+      if (u.pathname === '/ask' && req.method === 'POST') return new Response(JSON.stringify(await ask(req, env)), { headers: H });
+      if (u.pathname.startsWith('/ipa/') || u.pathname.startsWith('/f/')) { const r = await files(req, env, u); if (r) return r; }
       if (u.pathname === '/img') return await image(u.searchParams.get('u'), ctx);
       if (u.pathname === '/events') return await cached(req, ctx, 60, () => events(env));
       if (u.pathname === '/favourites') return await cached(req, ctx, 600, () => favourites(env));
-      return new Response(JSON.stringify({ ok: true, endpoints: ['/matches', '/favourites'] }), { headers: H });
+      return new Response(JSON.stringify({ ok: true, endpoints: ['/now', '/matches', '/favourites', '/events', '/live (ws)', '/ask', '/ipa/madar', '/ipa/drivecast', '/f/assets/…', '/push'] }), { headers: H });
     } catch (e) {
       return new Response(JSON.stringify({ error: String(e && e.message || e) }), { status: 502, headers: H });
     }
