@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { create } from "zustand";
-import { useMediaStore } from "@/lib/store";
+import { useMediaStore, DEVICE_TAG } from "@/lib/store";
 import { footballDay } from "@/lib/oman-time";
 import type { TopMatchesResult } from "@/lib/match-core";
 
@@ -117,6 +117,33 @@ function pollDue(data: TopMatchesResult | null, updatedAt: number | null): boole
 let subscribers = 0;
 let timer: ReturnType<typeof setInterval> | null = null;
 
+// The server's live socket (Durable Object): it speaks the moment a score, minute or status of your teams moves,
+// and the list is fetched right then - goals show within seconds instead of waiting for the next poll.
+let ws: WebSocket | null = null, wsTried = 0, lastSig = "";
+export let liveSocketOk = false;
+export function openLive() {
+  if (typeof WebSocket === "undefined" || (ws && ws.readyState <= 1) || Date.now() - wsTried < 15_000) return;
+  wsTried = Date.now();
+  try {
+    const s = new WebSocket("wss://studio.c-p.workers.dev/live?lang=27");
+    s.onopen = () => { liveSocketOk = true; };
+    s.onclose = () => { liveSocketOk = false; ws = null; };
+    s.onmessage = e => {
+      try {
+        const d = JSON.parse(String(e.data));
+        // a cloud setting was saved on another screen: reload just that part here
+        if (d.type === "bin" && d.id && d.from !== DEVICE_TAG) { useMediaStore.getState().fetchSpecificBin(d.id); return; }
+        if (d.type !== "now") return;
+        const sig = JSON.stringify((d.matches || []).map((m: { id: string; status: string; score: unknown; elapsed?: number }) => [m.id, m.status, m.score, m.elapsed]));
+        if (sig === lastSig) return;
+        const first = !lastSig; lastSig = sig;
+        if (!first && document.visibilityState === "visible") useLiveMatchesStore.getState().refresh();
+      } catch { /* not ours */ }
+    };
+    ws = s;
+  } catch { /* no socket: polling carries on */ }
+}
+
 /** Subscribe to the shared feed. Pass `teams` (favourite teams as favSpecString: "Liverpool~England") to always
  * include their matches. */
 export function useLiveMatches(teams?: string[]) {
@@ -142,8 +169,12 @@ export function useLiveMatches(teams?: string[]) {
         const { refresh, updatedAt, loading } = useLiveMatchesStore.getState();
         if (!loading && (!updatedAt || Date.now() - updatedAt > 5_000)) refresh();
       }, 0);
+      openLive();
       timer = setInterval(() => {
+        openLive();
         if (document.visibilityState !== "visible") return;
+        // the socket wakes us on every change: the poll is only a slow safety net then
+        if (liveSocketOk && Date.now() - (useLiveMatchesStore.getState().updatedAt || 0) < 120_000) return;
         const { data, updatedAt } = useLiveMatchesStore.getState();
         if (!pollDue(data, updatedAt)) return;
         useLiveMatchesStore.getState().refresh();
@@ -151,7 +182,7 @@ export function useLiveMatches(teams?: string[]) {
     }
     return () => {
       subscribers--;
-      if (!subscribers && timer) { clearInterval(timer); timer = null; }
+      if (!subscribers && timer) { clearInterval(timer); timer = null; try { ws?.close(); } catch { /* */ } ws = null; }
     };
   }, []);
 

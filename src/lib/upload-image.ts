@@ -27,6 +27,12 @@ const toDataUrl = (b: Blob) => new Promise<string>((res) => { const r = new File
  */
 export async function uploadImage(file: File): Promise<{ url: string; hosted: boolean }> {
   const big = await shrinkImage(file, 1920, 0.82).catch(() => file as Blob);
+  // the DriveCast server's own storage (Cloudflare R2): permanent links
+  try {
+    const r = await fetch("https://studio.c-p.workers.dev/upload", { method: "POST", headers: { "content-type": big.type || "image/jpeg" }, body: big });
+    const j = await r.json();
+    if (j?.url) return { url: j.url, hosted: true };
+  } catch {}
   try {
     const fd = new FormData();
     fd.append("file", big, "background.jpg");

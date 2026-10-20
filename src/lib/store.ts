@@ -245,6 +245,9 @@ const LOAD_BEFORE_SAVE = new Set<string>([
   JSONBIN_MANUSCRIPTS_BIN_ID, JSONBIN_FONTS_BIN_ID, JSONBIN_BACKGROUNDS_BIN_ID,
 ]);
 
+/** this screen's tag: a save from here doesn't make this same screen reload */
+export const DEVICE_TAG = typeof window !== 'undefined' ? ((window as any).__dcTag ||= Math.random().toString(36).slice(2, 10)) : '';
+
 export const updateBin = async (binId: string, data: any) => {
   if (LOAD_BEFORE_SAVE.has(binId) && !loadedBins.has(binId)) {
     // The payload was built from a state that never saw the cloud copy (start-up fetch failed or is still running):
@@ -252,6 +255,11 @@ export const updateBin = async (binId: string, data: any) => {
     await useMediaStore.getState().fetchSpecificBin(binId);
     return;
   }
+  // through the DriveCast server: it saves to JSONBin and tells every open screen to reload this part at once
+  try {
+    const r = await fetch(`https://studio.c-p.workers.dev/bin/${binId}?from=${encodeURIComponent(DEVICE_TAG)}`, { method: 'PUT', body: JSON.stringify(data), signal: AbortSignal.timeout(15000) });
+    if (r.ok) return;
+  } catch (e) {}
   try {
     await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
       method: 'PUT',
@@ -349,7 +357,9 @@ export const useMediaStore = create<MediaState>()(
 
       fetchSpecificBin: async (binId) => {
         try {
-          const r = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest?v=${Date.now()}`, { headers: { 'X-Master-Key': JSONBIN_MASTER_KEY, 'X-Bin-Meta': 'false' }, cache: 'no-store', signal: AbortSignal.timeout(12000) });
+          // the server's copy first (instant, no JSONBin quota), JSONBin itself when the server can't answer
+          let r = await fetch(`https://studio.c-p.workers.dev/bin/${binId}?v=${Date.now()}`, { cache: 'no-store', signal: AbortSignal.timeout(8000) }).catch(() => null);
+          if (!r || !r.ok) r = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest?v=${Date.now()}`, { headers: { 'X-Master-Key': JSONBIN_MASTER_KEY, 'X-Bin-Meta': 'false' }, cache: 'no-store', signal: AbortSignal.timeout(12000) });
           if (!r.ok) return;
           const data = await r.json();
           loadedBins.add(binId);

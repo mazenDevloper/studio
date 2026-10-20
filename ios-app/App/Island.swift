@@ -89,7 +89,8 @@ final class Island {
     /// every 5 s while the app runs (open, or in the background playing media)
     private func tick() {
         updatePrayerActivity()
-        if matchesOn && pollDue() { poll(force: false) }
+        if matchesOn { openSocket() }
+        if matchesOn && !socketLive && pollDue() { poll(force: false) }
     }
 
     /// The «ابدأ الجزيرة» button (widget, Control Center, lock screen, Action Button): fetch now, start the match
@@ -288,18 +289,58 @@ final class Island {
         // Straight from 365Scores (favourites from the cloud): no waiting for the site, works with the app in the background.
         Direct365.fetch { list in
             guard let list else { self.polling = false; self.pollViaSite(cfg: cfg, pins: pins, done: done); return }
-            var mine = list.filter { ($0["favorite"] as? Bool) ?? false }
-            for m in list where !(m["favorite"] as? Bool ?? false) {
-                let h = (m["home"] as? [String: Any])?["name"] as? String ?? "", a = (m["away"] as? [String: Any])?["name"] as? String ?? ""
-                if pins.contains(where: { Self.same($0["home"] as? String ?? "", h) && Self.same($0["away"] as? String ?? "", a) }) { mine.append(m) }
-            }
-            if mine.isEmpty { mine = list }   // no island team marked: every match of your teams
-            for m in mine { self.saveLogos(m) }
-            self.polling = false; self.pollFailed = false; self.lastPollOk = Date()
-            self.matches = mine
-            self.scheduleKickoffs(list)
-            self.updateMatchActivities()
+            self.polling = false
+            self.apply(list)
             done?()
+        }
+    }
+
+    /// a fresh list of your teams' matches (from the poll or the live socket) onto the island
+    private func apply(_ list: [[String: Any]]) {
+        let pins = (DCShared.json("config")["pins"] as? [[String: Any]]) ?? []
+        var mine = list.filter { ($0["favorite"] as? Bool) ?? false }
+        for m in list where !(m["favorite"] as? Bool ?? false) {
+            let h = (m["home"] as? [String: Any])?["name"] as? String ?? "", a = (m["away"] as? [String: Any])?["name"] as? String ?? ""
+            if pins.contains(where: { Self.same($0["home"] as? String ?? "", h) && Self.same($0["away"] as? String ?? "", a) }) { mine.append(m) }
+        }
+        if mine.isEmpty { mine = list }   // no island team marked: every match of your teams
+        for m in mine { saveLogos(m) }
+        pollFailed = false; lastPollOk = Date()
+        matches = mine
+        scheduleKickoffs(list)
+        updateMatchActivities()
+    }
+
+    // MARK: live socket (the DriveCast server speaks the moment a score / minute / status moves)
+
+    private var socket: URLSessionWebSocketTask?
+    private var socketAt = Date.distantPast
+    var socketLive: Bool { socket != nil && Date().timeIntervalSince(socketAt) < 90 }
+
+    func openSocket() {
+        guard matchesOn, socket == nil, let url = URL(string: "wss://studio.c-p.workers.dev/live?lang=1") else { return }
+        let t = URLSession.shared.webSocketTask(with: url)
+        socket = t
+        t.resume()
+        receive(t)
+    }
+    private func receive(_ t: URLSessionWebSocketTask) {
+        t.receive { [weak self] result in
+            guard let self else { return }
+            switch result {
+            case .failure:
+                DispatchQueue.main.async { if self.socket === t { self.socket = nil } }
+            case .success(let msg):
+                var data: Data?
+                if case .string(let s) = msg { data = s.data(using: .utf8) } else if case .data(let d) = msg { data = d }
+                if let data, let o = try? JSONSerialization.jsonObject(with: data) as? [String: Any], (o["type"] as? String) == "now",
+                   var list = o["matches"] as? [[String: Any]] {
+                    let goals = o["goals"] as? [String: Any] ?? [:]
+                    for i in list.indices { if let id = list[i]["id"] as? String, let g = goals[id] { list[i]["goals"] = g } }
+                    DispatchQueue.main.async { self.socketAt = Date(); self.apply(list) }
+                }
+                self.receive(t)
+            }
         }
     }
 

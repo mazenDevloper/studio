@@ -9,6 +9,12 @@ const EVERY = 8000;
 
 export class Live extends DurableObject {
   async fetch(req) {
+    // the server tells every screen that a cloud setting changed (a bin was saved) - they reload just that part
+    if (new URL(req.url).pathname === '/notify') {
+      const msg = await req.text();
+      for (const ws of this.ctx.getWebSockets()) { try { ws.send(msg); } catch (e) {} }
+      return new Response('ok');
+    }
     const lang = new URL(req.url).searchParams.get('lang') === '1' ? 1 : 27;
     const [client, server] = Object.values(new WebSocketPair());
     this.ctx.acceptWebSocket(server, ['l' + lang]);

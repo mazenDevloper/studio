@@ -22,6 +22,10 @@ enum Updater {
         if let b = url("build.txt"), let (bd, _) = try? await URLSession.shared.data(from: b) {
             build = Int(String(decoding: bd, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
         }
+        // DriveCast: the same build from Cloudflare's copy (R2) - faster and steadier than GitHub's download
+        if repo.hasSuffix("/studio"), build > 0, let fast = URL(string: "https://studio.c-p.workers.dev/ipa/drivecast?b=\(build)") {
+            return (build, fast, (o["body"] as? String ?? "").prefix(300).description)
+        }
         return (build, ipaURL, (o["body"] as? String ?? "").prefix(300).description)
     }
 

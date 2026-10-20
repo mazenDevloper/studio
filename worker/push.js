@@ -43,6 +43,22 @@ async function addAlerts(env, list) {
   await env.PUSH.put('alerts', JSON.stringify([...list, ...old].slice(0, 30)));
 }
 
+// a two-line Arabic match summary at the final whistle (Workers AI), from the scorers; the league name otherwise
+async function summary(env, m, goalsOf) {
+  try {
+    if (!env.AI) throw 0;
+    const g = (await goalsOf([m], 27).catch(() => ({})))[m.id] || [];
+    const facts = `${m.home.name} ${m.score.home ?? 0} - ${m.score.away ?? 0} ${m.away.name} (${m.league.name || ''}). الأهداف: ` +
+      (g.map(x => (x.side === 'home' ? m.home.name : m.away.name) + ' ' + x.player + ' ' + x.minute + (x.type === 'penalty' ? ' جزاء' : x.type === 'own' ? ' عكسي' : '')).join('، ') || 'لا أهداف');
+    const r = await env.AI.run('@cf/meta/llama-3.3-70b-instruct-fp8-fast', { max_tokens: 90, temperature: 0.4, messages: [
+      { role: 'system', content: 'اكتب ملخصاً عربياً لمباراة كرة قدم في جملة واحدة قصيرة (أقل من 25 كلمة) من الحقائق المعطاة فقط، بلا مقدمات.' },
+      { role: 'user', content: facts }] });
+    const t = String(r && r.response || '').trim();
+    if (t) return t.slice(0, 220);
+  } catch (e) {}
+  return m.league.name || '';
+}
+
 // every minute (cron): compare with the last scores, alert on goals, kick-offs and final whistles
 export async function watch(env, matches, goalsOf) {
   if (!env.PUSH) return;
@@ -63,7 +79,7 @@ export async function watch(env, matches, goalsOf) {
     } else if (p.st === 'upcoming' && m.status === 'live') {
       alerts.push({ id, at: Date.now(), title: '🟢 بدأت: ' + m.home.name + ' × ' + m.away.name, body: m.league.name || '', fav: m.favorite });
     } else if (p.st === 'live' && m.status === 'finished') {
-      alerts.push({ id, at: Date.now(), title: '🏁 انتهت: ' + name(m), body: m.league.name || '', fav: m.favorite });
+      alerts.push({ id, at: Date.now(), title: '🏁 انتهت: ' + name(m), body: await summary(env, m, goalsOf), fav: m.favorite });
     }
   }
   const changed = JSON.stringify(prev) !== JSON.stringify(next);

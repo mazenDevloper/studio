@@ -1,6 +1,6 @@
 import { handle as pushPage, watch } from './push.js';
 import { ask } from './assistant.js';
-import { files, favFromDb, favToDb } from './files.js';
+import { files, favFromDb, favToDb, binProxy } from './files.js';
 export { Live } from './live.js';
 // DriveCast / Madar server: does the fetching and merging so the phones only download one small, ready file.
 //   GET /matches?lang=27|1   your favourite teams' games (live, coming, finished today), cached 20 s
@@ -149,7 +149,7 @@ export async function nowData(env, lang) {
 export default {
   async fetch(req, env, ctx) {
     const u = new URL(req.url);
-    if (req.method === 'OPTIONS') return new Response(null, { headers: { ...H, 'access-control-allow-headers': '*' } });
+    if (req.method === 'OPTIONS') return new Response(null, { headers: { ...H, 'access-control-allow-headers': '*', 'access-control-allow-methods': 'GET, POST, PUT, OPTIONS' } });
     try {
       if (u.pathname === '/push' || u.pathname.startsWith('/push/') || u.pathname === '/push-sw.js') { const r = await pushPage(req, env, u); if (r) return r; }
       if (u.pathname === '/matches') return await cached(req, ctx, 10, () => matches(env, u.searchParams.get('lang') === '1' ? 1 : 27));
@@ -169,7 +169,8 @@ export default {
         return { iceServers: (d.iceServers || []).map(s => ({ ...s, urls: [].concat(s.urls).filter(x => !/:53\b/.test(x)) })) };
       });
       if (u.pathname === '/ask' && req.method === 'POST') return new Response(JSON.stringify(await ask(req, env)), { headers: H });
-      if (u.pathname.startsWith('/ipa/') || u.pathname.startsWith('/f/')) { const r = await files(req, env, u); if (r) return r; }
+      if (u.pathname.startsWith('/bin/')) return await binProxy(req, env, u, ctx);
+      if (u.pathname.startsWith('/ipa/') || u.pathname.startsWith('/f/') || u.pathname === '/upload') { const r = await files(req, env, u); if (r) return r; }
       if (u.pathname === '/img') return await image(u.searchParams.get('u'), ctx);
       if (u.pathname === '/events') return await cached(req, ctx, 60, () => events(env));
       if (u.pathname === '/favourites') return await cached(req, ctx, 600, () => favourites(env));
