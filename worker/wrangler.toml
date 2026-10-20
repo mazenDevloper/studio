@@ -27,9 +27,10 @@ new_sqlite_classes = ["Live"]
 [ai]
 binding = "AI"
 
-# fast copies of the IPAs and Madar's assets (/ipa, /f) - created on deploy
-[[r2_buckets]]
-binding = "FILES"
+# fast copies of the IPAs and Madar's assets (/ipa, /f): needs R2 turned on once in the Cloudflare dashboard
+# (R2 → Purchase / enable, free up to 10 GB), then uncomment:
+# [[r2_buckets]]
+# binding = "FILES"
 
 # favourites shared by every server copy - created on deploy
 [[d1_databases]]
