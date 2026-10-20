@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { PushAlerts } from "@/components/settings/push-alerts";
 import { Search, Plus, X, Loader2, Star, Trophy, Tv, Pencil, Link2, Layers, BookmarkCheck } from "lucide-react";
 import { useMediaStore, type FavoriteTeam } from "@/lib/store";
 import { useLiveMatchesStore } from "@/lib/live-matches";
@@ -19,6 +20,7 @@ const input = "flex-1 min-w-0 h-12 px-5 rounded-full bg-black/40 border border-w
 export function FootballSettings() {
   return (
     <div className="grid gap-8 lg:grid-cols-2">
+      <PushAlerts />
       <FavoriteTeamsSection />
       <LeagueChannelsSection />
       <FollowedLeaguesSection />
