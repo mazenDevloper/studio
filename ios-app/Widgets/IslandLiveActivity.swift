@@ -63,7 +63,7 @@ struct IslandCenter: View {
         if s.kind == "match" {
             VStack(spacing: 2) {
                 ScoreText(s: s, size: 34)
-                if s.status == "live" { MinuteBadge(text: s.minute, size: 13) }
+                if s.status == "live" { MinuteBadge(text: s.minute, size: 13, clock: s.clock) }
                 else if s.status == "finished" { Text("انتهت").font(LA.font(12, "Bold")).foregroundColor(.white.opacity(0.5)) }
             }
         } else {
@@ -124,7 +124,7 @@ struct IslandCompactLeading: View {
             HStack(spacing: 4) {
                 Logo(file: s.homeLogo, data: s.homeLogoData, name: s.home, size: 22)
                 if !s.scored.isEmpty && s.status == "live" { Text("⚽").font(.system(size: 14)) }
-                else if s.status == "live" { MinuteBadge(text: s.minute, size: 10) }
+                else if s.status == "live" { MinuteBadge(text: s.minute, size: 10, clock: s.clock) }
             }
         } else {
             let c = s.countdown(stale: false)
@@ -312,9 +312,17 @@ struct TeamView: View {
 struct MinuteBadge: View {
     let text: String
     let size: CGFloat
+    var clock: Date? = nil
 
     var body: some View {
-        Text(text.isEmpty ? "مباشر" : text)
+        Group {
+            // counts on by itself (mm:ss) between the app's updates
+            if let c = clock, c < Date(), Date().timeIntervalSince(c) < 130 * 60 {
+                Text(timerInterval: c...c.addingTimeInterval(130 * 60), countsDown: false).multilineTextAlignment(.center).monospacedDigit()
+            } else {
+                Text(text.isEmpty ? "مباشر" : text)
+            }
+        }
             .font(LA.font(size))
             .foregroundColor(.white)
             .padding(.horizontal, size * 0.55)
@@ -333,7 +341,15 @@ struct ScoreText: View {
     var body: some View {
         Group {
             if s.status == "upcoming" {
-                Text(s.timeText).foregroundColor(.white.opacity(0.85))
+                // a big island: the kick-off time and a countdown to it that runs by itself
+                if size >= 20, s.start > Date(), s.start.timeIntervalSinceNow < 12 * 3600 {
+                    VStack(spacing: 0) {
+                        Text(s.timeText).foregroundColor(.white.opacity(0.85))
+                        Text(timerInterval: Date()...s.start, countsDown: true).font(LA.font(size * 0.45)).foregroundColor(DC.emerald).multilineTextAlignment(.center)
+                    }
+                } else {
+                    Text(s.timeText).foregroundColor(.white.opacity(0.85))
+                }
             } else {
                 Text("\(s.sh)-\(s.sa)")
                     .foregroundStyle(s.status == "live"
@@ -358,7 +374,7 @@ struct LockScreenView: View {
     var body: some View {
         if s.kind == "match" {
             HStack(spacing: 10) {
-                if s.status == "live" { MinuteBadge(text: s.minute, size: 14) }
+                if s.status == "live" { MinuteBadge(text: s.minute, size: 14, clock: s.clock) }
                 Logo(file: s.homeLogo, data: s.homeLogoData, name: s.home, size: 40)
                 Text(s.home).font(LA.font(14, "Bold")).foregroundColor(.white).lineLimit(1).minimumScaleFactor(0.7)
                 Spacer(minLength: 4)

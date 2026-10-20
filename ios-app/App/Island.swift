@@ -92,6 +92,25 @@ final class Island {
         if matchesOn && pollDue() { poll(force: false) }
     }
 
+    /// The «ابدأ الجزيرة» button (widget, Control Center, lock screen, Action Button): fetch now, start the match
+    /// island (or the prayer one when there is no match) and keep running for the match when it's an island team's.
+    func startFromButton() async {
+        await withCheckedContinuation { (c: CheckedContinuation<Void, Never>) in
+            DispatchQueue.main.async {
+                if !UserDefaults.standard.bool(forKey: "matchesIsland") { UserDefaults.standard.set(true, forKey: "matchesIsland") }
+                if self.hidden { UserDefaults.standard.set(false, forKey: "islandsHidden") }
+                self.intentStart = true
+                self.updatePrayerActivity()
+                self.poll(force: true) {
+                    self.updatePrayerActivity()
+                    self.intentStart = false
+                    KeepAlive.shared.enterBackground()
+                    c.resume()
+                }
+            }
+        }
+    }
+
     // MARK: prayers + reminders
 
     private func prayerActivity() -> Activity<IslandAttributes>? {
@@ -107,6 +126,8 @@ final class Island {
 
     /// a match is on the island now (it carries the prayer too: one island)
     private var matchActive = false
+    /// the widget / Control Center / lock-screen button runs us in the background: iOS lets an island start then
+    private var intentStart = false
     private var turn = 0
 
     private func updatePrayerActivity() {
@@ -134,7 +155,7 @@ final class Island {
         let content = ActivityContent(state: state, staleDate: next.at)
         if let a = current {
             if a.content.state != state { Task { await a.update(content) } }
-        } else if ActivityAuthorizationInfo().areActivitiesEnabled && UIApplication.shared.applicationState == .active {
+        } else if ActivityAuthorizationInfo().areActivitiesEnabled && (UIApplication.shared.applicationState == .active || intentStart) {
             do { _ = try Activity.request(attributes: IslandAttributes(type: "prayer", matchId: ""), content: content, pushType: nil); Island.lastError = "" }
             catch { Island.lastError = "\(error)" }
         }
@@ -167,10 +188,14 @@ final class Island {
         // brings the next ones - no need to keep the app running for them
         if matchesOn {
             let now = Date()
+            // only for the matches of the teams you marked for the island: from 30 min before kick-off, all match
+            // long, and 20 min after the final whistle (the final score and the scorers settle)
             return matches.contains { m in
+                guard (m["favorite"] as? Bool) ?? false else { return false }
                 let st = m["status"] as? String ?? ""
                 let k = Date(timeIntervalSince1970: (m["timestamp"] as? NSNumber)?.doubleValue ?? 0)
-                return st == "live" || (st == "upcoming" && k.timeIntervalSince(now) < 15 * 60)
+                return st == "live" || (st == "upcoming" && k.timeIntervalSince(now) < 30 * 60)
+                    || (st == "finished" && now.timeIntervalSince(k) < 135 * 60)
             }
         }
         return false
@@ -362,6 +387,8 @@ final class Island {
             state.sa = sa
             state.status = st
             state.minute = st == "live" ? (elapsed.map { "د\($0)" } ?? "مباشر") : ""
+            // the minute counts on by itself in the island between updates (not at half-time)
+            if st == "live", let e = elapsed, e > 0, e != 45, e < 125 { state.clock = now.addingTimeInterval(-Double(e) * 60) }
             state.fav = m["favorite"] as? Bool ?? false
             state.league = state.title
             state.scored = scored
@@ -391,7 +418,7 @@ final class Island {
                         if st == "finished" && a.attributes.type == "match" { await a.end(content, dismissalPolicy: .after(now.addingTimeInterval(30 * 60))) }
                     }
                 }
-            } else if st != "finished", ActivityAuthorizationInfo().areActivitiesEnabled, UIApplication.shared.applicationState == .active {
+            } else if st != "finished", ActivityAuthorizationInfo().areActivitiesEnabled, (UIApplication.shared.applicationState == .active || intentStart) {
                 do { _ = try Activity.request(attributes: IslandAttributes(type: "match", matchId: id), content: content, pushType: nil) }
                 catch { Island.lastError = "\(error)" }
             }

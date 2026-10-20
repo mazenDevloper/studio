@@ -12,6 +12,7 @@ final class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationC
         try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [])
         try? AVAudioSession.sharedInstance().setActive(true)
         UserDefaults.standard.register(defaults: ["prayerIsland": true, "matchesIsland": true])
+        IslandHook.start = { await Island.shared.startFromButton() }
         UNUserNotificationCenter.current().delegate = self
         Island.shared.registerBackgroundRefresh()
         Island.shared.downloadFonts()

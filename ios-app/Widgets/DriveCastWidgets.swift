@@ -11,6 +11,8 @@ struct DriveCastWidgets: WidgetBundle {
         IslandLiveActivity()
         PrayerWidget()
         MoreWidgets().body
+        if #available(iOS 17.0, *) { StartIslandWidget() }
+        if #available(iOS 18.0, *) { StartIslandControl() }
         #endif
     }
 }

@@ -27,6 +27,8 @@ struct IslandAttributes: ActivityAttributes {
         /// upcoming | live | finished
         var status: String = ""
         var minute: String = ""
+        /// live: the moment of minute 0 — the island counts the minutes on by itself between updates
+        var clock: Date? = nil
         var fav: Bool = false
         var league: String = ""
         /// side that just scored ("home" / "away"), shown bright for a while
