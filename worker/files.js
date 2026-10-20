@@ -50,17 +50,13 @@ export async function files(req, env, u) {
   return null;
 }
 
-// ---- D1: favourites shared by every server copy ----
+// ---- favourites shared by every server copy (Workers KV; JSONBin is read at most every 10 minutes) ----
 export async function favFromDb(env) {
-  if (!env.DB) return null;
-  try {
-    await env.DB.prepare('CREATE TABLE IF NOT EXISTS kv (k TEXT PRIMARY KEY, v TEXT, at INTEGER)').run();
-    const row = await env.DB.prepare('SELECT v, at FROM kv WHERE k = ?').bind('favourites').first();
-    if (row && Date.now() - row.at < 10 * 60e3) return JSON.parse(row.v);
-  } catch (e) {}
+  if (!env.PUSH) return null;
+  try { const f = await env.PUSH.get('favourites', 'json'); if (f && Date.now() - f.at < 10 * 60e3) return f.list; } catch (e) {}
   return null;
 }
 export async function favToDb(env, list) {
-  if (!env.DB) return;
-  try { await env.DB.prepare('INSERT OR REPLACE INTO kv (k, v, at) VALUES (?, ?, ?)').bind('favourites', JSON.stringify(list), Date.now()).run(); } catch (e) {}
+  if (!env.PUSH) return;
+  try { await env.PUSH.put('favourites', JSON.stringify({ at: Date.now(), list })); } catch (e) {}
 }
