@@ -11,7 +11,7 @@ final class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationC
         // media keeps playing behind other apps and with the screen locked
         try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [])
         try? AVAudioSession.sharedInstance().setActive(true)
-        UserDefaults.standard.register(defaults: ["prayerIsland": true, "matchesIsland": false])
+        UserDefaults.standard.register(defaults: ["prayerIsland": true, "matchesIsland": true])
         UNUserNotificationCenter.current().delegate = self
         Island.shared.registerBackgroundRefresh()
         Island.shared.downloadFonts()

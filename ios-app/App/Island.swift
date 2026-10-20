@@ -107,6 +107,7 @@ final class Island {
 
     /// a match is on the island now (it carries the prayer too: one island)
     private var matchActive = false
+    private var turn = 0
 
     private func updatePrayerActivity() {
         let current = prayerActivity()
@@ -267,9 +268,11 @@ final class Island {
                 let h = (m["home"] as? [String: Any])?["name"] as? String ?? "", a = (m["away"] as? [String: Any])?["name"] as? String ?? ""
                 if pins.contains(where: { Self.same($0["home"] as? String ?? "", h) && Self.same($0["away"] as? String ?? "", a) }) { mine.append(m) }
             }
+            if mine.isEmpty { mine = list }   // no island team marked: every match of your teams
             for m in mine { self.saveLogos(m) }
             self.polling = false; self.pollFailed = false; self.lastPollOk = Date()
             self.matches = mine
+            self.scheduleKickoffs(list)
             self.updateMatchActivities()
             done?()
         }
@@ -291,6 +294,7 @@ final class Island {
                     if (m["favorite"] as? Bool ?? false) || pinned { mine.append(m) }
                 }
             }
+            if ok, mine.isEmpty, let o = try? JSONSerialization.jsonObject(with: data ?? Data()) as? [String: Any], let list = o["matches"] as? [[String: Any]] { mine = list }
             if ok { for m in mine { self.saveLogos(m) } }
             DispatchQueue.main.async {
                 self.polling = false
@@ -322,14 +326,18 @@ final class Island {
             return ((a["favorite"] as? Bool) ?? false) && !((b["favorite"] as? Bool) ?? false)
         }
         let ev = prayerOn ? nextEvents() : []
-        for m in ordered where seen.isEmpty {
+        // several live: they take turns on the island, one per refresh
+        let lives = ordered.filter { ($0["status"] as? String) == "live" }
+        let kickOf = { (m: [String: Any]) in Date(timeIntervalSince1970: (m["timestamp"] as? NSNumber)?.doubleValue ?? 0) }
+        let nearest = ordered.filter { ($0["status"] as? String) == "upcoming" && kickOf($0) > now.addingTimeInterval(-20 * 60) && kickOf($0) < now.addingTimeInterval(7 * 86400) }
+            .min { kickOf($0) < kickOf($1) }
+        let justDone = ordered.first { ($0["status"] as? String) == "finished" && now.timeIntervalSince(kickOf($0)) < 150 * 60 }
+        turn += 1
+        let pick: [[String: Any]] = !lives.isEmpty ? [lives[turn % lives.count]] : nearest.map { [$0] } ?? justDone.map { [$0] } ?? []
+        for m in pick where seen.isEmpty {
             let id = "\(m["id"] ?? "")"
             let st = m["status"] as? String ?? ""
-            let kick = Date(timeIntervalSince1970: (m["timestamp"] as? NSNumber)?.doubleValue ?? 0)
-            // live, or starting within 15 minutes, or finished less than half an hour ago
-            let show = st == "live" || (st == "upcoming" && kick.timeIntervalSince(now) < 3 * 3600 && kick.timeIntervalSince(now) > -20 * 60)
-                || (st == "finished" && now.timeIntervalSince(kick) < 150 * 60)
-            guard show else { continue }
+            let kick = kickOf(m)
             seen.insert(id)
             let score = m["score"] as? [String: Any]
             let sh = (score?["home"] as? NSNumber)?.intValue ?? 0, sa = (score?["away"] as? NSNumber)?.intValue ?? 0
@@ -341,7 +349,7 @@ final class Island {
             let home = m["home"] as? [String: Any] ?? [:], away = m["away"] as? [String: Any] ?? [:]
             let elapsed = (m["elapsed"] as? NSNumber)?.intValue
             var state = IslandAttributes.ContentState(kind: "match", title: m["league"].flatMap { ($0 as? [String: Any])?["name"] as? String } ?? "",
-                                                      start: kick, end: kick, timeText: Self.omanTime(m["omanTime"] as? String ?? ""))
+                                                      start: kick, end: kick, timeText: Self.dayWord(kick) + Self.omanTime(m["omanTime"] as? String ?? ""))
             state.home = home["name"] as? String ?? ""
             state.away = away["name"] as? String ?? ""
             state.homeLogo = Self.logoFile(home["logo"] as? String)
@@ -366,7 +374,7 @@ final class Island {
                 state.pKind = e.kind; state.pTitle = e.title; state.pEnd = e.at; state.pTime = DCShared.time12(e.at)
                 if let n = ev.dropFirst().first { state.pnKind = n.kind; state.pnTitle = n.title; state.pnEnd = n.at }
             }
-            let content = ActivityContent(state: state, staleDate: now.addingTimeInterval(st == "live" ? 10 * 60 : 3 * 3600))
+            let content = ActivityContent(state: state, staleDate: st == "live" ? now.addingTimeInterval(10 * 60) : st == "upcoming" ? max(kick, now.addingTimeInterval(600)) : now.addingTimeInterval(3 * 3600))
             // the match goes into the island already showing (the prayer one): iOS lets a running island change at
             // any time, while a new one can only start with the app open
             if let a = Activity<IslandAttributes>.activities.first(where: { $0.attributes.type == "match" && $0.attributes.matchId == id && $0.activityState == .active })
@@ -411,6 +419,38 @@ final class Island {
         if !s.scorer.isEmpty { n.subtitle = s.scorer }
         n.sound = .default
         UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: "goal-\(UUID().uuidString)", content: n, trigger: nil))
+    }
+
+    /// «غداً · » / «الخميس · » before the time (nothing for today)
+    private static func dayWord(_ d: Date) -> String {
+        let cal = Calendar.current, days = cal.dateComponents([.day], from: cal.startOfDay(for: Date()), to: cal.startOfDay(for: d)).day ?? 0
+        if days <= 0 { return "" }
+        if days == 1 { return "غداً · " }
+        let names = ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"]
+        return names[cal.component(.weekday, from: d) - 1] + " · "
+    }
+
+    /// Kick-off alerts scheduled ahead (like the prayers): iOS fires them on time even with the app frozen.
+    private func scheduleKickoffs(_ list: [[String: Any]]) {
+        let c = UNUserNotificationCenter.current(), now = Date()
+        c.getPendingNotificationRequests { pending in
+            c.removePendingNotificationRequests(withIdentifiers: pending.map(\.identifier).filter { $0.hasPrefix("ko-") })
+            for m in list where (m["status"] as? String) == "upcoming" {
+                let kick = Date(timeIntervalSince1970: (m["timestamp"] as? NSNumber)?.doubleValue ?? 0)
+                guard kick > now.addingTimeInterval(60), kick < now.addingTimeInterval(3 * 86400) else { continue }
+                let h = (m["home"] as? [String: Any])?["name"] as? String ?? "", a = (m["away"] as? [String: Any])?["name"] as? String ?? ""
+                for (before, title) in [(15.0 * 60, "بعد 15 دقيقة"), (0.0, "بدأت الآن")] {
+                    let at = kick.addingTimeInterval(-before); guard at > now else { continue }
+                    let n = UNMutableNotificationContent()
+                    n.title = "⚽ \(title): \(h) × \(a)"
+                    n.body = before > 0 ? "افتح DriveCast لتظهر الجزيرة وتتابع النتيجة" : "افتح DriveCast للنتيجة المباشرة في الجزيرة"
+                    n.sound = .default
+                    if #available(iOS 15.0, *) { n.interruptionLevel = .timeSensitive }
+                    let comps = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: at)
+                    c.add(UNNotificationRequest(identifier: "ko-\(m["id"] ?? "")-\(Int(before))", content: n, trigger: UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)))
+                }
+            }
+        }
     }
 
     private static func omanTime(_ hhmm: String) -> String {
