@@ -160,6 +160,14 @@ export default {
         if (req.headers.get('upgrade') !== 'websocket') return new Response('WebSocket only', { status: 426 });
         return env.LIVE.get(env.LIVE.idFromName('stadium')).fetch(req);
       }
+      // short-lived TURN credentials for the screen mirror (Cloudflare Realtime), shared for an hour
+      if (u.pathname === '/turn') return await cached(req, ctx, 3600, async () => {
+        if (!env.TURN_TOKEN) return { iceServers: [], error: 'TURN_TOKEN secret missing' };
+        const r = await fetch(`https://rtc.live.cloudflare.com/v1/turn/keys/${env.TURN_KEY_ID}/credentials/generate-ice-servers`,
+          { method: 'POST', headers: { authorization: 'Bearer ' + env.TURN_TOKEN, 'content-type': 'application/json' }, body: JSON.stringify({ ttl: 86400 }) });
+        const d = await r.json().catch(() => ({}));
+        return { iceServers: (d.iceServers || []).map(s => ({ ...s, urls: [].concat(s.urls).filter(x => !/:53\b/.test(x)) })) };
+      });
       if (u.pathname === '/ask' && req.method === 'POST') return new Response(JSON.stringify(await ask(req, env)), { headers: H });
       if (u.pathname.startsWith('/ipa/') || u.pathname.startsWith('/f/')) { const r = await files(req, env, u); if (r) return r; }
       if (u.pathname === '/img') return await image(u.searchParams.get('u'), ctx);

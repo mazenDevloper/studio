@@ -8,6 +8,8 @@ crons = ["* * * * *"]
 
 # the cloud bin's key (already inside the apps, so not a secret); a dashboard Secret of the same name overrides it
 [vars]
+# Cloudflare Realtime TURN key id (not secret); its API token is the Secret TURN_TOKEN (dashboard → studio → Settings)
+TURN_KEY_ID = "6b9adbe42fcf641092c737b250365511"
 BIN_KEY = "$2a$10$SYrYv.ct8hiMU9YeUxEQ.ecRkOrTqs.TDchJRV3wW.aKJnDXy2oVy"
 
 # Web Push alerts (/push): subscriptions, last scores and alerts. No id: wrangler creates the namespace on deploy.
@@ -27,10 +29,10 @@ new_sqlite_classes = ["Live"]
 [ai]
 binding = "AI"
 
-# fast copies of the IPAs and Madar's assets (/ipa, /f): needs R2 turned on once in the Cloudflare dashboard
-# (R2 → Purchase / enable, free up to 10 GB), then uncomment:
-# [[r2_buckets]]
-# binding = "FILES"
+# fast copies of the IPAs and Madar's assets (/ipa, /f) - the bucket is created on deploy
+[[r2_buckets]]
+binding = "FILES"
+bucket_name = "madar-files"
 
 # favourites shared by every server copy (D1) - to be added once a database is created
 # [[d1_databases]]
