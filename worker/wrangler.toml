@@ -21,9 +21,17 @@ binding = "PUSH"
 name = "LIVE"
 class_name = "Live"
 
+[[durable_objects.bindings]]
+name = "SCREENS"
+class_name = "Screens"
+
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["Live"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["Screens"]
 
 # the assistant (/ask)
 [ai]
