@@ -8,6 +8,7 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.ServiceInfo;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
@@ -151,7 +152,20 @@ public class IslandService extends Service {
         else startForeground(NOTIFICATION_ID, n);
         loadConfig();
         handler.post(loop);
+        // the tablet's always-on screen: shown when the screen goes off; the iqamah wake-up scheduled
+        try {
+            IntentFilter f = new IntentFilter(Intent.ACTION_SCREEN_OFF);
+            f.addAction(Intent.ACTION_POWER_CONNECTED);
+            f.addAction(Intent.ACTION_POWER_DISCONNECTED);
+            aodReceiver = Aod.screenReceiver();
+            if (Build.VERSION.SDK_INT >= 33) registerReceiver(aodReceiver, f, Context.RECEIVER_NOT_EXPORTED);
+            else registerReceiver(aodReceiver, f);
+        } catch (Exception ignored) {
+        }
+        Aod.schedule(this);
     }
+
+    private android.content.BroadcastReceiver aodReceiver;
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {

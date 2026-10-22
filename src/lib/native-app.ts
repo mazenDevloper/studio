@@ -28,6 +28,8 @@ interface NativeIslandPlugin {
   /** settings' test: "goal" = four goals 3 s apart with the full animation; "islands" = sample islands for a minute */
   testIslands?(o: { kind: "goal" | "islands" }): Promise<void>;
   checkUpdate?(): Promise<{ build?: number }>;
+  /** the tablet's always-on screen (Android): when it shows, minutes before the iqamah, show it now */
+  aod?(o: { mode?: "charging" | "always" | "off"; minutes?: number; open?: boolean }): Promise<{ mode: string; minutes: number }>;
   /** the phone's voice commands window */
   voice?(): Promise<void>;
   addListener(event: "command", cb: (c: NativeCommand) => void): Promise<{ remove: () => void }> | { remove: () => void };

@@ -399,6 +399,30 @@
 
         <receiver android:name=".WidgetActionReceiver" android:exported="false" />
 
+        <!-- the always-on screen (AOD / lock screen): big clock, next prayer, dates, the iqamah countdown -->
+        <activity
+            android:name=".Aod$AodActivity"
+            android:label="شاشة الصلاة الدائمة"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:taskAffinity=".aod"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|screenLayout|uiMode"
+            android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen" />
+        <service
+            android:name=".Aod$AodDream"
+            android:exported="true"
+            android:label="DriveCast · الساعة والصلاة"
+            android:permission="android.permission.BIND_DREAM_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.dreams.DreamService" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </service>
+        <receiver android:name=".Aod$AodReceiver" android:exported="false" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -425,6 +449,8 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- the radar map (car dashboard) shows the car's position -->

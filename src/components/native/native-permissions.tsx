@@ -133,6 +133,7 @@ export function NativePermissions() {
           {t.label}
         </label>
       ))}
+      <AodSettings plugin={plugin} />
       {/* test mode: see the islands and the goal animation without waiting for a match */}
       {plugin.testIslands && (
         <div className="flex flex-wrap items-center gap-3 pt-2">
@@ -154,5 +155,29 @@ export function NativePermissions() {
       </div>
       {status.version && <p className="text-[11px] text-white/30 font-bold">إصدار التطبيق {status.version}</p>}
     </section>
+  );
+}
+
+
+/** The tablet's always-on screen: big clock, the next prayer, the dates; green countdown before the iqamah. */
+function AodSettings({ plugin }: { plugin: any }) {
+  const [aod, setAod] = useState<{ mode: string; minutes: number } | null>(null);
+  useEffect(() => { plugin?.aod?.({}).then(setAod).catch(() => {}); }, [plugin]);
+  if (!aod) return null;
+  const set = (o: any) => plugin.aod(o).then(setAod).catch(() => {});
+  return (
+    <div className="flex flex-wrap items-center gap-3 pt-2" dir="rtl">
+      <span className="text-sm font-black text-white/80">🕰 الشاشة الدائمة (AOD)</span>
+      {[["charging", "عند الشحن"], ["always", "دائماً"], ["off", "مطفأة"]].map(([k, l]) => (
+        <button key={k} onClick={() => set({ mode: k })} data-nav-id={`native-aod-${k}`}
+          className={`focusable no-focus-scale h-10 px-4 rounded-full text-sm font-black ${aod.mode === k ? "bg-emerald-500 text-black" : "bg-white/10 text-white border border-white/15"}`}>{l}</button>
+      ))}
+      <span className="text-sm font-bold text-white/60">تنبيه قبل الإقامة</span>
+      <input type="number" min={1} max={60} value={aod.minutes} onChange={e => set({ minutes: Number(e.target.value) || 19 })}
+        className="w-16 h-10 rounded-xl bg-white/10 text-white text-center font-black" />
+      <span className="text-sm font-bold text-white/60">دقيقة</span>
+      <button onClick={() => set({ open: true })} data-nav-id="native-aod-open"
+        className="focusable no-focus-scale h-10 px-4 rounded-full bg-white/10 border border-white/15 text-white text-sm font-black">عرض الآن</button>
+    </div>
   );
 }

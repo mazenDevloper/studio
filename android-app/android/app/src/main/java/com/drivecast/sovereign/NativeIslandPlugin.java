@@ -95,6 +95,27 @@ public class NativeIslandPlugin extends Plugin {
         call.resolve();
     }
 
+    /**
+     * The tablet's always-on screen: {mode: "charging" | "always" | "off", minutes: before the iqamah, open: true to
+     * show it now}; answers the current {mode, minutes}.
+     */
+    @PluginMethod
+    public void aod(PluginCall call) {
+        android.content.Context ctx = getContext();
+        String mode = call.getString("mode", null);
+        if (mode != null) Aod.setMode(ctx, mode);
+        Integer min = call.getInt("minutes", null);
+        if (min != null) {
+            prefs(ctx).edit().putInt("aodAlertMin", Math.max(1, Math.min(60, min))).apply();
+            Aod.schedule(ctx);
+        }
+        if (Boolean.TRUE.equals(call.getBoolean("open", false))) Aod.start(ctx, false);
+        JSObject r = new JSObject();
+        r.put("mode", Aod.mode(ctx));
+        r.put("minutes", Aod.alertMinutes(ctx));
+        call.resolve(r);
+    }
+
     /** Settings' test buttons: kind "goal" (four goals, one every 3 s) or "islands" (sample islands for a minute). */
     @PluginMethod
     public void testIslands(PluginCall call) {

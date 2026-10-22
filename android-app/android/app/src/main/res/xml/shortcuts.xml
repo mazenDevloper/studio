@@ -13,6 +13,16 @@
     <shortcut
         android:enabled="true"
         android:icon="@mipmap/ic_launcher"
+        android:shortcutId="aod"
+        android:shortcutShortLabel="@string/shortcut_aod">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetClass="com.drivecast.sovereign.Aod$AodActivity"
+            android:targetPackage="com.drivecast.sovereign" />
+    </shortcut>
+    <shortcut
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
         android:shortcutId="dashboard"
         android:shortcutShortLabel="@string/shortcut_dashboard">
         <intent
