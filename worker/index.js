@@ -1,6 +1,7 @@
 import { handle as pushPage, watch } from './push.js';
 import { ask } from './assistant.js';
 import { files, favFromDb, favToDb, binProxy } from './files.js';
+import { readable, health } from './reader.js';
 export { Live } from './live.js';
 export { Screens } from './screen.js';
 // DriveCast / Madar server: does the fetching and merging so the phones only download one small, ready file.
@@ -173,11 +174,14 @@ export default {
       // the iPhone's screen inside Madar (ReplayKit broadcast → here → every Madar watching)
       if (u.pathname.startsWith('/screen/')) return env.SCREENS.get(env.SCREENS.idFromName('all')).fetch(req);
       if (u.pathname.startsWith('/bin/')) return await binProxy(req, env, u, ctx);
-      if (u.pathname.startsWith('/ipa/') || u.pathname.startsWith('/f/') || u.pathname === '/upload') { const r = await files(req, env, u); if (r) return r; }
+      if (u.pathname.startsWith('/ipa/') || u.pathname.startsWith('/f/') || u.pathname.startsWith('/m/') || u.pathname === '/upload') { const r = await files(req, env, u); if (r) return r; }
+      // Madar's reader: the readable text of a web article; Madar's sports mode: weight / workouts from Apple Health (Shortcuts)
+      if (u.pathname === '/read') return await cached(req, ctx, 3600, () => readable(u.searchParams.get('url')));
+      if (u.pathname.startsWith('/health/')) return await health(req, env, u);
       if (u.pathname === '/img') return await image(u.searchParams.get('u'), ctx);
       if (u.pathname === '/events') return await cached(req, ctx, 60, () => events(env));
       if (u.pathname === '/favourites') return await cached(req, ctx, 600, () => favourites(env));
-      return new Response(JSON.stringify({ ok: true, endpoints: ['/now', '/matches', '/favourites', '/events', '/live (ws)', '/ask', '/ipa/madar', '/ipa/drivecast', '/f/assets/…', '/push'] }), { headers: H });
+      return new Response(JSON.stringify({ ok: true, endpoints: ['/now', '/matches', '/favourites', '/events', '/live (ws)', '/ask', '/ipa/madar', '/ipa/drivecast', '/f/assets/…', '/m/<360 video>', '/read?url=', '/health/<code>', '/push'] }), { headers: H });
     } catch (e) {
       return new Response(JSON.stringify({ error: String(e && e.message || e) }), { status: 502, headers: H });
     }

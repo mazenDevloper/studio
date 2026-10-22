@@ -9,12 +9,34 @@ const IPA = {
 };
 const MADAR = 'https://mazendevloper.github.io/fit/';
 const CORS = { 'content-type': 'application/json', 'access-control-allow-origin': '*' };
+const MEDIA = 'https://github.com/mazenDevloper/fit/releases/download/media-360/';
 const TYPES = { glb: 'model/gltf-binary', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', hdr: 'application/octet-stream', mp4: 'video/mp4', json: 'application/json', ipa: 'application/octet-stream', ktx2: 'image/ktx2' };
 
 function serve(obj, name) {
   const h = new Headers({ 'access-control-allow-origin': '*', 'cache-control': 'public, max-age=300', etag: obj.httpEtag });
   obj.writeHttpMetadata(h);
   if (name) h.set('content-disposition', `attachment; filename="${name}"`);
+  return new Response(obj.body, { headers: h });
+}
+
+// a stored file with byte ranges (video seeking; Safari asks for bytes=0-1 first)
+async function ranged(req, env, key, head) {
+  const size = head.size;
+  const h = new Headers({ 'access-control-allow-origin': '*', 'access-control-expose-headers': 'content-range, content-length, accept-ranges', 'accept-ranges': 'bytes', 'cache-control': 'public, max-age=86400', etag: head.httpEtag });
+  head.writeHttpMetadata(h);
+  const m = /^bytes=(\d*)-(\d*)$/.exec((req.headers.get('range') || '').trim());
+  if (m && (m[1] !== '' || m[2] !== '')) {
+    const start = m[1] === '' ? Math.max(0, size - +m[2]) : +m[1];
+    const end = m[1] === '' || m[2] === '' ? size - 1 : Math.min(+m[2], size - 1);
+    if (start >= size || start > end) return new Response(null, { status: 416, headers: { 'content-range': `bytes */${size}`, 'access-control-allow-origin': '*' } });
+    h.set('content-range', `bytes ${start}-${end}/${size}`); h.set('content-length', String(end - start + 1));
+    if (req.method === 'HEAD') return new Response(null, { status: 206, headers: h });
+    const obj = await env.FILES.get(key, { range: { offset: start, length: end - start + 1 } });
+    return new Response(obj.body, { status: 206, headers: h });
+  }
+  h.set('content-length', String(size));
+  if (req.method === 'HEAD') return new Response(null, { headers: h });
+  const obj = await env.FILES.get(key);
   return new Response(obj.body, { headers: h });
 }
 
@@ -55,6 +77,19 @@ export async function files(req, env, u) {
   if (u.pathname.startsWith('/f/u/')) {
     const obj = await env.FILES.get(u.pathname.slice(3));
     return obj ? serve(obj) : new Response('not found', { status: 404 });
+  }
+  // Madar's 360° video library (GitHub release media-360): copied to R2 once, then played from here with byte ranges
+  // (Safari plays a video only from a server that answers Range requests) and CORS (WebGL needs it to draw the frames)
+  if (u.pathname.startsWith('/m/')) {
+    const name = u.pathname.slice(3).replace(/[^a-z0-9._-]/gi, '');
+    const ext = name.split('.').pop().toLowerCase();
+    if (!/^(mp4|jpg|json)$/.test(ext)) return new Response('not found', { status: 404, headers: { 'access-control-allow-origin': '*' } });
+    const key = 'media/' + name;
+    let head = await env.FILES.head(key);
+    const stale = head && ext === 'json' && Date.now() - head.uploaded.getTime() > 3600e3;
+    if (!head || stale) { await mirror(env, key, MEDIA + name, ext === 'json' ? 3600e3 : 3650 * 864e5, TYPES[ext]); head = await env.FILES.head(key); }
+    if (!head) return new Response('not found', { status: 404, headers: { 'access-control-allow-origin': '*' } });
+    return ranged(req, env, key, head);
   }
   if (u.pathname.startsWith('/f/')) {
     const path = u.pathname.slice(3).replace(/\.\.+/g, '');
