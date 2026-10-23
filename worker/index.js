@@ -2,6 +2,7 @@ import { handle as pushPage, watch } from './push.js';
 import { ask } from './assistant.js';
 import { files, favFromDb, favToDb, binProxy } from './files.js';
 import { readable, health } from './reader.js';
+import { visionBody } from './vision.js';
 export { Live } from './live.js';
 export { Screens } from './screen.js';
 // DriveCast / Madar server: does the fetching and merging so the phones only download one small, ready file.
@@ -170,6 +171,7 @@ export default {
         const d = await r.json().catch(() => ({}));
         return { iceServers: (d.iceServers || []).map(s => ({ ...s, urls: [].concat(s.urls).filter(x => !/:53\b/.test(x)) })) };
       });
+      if (u.pathname === '/vision/body' && req.method === 'POST') return new Response(JSON.stringify(await visionBody(req, env).catch(e => ({ ok: false, error: String(e && e.message || e) }))), { headers: H });
       if (u.pathname === '/ask' && req.method === 'POST') return new Response(JSON.stringify(await ask(req, env)), { headers: H });
       // the iPhone's screen inside Madar (ReplayKit broadcast → here → every Madar watching)
       if (u.pathname.startsWith('/screen/')) return env.SCREENS.get(env.SCREENS.idFromName('all')).fetch(req);
