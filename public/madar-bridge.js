@@ -142,6 +142,12 @@
       if (vs.length) { var v = vs.sort(function (a, b) { var ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect(); return rb.width * rb.height - ra.width * ra.height; })[0]; if (v.paused) { var pr = v.play(); if (pr && pr.catch) pr.catch(function () {}); } else v.pause(); }
       else { var fs = document.querySelectorAll('iframe'); for (var i = 0; i < fs.length; i++) try { fs[i].contentWindow.postMessage({ madar: 1, relay: 1, type: 'media', a: d.a }, '*'); } catch (x) {} }
     }
+    else if (d.type === 'volume') {
+      // Madar's volume for this window: every video / audio in the page (and in its frames)
+      var vol = Math.max(0, Math.min(1, +d.v || 0));
+      [].forEach.call(document.querySelectorAll('video,audio'), function (m) { try { m.volume = vol; m.muted = vol === 0; } catch (x) {} });
+      var ff = document.querySelectorAll('iframe'); for (var j = 0; j < ff.length; j++) try { ff[j].contentWindow.postMessage({ madar: 1, relay: 1, type: 'volume', v: vol }, '*'); } catch (x) {}
+    }
     else if (d.type === 'key') {
       // Keys from a real keyboard: delete, enter (submit), tab (next field).
       var el = document.activeElement;
