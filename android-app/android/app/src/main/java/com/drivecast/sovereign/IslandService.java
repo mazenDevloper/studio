@@ -372,6 +372,9 @@ public class IslandService extends Service {
             }).start();
             Widgets.updateAll(this);
         }
+        // «المركز» (Madar ⇄ DriveCast): continue watching from Madar, Madar's timers and today's workout - prepared by
+        // the server, fetched once a minute (the phone only draws them)
+        if (now - hubAt > 60_000L) { hubAt = now; fetchHub(); }
         List<IslandArt.Item> items = islandItems(now);
         updateNotification(items, now);
         boolean testing = testUntil > now;
@@ -397,6 +400,64 @@ public class IslandService extends Service {
         showControls(false); // (the fixed corner buttons: back beside the islands as before)
         updateBubble(false, hidden); // the controls now sit beside the islands
         updateControls(hidden);
+    }
+
+    private long hubAt = 0;
+    private final List<JSONObject> hubItems = new ArrayList<>();
+    private final java.util.Set<String> hubDismissed = new java.util.HashSet<>();
+    private void fetchHub() {
+        new Thread(() -> {
+            try {
+                HttpURLConnection c = (HttpURLConnection) new URL("https://studio.c-p.workers.dev/hub/islands?device=android").openConnection();
+                c.setConnectTimeout(8000); c.setReadTimeout(8000);
+                StringBuilder sb = new StringBuilder();
+                try (BufferedReader r = new BufferedReader(new InputStreamReader(c.getInputStream(), "UTF-8"))) { String l; while ((l = r.readLine()) != null) sb.append(l); }
+                JSONArray a = new JSONObject(sb.toString()).optJSONArray("islands");
+                List<JSONObject> got = new ArrayList<>();
+                for (int i = 0; a != null && i < a.length(); i++) {
+                    JSONObject o = a.optJSONObject(i);
+                    if (o == null) continue;
+                    String k = o.optString("kind");
+                    // prayers and matches already have their own islands here
+                    if ("continue".equals(k) || "timer".equals(k) || "workout".equals(k) || "madar".equals(k)) got.add(o);
+                }
+                handler.post(() -> { synchronized (hubItems) { hubItems.clear(); hubItems.addAll(got); } islandSignature = ""; });
+            } catch (Exception ignored) { }
+        }).start();
+    }
+    private void hubIslandItems(List<IslandArt.Item> out, long now) {
+        synchronized (hubItems) {
+            for (JSONObject o : hubItems) {
+                String id = "hub-" + o.optString("id");
+                if (hubDismissed.contains(id)) continue;
+                long until = o.optLong("until", 0);
+                if (until > 0 && until < now) continue;
+                IslandArt.Item it = new IslandArt.Item();
+                if (o.optLong("at", 0) > now) { it.kind = "countdown"; it.ckind = "reminder"; it.at = o.optLong("at"); }
+                else it.kind = "azkar";
+                it.id = id;
+                it.title = o.optString("icon", "•") + " " + o.optString("title") + (o.optString("sub").isEmpty() ? "" : " · " + o.optString("sub"));
+                out.add(it);
+            }
+        }
+    }
+    private View hubPanel(IslandArt.Item it) {
+        JSONObject o = null;
+        synchronized (hubItems) { for (JSONObject x : hubItems) if (("hub-" + x.optString("id")).equals(it.id)) o = x; }
+        if (o == null) return null;
+        final JSONObject item = o;
+        LinearLayout card = panelCard();
+        card.addView(label(item.optString("icon", "") + " " + item.optString("title"), 15, 0xFFFFFFFF, true));
+        if (!item.optString("sub").isEmpty()) card.addView(label(item.optString("sub"), 12, 0xCCFFFFFF, false));
+        addChipRow(card,
+                "continue".equals(item.optString("kind")) ? chip("▶ أكمل هنا", true, 0xFFE11D48, () -> {
+                    closeFocus();
+                    // the app opens; its page offers «أكمل» from the same minute (the hub knows where you stopped)
+                    Intent i = new Intent(this, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                    try { startActivity(i); } catch (Exception ignored) { }
+                }) : null,
+                chip("✕", false, 0, () -> { closeFocus(); hubDismissed.add(item.optString("id").isEmpty() ? it.id : "hub-" + item.optString("id")); islandSignature = ""; tick(); }));
+        return card;
     }
 
     private boolean canDraw() {
@@ -761,6 +822,7 @@ public class IslandService extends Service {
         roadItem(out, now);
         tripItem(out, now);
         messageItems(out);
+        hubIslandItems(out, now);
         {
             // the day's dhikr: always shown, like the site (hidden once marked done today)
             JSONArray az = Cloud.master(this).optJSONArray("generalAzkar");
@@ -1592,6 +1654,7 @@ public class IslandService extends Service {
         }
         if ("trip".equals(it.id)) return tripPanel();
         if (it.id.startsWith("msg-")) return messagePanel(it);
+        if (it.id.startsWith("hub-")) return hubPanel(it);
         if ("mosque".equals(it.id)) {
             if (!roadMosques.isEmpty()) return roadPanel();
             LinearLayout card = panelCard();
