@@ -25,6 +25,11 @@ class_name = "Live"
 name = "SCREENS"
 class_name = "Screens"
 
+# «المركز»: the shared home of Madar and DriveCast (/hub)
+[[durable_objects.bindings]]
+name = "HUB"
+class_name = "Hub"
+
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["Live"]
@@ -32,6 +37,10 @@ new_sqlite_classes = ["Live"]
 [[migrations]]
 tag = "v2"
 new_sqlite_classes = ["Screens"]
+
+[[migrations]]
+tag = "v3"
+new_sqlite_classes = ["Hub"]
 
 # the assistant (/ask)
 [ai]

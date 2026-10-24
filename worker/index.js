@@ -6,6 +6,8 @@ import { visionBody } from './vision.js';
 import { summarize, translate, visionAsk } from './smart.js';
 export { Live } from './live.js';
 export { Screens } from './screen.js';
+export { Hub } from './hub.js';
+import { hubLibrary } from './hub.js';
 // DriveCast / Madar server: does the fetching and merging so the phones only download one small, ready file.
 //   GET /matches?lang=27|1   your favourite teams' games (live, coming, finished today), cached 20 s
 //   GET /favourites          favourite teams from the cloud bin, cached 10 min
@@ -175,6 +177,9 @@ export default {
       if (u.pathname === '/vision/body' && req.method === 'POST') return new Response(JSON.stringify(await visionBody(req, env).catch(e => ({ ok: false, error: String(e && e.message || e) }))), { headers: H });
       for (const [path, fn] of [['/summarize', summarize], ['/translate', translate], ['/vision/ask', visionAsk]])
         if (u.pathname === path && req.method === 'POST') return new Response(JSON.stringify(await fn(req, env).catch(e => ({ ok: false, error: String(e && e.message || e) }))), { headers: H });
+      // «المركز»: the shared home of Madar and DriveCast (one Durable Object)
+      if (u.pathname === '/hub/library') return await cached(req, ctx, 120, () => hubLibrary(env));
+      if (u.pathname.startsWith('/hub/')) return env.HUB.get(env.HUB.idFromName('home')).fetch(req);
       if (u.pathname === '/ask' && req.method === 'POST') return new Response(JSON.stringify(await ask(req, env)), { headers: H });
       // the iPhone's screen inside Madar (ReplayKit broadcast → here → every Madar watching)
       if (u.pathname.startsWith('/screen/')) return env.SCREENS.get(env.SCREENS.idFromName('all')).fetch(req);

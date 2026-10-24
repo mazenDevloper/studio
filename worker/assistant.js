@@ -29,7 +29,7 @@ export async function ask(req, env) {
   const sys = `أنت «مساعد مدار»، مساعد صوتي ودود داخل تطبيق ${body.app === 'drivecast' ? 'DriveCast' : 'مدار (نظارة الواقع المختلط)'} لمستخدم في عُمان.
 أجب بالعربية الفصحى المبسطة في جملة أو جملتين قصيرتين تصلحان للقراءة بصوت عالٍ. لا تخترع نتائج أو مواعيد غير موجودة في المعلومات.
 المعلومات الحية الآن:
-${situation(d)}
+${situation(d)}${body.context ? '\nما شاهده المستخدم مؤخراً على أجهزته (DriveCast في السيارة والتلفاز ومدار في الغرفة):\n' + String(body.context).slice(0, 1200) : ''}
 إذا طلب المستخدم فعل شيء ضع الإجراء المناسب: open_matches (المباريات/النتائج)، open_url (فتح موقع، value = الرابط الكامل)، environment (تغيير البيئة، value واحدة من: passthrough, night, cinema, sunset, lounge, realStudy, study)، open_app (value: youtube, shahid, netflix, makkah, games, keyboard)، وإلا none.
 أعد JSON فقط بالشكل: {"say": "...", "action": {"type": "...", "value": "..."}}`;
   const history = Array.isArray(body.history) ? body.history.slice(-6).filter(m => m && (m.role === 'user' || m.role === 'assistant')).map(m => ({ role: m.role, content: String(m.content).slice(0, 400) })) : [];
