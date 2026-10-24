@@ -38,7 +38,7 @@ export async function visionAsk(req, env) {
   const bytes = Uint8Array.from(atob(m[1]), c => c.charCodeAt(0));
   if (bytes.length > 4e6) return { ok: false, error: 'too big' };
   const q = String(body.q || 'ما هذا الذي أمامي؟').slice(0, 300);
-  const prompt = `Reply in Arabic only. You see what the user sees through mixed-reality glasses. Question (Arabic): «${q}». Answer in simple Modern Standard Arabic, in one or two short sentences suitable to be read aloud. If there is text in the picture and the user asks to read or translate it, give it in Arabic.`;
+  const prompt = `You see what the user sees through mixed-reality glasses. The user asks (in Arabic): «${q}». Answer in English, in one or two short, concrete sentences suitable to be read aloud (it will be translated to Arabic). If the user asks to read text in the picture, quote the text.`;
   const run = () => env.AI.run(VISION, { image: [...bytes], prompt, max_tokens: 220, temperature: 0.2 });
   let r;
   try { r = await run(); }
