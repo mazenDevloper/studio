@@ -2,6 +2,7 @@
 "use client";
 
 import { NativeIslandBridge } from "@/components/native/native-island-bridge";
+import { HubBridge } from "@/components/hub/hub-bridge";
 import { NativeWidgetsBridge } from "@/components/native/native-widgets-bridge";
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
@@ -176,6 +177,7 @@ export default function RootLayout({
             <YoutubeBackgroundBridge />
             <GlobalQuranPlayer />
             <AudioPlayer />
+            <HubBridge />
             <Toaster />
           </RootLayoutWrapper>
         </FirebaseClientProvider>

@@ -1,7 +1,7 @@
 
 "use client";
 
-import { LayoutDashboard, Radio, Settings, ArrowLeft, Trophy, ArrowRightLeft, Tv, BookOpen, Sparkles, ChevronUp, ChevronDown, Layout } from "lucide-react";
+import { LayoutDashboard, Radio, Settings, ArrowLeft, Trophy, ArrowRightLeft, Tv, BookOpen, Sparkles, ChevronUp, ChevronDown, Layout, Glasses } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useMediaStore, AppAction, MappingContext } from "@/lib/store";
@@ -124,6 +124,7 @@ export function CarDock() {
       className: "hidden md:flex" 
     },
     { name: "Azkar", href: "/football", icon: Sparkles, action: "goto_football" as AppAction },
+    { name: "مدار", href: "/hub", icon: Glasses, action: "goto_hub" as unknown as AppAction },
     { name: "Settings", href: "/settings", icon: Settings, action: "goto_settings" as AppAction },
   ];
 
