@@ -66,17 +66,22 @@ export async function files(req, env, u) {
   }
   // pictures uploaded from the apps' settings (backgrounds, manuscripts, logos): kept for good
   if (u.pathname === '/upload' && req.method === 'POST') {
+    // also what you share from any app (زر المشاركة): PDFs, videos, pictures - up to 60 MB, the name kept for the receiver
     const type = (req.headers.get('content-type') || '').split(';')[0];
-    if (!/^image\/(jpeg|png|webp|gif|svg\+xml)$/.test(type)) return new Response(JSON.stringify({ error: 'images only' }), { status: 415, headers: CORS });
+    const EXT = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif', 'image/svg+xml': 'svg', 'image/heic': 'heic', 'application/pdf': 'pdf', 'video/mp4': 'mp4', 'video/quicktime': 'mov', 'application/epub+zip': 'epub', 'text/plain': 'txt' };
+    if (!EXT[type]) return new Response(JSON.stringify({ error: 'type not allowed: ' + type }), { status: 415, headers: CORS });
     const buf = await req.arrayBuffer();
-    if (buf.byteLength > 8e6) return new Response(JSON.stringify({ error: 'too big (8 MB max)' }), { status: 413, headers: CORS });
-    const key = 'u/' + crypto.randomUUID() + '.' + ({ 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif', 'image/svg+xml': 'svg' })[type];
-    await env.FILES.put(key, buf, { httpMetadata: { contentType: type, cacheControl: 'public, max-age=31536000, immutable' } });
-    return new Response(JSON.stringify({ url: u.origin + '/f/' + key }), { headers: CORS });
+    if (buf.byteLength > 60e6) return new Response(JSON.stringify({ error: 'too big (60 MB max)' }), { status: 413, headers: CORS });
+    const name = (u.searchParams.get('name') || '').replace(/[\/\\?#]/g, '').slice(0, 120);
+    const key = 'u/' + crypto.randomUUID() + '.' + EXT[type];
+    await env.FILES.put(key, buf, { httpMetadata: { contentType: type, cacheControl: 'public, max-age=31536000, immutable', contentDisposition: name ? 'inline; filename*=UTF-8\'\'' + encodeURIComponent(name) : undefined } });
+    return new Response(JSON.stringify({ url: u.origin + '/f/' + key, name, type, size: buf.byteLength }), { headers: CORS });
   }
   if (u.pathname.startsWith('/f/u/')) {
-    const obj = await env.FILES.get(u.pathname.slice(3));
-    return obj ? serve(obj) : new Response('not found', { status: 404 });
+    const key = u.pathname.slice(3), head = await env.FILES.head(key);
+    if (!head) return new Response('not found', { status: 404, headers: CORS });
+    if (/^(video|audio)\//.test(head.httpMetadata?.contentType || '')) return ranged(req, env, key, head);   // shared videos: seeking
+    return serve(await env.FILES.get(key));
   }
   // Madar's 360° video library (GitHub release media-360): copied to R2 once, then played from here with byte ranges
   // (Safari plays a video only from a server that answers Range requests) and CORS (WebGL needs it to draw the frames)

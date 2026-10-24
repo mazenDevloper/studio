@@ -20,7 +20,7 @@ import { DurableObject } from 'cloudflare:workers';
 import { nowData } from './index.js';
 
 const H = { 'content-type': 'application/json; charset=utf-8', 'access-control-allow-origin': '*' };
-const KEYS = ['resume', 'history', 'scenes', 'notes', 'body', 'workouts', 'plan', 'islands', 'articles', 'briefs', 'ai', 'stats', 'photos'];
+const KEYS = ['resume', 'history', 'scenes', 'notes', 'body', 'workouts', 'plan', 'islands', 'articles', 'briefs', 'ai', 'stats', 'photos', 'inbox'];
 const MASTER_BIN = '69c782cbb7ec241ddcb0b99a';
 const ytThumb = id => `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
 const clip = (s, n) => String(s ?? '').slice(0, n);
@@ -29,7 +29,7 @@ export class Hub extends DurableObject {
   async load() {
     if (this.st) return this.st;
     const m = await this.ctx.storage.get(KEYS);
-    this.st = {}; for (const k of KEYS) this.st[k] = m.get(k) ?? (['history', 'articles', 'briefs', 'ai', 'islands', 'photos'].includes(k) ? [] : {});
+    this.st = {}; for (const k of KEYS) this.st[k] = m.get(k) ?? (['history', 'articles', 'briefs', 'ai', 'islands', 'photos', 'inbox'].includes(k) ? [] : {});
     return this.st;
   }
   devices() {
