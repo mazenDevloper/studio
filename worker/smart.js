@@ -38,11 +38,13 @@ export async function visionAsk(req, env) {
   const bytes = Uint8Array.from(atob(m[1]), c => c.charCodeAt(0));
   if (bytes.length > 4e6) return { ok: false, error: 'too big' };
   const q = String(body.q || 'ما هذا الذي أمامي؟').slice(0, 300);
-  const prompt = `You see what the user sees through mixed-reality glasses. Question (Arabic): «${q}». Answer in simple Modern Standard Arabic, in one or two short sentences suitable to be read aloud. If there is text in the picture and the user asks to read or translate it, give it in Arabic.`;
+  const prompt = `Reply in Arabic only. You see what the user sees through mixed-reality glasses. Question (Arabic): «${q}». Answer in simple Modern Standard Arabic, in one or two short sentences suitable to be read aloud. If there is text in the picture and the user asks to read or translate it, give it in Arabic.`;
   const run = () => env.AI.run(VISION, { image: [...bytes], prompt, max_tokens: 220, temperature: 0.2 });
   let r;
   try { r = await run(); }
   catch (e) { if (/agree/i.test(String(e && e.message))) { await env.AI.run(VISION, { prompt: 'agree' }).catch(() => {}); r = await run(); } else throw e; }
-  const say = String((r && (r.response || r.description)) || '').trim();
+  let say = String((r && (r.response || r.description)) || '').trim();
+  // the vision model often answers in English: translate it so it can be read aloud in Arabic
+  if (say && !/[\u0600-\u06FF]/.test(say)) { const t = await env.AI.run(TRANSLATE, { text: say.slice(0, 1000), source_lang: 'english', target_lang: 'arabic' }).catch(() => null); if (t?.translated_text) say = t.translated_text; }
   return { ok: !!say, say };
 }
