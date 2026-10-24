@@ -60,6 +60,7 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     dependencies:
       - target: DriveCastWidgets
+      - target: DriveCastShare
   DriveCastWidgets:
     type: app-extension
     platform: iOS
@@ -79,6 +80,32 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.drivecast.sovereign.widgets
+        TARGETED_DEVICE_FAMILY: "1,2"
+  # «زر المشاركة»: DriveCast in the share sheet → «أرسل إلى» (Madar, the car, the TV, later)
+  DriveCastShare:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Share
+    info:
+      path: Share/Info.plist
+      properties:
+        CFBundleDisplayName: DriveCast
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.share-services
+          NSExtensionPrincipalClass: ShareViewController
+          NSExtensionAttributes:
+            NSExtensionActivationRule:
+              NSExtensionActivationSupportsWebURLWithMaxCount: 1
+              NSExtensionActivationSupportsText: true
+              NSExtensionActivationSupportsImageWithMaxCount: 1
+              NSExtensionActivationSupportsMovieWithMaxCount: 1
+              NSExtensionActivationSupportsFileWithMaxCount: 1
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.drivecast.sovereign.share
         TARGETED_DEVICE_FAMILY: "1,2"
   # not shipped: CI runs it in the simulator to draw every widget and island state as pictures (the previews)
   Snapshots:
