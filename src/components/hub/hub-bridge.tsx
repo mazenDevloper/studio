@@ -20,6 +20,16 @@ export function openHubItem(it: HubItem) {
   } else if (it.kind === "iptv" || it.kind === "video" || it.kind === "360") {
     s.setActiveIptv({ name: it.title || "بث", stream_id: "hub-" + (it.url || it.id).slice(-40), stream_icon: it.thumb || "", category_id: "hub", url: it.url || it.id, type: "iptv" } as any);
   } else if (it.kind === "article" && it.url) listenArticle(it.url, it.title);
+  else if (it.kind === "web" && (it.mode === "listen" || it.mode === "read") && it.url) listenArticle(it.url, it.title);
+  else if (it.kind === "web" && it.mode === "summary" && it.url) {
+    fetch("https://studio.c-p.workers.dev/summarize", { method: "POST", body: JSON.stringify({ url: it.url }) }).then(r => r.json()).then(r => { if (r.ok) speakAll([r.title, ...(r.points || [])]); }).catch(() => {});
+  }
+  else if (it.kind === "map") {
+    const dest = it.lat != null ? `${it.lat},${it.lon}` : encodeURIComponent(it.title || it.url || "");
+    if (it.mode === "save" || (!it.lat && it.url && it.mode !== "nav")) window.open(it.url || `https://www.google.com/maps?q=${dest}`, "_blank");
+    else window.location.href = `https://www.google.com/maps/dir/?api=1&destination=${dest}&travelmode=driving`;
+  }
+  else if (it.kind === "text") { if (it.mode === "speak") speakAll([it.text || it.title || ""]); }
   else if (it.url) window.open(it.url, "_blank");
 }
 

@@ -76,6 +76,22 @@ export default function HubPage() {
         ) : <p className="text-white/40">ما تشاهده في مدار أو السيارة أو التلفاز يظهر هنا لتكمله في أي مكان.</p>}
       </section>
 
+      {(st.inbox || []).length > 0 && (
+        <section className={card}>
+          <h2 className="font-black mb-3">🕒 محفوظ لوقت لاحق</h2>
+          {(st.inbox || []).slice(0, 12).map((x, i) => (
+            <div key={x.id + i} className="flex items-center justify-between py-2 border-b border-white/5 gap-2">
+              <span className="truncate">{({ yt: "▶", web: "🌐", pdf: "📕", image: "🖼", map: "📍", text: "🗒", video: "🎞" } as any)[x.kind] || "•"} {x.title || x.url || x.text}</span>
+              <div className="flex gap-2 shrink-0">
+                <button className="text-xs rounded-full bg-sky-600 px-3 py-1" onClick={() => openHubItem(x)}>هنا</button>
+                {madar.length > 0 && <button className="text-xs rounded-full bg-violet-600 px-3 py-1" onClick={() => toMadar({ type: "open", item: x, now: true })}>مدار</button>}
+                <button className="text-xs rounded-full bg-white/10 px-2 py-1" onClick={() => hub.op({ op: "set", key: "inbox", value: (st.inbox || []).filter(y => y !== x) })}>✕</button>
+              </div>
+            </div>
+          ))}
+        </section>
+      )}
+
       {sug?.items?.length > 0 && (
         <section>
           <h2 className="text-xl font-black mb-3">✨ مقترح لك الآن ({me.kind === "car" ? "في السيارة" : "في البيت"})</h2>

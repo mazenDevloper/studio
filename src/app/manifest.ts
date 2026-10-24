@@ -12,6 +12,8 @@ export default function manifest(): MetadataRoute.Manifest {
     display: 'fullscreen',
     background_color: '#000000',
     theme_color: '#000000',
+    // «زر المشاركة»: DriveCast in the share sheet (links / text; files go through Madar's share page)
+    share_target: { action: '/share', method: 'GET', params: { title: 'title', text: 'text', url: 'url' } } as any,
     orientation: 'any', // phone portrait, tablet / car / TV landscape
     icons: [
       {

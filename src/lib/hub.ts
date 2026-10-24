@@ -10,12 +10,12 @@ export const HUB = "https://studio.c-p.workers.dev/hub";
 
 export type HubKind = "car" | "tv" | "phone" | "tablet" | "computer";
 export interface HubDevice { id: string; name: string; kind: string; app: string; since?: number }
-export interface HubItem { id: string; kind: "yt" | "iptv" | "video" | "360" | "web" | "article" | "scene"; title?: string; url?: string; t?: number; dur?: number; thumb?: string; channel?: string; at?: number; from?: HubDevice; name?: string; lines?: string[]; text?: string }
+export interface HubItem { id: string; kind: "yt" | "iptv" | "video" | "360" | "web" | "article" | "scene" | "pdf" | "image" | "map" | "text" | "file"; mode?: string; lat?: number; lon?: number; type?: string; title?: string; url?: string; t?: number; dur?: number; thumb?: string; channel?: string; at?: number; from?: HubDevice; name?: string; lines?: string[]; text?: string }
 export interface HubState {
   resume?: Record<string, HubItem>; history?: HubItem[]; scenes?: { name: string; count: number; env?: string; media?: { url: string; title: string }[] }[];
   notes?: { id: string; text: string }[]; body?: { last?: Record<string, any>; prev?: Record<string, any> }; workouts?: any[]; plan?: { goal?: string; today?: string };
   islands?: { id: string; icon?: string; title: string; sub?: string; at?: number; until?: number; tint?: string }[];
-  articles?: HubItem[]; briefs?: HubItem[]; ai?: { q: string; a: string; at?: number }[];
+  articles?: HubItem[]; briefs?: HubItem[]; inbox?: HubItem[]; ai?: { q: string; a: string; at?: number }[];
 }
 export const KIND_AR: Record<string, string> = { car: "السيارة", tv: "التلفاز", phone: "الهاتف", tablet: "التابلت", madar: "مدار", computer: "الكمبيوتر" };
 export const fmtTime = (t = 0) => { t = Math.max(0, Math.round(t)); return (t >= 3600 ? Math.floor(t / 3600) + ":" + String(Math.floor(t / 60) % 60).padStart(2, "0") : Math.floor(t / 60)) + ":" + String(t % 60).padStart(2, "0"); };
