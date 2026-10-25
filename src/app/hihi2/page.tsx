@@ -24,6 +24,10 @@ function SportsHubPage() {
   const [isEditingRight, setIsEditingRight] = useState(false);
 
   const isDockLeft = dockSide === 'left';
+  // the two frames can trade places (remembered on this device)
+  const [swapped, setSwapped] = useState(false);
+  useEffect(() => { try { setSwapped(localStorage.getItem('dc.hubSwap') === '1'); } catch {} }, []);
+  const swapSides = () => setSwapped(v => { try { localStorage.setItem('dc.hubSwap', v ? '0' : '1'); } catch {} return !v; });
 
   const refreshRadar = () => { setKey(Date.now()); };
   
@@ -49,16 +53,11 @@ function SportsHubPage() {
     setIsEditingRight(false);
   };
 
-  const globalizeBeInLive = () => {
-    setActiveIptv({
-      stream_id: "idebsports-radar",
-      name: "IDEB SPORTS LIVE",
-      stream_icon: "https://idebsports.ly/favicon.ico",
-      category_id: "direct",
-      url: beinUrl,
-      type: 'web'
-    });
+  const globalize = (url: string, name: string) => {
+    setActiveIptv({ stream_id: "radar-" + name, name, stream_icon: "", category_id: "direct", url, type: 'web' } as any);
   };
+  const globalizeBeInLive = () => globalize(beinUrl, "IDEB SPORTS LIVE");
+  const globalizeRadar = () => globalize(urlInput, "الرادار");
 
   return (
     <main className="w-full h-full bg-black relative flex flex-col overflow-hidden transition-none">
@@ -83,18 +82,25 @@ function SportsHubPage() {
             </div>
 
             <div className="flex items-center gap-2 pr-2">
+               <button onClick={swapSides} title="تبديل الاتجاهين" className="h-12 px-4 rounded-full bg-white/10 text-white flex items-center gap-2 focusable hover:bg-white/20 transition-all"><ArrowLeftRight className="w-5 h-5" /><span className="text-[10px] font-black">تبديل الاتجاهين</span></button>
                <button onClick={resetToHome} className="h-12 w-12 rounded-full bg-white/10 text-white flex items-center justify-center focusable hover:bg-white/20 transition-all shadow-glow"><Home className="w-5 h-5" /></button>
             </div>
          </div>
       </div>
 
-      <div className={cn("flex-1 relative w-full h-full p-4 pt-24 flex gap-6 transition-all duration-700", isDockLeft ? "flex-row" : "flex-row-reverse")} dir="rtl">
+      <div className={cn("flex-1 relative w-full h-full p-4 pt-24 flex gap-6 transition-all duration-700", (isDockLeft !== swapped) ? "flex-row" : "flex-row-reverse")} dir="rtl">
         {/* Left / Secondary Frame */}
         <div className={cn(
           "relative rounded-[3rem] overflow-hidden border-2 border-white/5 transition-all duration-700 bg-black group shadow-2xl focusable",
           viewMode === 'winwin' ? "flex-[10] z-20" : viewMode === 'beinlive' ? "flex-0 w-0 opacity-0 pointer-events-none" : "flex-[3.5] z-10"
         )} tabIndex={0}>
           <SovereignIframe key={`${key}-beinlive`} src={beinUrl} title="Sports News Feed" />
+          <div className="absolute bottom-8 left-8 z-30">
+            <button onClick={globalizeBeInLive} className="h-14 px-6 rounded-[1.6rem] bg-white/10 backdrop-blur-xl border-2 text-white flex items-center gap-3 focusable shadow-glow">
+              <MonitorPlay className="w-6 h-6" />
+              <span className="font-black tracking-widest text-emerald-400">توسيع الرادار</span>
+            </button>
+          </div>
           <div className="absolute top-4 right-4 z-30 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
              {isEditingLeft ? (
                <>
@@ -122,7 +128,7 @@ function SportsHubPage() {
             <button onClick={refreshRadar} className="w-16 h-16 rounded-[1.8rem] bg-emerald-600/20 backdrop-blur-xl border border-emerald-500/40 flex items-center justify-center text-emerald-400 focusable shadow-glow">
               <RefreshCw className="w-8 h-8" />
             </button>
-            <button onClick={globalizeBeInLive} className="h-16 px-8 rounded-[1.8rem] bg-white/10 backdrop-blur-xl border-2 text-white flex items-center gap-4 focusable shadow-glow">
+            <button onClick={globalizeRadar} className="h-16 px-8 rounded-[1.8rem] bg-white/10 backdrop-blur-xl border-2 text-white flex items-center gap-4 focusable shadow-glow">
               <MonitorPlay className="w-7 h-7" />
               <span className="font-black uppercase tracking-widest text-emerald-400">توسيع الرادار</span>
             </button>
