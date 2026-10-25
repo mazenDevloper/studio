@@ -154,6 +154,24 @@ const TeamSelector = ({
   );
 };
 
+// «عند انتهاء الفيديو»: the next video (default), stop, or play it again
+function EndActionCard() {
+  const endAction = useMediaStore(s => s.endAction ?? "next"), setEndAction = useMediaStore(s => s.setEndAction);
+  const opts: [typeof endAction, string, string][] = [["next", "⏭ الفيديو التالي", "من القائمة، ثم محفوظاتك"], ["stop", "⏹ توقف", "يبقى الفيديو متوقفاً"], ["repeat", "🔁 أعده", "يعيد نفس الفيديو"]];
+  return (
+    <Card className="bg-white/5 border-white/10 p-8 rounded-[3rem] shadow-2xl">
+      <h3 className="text-2xl font-black text-white mb-5">عند انتهاء الفيديو</h3>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {opts.map(([k, l, d]) => (
+          <button key={k} data-nav-id={"end-" + k} onClick={() => setEndAction(k)} className={"text-right rounded-3xl p-5 border transition-all " + (endAction === k ? "bg-primary/20 border-primary text-white" : "bg-white/5 border-white/10 text-white/80 hover:bg-white/10")}>
+            <div className="text-xl font-black">{l}</div><div className="text-sm opacity-70 mt-1">{d}</div>
+          </button>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
 export function SettingsView() {
   const { 
      addReminder, removeReminder, reminders, updateReminder, skipMatch, skippedMatchIds,
@@ -988,6 +1006,7 @@ export function SettingsView() {
         </TabsContent>
 
         <TabsContent value="playlists" className="space-y-8 animate-in fade-in duration-0">
+           <EndActionCard />
            <Card className="bg-white/5 border-white/10 p-10 rounded-[3.5rem] shadow-2xl relative">
               <div className="flex justify-between items-center mb-12">
                  <CardTitle className="text-4xl font-black text-white flex items-center gap-6"><Library className="w-12 h-12 text-indigo-400" /> إدارة المجلدات السيادية</CardTitle>

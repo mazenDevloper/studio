@@ -91,6 +91,9 @@ export function HubBridge() {
           else if (m.action === "prev") (s.activeIptv ? s.prevIptvChannel() : s.prevTrack());
           else if (m.action === "back" && s.activeVideo) { const t = getYoutubeTime(s.activeVideo.id) || 0; s.updateVideoProgress(s.activeVideo.id, Math.max(0, t - 10)); }
         }
+        else if (m.type === "ping") { try { const a = new AudioContext(), o = a.createOscillator(); o.frequency.value = 880; o.connect(a.destination); o.start(); o.stop(a.currentTime + 0.6); } catch {} setIncoming({ item: { id: "t", kind: "web", title: "🔔 " + who + " يبحث عن هذا الجهاز" }, from: who }); }
+        else if (m.type === "say" && m.text) { speakAll([String(m.text)]); setIncoming({ item: { id: "t", kind: "web", title: "💬 " + String(m.text) }, from: who }); }
+        else if (m.type === "sleep" && m.minutes > 0) { clearTimeout((window as any).__dcSleep); (window as any).__dcSleep = setTimeout(() => useMediaStore.getState().setIsPlaying(false), m.minutes * 60000); setIncoming({ item: { id: "t", kind: "web", title: "😴 يتوقف بعد " + m.minutes + " دقيقة" }, from: who }); }
         else if (m.type === "toast") setIncoming({ item: { id: "t", kind: "web", title: String(m.text || "") }, from: who });
       }
     });

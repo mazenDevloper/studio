@@ -123,7 +123,7 @@ export function YoutubeBackgroundBridge() {
   const onEnded = () => {
     if (!bridgingRef.current) return;
     continueHiddenRef.current = document.hidden;
-    setTimeout(() => useMediaStore.getState().nextTrack(), 3000);
+    setTimeout(() => useMediaStore.getState().videoEnded(), 3000);
   };
 
   return <audio ref={audioRef} preload="none" playsInline className="hidden" onEnded={onEnded} />;

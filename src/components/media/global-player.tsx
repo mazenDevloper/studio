@@ -111,7 +111,7 @@ export function GlobalVideoPlayer() {
         const state = d?.event === "onStateChange" ? d.info : d?.info?.playerState;
         const t = d?.info?.currentTime, dur = d?.info?.duration;
         const ended = state === 0 || (typeof t === "number" && typeof dur === "number" && dur > 0 && t >= dur - 0.3 && state !== 1);
-        if (ended && !next) next = setTimeout(() => { next = null; useMediaStore.getState().nextTrack(); }, 3000);
+        if (ended && !next) next = setTimeout(() => { next = null; useMediaStore.getState().videoEnded(); }, 3000);
         else if (!ended && (state === 1 || state === 3) && next) { clearTimeout(next); next = null; } // replayed / seeked back
       } catch {}
     };

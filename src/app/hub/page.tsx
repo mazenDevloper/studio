@@ -8,6 +8,7 @@
 import { useEffect, useState } from "react";
 import { hub, HUB, HubItem, KIND_AR, fmtTime, myDevice, setMyDevice } from "@/lib/hub";
 import { openHubItem, listenArticle, speakAll, sendPlayingTo } from "@/components/hub/hub-bridge";
+import { useMediaStore } from "@/lib/store";
 
 const card = "rounded-3xl bg-white/5 border border-white/10 p-4";
 const chip = "rounded-full px-4 py-2 text-sm font-bold transition-colors";
@@ -29,6 +30,20 @@ export default function HubPage() {
   const resume = Object.values(st.resume || {}).sort((a, b) => (b.at || 0) - (a.at || 0));
   const toMadar = (msg: any) => { if (!madar.length) return alert("مدار غير متصل الآن"); madar.forEach(d => hub.sendTo(d.id, msg)); };
   const Thumb = ({ it }: { it: HubItem }) => it.thumb ? <img src={it.thumb} alt="" className="w-full aspect-video object-cover rounded-2xl" /> : <div className="w-full aspect-video rounded-2xl bg-black/40 grid place-items-center text-3xl">▶</div>;
+  // one video per device: the latest thing each place played (online devices first, even with nothing yet)
+  const lastBy = new Map<string, HubItem>();
+  for (const it of resume) { const id = it.from?.id; if (id && !lastBy.has(id)) lastBy.set(id, it); }
+  const devIds = [...new Set([...hub.devices.map(d => d.id), ...lastBy.keys()])];
+  const devCards = devIds.map(id => {
+    const live = hub.devices.find(d => d.id === id), it = lastBy.get(id);
+    const dev = live || (it?.from as any) || { id, name: id, kind: "phone", app: "drivecast" };
+    return { dev, it, online: !!live, playing: !!it && Date.now() - (it.at || 0) < 45000 };
+  }).filter(c => c.it || c.online).sort((a, b) => (+b.online - +a.online) || ((b.it?.at || 0) - (a.it?.at || 0)));
+  const icon = (d: any) => d.app === "madar" ? "🥽" : d.kind === "car" ? "🚗" : d.kind === "tv" ? "📺" : d.kind === "computer" ? "💻" : "📱";
+  const ago = (t?: number) => { if (!t) return ""; const m = Math.round((Date.now() - t) / 60000); return m < 1 ? "الآن" : m < 60 ? "قبل " + m + " د" : m < 1440 ? "قبل " + Math.round(m / 60) + " س" : "قبل " + Math.round(m / 1440) + " يوم"; };
+  const DAYS = ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
+  const week = [...Array(7)].map((_, i) => { const d = new Date(Date.now() + 4 * 3600e3 - (6 - i) * 864e5), k = d.toISOString().slice(0, 10); return { day: k, label: DAYS[d.getUTCDay()].slice(0, 3), car: stats?.total?.[k + ":car"] || 0, room: stats?.total?.[k + ":room"] || 0 }; });
+  const weekMax = Math.max(10, ...week.map(d => d.car + d.room));
   const topItems = stats?.items ? Object.values(stats.items).sort((a: any, b: any) => b.m - a.m).slice(0, 6) : [];
 
   return (
@@ -40,41 +55,76 @@ export default function HubPage() {
       </header>
 
       <section className={card}>
-        <h2 className="font-black mb-3">هذا الجهاز: {me.name}</h2>
-        <div className="flex flex-wrap gap-2">
+        <h2 className="font-black mb-3">هذا الجهاز</h2>
+        <div className="flex flex-wrap items-center gap-2">
+          <input defaultValue={me.name} onBlur={e => { const v = e.target.value.trim(); if (v && v !== me.name) { setMyDevice({ name: v }); force(x => x + 1); } }} className="rounded-2xl bg-black/40 border border-white/10 px-3 py-2 text-white min-w-[12rem]" aria-label="اسم الجهاز" />
           {(["car", "tv", "phone", "tablet", "computer"] as const).map(k => (
-            <button key={k} className={chip + (me.kind === k ? " bg-sky-500 text-black" : " bg-white/10")} onClick={() => { setMyDevice({ kind: k }); force(x => x + 1); }}>{KIND_AR[k]}</button>
+            <button key={k} className={chip + (me.kind === k ? " bg-sky-500 text-black" : " bg-white/10")} onClick={() => { setMyDevice({ kind: k, name: "DriveCast · " + KIND_AR[k] }); force(x => x + 1); }}>{KIND_AR[k]}</button>
           ))}
-        </div>
-        <h3 className="font-bold mt-4 mb-2 text-white/70">الأجهزة المتصلة الآن</h3>
-        <div className="flex flex-wrap gap-2">
-          {others.length ? others.map(d => (
-            <div key={d.id} className="flex items-center gap-2 rounded-2xl bg-white/10 px-3 py-2">
-              <span>{d.app === "madar" ? "🥽" : d.kind === "car" ? "🚗" : d.kind === "tv" ? "📺" : "📱"} {d.name}</span>
-              <button className="text-xs rounded-full bg-sky-600 px-2 py-1" onClick={() => { if (!sendPlayingTo(d.id)) alert("لا شيء يعمل هنا الآن"); }}>أرسل ما يعمل</button>
-            </div>
-          )) : <span className="text-white/40">لا أجهزة أخرى — افتح مدار أو DriveCast على جهاز آخر</span>}
         </div>
       </section>
 
+      {/* every place: what it plays now (one video per device), and what you can do with it */}
       <section>
-        <h2 className="text-xl font-black mb-3">▶ تابع المشاهدة — من كل الأماكن</h2>
-        {resume.length ? (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {resume.slice(0, 12).map(it => (
-              <div key={it.id} className={card + " p-2 space-y-2"}>
-                <button className="w-full text-right" onClick={() => openHubItem(it)}>
-                  <Thumb it={it} />
-                  {it.dur ? <div className="h-1 bg-white/20 rounded mt-1"><div className="h-1 bg-rose-500 rounded" style={{ width: Math.min(100, (it.t || 0) / it.dur * 100) + "%" }} /></div> : null}
-                  <div className="font-bold text-sm truncate mt-1">{it.title || it.id}</div>
-                  <div className="text-xs text-white/50">{it.from?.name || ""} · {fmtTime(it.t)}</div>
+        <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
+          <h2 className="text-xl font-black">📡 أجهزتك الآن</h2>
+          <div className="flex gap-2">
+            <button className={chip + " bg-white/10"} onClick={() => { if (!others.length) return; others.forEach(d => sendPlayingTo(d.id)); }}>👥 شغّل ما يعمل هنا على الكل</button>
+            <button className={chip + " bg-white/10"} onClick={() => { const t = prompt("رسالة تُقرأ بصوت على كل الأجهزة:"); if (t) hub.sendTo("all", { type: "say", text: t }); }}>📢 إعلان للكل</button>
+          </div>
+        </div>
+        {devCards.length ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {devCards.map(({ dev, it, online, playing }) => (
+              <div key={dev.id} className={card + " flex gap-3"}>
+                <button className="w-40 shrink-0 text-right" disabled={!it} onClick={() => it && openHubItem(it)}>
+                  {it ? <Thumb it={it} /> : <div className="w-full aspect-video rounded-2xl bg-black/40 grid place-items-center text-3xl">{icon(dev)}</div>}
+                  {it?.dur ? <div className="h-1 bg-white/20 rounded mt-1"><div className="h-1 bg-rose-500 rounded" style={{ width: Math.min(100, (it.t || 0) / it.dur * 100) + "%" }} /></div> : null}
                 </button>
-                {madar.length > 0 && <button className="w-full text-xs rounded-full bg-violet-600 py-1" onClick={() => toMadar({ type: "open", item: it, now: true })}>🥽 في مدار</button>}
+                <div className="min-w-0 flex-1 space-y-1">
+                  <div className="flex items-center gap-2"><span className="font-black truncate">{icon(dev)} {dev.name}</span>
+                    <span className={"text-[10px] rounded-full px-2 py-0.5 " + (playing ? "bg-rose-600" : online ? "bg-emerald-700" : "bg-white/10 text-white/50")}>{playing ? "● يعرض الآن" : online ? "متصل" : "غير متصل"}</span></div>
+                  {it ? <div className="text-sm truncate">{it.title || it.id}</div> : <div className="text-sm text-white/40">لم يشاهد شيئاً بعد</div>}
+                  {it && <div className="text-xs text-white/50">{fmtTime(it.t)}{it.dur ? " / " + fmtTime(it.dur) : ""} · {ago(it.at)}</div>}
+                  <div className="flex flex-wrap gap-1 pt-1">
+                    {it && <button className="text-xs rounded-full bg-rose-600 px-2 py-1" onClick={() => openHubItem(it)}>▶ أكمل هنا</button>}
+                    {it && madar.length > 0 && dev.app !== "madar" && <button className="text-xs rounded-full bg-violet-600 px-2 py-1" onClick={() => toMadar({ type: "open", item: it, now: true })}>🥽 في مدار</button>}
+                    {online && dev.id !== me.id && <>
+                      <button className="text-xs rounded-full bg-sky-600 px-2 py-1" onClick={() => { if (!sendPlayingTo(dev.id)) alert("لا شيء يعمل هنا الآن"); }}>📤 أرسل ما يعمل</button>
+                      <button className="text-xs rounded-full bg-sky-800 px-2 py-1" onClick={() => { if (sendPlayingTo(dev.id)) useMediaStore.getState().setIsPlaying(false); }}>⇄ انقل التشغيل</button>
+                      <button className="text-xs rounded-full bg-white/10 px-2 py-1" onClick={() => hub.sendTo(dev.id, { type: "control", action: "toggle" })}>⏯</button>
+                      <button className="text-xs rounded-full bg-white/10 px-2 py-1" onClick={() => hub.sendTo(dev.id, { type: "control", action: "next" })}>⏭</button>
+                      <button className="text-xs rounded-full bg-white/10 px-2 py-1" onClick={() => { const m = prompt("إيقاف بعد كم دقيقة؟", "30"); if (m) hub.sendTo(dev.id, { type: "sleep", minutes: +m }); }}>😴 مؤقت</button>
+                      <button className="text-xs rounded-full bg-white/10 px-2 py-1" onClick={() => hub.sendTo(dev.id, { type: "ping" })}>🔔 أين أنت؟</button>
+                      <button className="text-xs rounded-full bg-white/10 px-2 py-1" onClick={() => { const t = prompt("رسالة تُقرأ بصوت على " + dev.name + ":"); if (t) hub.sendTo(dev.id, { type: "say", text: t }); }}>💬 رسالة</button>
+                    </>}
+                    {it && <button className="text-xs rounded-full bg-white/10 px-2 py-1 opacity-70" onClick={() => { const r = { ...(st.resume || {}) }; delete r[it.id]; hub.op({ op: "set", key: "resume", value: r }); }}>✕</button>}
+                  </div>
+                </div>
               </div>
             ))}
           </div>
         ) : <p className="text-white/40">ما تشاهده في مدار أو السيارة أو التلفاز يظهر هنا لتكمله في أي مكان.</p>}
       </section>
+
+      {/* the week, car vs home */}
+      {week.some(d => d.car + d.room > 0) && (
+        <section className={card}>
+          <h2 className="font-black mb-3">📊 أسبوعك: السيارة والبيت (دقائق)</h2>
+          <div className="flex items-end gap-2 h-32">
+            {week.map(d => (
+              <div key={d.day} className="flex-1 flex flex-col items-center gap-1">
+                <div className="w-full flex flex-col justify-end h-24">
+                  <div className="bg-sky-500 rounded-t" style={{ height: (d.room / weekMax * 100) + "%" }} title={"البيت " + Math.round(d.room)} />
+                  <div className="bg-amber-500" style={{ height: (d.car / weekMax * 100) + "%" }} title={"السيارة " + Math.round(d.car)} />
+                </div>
+                <span className="text-[10px] text-white/50">{d.label}</span>
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-white/50 mt-2"><span className="text-amber-400">■</span> السيارة · <span className="text-sky-400">■</span> البيت</p>
+        </section>
+      )}
 
       {(st.inbox || []).length > 0 && (
         <section className={card}>
