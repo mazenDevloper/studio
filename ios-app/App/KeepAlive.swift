@@ -27,9 +27,19 @@ final class KeepAlive {
         UserDefaults.standard.object(forKey: "keepAlive") as? Bool ?? true
     }
 
-    /// the app went behind: keep it running when an island needs it
+    /// keep running behind other apps: always when «البقاء في الخلفية» is on (the island widget's switch), else
+    /// only while an island needs it
+    var wanted: Bool { enabled && (DCAlive.wanted || Island.shared.needsKeepAlive) }
+
+    /// the widget switch / the 4 pm–2 am window changed: start or stop now (also while in the background)
+    func apply() {
+        if UIApplication.shared.applicationState == .active { return }
+        if wanted { if player == nil { enterBackground() } } else { stopIfIdle() }
+    }
+
+    /// the app went behind: keep it running when wanted
     func enterBackground() {
-        guard enabled, !pageMedia, Island.shared.needsKeepAlive else { return }
+        guard wanted, !pageMedia else { return }
         let s = AVAudioSession.sharedInstance()
         try? s.setCategory(.playback, mode: .default, options: [.mixWithOthers])
         try? s.setActive(true)
@@ -52,7 +62,7 @@ final class KeepAlive {
 
     /// nothing left to show (islands hidden / off): let iOS suspend the app
     func stopIfIdle() {
-        guard player != nil, !Island.shared.needsKeepAlive, UIApplication.shared.applicationState != .active else { return }
+        guard player != nil, !wanted, UIApplication.shared.applicationState != .active else { return }
         player?.stop()
         player = nil
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)

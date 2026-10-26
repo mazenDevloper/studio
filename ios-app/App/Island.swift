@@ -87,7 +87,14 @@ final class Island {
     }
 
     /// every 5 s while the app runs (open, or in the background playing media)
+    private var lastWidgetReload = Date.distantPast
     private func tick() {
+        // «حسب الوقت»: the window opened / closed - start or let go of the background sound
+        KeepAlive.shared.apply()
+        // while the app runs (in front, or kept alive behind), the widgets follow live scores every minute
+        if matches.contains(where: { ($0["status"] as? String) == "live" }), Date().timeIntervalSince(lastWidgetReload) > 60 {
+            lastWidgetReload = Date(); WidgetCenter.shared.reloadAllTimelines()
+        }
         updatePrayerActivity()
         if matchesOn { openSocket() }
         if matchesOn && !socketLive && pollDue() { poll(force: false) }

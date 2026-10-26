@@ -1,6 +1,7 @@
 import AVFoundation
 import BackgroundTasks
 import UIKit
+import WidgetKit
 import UserNotifications
 
 @main
@@ -13,6 +14,10 @@ final class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationC
         try? AVAudioSession.sharedInstance().setActive(true)
         UserDefaults.standard.register(defaults: ["prayerIsland": true, "matchesIsland": true])
         IslandHook.start = { await Island.shared.startFromButton() }
+        IslandHook.aliveChanged = {
+            KeepAlive.shared.apply()
+            if #available(iOS 14.0, *) { WidgetCenter.shared.reloadAllTimelines() }
+        }
         UNUserNotificationCenter.current().delegate = self
         Island.shared.registerBackgroundRefresh()
         Island.shared.downloadFonts()

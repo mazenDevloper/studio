@@ -43,16 +43,44 @@ struct StartIslandView: View {
                     }
                 }
             default:
-                VStack(spacing: 8) {
-                    Image(systemName: "sportscourt.fill").font(.system(size: 38, weight: .bold)).foregroundStyle(.green)
-                    Text("ابدأ الجزيرة").font(.system(size: 16, weight: .heavy)).foregroundColor(.white)
-                    Text("أقرب مباراة لفرقك").font(.system(size: 11, weight: .semibold)).foregroundColor(.white.opacity(0.6))
+                VStack(spacing: 6) {
+                    Image(systemName: "sportscourt.fill").font(.system(size: 30, weight: .bold)).foregroundStyle(.green)
+                    Text("ابدأ الجزيرة").font(.system(size: 15, weight: .heavy)).foregroundColor(.white)
+                    Text("أقرب مباراة لفرقك").font(.system(size: 10, weight: .semibold)).foregroundColor(.white.opacity(0.6))
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
         .buttonStyle(.plain)
+        .overlay(alignment: .bottom) {
+            // «البقاء في الخلفية»: the only switch for it (on by default)
+            if family == .systemSmall {
+                Button(intent: ToggleAliveIntent()) {
+                    HStack(spacing: 5) {
+                        Circle().fill(DCAlive.on ? Color.green : Color.gray).frame(width: 8, height: 8)
+                        Text(DCAlive.on ? "يعمل في الخلفية" : "الخلفية متوقفة").font(.system(size: 11, weight: .bold)).foregroundColor(.white)
+                    }
+                    .padding(.horizontal, 10).padding(.vertical, 5)
+                    .background(Capsule().fill(Color.white.opacity(0.14)))
+                }
+                .buttonStyle(.plain)
+            }
+        }
         .containerBackground(for: .widget) { Color.black }
+    }
+}
+
+/// «البقاء في الخلفية» in Control Center / Lock Screen (iOS 18+): the same switch as on the island widget.
+@available(iOS 18.0, *)
+struct AliveControl: ControlWidget {
+    var body: some ControlWidgetConfiguration {
+        StaticControlConfiguration(kind: "DriveCastAliveControl") {
+            ControlWidgetButton(action: ToggleAliveIntent()) {
+                Label(DCAlive.on ? "يعمل في الخلفية" : "الخلفية متوقفة", systemImage: DCAlive.on ? "bolt.horizontal.circle.fill" : "bolt.horizontal.circle")
+            }
+        }
+        .displayName("البقاء في الخلفية")
+        .description("الجزيرة والودجت تتحدث لحظياً")
     }
 }
 
