@@ -7,6 +7,8 @@ import { MATCHES_LIMIT } from "@/lib/live-matches";
 import { prayerDayFor, localYmd } from "@/lib/prayer-day";
 import { nativeIsland } from "@/lib/native-app";
 
+const IQ_DEFAULT: Record<string, number> = { fajr: 25, dhuhr: 20, asr: 20, maghrib: 10, isha: 20 };
+
 const tToM = (t: string) => { if (!t) return 0; const [h, m] = t.split(":").map(Number); return h * 60 + m; };
 
 /** Today's and tomorrow's reminder start times (set time, or around a prayer), not those done today. */
@@ -22,7 +24,7 @@ function reminderTimes(reminders: any[] | undefined, prayerTimes: any[], prayerS
       let mins = -1;
       if (r.startType === "manual" && r.manualStartTime) mins = tToM(r.manualStartTime);
       else if (row && r.startReference && row[r.startReference]) {
-        mins = tToM(row[r.startReference]) + (r.startType === "iqamah" ? (prayerSettings || []).find(s => s.id === r.startReference)?.iqamahDuration || 0 : 0);
+        mins = tToM(row[r.startReference]) + (r.startType === "iqamah" ? (prayerSettings || []).find(s => s.id === r.startReference)?.iqamahDuration ?? IQ_DEFAULT[r.startReference] ?? 0 : 0);
         mins += r.startOffset || 0;
       }
       if (mins >= 0) out.push({ title: r.label, at: d.getTime() + mins * 60_000, kind: "reminder" });
@@ -72,7 +74,9 @@ export function NativeIslandBridge() {
         if (!ref) continue;
         const azanAt = d.getTime() + (tToM(ref) + (s.id === "duha" ? 15 : 0) + s.offsetMinutes) * 60_000;
         if (s.showCountdown !== false) countdowns.push({ title: `${s.name}`, at: azanAt, kind: "azan" });
-        if (s.iqamahDuration > 0) countdowns.push({ title: `إقامة ${s.name}`, at: azanAt + s.iqamahDuration * 60_000, kind: "iqamah" });
+        // older saved settings may lack the iqamah minutes: use the usual ones then (the island must count to it)
+        const iq = s.iqamahDuration ?? IQ_DEFAULT[s.id] ?? 0;
+        if (iq > 0) countdowns.push({ title: `إقامة ${s.name}`, at: azanAt + iq * 60_000, kind: "iqamah" });
       }
     }
     return JSON.stringify({

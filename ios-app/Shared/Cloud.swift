@@ -151,7 +151,7 @@ enum Cloud {
                 let at = day.addingTimeInterval(TimeInterval((mins + (id == "duha" ? 15 : 0) + offset) * 60))
                 let name = p["name"] as? String ?? id
                 if (p["showCountdown"] as? Bool) ?? true { out.append(Event(title: name, at: at, kind: "azan")) }
-                let iq = (p["iqamahDuration"] as? NSNumber)?.intValue ?? 0
+                let iq = (p["iqamahDuration"] as? NSNumber)?.intValue ?? (["fajr": 25, "dhuhr": 20, "asr": 20, "maghrib": 10, "isha": 20][(p["id"] as? String) ?? ""] ?? 0)
                 if iq > 0 { out.append(Event(title: "إقامة " + name, at: at.addingTimeInterval(TimeInterval(iq * 60)), kind: "iqamah")) }
             }
         }

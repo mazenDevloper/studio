@@ -928,12 +928,16 @@ public class IslandService extends Service {
         }
     }
 
+    /** the usual iqamah minutes, for older saved settings without them */
+    private static int iqDefault(String id) {
+        switch (id) { case "fajr": return 25; case "dhuhr": case "asr": case "isha": return 20; case "maghrib": return 10; default: return 0; }
+    }
     private static int iqamah(JSONArray settings, String id) {
         for (int i = 0; settings != null && i < settings.length(); i++) {
             JSONObject s = settings.optJSONObject(i);
-            if (s != null && id.equals(s.optString("id"))) return s.optInt("iqamahDuration");
+            if (s != null && id.equals(s.optString("id"))) return s.has("iqamahDuration") ? s.optInt("iqamahDuration") : iqDefault(id);
         }
-        return 0;
+        return iqDefault(id);
     }
 
     private static long distance(IslandArt.Item it, long now) {

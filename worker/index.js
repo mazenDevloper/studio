@@ -117,7 +117,8 @@ async function events(env) {
       const ref = s.id === 'duha' ? row.sunrise : row[s.id]; if (!ref) continue;
       const azan = base + (tToM(ref) + (s.id === 'duha' ? 15 : 0) + (s.offsetMinutes || 0)) * 6e4;
       if (s.showCountdown !== false) out.push({ title: s.name, at: azan, kind: 'azan' });
-      if (s.iqamahDuration > 0) out.push({ title: 'إقامة ' + s.name, at: azan + s.iqamahDuration * 6e4, kind: 'iqamah' });
+      const iq = s.iqamahDuration ?? ({ fajr: 25, dhuhr: 20, asr: 20, maghrib: 10, isha: 20 })[s.id] ?? 0;
+      if (iq > 0) out.push({ title: 'إقامة ' + s.name, at: azan + iq * 6e4, kind: 'iqamah' });
     }
     for (const r of master.reminders || []) {
       if (!r || !r.label) continue;
