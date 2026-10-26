@@ -125,7 +125,7 @@ export function HubBridge() {
   }, []);
 
   // pills disappear on their own: «تابع» after 2 minutes, incoming notices after 30 s
-  useEffect(() => { if (!offer) return; const t = setTimeout(() => setOffer(null), 120000); return () => clearTimeout(t); }, [offer]);
+  useEffect(() => { if (!offer) return; const t = setTimeout(() => setOffer(null), 7000); return () => clearTimeout(t); }, [offer]);
   useEffect(() => { if (!incoming) return; const t = setTimeout(() => setIncoming(null), incoming.item.id === "t" ? 15000 : 60000); return () => clearTimeout(t); }, [incoming]);
 
   const now = Date.now();

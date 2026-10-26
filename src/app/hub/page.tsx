@@ -43,7 +43,9 @@ export default function HubPage() {
     const live = hub.devices.find(d => d.id === id), it = lastBy.get(id);
     const dev = live || (it?.from as any) || { id, name: id, kind: "phone", app: "drivecast" };
     return { dev, it, online: !!live, playing: !!it && Date.now() - (it.at || 0) < 45000 };
-  }).filter(c => c.it || c.online).sort((a, b) => (+b.online - +a.online) || ((b.it?.at || 0) - (a.it?.at || 0)));
+  }).filter(c => (c.it || c.online) && c.dev.app !== "madar" && (c.dev.kind === "tv" || c.dev.kind === "car"))
+    .sort((a, b) => (a.dev.kind === "tv" ? 0 : 1) - (b.dev.kind === "tv" ? 0 : 1) || ((b.it?.at || 0) - (a.it?.at || 0)))
+    .filter((c, i, l) => l.findIndex(x => x.dev.kind === c.dev.kind) === i);   // one TV, then one car
   const icon = (d: any) => d.app === "madar" ? "🥽" : d.kind === "car" ? "🚗" : d.kind === "tv" ? "📺" : d.kind === "computer" ? "💻" : "📱";
   const ago = (t?: number) => { if (!t) return ""; const m = Math.round((Date.now() - t) / 60000); return m < 1 ? "الآن" : m < 60 ? "قبل " + m + " د" : m < 1440 ? "قبل " + Math.round(m / 60) + " س" : "قبل " + Math.round(m / 1440) + " يوم"; };
   const DAYS = ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
@@ -109,7 +111,7 @@ export default function HubPage() {
           </div>
         </div>
         {devCards.length ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {devCards.map(({ dev, it, online, playing }) => (
               <DeviceCard key={dev.id} dev={dev} it={it} online={online} playing={playing} onOpen={() => it && openHubItem(it)} actions={<>
                 {it && <button className={act + " !bg-rose-600 hover:!bg-rose-500"} onClick={() => openHubItem(it)}>▶ أكمل هنا</button>}
