@@ -36,6 +36,7 @@ export default function HubPage() {
   const toMadar = (msg: any) => { if (!madar.length) return alert("مدار غير متصل الآن"); madar.forEach(d => hub.sendTo(d.id, msg)); };
   const Thumb = ({ it }: { it: HubItem }) => it.thumb ? <img src={it.thumb} alt="" className="w-full aspect-video object-cover rounded-2xl" /> : <div className="w-full aspect-video rounded-2xl bg-black/40 grid place-items-center text-3xl">▶</div>;
   // one video per device: the latest thing each place played (online devices first, even with nothing yet)
+  const rank = (d: any) => d.app === "madar" ? 2 : d.kind === "car" ? 0 : d.kind === "tv" ? 1 : 3;
   const lastBy = new Map<string, HubItem>();
   for (const it of resume) { const id = it.from?.id; if (id && !lastBy.has(id)) lastBy.set(id, it); }
   const devIds = [...new Set([...hub.devices.map(d => d.id), ...lastBy.keys()])];
@@ -43,9 +44,9 @@ export default function HubPage() {
     const live = hub.devices.find(d => d.id === id), it = lastBy.get(id);
     const dev = live || (it?.from as any) || { id, name: id, kind: "phone", app: "drivecast" };
     return { dev, it, online: !!live, playing: !!it && Date.now() - (it.at || 0) < 45000 };
-  }).filter(c => (c.it || c.online) && c.dev.app !== "madar" && (c.dev.kind === "tv" || c.dev.kind === "car"))
-    .sort((a, b) => (a.dev.kind === "tv" ? 0 : 1) - (b.dev.kind === "tv" ? 0 : 1) || ((b.it?.at || 0) - (a.it?.at || 0)))
-    .filter((c, i, l) => l.findIndex(x => x.dev.kind === c.dev.kind) === i);   // one TV, then one car
+  }).filter(c => c.it || c.online)
+    // the car first, then home (TV), then the headset, then the rest
+    .sort((a, b) => rank(a.dev) - rank(b.dev) || (+b.online - +a.online) || ((b.it?.at || 0) - (a.it?.at || 0)));
   const icon = (d: any) => d.app === "madar" ? "🥽" : d.kind === "car" ? "🚗" : d.kind === "tv" ? "📺" : d.kind === "computer" ? "💻" : "📱";
   const ago = (t?: number) => { if (!t) return ""; const m = Math.round((Date.now() - t) / 60000); return m < 1 ? "الآن" : m < 60 ? "قبل " + m + " د" : m < 1440 ? "قبل " + Math.round(m / 60) + " س" : "قبل " + Math.round(m / 1440) + " يوم"; };
   const DAYS = ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
@@ -113,7 +114,7 @@ export default function HubPage() {
         {devCards.length ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {devCards.map(({ dev, it, online, playing }) => (
-              <DeviceCard key={dev.id} dev={dev} it={it} online={online} playing={playing} onOpen={() => it && openHubItem(it)} actions={<>
+              <DeviceCard key={dev.id} dev={dev} it={it} online={online} playing={playing} brand={(st as any).profiles?.[dev.id]?.brand} onBrand={(b: string) => { const all = { ...((st as any).profiles || {}) }; all[dev.id] = { ...(all[dev.id] || {}), brand: b }; (st as any).profiles = all; hub.op({ op: "set", key: "profiles", value: all }); force(x => x + 1); }} onOpen={() => it && openHubItem(it)} actions={<>
                 {it && <button className={act + " !bg-rose-600 hover:!bg-rose-500"} onClick={() => openHubItem(it)}>▶ أكمل هنا</button>}
                 {it && madar.length > 0 && dev.app !== "madar" && <button className={act + " !bg-violet-600"} onClick={() => toMadar({ type: "open", item: it, now: true })}>🥽 في مدار</button>}
                 {online && dev.id !== me.id && <>

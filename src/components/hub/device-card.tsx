@@ -81,7 +81,16 @@ function Body({ kind, children }: { kind: DevKind; children: ReactNode }) {
   );
 }
 
-export function DeviceCard({ dev, it, online, playing, actions, onOpen }: { dev: any; it?: HubItem; online: boolean; playing: boolean; actions?: ReactNode; onOpen?: () => void }) {
+// the brand of each device (logos you chose), picked from a list on its card
+export const BRANDS: Record<string, { name: string; logo: string }> = {
+  lexus: { name: "Lexus", logo: "https://imgs.search.brave.com/KyBBrmlyi50yjbxozuwJ1QCJd7fXu3Wrg6Bw2LrlTNw/rs:fit:500:0:1:0/g:ce/aHR0cHM6Ly93YWxs/cGFwZXJzLmNvbS9p/bWFnZXMvdGh1bWJu/YWlsL3NsZWVrLWdy/ZXktbGV4dXMtbG9n/by00a3FwMnNyempx/eXhiMDA5LmpwZw" },
+  hisense: { name: "Hisense", logo: "https://imgs.search.brave.com/MZy6CoXY4z_ALjQVKw5BaCaU2-cxozp4yam-9acwlic/rs:fit:500:0:1:0/g:ce/aHR0cHM6Ly9sb2dv/ZGl4LmNvbS9sb2dv/Lzg3MTA0Ny5qcGc" },
+  apple: { name: "iPhone", logo: "https://imgs.search.brave.com/5eu0HDdbkuz1eNjSGZLFXuJcWr2rq4YbqqzIHg88z7Y/rs:fit:500:0:1:0/g:ce/aHR0cHM6Ly96b25h/bG9nby5jb20vYXNz/ZXRzL2FwcGxlLWxv/Z28tcG5nLXN2Zy53/ZWJwP2Fzc2V0PTI2/NDE" },
+  samsung: { name: "Samsung", logo: "https://imgs.search.brave.com/dnb11dGVJ1GzkjOIUGTvxyggq7pEQVGyWqlPgwf0qxg/rs:fit:0:180:1:0/g:ce/aHR0cHM6Ly91cGxv/YWQud2lraW1lZGlh/Lm9yZy93aWtpcGVk/aWEvY29tbW9ucy85/LzljL1NhbXN1bmdf/bG9nb193b3JkbWFy/ay5zdmc" },
+};
+const DEFAULT_BRAND: Partial<Record<DevKind, string>> = { car: "lexus", tv: "hisense", phone: "apple", tablet: "samsung" };
+
+export function DeviceCard({ dev, it, online, playing, actions, onOpen, brand, onBrand }: { dev: any; it?: HubItem; online: boolean; playing: boolean; actions?: ReactNode; onOpen?: () => void; brand?: string; onBrand?: (b: string) => void }) {
   const kind = devKind(dev);
   const round = kind === "madar" ? "rounded-none" : kind === "car" ? "rounded-2xl" : "rounded-xl";
   return (
@@ -90,11 +99,19 @@ export function DeviceCard({ dev, it, online, playing, actions, onOpen }: { dev:
         <Body kind={kind}><Screen it={it} kind={kind} playing={playing} round={round} /></Body>
       </button>
       <div className="mt-5 flex items-center gap-2">
+        {(() => { const b = BRANDS[brand ?? DEFAULT_BRAND[kind] ?? ""]; return b ? <img src={b.logo} alt={b.name} className="h-8 w-8 rounded-xl object-contain bg-white/90 p-1 shadow" /> : null; })()}
         <span className="h-2.5 w-2.5 rounded-full" style={{ background: online ? TINT[kind] : "#52525b", boxShadow: online ? `0 0 10px ${TINT[kind]}` : "none" }} />
         <span className="font-black truncate">{dev.name}</span>
         <span className="text-[11px] text-white/45">{NAME[kind]} · {playing ? "يعرض الآن" : online ? "متصل" : "غير متصل"}</span>
       </div>
       {actions && <div className="mt-3 flex flex-wrap gap-1.5">{actions}</div>}
+      {onBrand && (
+        <select value={brand ?? DEFAULT_BRAND[kind] ?? ""} onChange={e => onBrand(e.target.value)}
+          className="mt-3 w-full appearance-none rounded-2xl bg-white/[0.06] border border-white/10 px-4 py-2.5 text-sm font-bold text-white/80 backdrop-blur-xl focus:outline-none focus:ring-2 focus:ring-white/20">
+          {Object.entries(BRANDS).map(([k, b]) => <option key={k} value={k} className="bg-zinc-900">{b.name}</option>)}
+          <option value="" className="bg-zinc-900">أخرى (بلا شعار)</option>
+        </select>
+      )}
     </div>
   );
 }
