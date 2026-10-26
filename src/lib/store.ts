@@ -638,7 +638,12 @@ export const useMediaStore = create<MediaState>()(
       }),
       setKeyMapping: (ctx, act, key) => set((s) => { const m = { ...s.keyMappings }; if (!m[ctx]) m[ctx] = {}; let k = Array.isArray(m[ctx][act]) ? [...m[ctx][act]] : []; if (k.includes(key)) return s; k.push(key); m[ctx][act] = k.slice(-3); return { keyMappings: m }; }),
       removeSpecificKeyMapping: (ctx, act, key) => set((s) => { const m = { ...s.keyMappings }; if (m[ctx] && m[ctx][act]) { m[ctx][act] = m[ctx][act].filter(v => v !== key); return { keyMappings: m }; } return s; }),
-      setActiveVideo: (v, ctx) => set({ playlist: ctx || (v ? [v] : []), playlistIndex: ctx ? ctx.findIndex(i => i.id === v?.id) : 0, activeVideo: v, lastPlayedVideo: v || get().lastPlayedVideo, activeIptv: null, activeAudio: null, isPlaying: !!v, isMinimized: false, isFullScreen: !!v, isPlayerPlaylistOpen: false }),
+      setActiveVideo: (v, ctx) => {
+        set({ playlist: ctx || (v ? [v] : []), playlistIndex: ctx ? ctx.findIndex(i => i.id === v?.id) : 0, activeVideo: v, lastPlayedVideo: v || get().lastPlayedVideo, activeIptv: null, activeAudio: null, isPlaying: !!v, isMinimized: false, isFullScreen: !!v, isPlayerPlaylistOpen: false });
+        // opened on its own (continue watching, a link, another device): its channel becomes the list, so «next»
+        // and the end of the video go on to the channel's next video
+        if (v && (!ctx || ctx.length <= 1)) loadChannelList(v);
+      },
       setActiveIptv: (ch, ctx, keepWindow) => set((s) => ({ iptvPlaylist: ctx || (ch ? [ch] : []), iptvPlaylistIndex: ctx ? ctx.findIndex(c => c.stream_id === ch?.stream_id) : 0, activeIptv: ch, activeVideo: null, activeAudio: null, isPlaying: !!ch, isMinimized: false, isFullScreen: keepWindow ? s.isFullScreen : !!ch, isPlayerPlaylistOpen: keepWindow ? s.isPlayerPlaylistOpen : false })),
       setActiveAudio: (audio) => set({ activeAudio: audio, activeVideo: null, activeIptv: null, isPlaying: !!audio, isFullScreen: false }),
       setActiveQuranUrl: (v) => set({ activeQuranUrl: v }),
@@ -674,6 +679,26 @@ export const useMediaStore = create<MediaState>()(
     }
   )
 );
+
+// the channel of a video opened alone → the playlist (the video after it in the channel = next)
+async function loadChannelList(v: YouTubeVideo) {
+  try {
+    const yt = await import("@/lib/youtube");
+    let ch = (v as any).channelId as string | undefined;
+    if (!ch) {
+      // no channel on the item: ask YouTube's page data through the search (the video's own id)
+      const r = await yt.searchYouTubeVideos(v.id, 5).catch(() => []);
+      ch = r.find(x => x.id === v.id)?.channelId || r[0]?.channelId;
+    }
+    if (!ch) return;
+    const list = await yt.fetchChannelVideos(ch, 30);
+    const s = useMediaStore.getState();
+    if (!list.length || s.activeVideo?.id !== v.id || s.playlist.length > 1) return;
+    const i = list.findIndex(x => x.id === v.id);
+    const pl = i >= 0 ? list : [v, ...list];
+    useMediaStore.setState({ playlist: pl, playlistIndex: i >= 0 ? i : 0 });
+  } catch {}
+}
 
 // Remember the master-bin fields as restored from the local cache, so a save that has to wait for the cloud copy
 // can tell which fields were really changed on this device.

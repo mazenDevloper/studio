@@ -99,7 +99,7 @@ export function DeviceCard({ dev, it, online, playing, actions, onOpen, brand, o
         <Body kind={kind}><Screen it={it} kind={kind} playing={playing} round={round} /></Body>
       </button>
       <div className="mt-5 flex items-center gap-2">
-        {(() => { const b = BRANDS[brand ?? DEFAULT_BRAND[kind] ?? ""]; return b ? <img src={b.logo} alt={b.name} className="h-8 w-8 rounded-xl object-contain bg-white/90 p-1 shadow" /> : null; })()}
+        {(() => { const b = BRANDS[brand ?? DEFAULT_BRAND[kind] ?? ""]; return b ? <img src={b.logo} alt={b.name} className="h-16 w-auto max-w-[11rem] rounded-xl object-contain bg-white/90 p-1.5 shadow" /> : null; })()}
         <span className="h-2.5 w-2.5 rounded-full" style={{ background: online ? TINT[kind] : "#52525b", boxShadow: online ? `0 0 10px ${TINT[kind]}` : "none" }} />
         <span className="font-black truncate">{dev.name}</span>
         <span className="text-[11px] text-white/45">{NAME[kind]} · {playing ? "يعرض الآن" : online ? "متصل" : "غير متصل"}</span>

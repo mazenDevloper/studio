@@ -131,6 +131,29 @@ export function GlobalVideoPlayer() {
 
   useEffect(() => { setStreamError(""); }, [activeIptv?.stream_id, activeIptv?.url, iframeKey]);
 
+  // remote / keyboard: playlist ⇅ toolbar. Down from the list goes to the toolbar (the list button), up from the
+  // toolbar goes back into the list (the item playing now). Opening the list puts the focus on that item.
+  const focusList = () => {
+    const i = activeIptv ? iptvPlaylistIndex : playlistIndex;
+    const el = (document.querySelector(`[data-nav-id="${activeIptv ? "player-iptv-list-" : "playlist-item-"}${Math.max(0, i)}"]`) || document.querySelector("[data-player-list] .focusable")) as HTMLElement | null;
+    el?.focus(); el?.scrollIntoView?.({ block: "nearest", inline: "center" });
+  };
+  useEffect(() => { if (isPlayerPlaylistOpen) setTimeout(focusList, 350); }, [isPlayerPlaylistOpen]);
+  useEffect(() => {
+    if (!isPlayerPlaylistOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      const a = document.activeElement as HTMLElement | null; if (!a) return;
+      if (e.key === "ArrowDown" && a.closest("[data-player-list]")) {
+        e.preventDefault(); e.stopImmediatePropagation();
+        (document.querySelector('[data-nav-id="player-playlist-btn"]') as HTMLElement)?.focus();
+      } else if (e.key === "ArrowUp" && a.closest("[data-player-bar]")) {
+        e.preventDefault(); e.stopImmediatePropagation(); focusList();
+      }
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [isPlayerPlaylistOpen, playlistIndex, iptvPlaylistIndex, activeIptv?.stream_id]);
+
   const isIptvFav = activeIptv ? favoriteIptvChannels.some(c => c.stream_id === activeIptv.stream_id) : false;
   const isStream = isStreamUrl(activeIptv?.url);
   const hasIptvList = !!activeIptv && iptvPlaylist.length > 1;
@@ -230,7 +253,7 @@ export function GlobalVideoPlayer() {
            </div>
 
            {isPlayerPlaylistOpen && activeIptv && (
-             <div className={cn("absolute top-0 bottom-0 w-[min(360px,80%)] bg-black/85 backdrop-blur-3xl border-white/10 animate-in fade-in duration-300 z-[200] flex flex-col shadow-2xl", dockSideEdgeClass)} dir="rtl" data-nav-zone="sidebar">
+             <div data-player-list className={cn("absolute top-0 bottom-0 w-[min(360px,80%)] bg-black/85 backdrop-blur-3xl border-white/10 animate-in fade-in duration-300 z-[200] flex flex-col shadow-2xl", dockSideEdgeClass)} dir="rtl" data-nav-zone="sidebar">
                <div className="px-5 py-3 flex items-center justify-between border-b border-white/5">
                  <h3 className="text-sm font-black text-white">قنوات القائمة <span className="text-white/40 text-[10px] mr-2">{iptvPlaylist.length}</span></h3>
                  <button onClick={() => setIsPlayerPlaylistOpen(false)} data-nav-id="player-iptv-list-close" className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/40 hover:text-white focusable"><X className="w-4 h-4" /></button>
@@ -256,7 +279,7 @@ export function GlobalVideoPlayer() {
            )}
 
            {isPlayerPlaylistOpen && !activeIptv && (
-             <div className="absolute bottom-32 left-8 right-8 h-[240px] bg-black/80 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] animate-in slide-in-from-bottom-full duration-500 z-[200] flex flex-col shadow-2xl" dir="rtl">
+             <div data-player-list className="absolute bottom-32 left-8 right-8 h-[240px] bg-black/80 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] animate-in slide-in-from-bottom-full duration-500 z-[200] flex flex-col shadow-2xl" dir="rtl">
                <div className="px-8 py-3 flex items-center justify-between border-b border-white/5">
                  <div className="flex items-center gap-4">
                     <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center shadow-glow">
@@ -321,7 +344,7 @@ export function GlobalVideoPlayer() {
       {!isMinimized && (
         <div className="fixed z-[100000] flex items-center transition-all duration-500 left-1/2 -translate-x-1/2 bottom-0 max-[968px]:bottom-[80px] scale-[0.9] max-[968px]:scale-[0.85] origin-bottom pb-6 max-[968px]:pb-3 max-w-[100vw]">
           {/* phones: the bigger buttons may not all fit - the bar stays inside the screen and scrolls sideways */}
-          <div className="flex items-center gap-2 bg-black/40 backdrop-blur-3xl p-1.5 rounded-full border border-white/10 shadow-[0_0_100px_rgba(0,0,0,0.7)] transition-all [&_*]:shrink-0 max-[968px]:max-w-[calc((100vw-1rem)/0.85)] max-[968px]:overflow-x-auto max-[968px]:overflow-y-hidden no-scrollbar">
+          <div data-player-bar className="flex items-center gap-2 bg-black/40 backdrop-blur-3xl p-1.5 rounded-full border border-white/10 shadow-[0_0_100px_rgba(0,0,0,0.7)] transition-all [&_*]:shrink-0 max-[968px]:max-w-[calc((100vw-1rem)/0.85)] max-[968px]:overflow-x-auto max-[968px]:overflow-y-hidden no-scrollbar">
             <div className="relative group">
               <button onClick={handleClose} data-nav-id="player-close-btn" className={cn(ctrlBtnClass, "bg-red-600/60 text-white border-2 border-red-400/40")}>
                 <X className="w-6 h-6" />
@@ -381,7 +404,7 @@ export function GlobalVideoPlayer() {
                 )}
                 
                 <div className="relative group">
-                  <button onClick={() => setIsPlayerPlaylistOpen(!isPlayerPlaylistOpen)} className={cn(ctrlBtnClass, isPlayerPlaylistOpen ? "bg-indigo-600 text-white" : "bg-white/15 text-white")}>
+                  <button onClick={() => setIsPlayerPlaylistOpen(!isPlayerPlaylistOpen)} data-nav-id="player-playlist-btn" className={cn(ctrlBtnClass, isPlayerPlaylistOpen ? "bg-indigo-600 text-white" : "bg-white/15 text-white")}>
                     <LayoutList className="w-6 h-6" />
                   </button>
                   <ShortcutBadge action="player_playlist" className="-bottom-4 left-1/2 -translate-x-1/2 scale-75" />
