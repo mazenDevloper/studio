@@ -9,6 +9,8 @@ import { useEffect, useState } from "react";
 import { hub, HUB, HubItem, KIND_AR, fmtTime, myDevice, setMyDevice } from "@/lib/hub";
 import { openHubItem, listenArticle, speakAll, sendPlayingTo } from "@/components/hub/hub-bridge";
 import { useMediaStore } from "@/lib/store";
+import { DeviceCard, act } from "@/components/hub/device-card";
+import { saveProfile, applyProfile, profileOf } from "@/lib/profiles";
 
 const card = "rounded-3xl bg-white/5 border border-white/10 p-4";
 const chip = "rounded-full px-4 py-2 text-sm font-bold transition-colors";
@@ -17,6 +19,7 @@ export default function HubPage() {
   const [, force] = useState(0);
   const [sug, setSug] = useState<any>(null);
   const [stats, setStats] = useState<any>(null);
+  const [today, setToday] = useState<any[]>([]);
   const me = myDevice();
   useEffect(() => {
     hub.start();
@@ -24,7 +27,9 @@ export default function HubPage() {
     const place = me.kind === "car" ? "car" : "room";
     fetch(HUB + "/suggest?place=" + place).then(r => r.json()).then(setSug).catch(() => {});
     fetch(HUB + "/state").then(r => r.json()).then(d => setStats(d.state?.stats || null)).catch(() => {});
-    return () => { off(); };
+    const loadToday = () => fetch(HUB + "/today").then(r => r.json()).then(d => setToday(d.items || [])).catch(() => {});
+    loadToday(); const tt = setInterval(loadToday, 60000);
+    return () => { off(); clearInterval(tt); };
   }, []);
   const st = hub.state, madar = hub.madar(), others = hub.others();
   const resume = Object.values(st.resume || {}).sort((a, b) => (b.at || 0) - (a.at || 0));
@@ -62,7 +67,37 @@ export default function HubPage() {
             <button key={k} className={chip + (me.kind === k ? " bg-sky-500 text-black" : " bg-white/10")} onClick={() => { setMyDevice({ kind: k, name: "DriveCast · " + KIND_AR[k] }); force(x => x + 1); }}>{KIND_AR[k]}</button>
           ))}
         </div>
+        {/* this device's own settings (size, dock side, what happens at the end of a video, start page) */}
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+          <span className="text-white/60">ملف هذا الجهاز:</span>
+          <button className={chip + " bg-emerald-600"} onClick={() => { saveProfile(me.id); force(x => x + 1); }}>💾 احفظ إعداداته الحالية</button>
+          {profileOf(me.id) && <button className={chip + " bg-white/10"} onClick={() => applyProfile(me.id)}>↺ استرجعها</button>}
+          <select className="rounded-full bg-white/10 px-3 py-2" defaultValue={profileOf(me.id)?.start || ""} onChange={e => { saveProfile(me.id, { start: e.target.value }); force(x => x + 1); }}>
+            <option value="">يفتح على: آخر صفحة</option><option value="/car-dashboard">لوحة السيارة</option><option value="/">الرئيسية</option><option value="/hub">المركز</option><option value="/hihi2">المباريات</option>
+          </select>
+          {profileOf(me.id) && <span className="text-xs text-emerald-400">✓ يُطبَّق تلقائياً عند فتح DriveCast على هذا الجهاز</span>}
+        </div>
       </section>
+
+      {/* «اليوم»: matches of your teams, prayers, reminders and Madar's plan - the same list on every screen */}
+      {today.length > 0 && (
+        <section>
+          <h2 className="text-xl font-black mb-3">🗓 يومك</h2>
+          <div className="flex gap-3 overflow-x-auto pb-2 snap-x">
+            {today.map((x, i) => {
+              const t = new Date(x.at).toLocaleTimeString("ar-OM", { hour: "numeric", minute: "2-digit" });
+              const ic = ({ match: "⚽", azan: "🕌", iqamah: "🕋", reminder: "⏰", plan: "💪", timer: "⏱" } as any)[x.kind] || "•";
+              return (
+                <div key={i} className={"snap-start shrink-0 w-56 rounded-3xl p-4 border backdrop-blur-xl " + (x.live ? "bg-rose-600/20 border-rose-500/50" : "bg-white/[0.05] border-white/10")}>
+                  <div className="flex items-center justify-between text-xs text-white/60"><span>{ic} {x.live ? "مباشر" : t}</span>{x.logos?.length ? <span className="flex gap-1">{x.logos.slice(0, 2).map((l: string) => <img key={l} src={l} alt="" className="w-5 h-5 object-contain" />)}</span> : null}</div>
+                  <div className="mt-2 font-black leading-snug line-clamp-2">{x.title}</div>
+                  {x.sub && <div className="mt-1 text-xs text-white/60 truncate">{x.sub}</div>}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {/* every place: what it plays now (one video per device), and what you can do with it */}
       <section>
@@ -74,34 +109,22 @@ export default function HubPage() {
           </div>
         </div>
         {devCards.length ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
             {devCards.map(({ dev, it, online, playing }) => (
-              <div key={dev.id} className={card + " flex gap-3"}>
-                <button className="w-40 shrink-0 text-right" disabled={!it} onClick={() => it && openHubItem(it)}>
-                  {it ? <Thumb it={it} /> : <div className="w-full aspect-video rounded-2xl bg-black/40 grid place-items-center text-3xl">{icon(dev)}</div>}
-                  {it?.dur ? <div className="h-1 bg-white/20 rounded mt-1"><div className="h-1 bg-rose-500 rounded" style={{ width: Math.min(100, (it.t || 0) / it.dur * 100) + "%" }} /></div> : null}
-                </button>
-                <div className="min-w-0 flex-1 space-y-1">
-                  <div className="flex items-center gap-2"><span className="font-black truncate">{icon(dev)} {dev.name}</span>
-                    <span className={"text-[10px] rounded-full px-2 py-0.5 " + (playing ? "bg-rose-600" : online ? "bg-emerald-700" : "bg-white/10 text-white/50")}>{playing ? "● يعرض الآن" : online ? "متصل" : "غير متصل"}</span></div>
-                  {it ? <div className="text-sm truncate">{it.title || it.id}</div> : <div className="text-sm text-white/40">لم يشاهد شيئاً بعد</div>}
-                  {it && <div className="text-xs text-white/50">{fmtTime(it.t)}{it.dur ? " / " + fmtTime(it.dur) : ""} · {ago(it.at)}</div>}
-                  <div className="flex flex-wrap gap-1 pt-1">
-                    {it && <button className="text-xs rounded-full bg-rose-600 px-2 py-1" onClick={() => openHubItem(it)}>▶ أكمل هنا</button>}
-                    {it && madar.length > 0 && dev.app !== "madar" && <button className="text-xs rounded-full bg-violet-600 px-2 py-1" onClick={() => toMadar({ type: "open", item: it, now: true })}>🥽 في مدار</button>}
-                    {online && dev.id !== me.id && <>
-                      <button className="text-xs rounded-full bg-sky-600 px-2 py-1" onClick={() => { if (!sendPlayingTo(dev.id)) alert("لا شيء يعمل هنا الآن"); }}>📤 أرسل ما يعمل</button>
-                      <button className="text-xs rounded-full bg-sky-800 px-2 py-1" onClick={() => { if (sendPlayingTo(dev.id)) useMediaStore.getState().setIsPlaying(false); }}>⇄ انقل التشغيل</button>
-                      <button className="text-xs rounded-full bg-white/10 px-2 py-1" onClick={() => hub.sendTo(dev.id, { type: "control", action: "toggle" })}>⏯</button>
-                      <button className="text-xs rounded-full bg-white/10 px-2 py-1" onClick={() => hub.sendTo(dev.id, { type: "control", action: "next" })}>⏭</button>
-                      <button className="text-xs rounded-full bg-white/10 px-2 py-1" onClick={() => { const m = prompt("إيقاف بعد كم دقيقة؟", "30"); if (m) hub.sendTo(dev.id, { type: "sleep", minutes: +m }); }}>😴 مؤقت</button>
-                      <button className="text-xs rounded-full bg-white/10 px-2 py-1" onClick={() => hub.sendTo(dev.id, { type: "ping" })}>🔔 أين أنت؟</button>
-                      <button className="text-xs rounded-full bg-white/10 px-2 py-1" onClick={() => { const t = prompt("رسالة تُقرأ بصوت على " + dev.name + ":"); if (t) hub.sendTo(dev.id, { type: "say", text: t }); }}>💬 رسالة</button>
-                    </>}
-                    {it && <button className="text-xs rounded-full bg-white/10 px-2 py-1 opacity-70" onClick={() => { const r = { ...(st.resume || {}) }; delete r[it.id]; hub.op({ op: "set", key: "resume", value: r }); }}>✕</button>}
-                  </div>
-                </div>
-              </div>
+              <DeviceCard key={dev.id} dev={dev} it={it} online={online} playing={playing} onOpen={() => it && openHubItem(it)} actions={<>
+                {it && <button className={act + " !bg-rose-600 hover:!bg-rose-500"} onClick={() => openHubItem(it)}>▶ أكمل هنا</button>}
+                {it && madar.length > 0 && dev.app !== "madar" && <button className={act + " !bg-violet-600"} onClick={() => toMadar({ type: "open", item: it, now: true })}>🥽 في مدار</button>}
+                {online && dev.id !== me.id && <>
+                  <button className={act + " !bg-sky-600"} onClick={() => { if (!sendPlayingTo(dev.id)) alert("لا شيء يعمل هنا الآن"); }}>📤 أرسل</button>
+                  <button className={act} onClick={() => { if (sendPlayingTo(dev.id)) useMediaStore.getState().setIsPlaying(false); }}>⇄ انقل</button>
+                  <button className={act} onClick={() => hub.sendTo(dev.id, { type: "control", action: "toggle" })}>⏯</button>
+                  <button className={act} onClick={() => hub.sendTo(dev.id, { type: "control", action: "next" })}>⏭</button>
+                  <button className={act} onClick={() => { const m = prompt("إيقاف بعد كم دقيقة؟", "30"); if (m) hub.sendTo(dev.id, { type: "sleep", minutes: +m }); }}>😴</button>
+                  <button className={act} onClick={() => hub.sendTo(dev.id, { type: "ping" })}>🔔</button>
+                  <button className={act} onClick={() => { const t = prompt("رسالة تُقرأ بصوت على " + dev.name + ":"); if (t) hub.sendTo(dev.id, { type: "say", text: t }); }}>💬</button>
+                </>}
+                {it && <button className={act + " opacity-60"} onClick={() => { const r = { ...(st.resume || {}) }; delete r[it.id]; hub.op({ op: "set", key: "resume", value: r }); }}>✕</button>}
+              </>} />
             ))}
           </div>
         ) : <p className="text-white/40">ما تشاهده في مدار أو السيارة أو التلفاز يظهر هنا لتكمله في أي مكان.</p>}

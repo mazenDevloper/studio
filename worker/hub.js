@@ -20,7 +20,7 @@ import { DurableObject } from 'cloudflare:workers';
 import { nowData } from './index.js';
 
 const H = { 'content-type': 'application/json; charset=utf-8', 'access-control-allow-origin': '*' };
-const KEYS = ['resume', 'history', 'scenes', 'notes', 'body', 'workouts', 'plan', 'islands', 'articles', 'briefs', 'ai', 'stats', 'photos', 'inbox'];
+const KEYS = ['resume', 'history', 'scenes', 'notes', 'body', 'workouts', 'plan', 'islands', 'articles', 'briefs', 'ai', 'stats', 'photos', 'inbox', 'profiles'];
 const MASTER_BIN = '69c782cbb7ec241ddcb0b99a';
 const ytThumb = id => `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
 const clip = (s, n) => String(s ?? '').slice(0, n);

@@ -147,6 +147,24 @@ async function image(src, ctx) {
   return res;
 }
 
+// «اليوم» for every screen: your teams' matches, prayers / iqamahs, reminders and Madar's plan, one sorted list
+async function today(env) {
+  const [m, ev, st] = await Promise.all([matches(env, 27).catch(() => ({ matches: [] })), events(env).catch(() => ({ events: [] })),
+    env.HUB.get(env.HUB.idFromName('home')).fetch('https://hub/hub/state').then(r => r.json()).catch(() => ({}))]);
+  const now = Date.now(), endOfDay = Date.parse(new Date(now + 4 * 3.6e6).toISOString().slice(0, 10) + 'T23:59:59Z') - 4 * 3.6e6 + 2 * 3.6e6;
+  const items = [];
+  for (const x of m.matches || []) {
+    const at = (x.timestamp || 0) * 1000;
+    if (x.status !== 'live' && (at < now - 3 * 3.6e6 || at > endOfDay)) continue;
+    items.push({ kind: 'match', at, title: x.home.name + ' × ' + x.away.name, sub: x.status === 'live' ? `🔴 ${x.score.home ?? 0}-${x.score.away ?? 0} · ${x.minute || ''}` : x.status === 'finished' ? `انتهت ${x.score.home ?? 0}-${x.score.away ?? 0}` : (x.league?.name || ''), live: x.status === 'live', fav: !!x.favorite, logos: [x.home.logo, x.away.logo].filter(Boolean), id: x.id });
+  }
+  for (const e of ev.events || []) if (e.at <= endOfDay) items.push({ kind: e.kind, at: e.at, title: e.title });
+  const plan = st.state?.plan; if (plan?.today) items.push({ kind: 'plan', at: Math.max(now, plan.at || now), title: plan.today, sub: 'مدار' });
+  for (const i of st.state?.islands || []) if (i.at && i.at > now && i.at < endOfDay) items.push({ kind: 'timer', at: i.at, title: i.title, sub: i.sub || '' });
+  items.sort((a, b) => (b.live ? 1 : 0) - (a.live ? 1 : 0) || a.at - b.at);
+  return { at: now, items: items.slice(0, 30) };
+}
+
 // everything the screens show, in one answer (also sent over /live)
 export async function nowData(env, lang) {
   const [m, ev] = await Promise.all([matches(env, lang), events(env).catch(() => ({ events: [] }))]);
@@ -179,6 +197,7 @@ export default {
       for (const [path, fn] of [['/summarize', summarize], ['/translate', translate], ['/vision/ask', visionAsk]])
         if (u.pathname === path && req.method === 'POST') return new Response(JSON.stringify(await fn(req, env).catch(e => ({ ok: false, error: String(e && e.message || e) }))), { headers: H });
       // «المركز»: the shared home of Madar and DriveCast (one Durable Object)
+      if (u.pathname === '/hub/today') return await cached(req, ctx, 30, () => today(env));
       if (u.pathname === '/hub/library') return await cached(req, ctx, 120, () => hubLibrary(env));
       if (u.pathname.startsWith('/hub/')) return env.HUB.get(env.HUB.idFromName('home')).fetch(req);
       if (u.pathname === '/ask' && req.method === 'POST') return new Response(JSON.stringify(await ask(req, env)), { headers: H });

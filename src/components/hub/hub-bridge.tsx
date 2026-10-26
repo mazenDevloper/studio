@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import { useMediaStore } from "@/lib/store";
 import { getYoutubeTime } from "@/components/media/youtube-background-bridge";
 import { hub, HubItem, KIND_AR, fmtTime } from "@/lib/hub";
+import { applyProfile } from "@/lib/profiles";
 
 export function openHubItem(it: HubItem) {
   const s = useMediaStore.getState();
@@ -40,6 +41,13 @@ export async function listenArticle(url: string, title?: string) {
     const r = await (await fetch("https://studio.c-p.workers.dev/read?url=" + encodeURIComponent(url))).json();
     const parts = [title || r.title, ...(r.blocks || []).map((b: any) => b.text)].filter(Boolean);
     speakAll(parts);
+  } catch {}
+}
+// a short tone (goal = three rising notes)
+export function chime(n = 1) {
+  try {
+    const a = new AudioContext();
+    for (let i = 0; i < n; i++) { const o = a.createOscillator(), g = a.createGain(); o.frequency.value = 660 + i * 220; g.gain.setValueAtTime(0.0001, a.currentTime + i * 0.18); g.gain.exponentialRampToValueAtTime(0.25, a.currentTime + i * 0.18 + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + i * 0.18 + 0.16); o.connect(g).connect(a.destination); o.start(a.currentTime + i * 0.18); o.stop(a.currentTime + i * 0.18 + 0.18); }
   } catch {}
 }
 export function speakAll(parts: string[]) {
@@ -79,6 +87,8 @@ export function HubBridge() {
       force(x => x + 1);
       if (d.type === "hello" && !greeted.current) {
         greeted.current = true;
+        // this device's own profile (car / home / TV settings and start page)
+        try { applyProfile(hub.me.id, p => router.push(p)); } catch {}
         const r = Object.values(hub.state.resume || {}).filter(x => x.from?.id !== hub.me.id && Date.now() - (x.at || 0) < 12 * 3600e3).sort((a, b) => (b.at || 0) - (a.at || 0))[0];
         if (r) setOffer(r);
       }
@@ -90,6 +100,13 @@ export function HubBridge() {
           else if (m.action === "next") (s.activeIptv ? s.nextIptvChannel() : s.nextTrack());
           else if (m.action === "prev") (s.activeIptv ? s.prevIptvChannel() : s.prevTrack());
           else if (m.action === "back" && s.activeVideo) { const t = getYoutubeTime(s.activeVideo.id) || 0; s.updateVideoProgress(s.activeVideo.id, Math.max(0, t - 10)); }
+        }
+        // your teams' matches, the same moment on every screen: 15 min before, kick-off, each goal, final whistle
+        else if (m.type === "match") {
+          chime(m.kind === "goal" ? 3 : 1);
+          setIncoming({ item: { id: "t", kind: "web", title: m.title + (m.body ? " · " + m.body : "") }, from: "المباريات" });
+          const car = hub.me.kind === "car";
+          if (car || m.kind === "end" || m.kind === "goal") speakAll([m.kind === "end" ? m.title + ". " + (m.body || "") : m.title.replace(/^[^\p{L}]+/u, "")]);
         }
         else if (m.type === "ping") { try { const a = new AudioContext(), o = a.createOscillator(); o.frequency.value = 880; o.connect(a.destination); o.start(); o.stop(a.currentTime + 0.6); } catch {} setIncoming({ item: { id: "t", kind: "web", title: "🔔 " + who + " يبحث عن هذا الجهاز" }, from: who }); }
         else if (m.type === "say" && m.text) { speakAll([String(m.text)]); setIncoming({ item: { id: "t", kind: "web", title: "💬 " + String(m.text) }, from: who }); }

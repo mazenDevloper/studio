@@ -69,22 +69,35 @@ export async function watch(env, matches, goalsOf) {
   const goals = scored.length ? await goalsOf(scored, 27).catch(() => ({})) : {};
   for (const m of list) {
     const g = (m.score.home ?? 0) + (m.score.away ?? 0), p = prev[m.id];
-    next[m.id] = { g, st: m.status };
+    next[m.id] = { g, st: m.status, pre: p?.pre || false };
+    // 15 minutes before kick-off of your teams' matches (once)
+    const toKick = (m.timestamp || 0) * 1000 - Date.now();
+    if (m.status === 'upcoming' && m.favorite && toKick > 0 && toKick < 16 * 60e3 && !p?.pre) {
+      next[m.id].pre = true;
+      alerts.push({ id: m.id + '-pre', at: Date.now(), kind: 'pre', match: m.id, title: '⏰ بعد ' + Math.max(1, Math.round(toKick / 60e3)) + ' دقيقة: ' + m.home.name + ' × ' + m.away.name, body: m.league.name || '', fav: true });
+    }
     if (!p) continue;   // first sight: no alert
     const id = m.id + '-' + m.status + '-' + g;
     if (m.status === 'live' && g > p.g) {
       const last = (goals[m.id] || []).slice(-1)[0];
       const team = last ? (last.side === 'home' ? m.home.name : m.away.name) : '';
-      alerts.push({ id, at: Date.now(), title: '⚽ هدف! ' + (team || name(m)), body: (team ? name(m) : '') + (last ? ' · ' + [last.player, last.minute].filter(Boolean).join(' ') : '') + (m.league.name ? ' · ' + m.league.name : ''), fav: m.favorite });
+      alerts.push({ id, at: Date.now(), kind: 'goal', match: m.id, title: '⚽ هدف! ' + (team || name(m)), body: (team ? name(m) : '') + (last ? ' · ' + [last.player, last.minute].filter(Boolean).join(' ') : '') + (m.league.name ? ' · ' + m.league.name : ''), fav: m.favorite });
     } else if (p.st === 'upcoming' && m.status === 'live') {
-      alerts.push({ id, at: Date.now(), title: '🟢 بدأت: ' + m.home.name + ' × ' + m.away.name, body: m.league.name || '', fav: m.favorite });
+      alerts.push({ id, at: Date.now(), kind: 'start', match: m.id, title: '🟢 بدأت: ' + m.home.name + ' × ' + m.away.name, body: m.league.name || '', fav: m.favorite });
     } else if (p.st === 'live' && m.status === 'finished') {
-      alerts.push({ id, at: Date.now(), title: '🏁 انتهت: ' + name(m), body: await summary(env, m, goalsOf), fav: m.favorite });
+      alerts.push({ id, at: Date.now(), kind: 'end', match: m.id, title: '🏁 انتهت: ' + name(m), body: await summary(env, m, goalsOf), fav: m.favorite });
     }
   }
   const changed = JSON.stringify(prev) !== JSON.stringify(next);
   if (changed) await env.PUSH.put('state', JSON.stringify(next));   // KV writes only when something moved
-  if (alerts.length) { await addAlerts(env, alerts); await pushAll(env); }
+  if (alerts.length) {
+    await addAlerts(env, alerts); await pushAll(env);
+    // the same moment on every screen at home and in the car: Madar, the TV, the car, the phone (via «المركز»)
+    if (env.HUB) {
+      const hub = env.HUB.get(env.HUB.idFromName('home'));
+      for (const a of alerts) await hub.fetch('https://hub/hub/op', { method: 'POST', body: JSON.stringify({ op: 'send', to: 'all', msg: { type: 'match', ...a } }) }).catch(() => {});
+    }
+  }
 }
 
 const PAGE = `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8">
