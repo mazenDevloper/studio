@@ -277,11 +277,9 @@ final class Cloud {
     }
 
     private static Object fetch(String bin) throws Exception {
-        HttpURLConnection c = (HttpURLConnection) new URL("https://api.jsonbin.io/v3/b/" + bin + "/latest?v=" + System.currentTimeMillis()).openConnection();
+        HttpURLConnection c = (HttpURLConnection) new URL("https://studio.c-p.workers.dev/bin/" + bin + "?v=" + System.currentTimeMillis()).openConnection();
         c.setConnectTimeout(12_000);
         c.setReadTimeout(30_000);
-        c.setRequestProperty("X-Master-Key", KEY);
-        c.setRequestProperty("X-Bin-Meta", "false");
         if (c.getResponseCode() != 200) return null;
         StringBuilder sb = new StringBuilder();
         try (BufferedReader r = new BufferedReader(new InputStreamReader(c.getInputStream(), "UTF-8"))) {

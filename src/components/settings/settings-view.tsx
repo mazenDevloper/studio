@@ -267,7 +267,7 @@ export function SettingsView() {
   useEffect(() => {
     const fetchLogos = async () => {
       try {
-        const r = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_TEAM_LOGOS_BIN_ID}/latest`, { headers: { 'X-Master-Key': JSONBIN_MASTER_KEY } });
+        const r = await fetch(`https://studio.c-p.workers.dev/bin/${JSONBIN_TEAM_LOGOS_BIN_ID}?meta=1`);
         if (r.ok) {
            const data = (await r.json()).record;
            setTeamLogos(Array.isArray(data) ? data : data.teams || []);
@@ -329,7 +329,7 @@ export function SettingsView() {
     }
     toast({ title: "جاري الرفع سحابياً", description: "جاري إضافة الفريق لقاعدة البيانات..." });
     try {
-      const r = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_TEAM_LOGOS_BIN_ID}/latest`, { headers: { 'X-Master-Key': JSONBIN_MASTER_KEY } });
+      const r = await fetch(`https://studio.c-p.workers.dev/bin/${JSONBIN_TEAM_LOGOS_BIN_ID}?meta=1`);
       const current = (await r.json()).record;
       const teams = Array.isArray(current) ? current : (current.teams || []);
       const exists = teams.some((t: any) => t.name === name);

@@ -257,22 +257,12 @@ export const updateBin = async (binId: string, data: any) => {
     await useMediaStore.getState().fetchSpecificBin(binId);
     return;
   }
-  // through the DriveCast server: it saves to JSONBin and tells every open screen to reload this part at once
+  // through the DriveCast server: it saves on Cloudflare (R2) and tells every open screen to reload this part at once
   try {
     const r = await fetch(`https://studio.c-p.workers.dev/bin/${binId}?from=${encodeURIComponent(DEVICE_TAG)}`, { method: 'PUT', body: JSON.stringify(data), signal: AbortSignal.timeout(15000) });
     if (r.ok) return;
   } catch (e) {}
-  try {
-    await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
-      method: 'PUT',
-      headers: { 
-        'Content-Type': 'application/json', 
-        'X-Master-Key': JSONBIN_MASTER_KEY, 
-        'X-Bin-Versioning': 'true' 
-      },
-      mode: 'cors', body: JSON.stringify(data)
-    });
-  } catch (e) {}
+  // Cloudflare is the only store now (JSONBin is no longer written)
 };
 
 const DEFAULT_CONTEXT_MAPPINGS: Record<string, Record<string, string[]>> = {
@@ -361,8 +351,8 @@ export const useMediaStore = create<MediaState>()(
         try {
           // the server's copy first (instant, no JSONBin quota), JSONBin itself when the server can't answer
           let r = await fetch(`https://studio.c-p.workers.dev/bin/${binId}?v=${Date.now()}`, { cache: 'no-store', signal: AbortSignal.timeout(8000) }).catch(() => null);
-          if (!r || !r.ok) r = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest?v=${Date.now()}`, { headers: { 'X-Master-Key': JSONBIN_MASTER_KEY, 'X-Bin-Meta': 'false' }, cache: 'no-store', signal: AbortSignal.timeout(12000) });
-          if (!r.ok) return;
+          if (!r || !r.ok) r = await fetch(`https://studio.c-p.workers.dev/bin/${binId}?v=${Date.now()}`, { cache: 'no-store', signal: AbortSignal.timeout(12000) }).catch(() => null);
+          if (!r || !r.ok) return;
           const data = await r.json();
           loadedBins.add(binId);
           if (binId === JSONBIN_MASTER_BIN_ID && data && typeof data === 'object' && !Array.isArray(data)) lastMasterCloud = data;

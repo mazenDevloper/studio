@@ -1,6 +1,6 @@
 import { handle as pushPage, watch } from './push.js';
 import { ask } from './assistant.js';
-import { files, favFromDb, favToDb, binProxy } from './files.js';
+import { files, favFromDb, favToDb, binProxy, binGet } from './files.js';
 import { readable, health } from './reader.js';
 import { visionBody } from './vision.js';
 import { summarize, translate, visionAsk } from './smart.js';
@@ -28,9 +28,7 @@ let favCache = null, favAt = 0;
 async function favourites(env) {
   if (favCache && Date.now() - favAt < 10 * 60e3) return favCache;   // the bin is read at most every 10 minutes
   const db = await favFromDb(env); if (db && db.length) { favCache = db; favAt = Date.now(); return db; }   // shared by every server copy
-  const r = await fetch(BIN, { headers: { 'X-Master-Key': env.BIN_KEY, 'X-Bin-Meta': 'false' }, cf: { cacheTtl: 600 } });
-  const d = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error('jsonbin ' + r.status + (env.BIN_KEY ? '' : ' (BIN_KEY missing)') + ': ' + (d.message || ''));
+  const d = await binGet(env, BIN.split('/')[5]);
   const list = (d.record || d).favoriteTeams;
   if (!Array.isArray(list)) throw new Error('no favoriteTeams in bin (keys: ' + Object.keys(d.record || d).slice(0, 12).join(',') + ')');
   favCache = list.filter(t => t && +t.id > 0)
@@ -95,9 +93,7 @@ const DEFAULT_SETTINGS = [
 ];
 const tToM = t => { if (!t) return -1; const [h, m] = String(t).split(':').map(Number); return h * 60 + m; };
 async function bin(url, env) {
-  const r = await fetch(url, { headers: { 'X-Master-Key': env.BIN_KEY, 'X-Bin-Meta': 'false' } });
-  if (!r.ok) throw new Error('jsonbin ' + r.status);
-  const d = await r.json(); return d.record || d;
+  const d = await binGet(env, url.split('/')[5]); return d.record || d;
 }
 let evCache = null, evAt = 0;
 async function events(env) {

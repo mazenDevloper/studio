@@ -25,10 +25,8 @@ enum Cloud {
         let attrs = try? FileManager.default.attributesOfItem(atPath: file.path)
         let age = Date().timeIntervalSince((attrs?[.modificationDate] as? Date) ?? .distantPast)
         if age < maxAge, let d = try? Data(contentsOf: file), let o = try? JSONSerialization.jsonObject(with: d) { return o }
-        if let u = URL(string: "https://api.jsonbin.io/v3/b/\(id)/latest") {
+        if let u = URL(string: "https://studio.c-p.workers.dev/bin/\(id)") {
             var r = URLRequest(url: u, timeoutInterval: 20)
-            r.setValue(key, forHTTPHeaderField: "X-Master-Key")
-            r.setValue("false", forHTTPHeaderField: "X-Bin-Meta")
             if let res = try? await URLSession.shared.data(for: r), (res.1 as? HTTPURLResponse)?.statusCode == 200,
                case let d = res.0, let o = try? JSONSerialization.jsonObject(with: d) {
                 try? d.write(to: file)

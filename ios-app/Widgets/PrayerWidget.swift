@@ -135,10 +135,8 @@ enum CloudPrayers {
     static let names: [(String, String)] = [("fajr", "الفجر"), ("sunrise", "الشروق"), ("dhuhr", "الظهر"), ("asr", "العصر"), ("maghrib", "المغرب"), ("isha", "العشاء")]
 
     static func fetch(_ done: @escaping ([(title: String, at: Date, kind: String)]) -> Void) {
-        guard let u = URL(string: "https://api.jsonbin.io/v3/b/\(bin)/latest") else { done([]); return }
+        guard let u = URL(string: "https://studio.c-p.workers.dev/bin/\(bin)") else { done([]); return }
         var r = URLRequest(url: u, timeoutInterval: 20)
-        r.setValue(key, forHTTPHeaderField: "X-Master-Key")
-        r.setValue("false", forHTTPHeaderField: "X-Bin-Meta")
         URLSession.shared.dataTask(with: r) { data, _, _ in
             var out: [(title: String, at: Date, kind: String)] = []
             if let data, let o = try? JSONSerialization.jsonObject(with: data) {

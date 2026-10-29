@@ -117,30 +117,69 @@ export async function favToDb(env, list) {
   try { await env.PUSH.put('favourites', JSON.stringify({ at: Date.now(), list })); } catch (e) {}
 }
 
-// ---- the apps' cloud settings (JSONBin) through the server: reads come from KV (instant, no JSONBin quota), saves
-// go to JSONBin and KV together, and every open screen is told to reload that part (over /live) ----
+// ---- the apps' cloud data, now kept on Cloudflare: R2 holds every bin (the source of truth, with a dated copy of each
+// save), KV a fast copy for reads. JSONBin is only read once, to bring a bin over the first time it is asked for.
 const BIN_OK = /^[0-9a-f]{24}$/;
+export const ALL_BINS = ['69c782cbb7ec241ddcb0b99a', '69a87b8bd0ea881f40eeec0c', '69b63cb1c3097a1dd5278bf4', '6a573cdbf5f4af5e29915034', '68ef1b3dd0ea881f40a38bd1',
+  '68e4ac20d0ea881f4098138c', '69a00f6eae596e708f4b7291', '69b63c5cc3097a1dd5278b25', '6909c1cd43b1c97be997b522', '699d8c2aae596e708f452936'];
+async function fromJsonbin(env, id) {
+  const r = await fetch('https://api.jsonbin.io/v3/b/' + id + '/latest', { headers: { 'X-Master-Key': env.BIN_KEY || '', 'X-Bin-Meta': 'false' } });
+  if (!r.ok) throw new Error('jsonbin ' + r.status);
+  const d = await r.json(); return d && d.record && Object.keys(d).length <= 2 ? d.record : d;
+}
+/** read a bin: KV (fresh) → R2 → JSONBin (first time only, then copied to R2) */
+export async function binGet(env, id, ctx) {
+  const key = 'bin:' + id;
+  const hit = env.PUSH && await env.PUSH.get(key, 'json');
+  if (hit && Date.now() - hit.at < 5 * 60e3) return hit.data;
+  const o = env.FILES && await env.FILES.get('bins/' + id + '.json');
+  let data = o ? await o.json() : null;
+  if (data == null) {
+    data = await fromJsonbin(env, id);
+    if (env.FILES) await env.FILES.put('bins/' + id + '.json', JSON.stringify(data), { httpMetadata: { contentType: 'application/json' } });
+  }
+  if (env.PUSH) { const w = env.PUSH.put(key, JSON.stringify({ at: Date.now(), data })); ctx ? ctx.waitUntil(w) : await w; }
+  return data;
+}
+export async function binPut(env, id, data) {
+  const body = JSON.stringify(data);
+  await env.FILES.put('bins/' + id + '.json', body, { httpMetadata: { contentType: 'application/json' } });
+  // a dated copy (history, like JSONBin's versions) - the last 30 are kept
+  await env.FILES.put('bins-history/' + id + '/' + new Date().toISOString() + '.json', body);
+  try { const l = await env.FILES.list({ prefix: 'bins-history/' + id + '/' }); const old = l.objects.map(o => o.key).sort().slice(0, -30); if (old.length) await env.FILES.delete(old); } catch (e) {}
+  if (env.PUSH) { await env.PUSH.put('bin:' + id, JSON.stringify({ at: Date.now(), data })); await env.PUSH.delete('favourites'); }
+}
 export async function binProxy(req, env, u, ctx) {
   const id = u.pathname.split('/')[2] || '';
-  if (!BIN_OK.test(id)) return new Response('bad bin', { status: 400, headers: CORS });
-  const key = 'bin:' + id, jb = 'https://api.jsonbin.io/v3/b/' + id;
-  if (req.method === 'GET') {
-    const hit = env.PUSH && await env.PUSH.get(key, 'json');
-    if (hit && Date.now() - hit.at < 5 * 60e3) return new Response(JSON.stringify(hit.data), { headers: { ...CORS, 'x-from': 'kv' } });
-    const r = await fetch(jb + '/latest', { headers: { 'X-Master-Key': env.BIN_KEY, 'X-Bin-Meta': 'false' } });
-    if (!r.ok) return hit ? new Response(JSON.stringify(hit.data), { headers: { ...CORS, 'x-from': 'kv-stale' } }) : new Response(await r.text(), { status: r.status, headers: CORS });
-    const data = await r.json();
-    if (env.PUSH) ctx.waitUntil(env.PUSH.put(key, JSON.stringify({ at: Date.now(), data })));
-    return new Response(JSON.stringify(data), { headers: { ...CORS, 'x-from': 'jsonbin' } });
+  // copy everything from JSONBin to Cloudflare (once): /bin/migrate?key=<BIN_KEY>
+  if (id === 'migrate') {
+    if (!env.BIN_KEY || u.searchParams.get('key') !== env.BIN_KEY) return new Response('forbidden', { status: 403, headers: CORS });
+    const out = {};
+    for (const b of ALL_BINS) {
+      try { const d = await fromJsonbin(env, b); await binPut(env, b, d); out[b] = 'ok ' + JSON.stringify(d).length + ' bytes'; }
+      catch (e) { out[b] = 'error ' + (e && e.message); }
+    }
+    return new Response(JSON.stringify(out, null, 1), { headers: { ...CORS, 'content-type': 'application/json' } });
   }
-  if (req.method === 'PUT') {
-    const body = await req.text();
-    let data; try { data = JSON.parse(body); } catch (e) { return new Response('bad json', { status: 400, headers: CORS }); }
-    const r = await fetch(jb, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Master-Key': env.BIN_KEY, 'X-Bin-Versioning': 'true' }, body });
-    if (!r.ok) return new Response(await r.text(), { status: r.status, headers: CORS });
-    if (env.PUSH) { await env.PUSH.put(key, JSON.stringify({ at: Date.now(), data })); await env.PUSH.delete('favourites'); }
+  if (id === 'status') {
+    const out = {};
+    for (const b of ALL_BINS) { const o = await env.FILES.head('bins/' + b + '.json'); out[b] = o ? { bytes: o.size, at: o.uploaded } : null; }
+    return new Response(JSON.stringify(out, null, 1), { headers: { ...CORS, 'content-type': 'application/json' } });
+  }
+  if (!BIN_OK.test(id)) return new Response('bad bin', { status: 400, headers: CORS });
+  if (req.method === 'GET') {
+    try {
+      const data = await binGet(env, id, ctx);
+      // same shape as JSONBin's /latest so older app versions keep working
+      const body = u.searchParams.get('meta') === '1' ? { record: data, metadata: { id } } : data;
+      return new Response(JSON.stringify(body), { headers: { ...CORS, 'content-type': 'application/json', 'x-from': 'cloudflare' } });
+    } catch (e) { return new Response(JSON.stringify({ message: String(e && e.message) }), { status: 502, headers: CORS }); }
+  }
+  if (req.method === 'PUT' || req.method === 'POST') {
+    let data; try { data = JSON.parse(await req.text()); } catch (e) { return new Response('bad json', { status: 400, headers: CORS }); }
+    await binPut(env, id, data);
     if (env.LIVE) ctx.waitUntil(env.LIVE.get(env.LIVE.idFromName('stadium')).fetch('https://do/notify', { method: 'POST', body: JSON.stringify({ type: 'bin', id, from: u.searchParams.get('from') || '' }) }));
-    return new Response(JSON.stringify({ ok: true }), { headers: CORS });
+    return new Response(JSON.stringify({ ok: true, record: data }), { headers: { ...CORS, 'content-type': 'application/json' } });
   }
   return new Response('method', { status: 405, headers: CORS });
 }

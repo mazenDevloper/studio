@@ -1,3 +1,4 @@
+import { binGet } from './files.js';
 // «المركز» - one shared home for Madar (the living room) and DriveCast (the car, the TV, the phone).
 // One Durable Object keeps everything both apps share and pushes every change to every open device at once over a
 // WebSocket (Hibernation API: idle sockets cost nothing, the devices never poll). The server also prepares what the
@@ -136,9 +137,7 @@ const fmt = t => { t = Math.max(0, Math.round(t || 0)); return (t >= 3600 ? Math
 export async function hubLibrary(env) {
   let data = env.PUSH && await env.PUSH.get('bin:' + MASTER_BIN, 'json').then(x => x && Date.now() - x.at < 5 * 60e3 ? x.data : null);
   if (!data) {
-    const r = await fetch('https://api.jsonbin.io/v3/b/' + MASTER_BIN + '/latest', { headers: { 'X-Master-Key': env.BIN_KEY, 'X-Bin-Meta': 'false' } });
-    if (!r.ok) return { ok: false, error: 'bin ' + r.status };
-    data = await r.json(); if (env.PUSH) await env.PUSH.put('bin:' + MASTER_BIN, JSON.stringify({ at: Date.now(), data }));
+    try { data = await binGet(env, MASTER_BIN); } catch (e) { return { ok: false, error: String(e && e.message) }; }
   }
   const v = x => x && x.id ? { id: x.id, title: clip(x.title, 160), thumb: x.thumbnail || ytThumb(x.id), channel: clip(x.channelTitle, 60), live: !!x.isLive } : null;
   return {
