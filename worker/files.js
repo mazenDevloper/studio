@@ -120,7 +120,7 @@ export async function favToDb(env, list) {
 // ---- the apps' cloud data, now kept on Cloudflare: R2 holds every bin (the source of truth, with a dated copy of each
 // save), KV a fast copy for reads. JSONBin is only read once, to bring a bin over the first time it is asked for.
 const BIN_OK = /^[0-9a-f]{24}$/;
-export const ALL_BINS = ['69c782cbb7ec241ddcb0b99a', '69a87b8bd0ea881f40eeec0c', '69b63cb1c3097a1dd5278bf4', '6a573cdbf5f4af5e29915034', '68ef1b3dd0ea881f40a38bd1',
+export const ALL_BINS = ['69c782cbb7ec241ddcb0b99a', '693fb33cae596e708f9ade6a', '68e4ac2e43b1c97be95d24af', '69a87b8bd0ea881f40eeec0c', '69b63cb1c3097a1dd5278bf4', '6a573cdbf5f4af5e29915034', '68ef1b3dd0ea881f40a38bd1',
   '68e4ac20d0ea881f4098138c', '69a00f6eae596e708f4b7291', '69b63c5cc3097a1dd5278b25', '6909c1cd43b1c97be997b522', '699d8c2aae596e708f452936'];
 async function fromJsonbin(env, id) {
   const r = await fetch('https://api.jsonbin.io/v3/b/' + id + '/latest', { headers: { 'X-Master-Key': env.BIN_KEY || '', 'X-Bin-Meta': 'false' } });
