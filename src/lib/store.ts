@@ -20,6 +20,12 @@ import {
   prayerTimesData
 } from "./constants";
 
+// Older Android WebViews (car head units, TV boxes) have no AbortSignal.timeout: every cloud fetch threw before it
+// started and the app came up empty. Give them one.
+if (typeof AbortSignal !== "undefined" && typeof (AbortSignal as any).timeout !== "function") {
+  (AbortSignal as any).timeout = (ms: number) => { const c = new AbortController(); setTimeout(() => c.abort(), ms); return c.signal; };
+}
+
 export interface AudioTrack {
   id: string;
   title: string;
