@@ -161,17 +161,6 @@ export async function binProxy(req, env, u, ctx) {
     }
     return new Response(JSON.stringify(out, null, 1), { headers: { ...CORS, 'content-type': 'application/json' } });
   }
-  // one-time import of the JSONBin exports (encrypted with BIN_KEY): /bin/import?key=<BIN_KEY>
-  if (id === 'import') {
-    if (!env.BIN_KEY || u.searchParams.get('key') !== env.BIN_KEY) return new Response('forbidden', { status: 403, headers: CORS });
-    const buf = new Uint8Array(await (await fetch('https://raw.githubusercontent.com/mazenDevloper/studio/main/worker/seed.bin?v=' + Date.now())).arrayBuffer());
-    const k = await crypto.subtle.importKey('raw', await crypto.subtle.digest('SHA-256', new TextEncoder().encode(env.BIN_KEY)), 'AES-GCM', false, ['decrypt']);
-    const gz = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: buf.slice(0, 12) }, k, buf.slice(12));
-    const all = JSON.parse(await new Response(new Blob([gz]).stream().pipeThrough(new DecompressionStream('gzip'))).text());
-    const out = {};
-    for (const [b, d] of Object.entries(all)) { try { await binPut(env, b, d); out[b] = 'ok ' + JSON.stringify(d).length + ' bytes'; } catch (e) { out[b] = 'error ' + (e && e.message); } }
-    return new Response(JSON.stringify(out, null, 1), { headers: { ...CORS, 'content-type': 'application/json' } });
-  }
   if (id === 'status') {
     const out = {};
     for (const b of ALL_BINS) { const o = await env.FILES.head('bins/' + b + '.json'); out[b] = o ? { bytes: o.size, at: o.uploaded } : null; }
