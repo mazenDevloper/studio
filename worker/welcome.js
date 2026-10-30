@@ -5,7 +5,7 @@ import { nowData } from './index.js';
 
 const TZ = 'Asia/Muscat';
 const KIND_AR = { tv: 'التلفاز', car: 'السيارة', phone: 'الهاتف', tablet: 'التابلت', computer: 'الكمبيوتر', madar: 'مدار' };
-export const kindOf = d => d.app === 'madar' ? 'madar' : (KIND_AR[d.kind] ? d.kind : 'phone');
+export const kindOf = d => d.app === 'madar' ? 'madar' : d.app === 'sys' ? 'tablet' : (KIND_AR[d.kind] ? d.kind : 'phone');
 
 export async function hubDevices(env) {
   const r = await env.HUB.get(env.HUB.idFromName('home')).fetch('https://hub/hub/state').then(x => x.json()).catch(() => ({}));
@@ -14,8 +14,11 @@ export async function hubDevices(env) {
     const p = resume.filter(x => x.from?.id === d.id && now - (x.at || 0) < 20 * 60e3).sort((a, b) => b.at - a.at)[0];
     return { id: d.id, name: d.name, kind: kindOf(d), app: d.app, label: KIND_AR[kindOf(d)], playing: p ? { kind: p.kind, title: p.title, id: p.id, url: p.url, t: p.t, thumb: p.thumb } : null };
   });
-  // one entry per device id (a device reconnecting can briefly show twice)
-  return { devices: [...new Map(devices.map(d => [d.id, d])).values()], state: r.state || {} };
+  // one entry per device id (a device reconnecting can briefly show twice); a device's background link (sys-<code>)
+  // shows only while its Madar page is closed - then it is that device, asleep or in the background
+  const ids = new Set(devices.map(d => d.id));
+  const list = devices.filter(d => !(d.app === 'sys' && ids.has('madar-' + d.id.slice(4)))).map(d => d.app === 'sys' ? { ...d, kind: 'tablet', label: 'مدار · ' + (d.name || '').split(' · ')[0], asleep: true } : d);
+  return { devices: [...new Map(list.map(d => [d.id, d])).values()], state: r.state || {} };
 }
 
 export async function welcome(env) {

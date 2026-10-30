@@ -39,7 +39,7 @@ export async function ask(req, env) {
   const [d, hub] = await Promise.all([nowData(env, 27).catch(() => ({ matches: [], events: [], teams: [] })), hubDevices(env).catch(() => ({ devices: [], state: {} }))]);
   const items = await catalog(env, hub.state || {});
   const me = String(body.device || '');
-  const devLines = hub.devices.map(x => `- id=${x.id} · ${x.label} «${x.name}»${x.id === me ? ' (الجهاز الذي يكلمك الآن)' : ''}${x.playing ? ' · يعرض الآن: ' + x.playing.title : ' · لا يعرض شيئاً'}`);
+  const devLines = hub.devices.map(x => `- id=${x.id} · ${x.label} «${x.name}»${x.id === me ? ' (الجهاز الذي يكلمك الآن)' : ''}${x.asleep ? ' · في الخلفية (يمكن إيقاظه)' : ''}${x.playing ? ' · يعرض الآن: ' + x.playing.title : ' · لا يعرض شيئاً'}`);
   const itemLines = items.map(x => `${x.n}. ${x.title || x.id} (${x.kind === 'iptv' ? 'قناة' : x.kind === 'yt' ? 'يوتيوب' : x.kind})`);
   const sys = `أنت «المساعد»، عقل منزل المستخدم الذكي في عُمان: يتحكم بتطبيقَي DriveCast (السيارة، التلفاز، الهاتف، التابلت) ومدار (نظارة الواقع المختلط). المستخدم يكلمك الآن من ${body.app === 'drivecast' ? 'DriveCast' : 'مدار'}.
 افهم المعنى لا الكلمات: «شغّل الجزيرة في الصالة» = افتح قناة الجزيرة على التلفاز. «وقّف اللي في السيارة» = إيقاف على جهاز السيارة. «كمّل اللي كنت أشوفه» = افتح آخر ما شاهده على الجهاز الحالي. «قول لأهل البيت إني وصلت» = رسالة صوتية على التلفاز. «وين النتيجة؟» = أجب من المباريات.
@@ -58,6 +58,7 @@ ${itemLines.join('\n') || '- لا شيء محفوظ'}${body.context ? '\nسيا�
 - {"do":"say","device":..,"text":"..."}   رسالة تُقرأ بصوت على ذلك الجهاز
 - {"do":"sleep","device":..,"minutes":N}   إيقاف بعد دقائق
 - {"do":"ping","device":..}   ليرنّ الجهاز ويُعثر عليه
+- {"do":"wake","device":..}   إيقاظ جهاز فيه مدار (حتى لو كانت شاشته نائمة)
 وإجراء واحد على الشاشة الحالية (action): open_matches، open_url (value رابط كامل)، environment (مدار: passthrough, night, cinema, sunset, lounge, realStudy, study)، open_app (youtube, shahid, netflix, makkah, games, keyboard)، أو none.
 أعد JSON فقط: {"say":"...","devices":[...],"action":{"type":"...","value":"..."}}`;
   const history = Array.isArray(body.history) ? body.history.slice(-6).filter(m => m && (m.role === 'user' || m.role === 'assistant')).map(m => ({ role: m.role, content: String(m.content).slice(0, 400) })) : [];
@@ -78,14 +79,16 @@ ${itemLines.join('\n') || '- لا شيء محفوظ'}${body.context ? '\nسيا�
   for (const c of (Array.isArray(out.devices) ? out.devices : []).slice(0, 4)) {
     const to = c.device === 'here' ? me : c.device === 'all' ? 'all' : c.device;
     if (to !== 'all' && !known.has(to)) continue;
+    const dest = c.do === 'wake' ? (to === 'all' ? 'kind:sys' : to.startsWith('madar-') ? 'sys-' + to.slice(6) : to) : to;
     let msg = null;
     if (c.do === 'play') { const it = items.find(x => x.n === +c.item); if (it) { const { n, ...item } = it; msg = { type: 'open', item, now: true }; } }
     else if (c.do === 'control' && /^(play|pause|toggle|next|prev)$/.test(c.action || '')) msg = { type: 'control', action: c.action };
     else if (c.do === 'say' && c.text) msg = { type: 'say', text: String(c.text).slice(0, 200) };
     else if (c.do === 'sleep' && c.minutes > 0) msg = { type: 'sleep', minutes: Math.min(240, +c.minutes) };
     else if (c.do === 'ping') msg = { type: 'ping' };
+    else if (c.do === 'wake') msg = { type: 'wake' };
     if (!msg) continue;
-    const res = await hubObj.fetch('https://hub/hub/op', { method: 'POST', body: JSON.stringify({ op: 'send', to, msg }) }).then(x => x.json()).catch(() => ({}));
+    const res = await hubObj.fetch('https://hub/hub/op', { method: 'POST', body: JSON.stringify({ op: 'send', to: dest, msg }) }).then(x => x.json()).catch(() => ({}));
     done.push({ ...c, to, delivered: res.delivered || 0 });   // «here» too: the hub delivers it to the asking device like any other
   }
   return { say: String(out.say || '').slice(0, 400), action: out.action && out.action.type ? out.action : { type: 'none' }, done };

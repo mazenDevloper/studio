@@ -29,21 +29,25 @@ export function DevicesStrip({ className, big, fallback }: { className?: string;
   const resume = Object.values(hub.state.resume || {}) as HubItem[];
   const now = Date.now();
   // live from the hub socket; until it connects, the list the server sent with the welcome
-  const list: any[] = hub.devices.length ? [...new Map(hub.devices.map(d => [d.id, d])).values()] : (fallback || []);
+  let list: any[] = hub.devices.length ? [...new Map(hub.devices.map(d => [d.id, d])).values()] : (fallback || []);
+  // a device's background link (sys-<code>) only while its Madar page is closed: tap it to wake the device
+  const ids = new Set(list.map(d => d.id));
+  list = list.filter(d => !(d.app === "sys" && ids.has("madar-" + d.id.slice(4))));
   if (!list.length) return null;
   return (
     <div className={cn("flex flex-wrap gap-2", className)}>
       {list.map(d => {
-        const k = kindOf(d), I = ICON[k], me = d.id === hub.me.id;
+        const k = d.app === "sys" ? "tablet" : kindOf(d), I = ICON[k], me = d.id === hub.me.id, sys = d.app === "sys";
         const p = resume.filter(x => x.from?.id === d.id && now - (x.at || 0) < 20 * 60e3).sort((a, b) => (b.at || 0) - (a.at || 0))[0] || d.playing;
         return (
-          <div key={d.id} className={cn("relative flex items-center gap-2 rounded-2xl bg-white/[0.07] border border-white/10 backdrop-blur-xl", big ? "px-3.5 py-2.5" : "px-2.5 py-1.5")} title={d.name}>
+          <div key={d.id} onClick={sys ? () => hub.sendTo(d.id, { type: "wake" }) : undefined} className={cn("relative flex items-center gap-2 rounded-2xl bg-white/[0.07] border border-white/10 backdrop-blur-xl", sys && "cursor-pointer hover:bg-white/15 focusable", big ? "px-3.5 py-2.5" : "px-2.5 py-1.5")} title={sys ? "اضغط لإيقاظه" : d.name}>
             <div className="relative">
               <I className={big ? "w-6 h-6" : "w-4 h-4"} />
               <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-zinc-900 shadow-[0_0_8px_#34d399]" />
             </div>
             <div className="min-w-0 leading-tight">
-              <div className={cn("font-black truncate max-w-[9rem]", big ? "text-sm" : "text-[11px]")}>{KIND_AR[k] || d.name}{me ? " · أنت" : ""}</div>
+              <div className={cn("font-black truncate max-w-[9rem]", big ? "text-sm" : "text-[11px]")}>{sys ? "مدار · " + String(d.name || "").split(" · ")[0] : KIND_AR[k] || d.name}{me ? " · أنت" : ""}</div>
+              {sys && <div className="text-[10px] text-emerald-300/80">⏻ اضغط للإيقاظ</div>}
               {p?.title && <div className="text-[10px] text-white/55 truncate max-w-[9rem]">▶ {p.title}</div>}
             </div>
           </div>
