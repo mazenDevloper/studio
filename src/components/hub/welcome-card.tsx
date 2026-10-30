@@ -40,7 +40,7 @@ export function DevicesStrip({ className, big, fallback }: { className?: string;
         const k = d.app === "sys" ? "tablet" : kindOf(d), I = ICON[k], me = d.id === hub.me.id, sys = d.app === "sys";
         const p = resume.filter(x => x.from?.id === d.id && now - (x.at || 0) < 20 * 60e3).sort((a, b) => (b.at || 0) - (a.at || 0))[0] || d.playing;
         return (
-          <div key={d.id} onClick={sys ? () => hub.sendTo(d.id, { type: "wake" }) : undefined} className={cn("relative flex items-center gap-2 rounded-2xl bg-white/[0.07] border border-white/10 backdrop-blur-xl", sys && "cursor-pointer hover:bg-white/15 focusable", big ? "px-3.5 py-2.5" : "px-2.5 py-1.5")} title={sys ? "اضغط لإيقاظه" : d.name}>
+          <div key={d.id} onClick={sys ? () => hub.sendTo(d.id, { type: "wake", share: true }) : undefined} className={cn("relative flex items-center gap-2 rounded-2xl bg-white/[0.07] border border-white/10 backdrop-blur-xl", sys && "cursor-pointer hover:bg-white/15 focusable", big ? "px-3.5 py-2.5" : "px-2.5 py-1.5")} title={sys ? "اضغط لإيقاظه" : d.name}>
             <div className="relative">
               <I className={big ? "w-6 h-6" : "w-4 h-4"} />
               <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-zinc-900 shadow-[0_0_8px_#34d399]" />

@@ -86,7 +86,7 @@ ${itemLines.join('\n') || '- لا شيء محفوظ'}${body.context ? '\nسيا�
     else if (c.do === 'say' && c.text) msg = { type: 'say', text: String(c.text).slice(0, 200) };
     else if (c.do === 'sleep' && c.minutes > 0) msg = { type: 'sleep', minutes: Math.min(240, +c.minutes) };
     else if (c.do === 'ping') msg = { type: 'ping' };
-    else if (c.do === 'wake') msg = { type: 'wake' };
+    else if (c.do === 'wake') msg = { type: 'wake', share: true };
     if (!msg) continue;
     const res = await hubObj.fetch('https://hub/hub/op', { method: 'POST', body: JSON.stringify({ op: 'send', to: dest, msg }) }).then(x => x.json()).catch(() => ({}));
     done.push({ ...c, to, delivered: res.delivered || 0 });   // «here» too: the hub delivers it to the asking device like any other
