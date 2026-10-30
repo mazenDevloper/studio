@@ -15,7 +15,7 @@
     "cf:build": "opennextjs-cloudflare build --dangerouslyUseUnsupportedNextVersion",
     "cf:deploy": "opennextjs-cloudflare build --dangerouslyUseUnsupportedNextVersion && opennextjs-cloudflare deploy",
     "cf:preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
-    "build:sw": "esbuild sw-src/cplay2-sw.js --bundle --minify --format=iife --define:process.env.NODE_ENV='\"production\"' --outfile=public/cplay2-sw.js"
+    "build:sw": "esbuild sw-src/cplay2-sw.js --bundle --minify --format=iife --define:process.env.NODE_ENV='\"production\"' --outfile=public/cplay2-sw.js && esbuild sw-src/push-sw.js --bundle --minify --format=iife --define:process.env.NODE_ENV='\"production\"' --outfile=public/push-sw.js"
   },
   "dependencies": {
     "@dawod/thmanyah-font-web": "^1.0.3",

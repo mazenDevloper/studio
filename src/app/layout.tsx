@@ -33,6 +33,13 @@ function RootLayoutWrapper({ children }: { children: React.ReactNode }) {
   const wakeLockRef = useRef<any>(null);
   const pathname = usePathname();
 
+  // 0. Offline cache (Workbox) + goal alerts: one service worker for DriveCast (not on the cplay host, it has its own)
+  useEffect(() => {
+    if (!("serviceWorker" in navigator) || !window.isSecureContext || /cplay/.test(location.host)) return;
+    const go = () => navigator.serviceWorker.register("/push-sw.js").catch(() => {});
+    if (document.readyState === "complete") go(); else window.addEventListener("load", go, { once: true });
+  }, []);
+
   // 1. Sovereign WakeLock
   useEffect(() => {
     const requestWakeLock = async () => {
