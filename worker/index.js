@@ -8,6 +8,7 @@ export { Live } from './live.js';
 export { Screens } from './screen.js';
 export { Hub } from './hub.js';
 import { hubLibrary } from './hub.js';
+import { lkToken } from './livekit.js';
 // DriveCast / Madar server: does the fetching and merging so the phones only download one small, ready file.
 //   GET /matches?lang=27|1   your favourite teams' games (live, coming, finished today), cached 20 s
 //   GET /favourites          favourite teams from the cloud bin, cached 10 min
@@ -233,6 +234,7 @@ export default {
       if (u.pathname === '/ask' && req.method === 'POST') return new Response(JSON.stringify(await ask(req, env)), { headers: H });
       // the iPhone's screen inside Madar (ReplayKit broadcast → here → every Madar watching)
       if (u.pathname.startsWith('/screen/')) return env.SCREENS.get(env.SCREENS.idFromName('all')).fetch(req);
+      if (u.pathname === '/lk/token') return new Response(JSON.stringify(await lkToken(env, u)), { headers: H });
       if (u.pathname.startsWith('/bin/')) return await binProxy(req, env, u, ctx);
       if (u.pathname.startsWith('/ipa/') || u.pathname.startsWith('/f/') || u.pathname.startsWith('/m/') || u.pathname === '/upload') { const r = await files(req, env, u); if (r) return r; }
       // Madar's reader: the readable text of a web article; Madar's sports mode: weight / workouts from Apple Health (Shortcuts)
