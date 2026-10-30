@@ -1,7 +1,7 @@
 // LiveKit (watch together with voice): the server signs a short ticket for one room; the secret never leaves here.
 //   GET /lk/token?room=madar-home&name=مدار · iPhone  →  { url, token }
 const LK_URL = 'wss://dcast-2u01obue.livekit.cloud';
-const LK_KEY = 'APIWcdJH8xWFKMe';
+const LK_KEY = 'APInkJExCGhgMhb';
 const b64u = b => btoa(String.fromCharCode(...new Uint8Array(b))).replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_');
 const enc = o => b64u(new TextEncoder().encode(JSON.stringify(o)));
 export async function lkToken(env, u) {
