@@ -16,6 +16,20 @@ const BIN = 'https://api.jsonbin.io/v3/b/69c782cbb7ec241ddcb0b99a/latest';
 const LOGO = id => 'https://imagecache.365scores.com/image/upload/f_png,w_64,h_64,c_limit,q_auto:eco/Competitors/' + id;
 const H = { 'content-type': 'application/json; charset=utf-8', 'access-control-allow-origin': '*' };
 
+// 365scores with a time limit and one retry: a slow answer never holds a screen, a single hiccup never empties it
+const S365 = { origin: 'https://www.365scores.com', referer: 'https://www.365scores.com/', 'user-agent': 'Mozilla/5.0' };
+async function get365(url, ms = 5000, cf) {
+  let err;
+  for (let i = 0; i < 2; i++) {
+    try {
+      const r = await fetch(url + (i ? '&r=' + Date.now() : ''), { headers: S365, signal: AbortSignal.timeout(i ? ms + 2000 : ms), ...(cf ? { cf } : {}) });
+      if (!r.ok) throw new Error('365 ' + r.status);
+      return await r.json();
+    } catch (e) { err = e; }
+  }
+  throw err;
+}
+
 async function cached(req, ctx, ttl, make) {
   const cache = caches.default, key = new Request(req.url);
   const hit = new URL(req.url).searchParams.has('fresh') ? null : await cache.match(key); if (hit) return hit;
@@ -38,33 +52,50 @@ async function favourites(env) {
   return favCache;
 }
 
-// goals with scorer and minute for the live (and just-finished) games: one detail request per game, at most 8
+// goals with scorer and minute for the live (and just-finished) games. The details of a game are asked again only when
+// its score changes (at once) or every 45 s (late corrections); a failed answer keeps the scorers already known.
+const goalMemo = new Map();   // gameId|lang -> { key, at, goals }
 async function goalsOf(list, lang) {
   const out = {};
   const want = list.filter(m => m.status === 'live' || (m.status === 'finished' && Date.now() / 1000 - m.timestamp < 3 * 3600))
-    .filter(m => (m.score.home ?? 0) + (m.score.away ?? 0) > 0).slice(0, 8);
+    .filter(m => (m.score.home ?? 0) + (m.score.away ?? 0) > 0).slice(0, 10);
   await Promise.all(want.map(async m => {
+    const mk = m.id + '|' + lang, key = (m.score.home ?? 0) + '-' + (m.score.away ?? 0), old = goalMemo.get(mk);
+    const total = (m.score.home ?? 0) + (m.score.away ?? 0);
+    if (old && old.key === key && old.goals.length >= total && Date.now() - old.at < 45e3) { out[m.id] = old.goals; return; }
     try {
       const id = m.id.replace(/^365/, '');
-      const d = await (await fetch(`https://webws.365scores.com/web/game/?appTypeId=5&langId=${lang}&timezoneName=Asia/Muscat&userCountryId=1&gameId=${id}`,
-        { headers: { origin: 'https://www.365scores.com', referer: 'https://www.365scores.com/' }, cf: { cacheTtl: 15 } })).json();
+      const d = await get365(`https://webws.365scores.com/web/game/?appTypeId=5&langId=${lang}&timezoneName=Asia/Muscat&userCountryId=1&gameId=${id}`, 4000);
       const g = d.game || {}, members = new Map((g.members || []).map(x => [x.id, x.shortName || x.name]));
-      out[m.id] = (g.events || []).filter(e => e.eventType && e.eventType.id === 1).map(e => ({
+      const goals = (g.events || []).filter(e => e.eventType && e.eventType.id === 1).map(e => ({
         side: e.competitorId === m.homeNum ? 'home' : 'away',
         minute: e.gameTimeDisplay || (Math.round(e.gameTime || 0) + "'"),
         player: members.get(e.playerId) || '',
         type: e.eventType.subTypeId === 2 ? 'own' : e.eventType.subTypeId === 3 ? 'penalty' : 'goal',
       }));
-    } catch (e) { /* no details: the score still moves */ }
+      // the score moved before the details caught up: keep the known scorers, ask again next round
+      const best = old && old.goals.length > goals.length && old.key === key ? old.goals : goals;
+      goalMemo.set(mk, { key, at: goals.length >= total ? Date.now() : 0, goals: best });
+      out[m.id] = best;
+    } catch (e) { if (old) out[m.id] = old.goals; /* no details: the score still moves */ }
   }));
+  if (goalMemo.size > 200) for (const k of [...goalMemo.keys()].slice(0, 100)) goalMemo.delete(k);
   return out;
 }
 
+const lastGood = {};
 async function matches(env, lang) {
   const teams = await favourites(env);
   if (!teams.length) return { matches: [], teams };
   const u = `https://webws.365scores.com/web/games/current/?appTypeId=5&langId=${lang}&timezoneName=Asia/Muscat&userCountryId=1&competitors=${teams.map(t => t.id).join(',')}`;
-  const d = await (await fetch(u, { headers: { origin: 'https://www.365scores.com', referer: 'https://www.365scores.com/' } })).json();
+  let d;
+  try { d = await get365(u, 5000); }
+  catch (e) {
+    // 365scores is down / slow: the last good list (this copy, else the one every copy shares) instead of an error
+    const last = lastGood[lang] || JSON.parse(await env.PUSH?.get('matches:' + lang) || 'null');
+    if (last) return { ...last, stale: true };
+    throw e;
+  }
   const isl = new Set(teams.filter(t => t.island).map(t => t.id)), now = Date.now(), out = [];
   for (const g of d.games || []) {
     const h = g.homeCompetitor, a = g.awayCompetitor; if (!h || !a || !g.startTime) continue;
@@ -81,7 +112,10 @@ async function matches(env, lang) {
       favorite: isl.has(h.id) || isl.has(a.id), mine: true, elapsed: status === 'live' && g.gameTime >= 0 ? Math.floor(g.gameTime) : undefined });
   }
   out.sort((x, y) => (y.status === 'live') - (x.status === 'live') || x.timestamp - y.timestamp);
-  return { matches: out, teams, at: now };
+  const res = { matches: out, teams, at: now };
+  lastGood[lang] = res;
+  if (env.PUSH && now - (lastGood['t' + lang] || 0) > 60e3) { lastGood['t' + lang] = now; env.PUSH.put('matches:' + lang, JSON.stringify(res), { expirationTtl: 86400 }).catch(() => {}); }
+  return res;
 }
 
 // ---- prayers + reminders (the same rules as the site's island bridge), Oman time (UTC+4) ----

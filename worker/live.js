@@ -5,7 +5,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import { nowData } from './index.js';
 
-const EVERY = 8000;
+const EVERY = 5000, IDLE = 30000;   // every 5 s while a game is live, every 30 s otherwise
 
 export class Live extends DurableObject {
   async fetch(req) {
@@ -28,6 +28,8 @@ export class Live extends DurableObject {
   async state(lang) {
     const d = await nowData(this.env, lang);
     const s = JSON.stringify({ type: 'now', at: Date.now(), ...d });
+    const t = Date.now() / 1000;   // live, or kicking off within 10 minutes → the fast pace
+    this.liveNow = (d.matches || []).some(m => m.status === 'live' || (m.status === 'upcoming' && m.timestamp - t < 600 && m.timestamp - t > -600));
     await this.ctx.storage.put('state' + lang, s);
     return s;
   }
@@ -42,7 +44,7 @@ export class Live extends DurableObject {
         if (strip(s) !== strip(old)) for (const ws of socks) { try { ws.send(s); } catch (e) {} }
       } catch (e) { /* the source hiccuped: try again next round */ }
     }
-    if (this.ctx.getWebSockets().length) await this.ctx.storage.setAlarm(Date.now() + EVERY);
+    if (this.ctx.getWebSockets().length) await this.ctx.storage.setAlarm(Date.now() + (this.liveNow ? EVERY : IDLE));
   }
   async webSocketMessage(ws, msg) { if (msg === 'ping') ws.send('pong'); }
   async webSocketClose(ws, code) { try { ws.close(code, 'bye'); } catch (e) {} }
