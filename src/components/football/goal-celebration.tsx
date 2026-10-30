@@ -10,7 +10,7 @@ import type { MatchDetails, Scorer } from "@/lib/match-details";
 interface GoalEvent { key: string; match: TopMatch; side: "home" | "away"; scorer?: Scorer }
 
 /** Longest we hold a goal back while looking up who scored (photo + name from 365Scores). */
-const SCORER_WAIT_MS = 3000;
+const SCORER_WAIT_MS = 8000;   // a background lookup now: the goal never waits for it
 
 const minuteValue = (s: Scorer) => { const [a, b] = s.minute.replace(/'/g, "").split("+"); return (parseFloat(a) || 0) + (parseFloat(b) || 0) / 100; };
 
@@ -53,6 +53,10 @@ function crowdRoar() {
   } catch { /* no sound: the card still plays */ }
 }
 
+/** «صوت الهدف» - off unless turned on in the football settings */
+export const goalSoundOn = () => { try { return localStorage.getItem("dc.goalSound") === "1"; } catch { return false; } };
+export const setGoalSound = (on: boolean) => { try { localStorage.setItem("dc.goalSound", on ? "1" : "0"); } catch {} };
+
 export const GOAL_TEST_EVENT = "goal-celebration-test";
 
 /**
@@ -85,7 +89,11 @@ export function GoalCelebration() {
     // only matches with the bell on (favourite teams by default, any other match from its card)
     const belled = useMediaStore.getState().belledMatchIds || [];
     const shown = events.filter(e => goalAlertOn(e.match, belled));
-    if (shown.length) withScorers(shown).then(full => setQueue(q => [...q, ...full]));
+    // the goal shows at once; the scorer is filled in when (if) the details arrive - nothing waits for it
+    if (shown.length) {
+      setQueue(q => [...q, ...shown]);
+      for (const e of shown) findScorer(e.match, e.side).then(sc => { if (sc) setQueue(q => q.map(x => x.key === e.key && !x.scorer ? { ...x, scorer: sc } : x)); });
+    }
   }, [data]);
 
   useEffect(() => {
@@ -114,8 +122,8 @@ export function GoalCelebration() {
   useEffect(() => {
     setCelebrating(!!current);
     if (!current) return;
-    try { navigator.vibrate?.([300, 150, 300, 150, 600]); } catch {}
-    crowdRoar();
+    // sound + vibration only when turned on (football settings: «صوت الهدف»)
+    if (goalSoundOn()) { try { navigator.vibrate?.([300, 150, 300, 150, 600]); } catch {} crowdRoar(); }
     const D = showMs(current);
     const t = setTimeout(() => setQueue(q => q.slice(1)), D);
     // give the stage back to the other islands as soon as the card starts shrinking, not after it has gone

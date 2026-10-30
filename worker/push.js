@@ -81,7 +81,8 @@ export async function watch(env, matches, goalsOf) {
     if (m.status === 'live' && g > p.g) {
       const last = (goals[m.id] || []).slice(-1)[0];
       const team = last ? (last.side === 'home' ? m.home.name : m.away.name) : '';
-      alerts.push({ id, at: Date.now(), kind: 'goal', match: m.id, title: '⚽ هدف! ' + (team || name(m)), body: (team ? name(m) : '') + (last ? ' · ' + [last.player, last.minute].filter(Boolean).join(' ') : '') + (m.league.name ? ' · ' + m.league.name : ''), fav: m.favorite });
+      // short: the goal (and the score), and who scored only when it is known - nothing else
+      alerts.push({ id, at: Date.now(), kind: 'goal', match: m.id, title: '⚽ هدف! ' + name(m), body: last && last.player ? [last.player, last.minute].filter(Boolean).join(' ') : '', fav: m.favorite });
     } else if (p.st === 'upcoming' && m.status === 'live') {
       alerts.push({ id, at: Date.now(), kind: 'start', match: m.id, title: '🟢 بدأت: ' + m.home.name + ' × ' + m.away.name, body: m.league.name || '', fav: m.favorite });
     } else if (p.st === 'live' && m.status === 'finished') {

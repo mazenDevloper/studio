@@ -7,6 +7,7 @@
  * Draws a small floating pill only when there is something to show.
  */
 import { useEffect, useRef, useState } from "react";
+import { goalSoundOn } from "@/components/football/goal-celebration";
 import { useRouter } from "next/navigation";
 import { useMediaStore } from "@/lib/store";
 import { getYoutubeTime } from "@/components/media/youtube-background-bridge";
@@ -113,10 +114,10 @@ export function HubBridge() {
         }
         // your teams' matches, the same moment on every screen: 15 min before, kick-off, each goal, final whistle
         else if (m.type === "match") {
-          chime(m.kind === "goal" ? 3 : 1);
+          if (m.kind !== "goal" || goalSoundOn()) chime(m.kind === "goal" ? 3 : 1);
           setIncoming({ item: { id: m.kind === "end" ? "t-end" : "t", kind: "web", title: m.title + (m.body ? " · " + m.body : "") }, from: m.kind === "end" ? "ملخص المباراة" : "المباريات" });
           const car = hub.me.kind === "car";
-          if (car || m.kind === "end" || m.kind === "goal") speakAll([m.kind === "end" ? m.title + ". " + (m.body || "") : m.title.replace(/^[^\p{L}]+/u, "")]);
+          if ((car && m.kind !== "goal") || m.kind === "end" || (m.kind === "goal" && goalSoundOn())) speakAll([m.kind === "end" ? m.title + ". " + (m.body || "") : m.title.replace(/^[^\p{L}]+/u, "")]);
         }
         else if (m.type === "ping") { try { const a = new AudioContext(), o = a.createOscillator(); o.frequency.value = 880; o.connect(a.destination); o.start(); o.stop(a.currentTime + 0.6); } catch {} setIncoming({ item: { id: "t", kind: "web", title: "🔔 " + who + " يبحث عن هذا الجهاز" }, from: who }); }
         else if (m.type === "say" && m.text) { speakAll([String(m.text)]); setIncoming({ item: { id: "t", kind: "web", title: "💬 " + String(m.text) }, from: who }); }

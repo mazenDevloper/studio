@@ -10,6 +10,7 @@ import { LEAGUE_CHANNEL_RULES, leagueKey } from "@/lib/match-channels";
 import { LeagueChannelsEditor } from "@/components/football/league-channels-editor";
 import { IptvChannelSelect } from "@/components/iptv/iptv-channel-select";
 import { cn } from "@/lib/utils";
+import { goalSoundOn, setGoalSound } from "@/components/football/goal-celebration";
 
 interface TeamHit { id: number; name: string; logo: string; country?: string }
 
@@ -21,9 +22,29 @@ export function FootballSettings() {
   return (
     <div className="grid gap-8 lg:grid-cols-2">
       <PushAlerts />
+      <GoalSoundSection />
       <FavoriteTeamsSection />
       <LeagueChannelsSection />
       <FollowedLeaguesSection />
+    </div>
+  );
+}
+
+/** «صوت الهدف»: the crowd roar, the chime, the spoken goal and the vibration - off unless turned on here */
+function GoalSoundSection() {
+  const [on, setOn] = useState(false);
+  useEffect(() => setOn(goalSoundOn()), []);
+  return (
+    <div className={box}>
+      <button onClick={() => { const v = !on; setGoalSound(v); setOn(v); }} className="w-full flex items-center justify-between gap-4 text-right focusable rounded-2xl">
+        <div>
+          <div className="text-lg font-black text-white">🔊 صوت الهدف</div>
+          <div className="text-sm text-white/50">هتاف الجمهور والتنبيه والاهتزاز عند كل هدف · الجزيرة والإشعار يظهران دائماً</div>
+        </div>
+        <span className={cn("shrink-0 w-14 h-8 rounded-full p-1 transition-colors", on ? "bg-emerald-500" : "bg-white/15")}>
+          <span className={cn("block w-6 h-6 rounded-full bg-white transition-transform", on ? "-translate-x-6" : "")} />
+        </span>
+      </button>
     </div>
   );
 }

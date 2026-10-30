@@ -78,9 +78,15 @@ export const useLiveMatchesStore = create<LiveMatchesState>((set, get) => ({
         if (fav.length) q.set("teams", fav.join("|"));
         if (pins.length) q.set("pins", pins.join("|"));
         for (const t of teams) if (t.startsWith("lg:")) q.append("follow", t.slice(3));
-        // retried 3× with growing waits (TanStack Query), never stuck: 10 s limit per try
-        json = await queryClient.fetchQuery({ queryKey: ["matches", q.toString()], queryFn: () => getJson(`/api/matches?${q}`, 10_000), staleTime: 3_000 });
-        if (!json || !Array.isArray(json.matches)) throw new Error(json?.error || "bad answer");
+        // retried with growing waits (TanStack Query), never stuck: 10 s limit per try. If the site's server is
+        // overloaded (Cloudflare 503) the light DriveCast server answers instead: your teams' games from 365scores.
+        try {
+          json = await queryClient.fetchQuery({ queryKey: ["matches", q.toString()], queryFn: () => getJson(`/api/matches?${q}`, 10_000), staleTime: 3_000, retry: 1 });
+          if (!json || !Array.isArray(json.matches)) throw new Error(json?.error || "bad answer");
+        } catch (e) {
+          json = await lightMatches();
+          if (!json) throw e;
+        }
       }
       const updatedAt = Date.now();
       set({ data: json, error: "", updatedAt });
@@ -114,6 +120,20 @@ function pollDue(data: TopMatchesResult | null, updatedAt: number | null): boole
   if (next && next - now < 5 * 60_000) return true; // starting (or late to start): watch it
   const wakeAt = Math.min(updatedAt + 30 * 60_000, next ? next - 5 * 60_000 : Infinity);
   return now >= wakeAt;
+}
+
+/** the studio worker's own list (favourite teams, 365scores), in the shape the screens use */
+async function lightMatches(): Promise<TopMatchesResult | null> {
+  try {
+    const d = await getJson("https://studio.c-p.workers.dev/matches?lang=27", 8000);
+    if (!Array.isArray(d?.matches)) return null;
+    const matches = d.matches.map((m: any) => ({
+      id: m.id, league: { id: m.league?.id || "", name: m.league?.name || "" }, home: m.home, away: m.away, timestamp: m.timestamp,
+      omanTime: m.omanTime, status: m.status, statusText: m.statusText || "", elapsed: m.elapsed ?? null, score: m.score,
+      channels: [], importance: m.favorite ? 100 : 50, favorite: !!m.favorite,
+    }));
+    return { date: footballDay(), timezone: "Asia/Muscat", source: "365scores (DriveCast)", total: matches.length, matches, attempts: [], fetchedAt: new Date().toISOString() };
+  } catch { return null; }
 }
 
 let subscribers = 0;
