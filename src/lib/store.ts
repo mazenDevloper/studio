@@ -229,7 +229,7 @@ interface MediaState {
   updatePrayerSetting: (id: string, updates: Partial<PrayerSetting>) => void;
 
   fetchPriorityData: (context: 'dashboard' | 'media' | 'all') => Promise<void>;
-  fetchSpecificBin: (id: string) => Promise<void>;
+  fetchSpecificBin: (id: string, preset?: unknown) => Promise<void>;
   syncMasterBin: () => Promise<void>;
   togglePinnedMatch: (m: PinnedMatch) => void;
   saveIptvReorder: () => Promise<void>;
@@ -354,11 +354,12 @@ export const useMediaStore = create<MediaState>()(
       setPickedUpId: (id) => set({ pickedUpId: id }), setIsRecordingKey: (v) => set({ isRecordingKey: v }), setRecordingAction: (v) => set({ recordingAction: v }), setDockScale: (v) => set({ dockScale: v }), setDisplayScale: (v) => set({ displayScale: v }), setIsSidebarShrinked: (v) => set({ isSidebarShrinked: v }), setGridMode: (mode: 'hidden' | 'partial' | 'full') => set({ gridMode: mode }), setIsPlayerControlsExpanded: (v) => set({ isPlayerControlsExpanded: v }), setIsPlayerPlaylistOpen: (v) => set({ isPlayerPlaylistOpen: v }),
       selectedChannel: null, channelVideos: [], videoResults: [], setSelectedChannel: (v) => set({ selectedChannel: v }), setChannelVideos: (v) => set({ channelVideos: v }),
 
-      fetchSpecificBin: async (binId) => {
+      fetchSpecificBin: async (binId, preset) => {
         try {
           // Cloudflare (retried with growing waits); with no network, the last copy kept on this device (IndexedDB)
-          let data: any = null;
-          try {
+          // preset: a copy already in hand (the device's own, read at start) - shown at once, nothing fetched
+          let data: any = preset ?? null;
+          if (preset === undefined) try {
             data = await queryClient.fetchQuery({ queryKey: ['bin', binId], queryFn: () => getJson(`https://studio.c-p.workers.dev/bin/${binId}?v=${Date.now()}`, 12000) });
             if (data != null) saveBinOffline(binId, data);
           } catch { data = (await loadBinOffline(binId))?.data ?? null; }
@@ -385,7 +386,7 @@ export const useMediaStore = create<MediaState>()(
             for (const d of cloud) if (d?.date) byDate.set(d.date, d);
             const merged = Array.from(byDate.values()).sort((a, b) => String(a.date).localeCompare(String(b.date)));
             set({ prayerTimes: merged });
-            if (merged.length > cloud.length) updateBin(JSONBIN_PRAYER_TIMES_BIN_ID, Array.isArray(data) ? merged : { ...data, prayers: merged });
+            if (preset === undefined && merged.length > cloud.length) updateBin(JSONBIN_PRAYER_TIMES_BIN_ID, Array.isArray(data) ? merged : { ...data, prayers: merged });
           }
           else if (binId === JSONBIN_MASTER_BIN_ID) set({ 
             // favourite teams + pinned matches follow the user to every device
@@ -429,6 +430,10 @@ export const useMediaStore = create<MediaState>()(
           JSONBIN_PRAYER_TIMES_BIN_ID, JSONBIN_MASTER_BIN_ID, JSONBIN_IPTV_FAVS_BIN_ID, JSONBIN_CHANNELS_BIN_ID,
           JSONBIN_POPULAR_RECITERS_BIN_ID, JSONBIN_FONTS_BIN_ID, JSONBIN_MANUSCRIPTS_BIN_ID, JSONBIN_BACKGROUNDS_BIN_ID,
         ];
+        // instant open: this device's own copies (IndexedDB) are shown first - no loading screen when it has them -
+        // then the cloud refreshes them in the background
+        const local = await Promise.all(all.map(async id => { const o = await loadBinOffline(id); if (o) await get().fetchSpecificBin(id, o.data); return !!o; }));
+        if (local.filter(Boolean).length >= 3) set({ isInitialLoading: false });
         // the start screen waits for the cloud at most 5s: one slow bin must not hold the whole app (the rest keeps loading)
         await Promise.race([Promise.allSettled(all.map(id => get().fetchSpecificBin(id))), new Promise(r => setTimeout(r, 5000))]);
         set({ isInitialLoading: false });

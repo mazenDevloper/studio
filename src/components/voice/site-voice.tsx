@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Mic } from "lucide-react";
 import { nativeIsland } from "@/lib/native-app";
 import { cn } from "@/lib/utils";
+import { hub } from "@/lib/hub";
 
 /**
  * The microphone beside the islands. In the Android app it opens the phone's voice commands; in a browser it
@@ -21,11 +22,12 @@ export function SiteVoiceButton() {
   const [answer, setAnswer] = useState("");
   const hist = useRef<{ role: string; content: string }[]>([]);
   // «المساعد» (Workers AI on the DriveCast server): answers aloud from your live matches and prayers, and can act
-  const ask = async (q: string) => {
+  const ask = async (q: string, fallback?: () => void) => {
     setAnswer("…");
     try {
-      const r = await (await fetch("https://studio.c-p.workers.dev/ask", { method: "POST", body: JSON.stringify({ q, history: hist.current, app: "drivecast" }) })).json();
-      if (!r?.say) { setAnswer(""); return; }
+      // the assistant sees every device on now and what each plays, and carries out commands on them itself
+      const r = await (await fetch("https://studio.c-p.workers.dev/ask", { method: "POST", body: JSON.stringify({ q, history: hist.current, app: "drivecast", device: hub.me?.id }) })).json();
+      if (!r?.say && !(r?.done || []).length) { setAnswer(""); fallback?.(); return; }
       hist.current = [...hist.current, { role: "user", content: q }, { role: "assistant", content: r.say }].slice(-8);
       setAnswer(r.say); setTimeout(() => setAnswer(""), 9000);
       try { const u = new SpeechSynthesisUtterance(r.say); u.lang = "ar-SA"; speechSynthesis.cancel(); speechSynthesis.speak(u); } catch { /* */ }
@@ -33,14 +35,17 @@ export function SiteVoiceButton() {
       if (a.type === "open_matches") router.push("/matches");
       else if (a.type === "open_url" && /^https?:\/\//.test(v)) window.open(v, "_blank");
       else if (a.type === "open_app" && v === "youtube") router.push("/media");
-    } catch { setAnswer("المساعد غير متاح الآن"); setTimeout(() => setAnswer(""), 3000); }
+    } catch { if (fallback) { setAnswer(""); fallback(); } else { setAnswer("المساعد غير متاح الآن"); setTimeout(() => setAnswer(""), 3000); } }
   };
 
   const act = (text: string) => {
     const t = text.trim();
     if (!t) return;
-    // a question («متى…»، «كم…»، «من سجّل…») or «يا مساعد …» goes to the assistant
-    if (/^(متى|كم|من |هل|ماذا|ما |شو|كيف|أين|وين|ليش|لماذا|أي |اي )|سجّل|سجل|يا مساعد|المساعد|الأذان|الاذان|الصلاة/.test(t)) { ask(t); return; }
+    // everything goes to the assistant first: it understands the meaning (any wording) and acts on any device;
+    // the simple word rules below are only the fallback when it can't be reached
+    ask(t, () => local(t));
+  };
+  const local = (t: string) => {
     if (/مباري|ماتش|نتيج/.test(t)) { router.push("/matches"); return; }
     if (/اذكار|أذكار/.test(t)) { router.push("/football"); return; }
     const q = t.replace(/^\s*(شغّل|شغل|شغلي|شغّلي|ابحث عن|إبحث عن|ابحث|سمعني|سمّعني|أبي|ابي|حط)\s*/u, "").trim() || t;

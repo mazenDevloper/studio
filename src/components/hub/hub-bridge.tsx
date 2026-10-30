@@ -92,6 +92,16 @@ export function HubBridge() {
         const r = Object.values(hub.state.resume || {}).filter(x => x.from?.id !== hub.me.id && Date.now() - (x.at || 0) < 12 * 3600e3).sort((a, b) => (b.at || 0) - (a.at || 0))[0];
         if (r) setOffer(r);
       }
+      // handoff: the car just went off while it was playing → the TV / phone at home offers to continue it here
+      if (d.type === "devices") {
+        const prev: any[] = (window as any).__dcPrevDevices || [], ids = new Set((d.devices || []).map((x: any) => x.id));
+        for (const gone of prev.filter(x => !ids.has(x.id) && x.id !== hub.me.id && x.kind === "car")) {
+          const r = Object.values(hub.state.resume || {}).filter(x => x.from?.id === gone.id && Date.now() - (x.at || 0) < 5 * 60e3).sort((a, b) => (b.at || 0) - (a.at || 0))[0];
+          if (r && hub.me.kind !== "car") setOffer(r);
+        }
+        (window as any).__dcPrevDevices = d.devices || [];
+      }
+      if (d.type === "hello") (window as any).__dcPrevDevices = d.devices || [];
       if (d.type === "msg") {
         const m = d.msg || {}, s = useMediaStore.getState(), who = d.from?.name || KIND_AR[d.from?.kind] || "جهاز";
         if (m.type === "open" && m.item) { if (m.now) openHubItem(m.item); else setIncoming({ item: m.item, from: who }); }
@@ -104,7 +114,7 @@ export function HubBridge() {
         // your teams' matches, the same moment on every screen: 15 min before, kick-off, each goal, final whistle
         else if (m.type === "match") {
           chime(m.kind === "goal" ? 3 : 1);
-          setIncoming({ item: { id: "t", kind: "web", title: m.title + (m.body ? " · " + m.body : "") }, from: "المباريات" });
+          setIncoming({ item: { id: m.kind === "end" ? "t-end" : "t", kind: "web", title: m.title + (m.body ? " · " + m.body : "") }, from: m.kind === "end" ? "ملخص المباراة" : "المباريات" });
           const car = hub.me.kind === "car";
           if (car || m.kind === "end" || m.kind === "goal") speakAll([m.kind === "end" ? m.title + ". " + (m.body || "") : m.title.replace(/^[^\p{L}]+/u, "")]);
         }
@@ -148,7 +158,7 @@ export function HubBridge() {
       {incoming && (
         <div className={pill}>
           <span className="max-w-[56vw] truncate">📥 من {incoming.from}: {incoming.item.title}</span>
-          {incoming.item.id !== "t" && <button className="rounded-full bg-sky-600 px-3 py-1" onClick={() => { openHubItem(incoming.item); setIncoming(null); }}>افتح</button>}
+          {!/^t(-end)?$/.test(incoming.item.id) && <button className="rounded-full bg-sky-600 px-3 py-1" onClick={() => { openHubItem(incoming.item); setIncoming(null); }}>افتح</button>}
           <button className="opacity-60 px-1" onClick={() => setIncoming(null)}>✕</button>
         </div>
       )}

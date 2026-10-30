@@ -3,6 +3,8 @@
 
 import { NativeIslandBridge } from "@/components/native/native-island-bridge";
 import { HubBridge } from "@/components/hub/hub-bridge";
+import { WelcomeCard } from "@/components/hub/welcome-card";
+import { PrayerGuard } from "@/components/hub/prayer-guard";
 import { NativeWidgetsBridge } from "@/components/native/native-widgets-bridge";
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
@@ -185,6 +187,8 @@ export default function RootLayout({
             <GlobalQuranPlayer />
             <AudioPlayer />
             <HubBridge />
+          <WelcomeCard />
+          <PrayerGuard />
             <Toaster />
           </RootLayoutWrapper>
         </FirebaseClientProvider>

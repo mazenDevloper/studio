@@ -36,6 +36,23 @@ const SHRINK_AT = 0.9;
 const ACT2_MS = 2300;
 
 /** Dispatch this to preview the animation: window.dispatchEvent(new CustomEvent(GOAL_TEST_EVENT)) */
+/** the stadium on a goal: a crowd roar made on the spot (filtered noise swelling and fading, ~3 s, no file) */
+function crowdRoar() {
+  try {
+    const AC = (window as any).AudioContext || (window as any).webkitAudioContext; if (!AC) return;
+    const a: AudioContext = (window as any).__dcRoarCtx ||= new AC();
+    a.resume?.();
+    const len = a.sampleRate * 3.2, buf = a.createBuffer(2, len, a.sampleRate);
+    for (let c = 0; c < 2; c++) { const d = buf.getChannelData(c); let b = 0; for (let i = 0; i < len; i++) { b = 0.97 * b + 0.03 * (Math.random() * 2 - 1); d[i] = b * 6 + (Math.random() * 2 - 1) * 0.15; } }
+    const src = a.createBufferSource(); src.buffer = buf;
+    const bp = a.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = 900; bp.Q.value = 0.6;
+    const g = a.createGain(), t = a.currentTime;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.5, t + 0.35); g.gain.setValueAtTime(0.5, t + 1.4); g.gain.exponentialRampToValueAtTime(0.0001, t + 3.1);
+    bp.frequency.linearRampToValueAtTime(1300, t + 0.6); bp.frequency.linearRampToValueAtTime(800, t + 3);
+    src.connect(bp).connect(g).connect(a.destination); src.start(t); src.stop(t + 3.2);
+  } catch { /* no sound: the card still plays */ }
+}
+
 export const GOAL_TEST_EVENT = "goal-celebration-test";
 
 /**
@@ -98,6 +115,7 @@ export function GoalCelebration() {
     setCelebrating(!!current);
     if (!current) return;
     try { navigator.vibrate?.([300, 150, 300, 150, 600]); } catch {}
+    crowdRoar();
     const D = showMs(current);
     const t = setTimeout(() => setQueue(q => q.slice(1)), D);
     // give the stage back to the other islands as soon as the card starts shrinking, not after it has gone

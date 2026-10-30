@@ -9,6 +9,7 @@ export { Screens } from './screen.js';
 export { Hub } from './hub.js';
 import { hubLibrary } from './hub.js';
 import { lkToken } from './livekit.js';
+import { welcome } from './welcome.js';
 // DriveCast / Madar server: does the fetching and merging so the phones only download one small, ready file.
 //   GET /matches?lang=27|1   your favourite teams' games (live, coming, finished today), cached 20 s
 //   GET /favourites          favourite teams from the cloud bin, cached 10 min
@@ -228,6 +229,7 @@ export default {
       for (const [path, fn] of [['/summarize', summarize], ['/translate', translate], ['/vision/ask', visionAsk]])
         if (u.pathname === path && req.method === 'POST') return new Response(JSON.stringify(await fn(req, env).catch(e => ({ ok: false, error: String(e && e.message || e) }))), { headers: H });
       // «المركز»: the shared home of Madar and DriveCast (one Durable Object)
+      if (u.pathname === '/hub/welcome') return await cached(req, ctx, 20, () => welcome(env));
       if (u.pathname === '/hub/today') return await cached(req, ctx, 30, () => today(env));
       if (u.pathname === '/hub/library') return await cached(req, ctx, 120, () => hubLibrary(env));
       if (u.pathname.startsWith('/hub/')) return env.HUB.get(env.HUB.idFromName('home')).fetch(req);
