@@ -18,22 +18,24 @@ const isUrl = (t: string) => /^https?:\/\/\S+$/i.test(t.trim());
 interface Welcome {
   greet: string; date: { weekday: string; day: string; month: string; year: string; hijri: string };
   next?: { title: string; time: string; mins: number } | null;
+  devices?: { id: string; name: string; kind: string; app: string; playing?: { title?: string } | null }[];
   match?: { home: { name: string; logo?: string }; away: { name: string; logo?: string }; live: boolean; score: { home: number | null; away: number | null }; time: string; elapsed?: number; league?: string } | null;
 }
 
 /** every device on now, drawn as its icon with a green dot (and what it plays) */
-export function DevicesStrip({ className, big }: { className?: string; big?: boolean }) {
+export function DevicesStrip({ className, big, fallback }: { className?: string; big?: boolean; fallback?: { id: string; name: string; kind: string; app: string; playing?: { title?: string } | null }[] }) {
   const [, force] = useState(0);
   useEffect(() => { hub.start(); return hub.on(() => force(x => x + 1)); }, []);
   const resume = Object.values(hub.state.resume || {}) as HubItem[];
   const now = Date.now();
-  const list = [...new Map(hub.devices.map(d => [d.id, d])).values()];
+  // live from the hub socket; until it connects, the list the server sent with the welcome
+  const list: any[] = hub.devices.length ? [...new Map(hub.devices.map(d => [d.id, d])).values()] : (fallback || []);
   if (!list.length) return null;
   return (
     <div className={cn("flex flex-wrap gap-2", className)}>
       {list.map(d => {
         const k = kindOf(d), I = ICON[k], me = d.id === hub.me.id;
-        const p = resume.filter(x => x.from?.id === d.id && now - (x.at || 0) < 20 * 60e3).sort((a, b) => (b.at || 0) - (a.at || 0))[0];
+        const p = resume.filter(x => x.from?.id === d.id && now - (x.at || 0) < 20 * 60e3).sort((a, b) => (b.at || 0) - (a.at || 0))[0] || d.playing;
         return (
           <div key={d.id} className={cn("relative flex items-center gap-2 rounded-2xl bg-white/[0.07] border border-white/10 backdrop-blur-xl", big ? "px-3.5 py-2.5" : "px-2.5 py-1.5")} title={d.name}>
             <div className="relative">
@@ -121,7 +123,7 @@ export function WelcomeCard() {
               )}
             </div>
             <div className="mt-4 text-[11px] font-bold text-white/50 mb-2">أجهزتك المتصلة</div>
-            <DevicesStrip big />
+            <DevicesStrip big fallback={w.devices} />
             <div className="mt-4 flex items-center gap-2">
               <button onClick={async () => setNote(await sendClipboard())} className="flex items-center gap-2 rounded-full bg-white/10 hover:bg-white/20 px-4 py-2 text-sm font-bold focusable">
                 <Clipboard className="w-4 h-4" /> أرسل ما نسخته لأجهزتي

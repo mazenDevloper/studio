@@ -63,7 +63,7 @@ export function PrayerGuard() {
   const t = new Date(card.at).toLocaleTimeString("ar-OM", { hour: "numeric", minute: "2-digit" });
   const resume = () => { useMediaStore.getState().setIsPlaying(true); (window as any).__dcPrayerPaused = false; setCard(null); };
   return (
-    <div dir="rtl" className="fixed inset-x-0 top-24 z-[100004] flex justify-center px-4 pointer-events-none">
+    <div dir="rtl" className="fixed inset-x-0 bottom-36 z-[100004] flex justify-center px-4 pointer-events-none">
       <div className="pointer-events-auto flex items-center gap-3 rounded-[1.6rem] bg-emerald-950/90 border border-emerald-400/30 px-5 py-3 text-white shadow-2xl backdrop-blur-xl">
         <span className="text-2xl">🕌</span>
         <div className="leading-tight">
