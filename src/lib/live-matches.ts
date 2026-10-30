@@ -5,6 +5,8 @@ import { create } from "zustand";
 import { useMediaStore, DEVICE_TAG } from "@/lib/store";
 import { footballDay } from "@/lib/oman-time";
 import type { TopMatchesResult } from "@/lib/match-core";
+import { queryClient, getJson } from "@/lib/net";
+import ReconnectingWebSocket from "partysocket/ws";
 
 /**
  * One shared live feed of today's matches (/api/matches) for the whole app:
@@ -76,9 +78,9 @@ export const useLiveMatchesStore = create<LiveMatchesState>((set, get) => ({
         if (fav.length) q.set("teams", fav.join("|"));
         if (pins.length) q.set("pins", pins.join("|"));
         for (const t of teams) if (t.startsWith("lg:")) q.append("follow", t.slice(3));
-        const res = await fetch(`/api/matches?${q}`, { cache: "no-store" });
-        json = await res.json();
-        if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+        // retried 3× with growing waits (TanStack Query), never stuck: 10 s limit per try
+        json = await queryClient.fetchQuery({ queryKey: ["matches", q.toString()], queryFn: () => getJson(`/api/matches?${q}`, 10_000), staleTime: 3_000 });
+        if (!json || !Array.isArray(json.matches)) throw new Error(json?.error || "bad answer");
       }
       const updatedAt = Date.now();
       set({ data: json, error: "", updatedAt });
@@ -119,15 +121,15 @@ let timer: ReturnType<typeof setInterval> | null = null;
 
 // The server's live socket (Durable Object): it speaks the moment a score, minute or status of your teams moves,
 // and the list is fetched right then - goals show within seconds instead of waiting for the next poll.
-let ws: WebSocket | null = null, wsTried = 0, lastSig = "";
+let ws: ReconnectingWebSocket | null = null, lastSig = "";
 export let liveSocketOk = false;
+// partysocket: reconnects by itself (growing waits, jittered), queues while offline, comes back when the network does
 export function openLive() {
-  if (typeof WebSocket === "undefined" || (ws && ws.readyState <= 1) || Date.now() - wsTried < 15_000) return;
-  wsTried = Date.now();
+  if (typeof WebSocket === "undefined" || ws) return;
   try {
-    const s = new WebSocket("wss://studio.c-p.workers.dev/live?lang=27");
+    const s = new ReconnectingWebSocket("wss://studio.c-p.workers.dev/live?lang=27", [], { minReconnectionDelay: 1000, maxReconnectionDelay: 20_000, reconnectionDelayGrowFactor: 1.6, connectionTimeout: 6000 });
     s.onopen = () => { liveSocketOk = true; };
-    s.onclose = () => { liveSocketOk = false; ws = null; };
+    s.onclose = () => { liveSocketOk = false; };
     s.onmessage = e => {
       try {
         const d = JSON.parse(String(e.data));
@@ -141,6 +143,9 @@ export function openLive() {
       } catch { /* not ours */ }
     };
     ws = s;
+    // back online / back to the screen: reconnect at once instead of waiting for the next try
+    window.addEventListener("online", () => ws?.reconnect());
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && ws && ws.readyState > 1) ws.reconnect(); });
   } catch { /* no socket: polling carries on */ }
 }
 

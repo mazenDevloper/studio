@@ -64,6 +64,7 @@ export function IptvPlaybackSettings({ compact = false }: { compact?: boolean })
         options={[
           { value: "hls", title: "HLS (m3u8)", sub: "الافتراضي" },
           { value: "mpegts", title: "MPEG-TS (.ts)", sub: "بث متصل · أنعم غالباً · الأفضل على السيرفر المحلي" },
+          { value: "shaka", title: "Shaka Player", sub: "محرّك Google · HLS و DASH · يُجرَّب وحده إن تعثّر HLS" },
         ]}
       />
       <Choice<ConnectionMode>

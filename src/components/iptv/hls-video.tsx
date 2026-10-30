@@ -64,6 +64,7 @@ export function HlsVideo({ src, className, onError }: HlsVideoProps) {
     setStatus(attempt ? "reconnecting" : "loading");
     let hls: Hls | null = null;
     let ts: { destroy(): void; unload(): void; detachMediaElement(): void } | null = null;
+    let shaka: { destroy(): Promise<void> } | null = null;
     let dead = false;
     let usedEngine = "native";
     const timers: ReturnType<typeof setTimeout>[] = [];
@@ -144,7 +145,27 @@ export function HlsVideo({ src, className, onError }: HlsVideoProps) {
     const tsUrl = settings.engine === "mpegts" || /\.ts(\?|$)/i.test(src) ? toTsUrl(src) : null;
     const isHls = /\.m3u8?(\?|$)/i.test(src) || src.includes("m3u8") || /\/live\/[^/]+\/[^/]+\/\d+/.test(src);
 
-    if (tsUrl && typeof window !== "undefined" && "MediaSource" in window) {
+    // Shaka Player: chosen in the settings, for DASH (.mpd), or on its own when hls.js failed twice on a channel that never started
+    const useShaka = typeof window !== "undefined" && "MediaSource" in window && !tsUrl &&
+      (settings.engine === "shaka" || /\.mpd(\?|$)/i.test(src) || (isHls && !playedRef.current && reloadsRef.current >= 2));
+    if (useShaka) {
+      usedEngine = "shaka";
+      const url = proxiedUrl(src, settings.connection);
+      import("shaka-player/dist/shaka-player.compiled.js").then(async (mod: any) => {
+        const sk = mod.default || mod;
+        if (dead) return;
+        sk.polyfill.installAll();
+        if (!sk.Player.isBrowserSupported()) { reload(); return; }
+        const p = new sk.Player();
+        shaka = p;
+        await p.attach(video);
+        p.configure({ streaming: { bufferingGoal: Math.max(10, settings.bufferSeconds), rebufferingGoal: 2, retryParameters: { maxAttempts: 4, baseDelay: 800, backoffFactor: 2 } },
+          abr: settings.maxQuality > 0 ? { restrictions: { maxHeight: settings.maxQuality } } : {} });
+        p.addEventListener("error", (e: any) => { if (e?.detail?.severity === 2) reload(); });
+        await p.load(url);
+        start();
+      }).catch(() => reload());
+    } else if (tsUrl && typeof window !== "undefined" && "MediaSource" in window) {
       usedEngine = "mpegts";
       // continuous stream: relayed by default (same origin, no CORS, one upstream connection closed on switch)
       const url = proxiedUrl(tsUrl, settings.connection === "direct" ? "auto" : "relay");
@@ -217,6 +238,7 @@ export function HlsVideo({ src, className, onError }: HlsVideoProps) {
       video.removeEventListener("loadedmetadata", start);
       video.removeEventListener("error", reload);
       hls?.destroy();
+      shaka?.destroy().catch(() => {});
       if (ts) { try { ts.unload(); ts.detachMediaElement(); ts.destroy(); } catch {} }
       video.removeAttribute("src");
       video.load();

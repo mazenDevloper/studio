@@ -19,6 +19,7 @@ import {
   JSONBIN_PRAYER_TIMES_BIN_ID,
   prayerTimesData
 } from "./constants";
+import { queryClient, getJson, saveBinOffline, loadBinOffline } from "./net";
 
 // Older Android WebViews (car head units, TV boxes) have no AbortSignal.timeout: every cloud fetch threw before it
 // started and the app came up empty. Give them one.
@@ -355,11 +356,13 @@ export const useMediaStore = create<MediaState>()(
 
       fetchSpecificBin: async (binId) => {
         try {
-          // the server's copy first (instant, no JSONBin quota), JSONBin itself when the server can't answer
-          let r = await fetch(`https://studio.c-p.workers.dev/bin/${binId}?v=${Date.now()}`, { cache: 'no-store', signal: AbortSignal.timeout(8000) }).catch(() => null);
-          if (!r || !r.ok) r = await fetch(`https://studio.c-p.workers.dev/bin/${binId}?v=${Date.now()}`, { cache: 'no-store', signal: AbortSignal.timeout(12000) }).catch(() => null);
-          if (!r || !r.ok) return;
-          const data = await r.json();
+          // Cloudflare (retried with growing waits); with no network, the last copy kept on this device (IndexedDB)
+          let data: any = null;
+          try {
+            data = await queryClient.fetchQuery({ queryKey: ['bin', binId], queryFn: () => getJson(`https://studio.c-p.workers.dev/bin/${binId}?v=${Date.now()}`, 12000) });
+            if (data != null) saveBinOffline(binId, data);
+          } catch { data = (await loadBinOffline(binId))?.data ?? null; }
+          if (data == null) return;
           loadedBins.add(binId);
           if (binId === JSONBIN_MASTER_BIN_ID && data && typeof data === 'object' && !Array.isArray(data)) lastMasterCloud = data;
           if (binId === JSONBIN_CHANNELS_BIN_ID) set({ favoriteChannels: arr(data?.channels, data) });

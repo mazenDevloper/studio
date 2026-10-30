@@ -13,7 +13,7 @@ import type { HlsConfig, LoaderConfig } from "hls.js";
 /** stable = far from the live edge + refill cushion (least stutter); fast = closest to live (most stutter-prone) */
 export type BufferProfile = "stable" | "balanced" | "fast";
 /** hls = the playlist's .m3u8 links; mpegts = Xtream live links played as one continuous .ts stream (often smoother) */
-export type IptvEngine = "hls" | "mpegts";
+export type IptvEngine = "hls" | "mpegts" | "shaka";
 /** auto = relay through this app's server only when the page is https; relay = always (VLC user agent, no CORS issues) */
 export type ConnectionMode = "auto" | "direct" | "relay";
 
