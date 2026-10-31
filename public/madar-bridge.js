@@ -81,6 +81,13 @@
   var ME = (function () { try { return new URL(document.currentScript.src).origin; } catch (e) { return location.origin; } })();
   var h2c = null, snapping = false, skipMedia = false;
   function playing() { var v = document.querySelectorAll('video'); for (var i = 0; i < v.length; i++) if (!v[i].paused && v[i].readyState > 2) return true; return !!document.querySelector('iframe[src*="youtube"],iframe[src*="player"],iframe[allowfullscreen]'); }
+  // a video player in the page (even before it plays): a picture of the page can never show its video
+  function hasVideo() {
+    var big = function (el) { var r = el.getBoundingClientRect(); return r.width >= 160 && r.height >= 90; };
+    var v = document.querySelectorAll('video'); for (var i = 0; i < v.length; i++) if (big(v[i])) return true;
+    var f = document.querySelectorAll('iframe'); for (var j = 0; j < f.length; j++) { var s = ''; try { s = decodeURIComponent(f[j].getAttribute('src') || ''); } catch (e) { s = f[j].getAttribute('src') || ''; } if (big(f[j]) && (/player|embed|stream|live|watch|video|m3u8/i.test(s) || f[j].hasAttribute('allowfullscreen'))) return true; }
+    return false;
+  }
   function loadH2C() {
     if (window.html2canvas) return Promise.resolve();
     // Inside Madar's iPhone app: the app hands html2canvas to this frame (any website, no server).
@@ -116,12 +123,12 @@
         ignoreElements: function (el) { return skipMedia && (el.tagName === 'VIDEO' || el.tagName === 'CANVAS'); },
       });
     }).then(function (c) {
-      c.toBlob(function (b) { snapping = false; post({ type: 'snap', id: d.id, blob: b, media: playing() }); }, 'image/jpeg', d.q || 0.8);
+      c.toBlob(function (b) { snapping = false; post({ type: 'snap', id: d.id, blob: b, media: playing(), video: hasVideo() }); }, 'image/jpeg', d.q || 0.8);
     }).catch(function (e) {
       snapping = false;
       // A video from another site can't be copied into the picture: leave videos out and try again.
       if (!skipMedia) { skipMedia = true; setTimeout(function () { snap(d); }, 0); return; }
-      post({ type: 'snap', id: d.id, error: String(e && e.message || e) });
+      post({ type: 'snap', id: d.id, error: String(e && e.message || e), video: hasVideo() });
     });
   }
 

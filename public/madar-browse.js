@@ -25,6 +25,56 @@
     }
   }, true);
   window.open = function (u) { go(abs(u || '')); return null; };
+
+  // ---- Videos inside the page (live TV, series, matches). The page is served from Madar's address, so its player
+  // asking the stream's server directly is refused (other site / hotlink protection) and the video stays black.
+  // Its stream requests go through Madar's server instead, sent as if from the page itself.
+  var ME = location.origin, NO = /(^|\.)(youtube\.com|youtube-nocookie\.com|googlevideo\.com|google\.com|gstatic\.com|googleapis\.com|doubleclick\.net|googlesyndication\.com|facebook\.com|twitter\.com|x\.com)$/i;
+  var MEDIA = /\.(m3u8?|ts|m4s|mp4|m4a|m4v|aac|mp3|webm|key|mpd|vtt)(\?|$)|\/(hls|live|stream|playlist|manifest|chunklist|segment)/i;
+  function via(u, ref) {
+    var a = abs(u); if (!a || !/^https?:/i.test(a)) return null;
+    var h; try { h = new URL(a); } catch (e) { return null; }
+    if (h.origin === ME || NO.test(h.hostname)) return null;
+    return M.proxy + encodeURIComponent(a) + '&ref=' + encodeURIComponent(ref || M.url);
+  }
+  // XHR (hls.js, most players): stream addresses through Madar; other calls stay direct
+  var XO = XMLHttpRequest.prototype.open;
+  XMLHttpRequest.prototype.open = function (m, u) {
+    var a = arguments, p = typeof u === 'string' && MEDIA.test(u) ? via(u) : null;
+    if (p) { a = [].slice.call(arguments); a[1] = p; }
+    return XO.apply(this, a);
+  };
+  // fetch: streams through Madar; anything else is tried directly first, and through Madar if the site refuses
+  var F = window.fetch;
+  if (F) window.fetch = function (input, init) {
+    var u = typeof input === 'string' ? input : input && input.url;
+    var p = u ? via(u) : null;
+    if (p && MEDIA.test(u)) return F.call(this, p, init);
+    var self = this;
+    return F.call(this, input, init).catch(function (e) { if (p) return F.call(self, p, init); throw e; });
+  };
+  // <video src="…m3u8 / mp4"> (the iPhone plays HLS by itself): through Madar as well
+  try {
+    var D = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'src');
+    Object.defineProperty(HTMLMediaElement.prototype, 'src', { configurable: true, get: D.get, set: function (v) { var p = typeof v === 'string' && MEDIA.test(v) ? via(v) : null; D.set.call(this, p || v); } });
+    var SA = Element.prototype.setAttribute;
+    Element.prototype.setAttribute = function (k, v) {
+      if (k === 'src' && typeof v === 'string' && (this.tagName === 'VIDEO' || this.tagName === 'SOURCE' || this.tagName === 'AUDIO') && MEDIA.test(v)) { var p = via(v); if (p) v = p; }
+      return SA.call(this, k, v);
+    };
+  } catch (e) { }
+  // a player in a frame from another site: opened through Madar too, so the same rules reach it
+  function frameFix(f) {
+    var s = f.getAttribute('src') || ''; if (!s || s.indexOf(M.proxy) === 0 || /^(about|data|blob|javascript):/i.test(s)) return;
+    var a = abs(s); if (!a) return; var h; try { h = new URL(a); } catch (e) { return; }
+    if (h.origin === ME || NO.test(h.hostname)) return;
+    f.setAttribute('src', M.proxy + encodeURIComponent(a));
+  }
+  function scan(root) { [].forEach.call((root || document).querySelectorAll ? (root || document).querySelectorAll('iframe[src]') : [], frameFix); }
+  new MutationObserver(function (ms) { ms.forEach(function (m) { [].forEach.call(m.addedNodes, function (n) { if (n.tagName === 'IFRAME') frameFix(n); else if (n.querySelectorAll) scan(n); }); if (m.type === 'attributes' && m.target.tagName === 'IFRAME') frameFix(m.target); }); })
+    .observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['src'] });
+  document.addEventListener('DOMContentLoaded', function () { scan(document); });
+
   // Sites that change the address themselves (single-page apps): keep working, remember the address.
   ['pushState', 'replaceState'].forEach(function (k) {
     var orig = history[k];

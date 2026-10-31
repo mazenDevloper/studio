@@ -28,12 +28,23 @@ async function handle(req: NextRequest) {
   try { target = new URL(raw); } catch { return page('العنوان غير صحيح', 400); }
   if (blocked(target)) return page('هذا العنوان غير مسموح', 403);
 
+  // A request made BY a proxied page (its player's stream, its API): sent as if from that page (Referer / Origin), so
+  // sites that only serve their own pages (hotlink protection, CORS) answer; ranges pass through for seeking.
+  const ref = req.nextUrl.searchParams.get('ref') || '';
+  const sub = !!ref;
+  const hdr: Record<string, string> = { 'user-agent': UA, accept: sub ? (req.headers.get('accept') || '*/*') : 'text/html,application/xhtml+xml,*/*;q=0.8', 'accept-language': 'ar,en;q=0.8' };
+  if (sub) {
+    try { const r = new URL(ref); hdr.referer = r.href; hdr.origin = r.origin; } catch {}
+    for (const k of ['range', 'authorization', 'x-requested-with', 'if-none-match', 'if-modified-since']) { const v = req.headers.get(k); if (v) hdr[k] = v; }
+    req.headers.forEach((v, k) => { if (/^x-(?!forwarded|real-ip|madar)/i.test(k)) hdr[k] = v; });
+  }
   const init: RequestInit = {
     method: req.method, redirect: 'follow',
-    headers: { 'user-agent': UA, accept: 'text/html,application/xhtml+xml,*/*;q=0.8', 'accept-language': 'ar,en;q=0.8' },
-    signal: AbortSignal.timeout(9000),
+    headers: hdr,
+    // a live stream or a big file must not be cut; a page still has 9 s
+    signal: sub ? AbortSignal.timeout(25000) : AbortSignal.timeout(9000),
   };
-  if (req.method === 'POST') {
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
     (init.headers as Record<string, string>)['content-type'] = req.headers.get('content-type') || 'application/x-www-form-urlencoded';
     init.body = await req.arrayBuffer();
   }
@@ -41,11 +52,20 @@ async function handle(req: NextRequest) {
   try { res = await fetch(target, init); } catch (e: any) { return page(e?.name === 'TimeoutError' ? 'الموقع لم يستجب' : 'لا يمكن الوصول إلى الموقع'); }
   const final = res.url || target.href;
   const type = res.headers.get('content-type') || '';
-  if (!/text\/html|application\/xhtml/.test(type)) {
-    // Not a page (image, PDF…): pass it through.
+  const isM3u8 = /mpegurl/i.test(type) || /\.m3u8?(\?|$)/i.test(new URL(final).pathname + new URL(final).search);
+  if (isM3u8) {
+    // HLS playlist: every address inside becomes absolute and goes through here too (with the same page as Referer)
+    const body = await res.text(), via = (u: string) => { try { return req.nextUrl.origin + '/api/madar-browse?url=' + encodeURIComponent(new URL(u, final).href) + '&ref=' + encodeURIComponent(ref || final); } catch { return u; } };
+    const out = body.split(/\r?\n/).map(l => { const t = l.trim(); if (!t) return l; if (t.startsWith('#')) return l.replace(/URI="([^"]+)"/g, (_m, u) => 'URI="' + via(u) + '"'); return via(t); }).join('\n');
+    return new Response(out, { status: res.status, headers: { 'content-type': 'application/vnd.apple.mpegurl', 'cache-control': 'no-store', 'access-control-allow-origin': '*' } });
+  }
+  if (sub || !/text\/html|application\/xhtml/.test(type)) {
+    // Not a page (stream pieces, video, API answers, images): passed through as it comes, ranges included.
     const len = Number(res.headers.get('content-length') || 0);
-    if (len > MAX) return Response.redirect(final, 302);
-    return new Response(res.body, { status: res.status, headers: { 'content-type': type || 'application/octet-stream', 'cache-control': 'no-store' } });
+    if (!sub && len > MAX) return Response.redirect(final, 302);
+    const h: Record<string, string> = { 'content-type': type || 'application/octet-stream', 'cache-control': 'no-store', 'access-control-allow-origin': '*' };
+    for (const k of ['content-length', 'content-range', 'accept-ranges']) { const v = res.headers.get(k); if (v) h[k] = v; }
+    return new Response(res.body, { status: res.status, headers: h });
   }
   let html = await res.text();
   const me = req.nextUrl.origin;
@@ -60,3 +80,7 @@ async function handle(req: NextRequest) {
 
 export const GET = handle;
 export const POST = handle;
+export const PUT = handle;
+export async function OPTIONS() {
+  return new Response(null, { status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-methods': 'GET,POST,PUT,OPTIONS', 'access-control-allow-headers': '*', 'access-control-max-age': '86400' } });
+}
