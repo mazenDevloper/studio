@@ -159,7 +159,7 @@ export function CarDock() {
   return (
     <>
       <div data-nav-zone="dock" className={cn(
-        "fixed top-0 bottom-0 z-[150] transition-all duration-300 bg-black/80 backdrop-blur-3xl flex flex-col py-6 border-white/5", 
+        "fixed top-0 bottom-0 z-[150] transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] material-thick flex flex-col py-6 border-white/5", 
         "w-16 min-[980px]:w-20", 
         dockSide === 'left' ? "left-0 border-r" : "right-0 border-l",
         // below 968px the dock is a bottom bar: switching direction also reverses the order of its buttons

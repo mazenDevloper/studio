@@ -26,6 +26,14 @@
     --input: 0 0% 20%;
     --ring: 210 100% 50%;
     --radius: 1.5rem;
+    /* Apple semantic colours (dark): text levels by opacity, not by grey shades */
+    --label: rgba(255, 255, 255, 0.96);
+    --label-2: rgba(235, 235, 245, 0.62);
+    --label-3: rgba(235, 235, 245, 0.32);
+    --separator: rgba(84, 84, 88, 0.55);
+    --tint: #0a84ff;
+    /* motion: springy and interruptible (response ~0.4 s, damping ~0.8) */
+    --ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
   }
 }
 
@@ -55,13 +63,17 @@
 }
 
 /* SOVEREIGN FREE FOCUS INDICATOR */
+/* Apple tvOS-style focus (remote / car / TV): the item lifts towards you - a little larger, a soft shadow under it
+   and a clean white ring; no neon glow (deference: the content stays the brightest thing on screen) */
+.focusable { transition: transform 0.38s var(--ease-spring), box-shadow 0.38s var(--ease-spring), background-color 0.2s ease; }
 .focusable:focus {
-  @apply border-white z-50;
-  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.4), 0 0 80px rgba(0, 136, 255, 0.8), inset 0 0 10px rgba(255, 255, 255, 0.5);
+  @apply z-50;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.92), 0 18px 40px -12px rgba(0, 0, 0, 0.85);
   transform: scale(1.05) translateY(-2px) !important;
-  outline: 2px solid white !important;
-  outline-offset: 4px !important;
+  outline: none !important;
 }
+/* a press answers at once (< 100 ms): shrinks a touch, springs back */
+.focusable:active:not(input):not(textarea) { transform: scale(0.97) !important; transition-duration: 0.08s; }
 
 /* raise the focused element above its neighbours - but never move a button that is placed absolutely / fixed: it
    used to jump on press (mousedown focuses it), the release then missed it and the first tap was lost */
@@ -287,3 +299,27 @@ body { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%;
 /* Nothing may make the page wider than the screen (iPhone app / phones: the content slid off to one side). */
 html, body { max-width: 100%; overflow-x: hidden; overscroll-behavior-x: none; }
 @supports (overflow: clip) { html, body { overflow-x: clip; } }
+
+
+/* ---------------- Apple materials (blur + translucency + vibrancy), used by bars, sheets, cards over content ---------- */
+.material-ultrathin { background: rgba(28, 28, 32, 0.35); backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px) saturate(180%); }
+.material-thin      { background: rgba(28, 28, 32, 0.55); backdrop-filter: blur(24px) saturate(180%); -webkit-backdrop-filter: blur(24px) saturate(180%); }
+.material-regular   { background: rgba(28, 28, 32, 0.72); backdrop-filter: blur(30px) saturate(180%); -webkit-backdrop-filter: blur(30px) saturate(180%); }
+.material-thick     { background: rgba(22, 22, 26, 0.86); backdrop-filter: blur(40px) saturate(180%); -webkit-backdrop-filter: blur(40px) saturate(180%); }
+.material-ultrathin, .material-thin, .material-regular, .material-thick { border: 1px solid rgba(255, 255, 255, 0.10); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08); }
+.text-label { color: var(--label); } .text-label-2 { color: var(--label-2); } .text-label-3 { color: var(--label-3); }
+.tabular { font-variant-numeric: tabular-nums; }
+
+/* touch screens: every button at least 44 × 44 pt (Apple's minimum target) */
+@media (pointer: coarse) {
+  button.focusable, a.focusable, [role="button"].focusable { min-height: 44px; min-width: 44px; }
+}
+/* the iPhone notch / home indicator: fixed bars stay inside the safe area */
+.safe-bottom { padding-bottom: max(12px, env(safe-area-inset-bottom)); }
+.safe-top { padding-top: max(8px, env(safe-area-inset-top)); }
+
+/* Reduce Motion (Settings → Accessibility): no zooms, slides or springs - fades only */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.12s !important; transition-property: opacity, background-color, color !important; }
+  .focusable:focus, .focusable:active { transform: none !important; }
+}

@@ -95,25 +95,25 @@ export function WelcomeCard() {
   return (
     <>
       {show && w && (
-        <div dir="rtl" className="fixed inset-x-0 top-6 z-[100003] flex justify-center px-4 pointer-events-none animate-in fade-in slide-in-from-top-4 duration-500">
-          <div className="pointer-events-auto w-full max-w-xl rounded-[2rem] bg-zinc-950/85 border border-white/10 shadow-2xl backdrop-blur-2xl p-5 text-white">
+        <div dir="rtl" className="fixed inset-x-0 top-6 z-[100003] flex justify-center px-4 pointer-events-none animate-in fade-in slide-in-from-top-4 duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]">
+          <div className="pointer-events-auto w-full max-w-xl rounded-[2rem] material-thick shadow-2xl p-5 text-label">
             <div className="flex items-start gap-3">
               <div className="flex-1 min-w-0">
                 <div className="text-2xl font-black">{w.greet} 👋</div>
-                <div className="mt-1 text-sm text-white/70 font-bold">اليوم {w.date.weekday} {w.date.day} {w.date.month} · {w.date.hijri}</div>
+                <div className="mt-1 text-sm text-label-2 font-semibold">اليوم {w.date.weekday} {w.date.day} {w.date.month} · {w.date.hijri}</div>
               </div>
               <button onClick={() => setShow(false)} className="p-2 rounded-full bg-white/10 hover:bg-white/20 focusable"><X className="w-4 h-4" /></button>
             </div>
             <div className="mt-4 grid grid-cols-2 gap-2">
               {w.next && (
-                <div className="rounded-2xl bg-emerald-500/10 border border-emerald-400/20 p-3">
+                <div className="rounded-xl bg-emerald-500/10 border border-emerald-400/20 p-3">
                   <div className="text-[11px] text-emerald-300 font-bold">الصلاة القادمة</div>
                   <div className="text-lg font-black">{w.next.title} · {w.next.time}</div>
                   <div className="text-[11px] text-white/60">بعد {w.next.mins >= 60 ? Math.floor(w.next.mins / 60) + " س " : ""}{w.next.mins % 60} د</div>
                 </div>
               )}
               {w.match && (
-                <div className={cn("rounded-2xl p-3 border", w.match.live ? "bg-rose-500/10 border-rose-400/30" : "bg-sky-500/10 border-sky-400/20")}>
+                <div className={cn("rounded-xl p-3 border", w.match.live ? "bg-rose-500/10 border-rose-400/30" : "bg-sky-500/10 border-sky-400/20")}>
                   <div className={cn("text-[11px] font-bold", w.match.live ? "text-rose-300" : "text-sky-300")}>{w.match.live ? "🔴 مباشر الآن" : "مباراتك اليوم"}</div>
                   <div className="flex items-center gap-1.5 text-sm font-black">
                     {w.match.home.logo && <img src={w.match.home.logo} alt="" className="w-5 h-5" />}
@@ -126,7 +126,7 @@ export function WelcomeCard() {
                 </div>
               )}
             </div>
-            <div className="mt-4 text-[11px] font-bold text-white/50 mb-2">أجهزتك المتصلة</div>
+            <div className="mt-4 text-xs font-semibold text-label-2 mb-2">أجهزتك المتصلة</div>
             <DevicesStrip big fallback={w.devices} />
             <div className="mt-4 flex items-center gap-2">
               <button onClick={async () => setNote(await sendClipboard())} className="flex items-center gap-2 rounded-full bg-white/10 hover:bg-white/20 px-4 py-2 text-sm font-bold focusable">
@@ -139,7 +139,7 @@ export function WelcomeCard() {
       )}
       {clip && (
         <div dir="rtl" className="fixed bottom-24 inset-x-0 z-[100003] flex justify-center px-4 pointer-events-none">
-          <div className="pointer-events-auto flex items-center gap-3 max-w-lg rounded-full bg-zinc-900/95 border border-white/10 pl-2 pr-5 py-2 text-white shadow-2xl backdrop-blur">
+          <div className="pointer-events-auto flex items-center gap-3 max-w-lg rounded-full material-thick pl-2 pr-5 py-2 text-label shadow-2xl">
             <Clipboard className="w-4 h-4 text-sky-300 shrink-0" />
             <div className="min-w-0"><div className="text-[10px] text-white/50">من {clip.from}</div><div className="text-sm font-bold truncate max-w-[16rem]" dir="auto">{clip.text}</div></div>
             {isUrl(clip.text) && <button onClick={() => { window.open(clip.text.trim(), "_blank"); setClip(null); }} className="rounded-full bg-sky-500 px-3 py-1.5 text-xs font-black flex items-center gap-1 focusable"><ExternalLink className="w-3.5 h-3.5" /> افتح</button>}
