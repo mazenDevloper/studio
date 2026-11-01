@@ -219,6 +219,8 @@ export function LiveMatchIsland() {
     // Today's matches of my favourite teams and the matches I pinned, with live scores
     const nowSecs = Math.floor(now.getTime() / 1000);
     const seenLive = new Set<string>();
+    // two match islands: (1) the matches I pinned, (2) my teams - the one playing now, else the nearest one
+    const pinC: AlertItem[] = [], favC: AlertItem[] = [];
     for (const m of liveFeed?.matches ?? []) {
       const id = `live-${m.id}`;
       if (seenLive.has(m.id)) continue;
@@ -231,10 +233,7 @@ export function LiveMatchIsland() {
       if ((!(m.favorite && onIsland(m)) && !isPinned) || skippedMatchIds.includes(matchHideKey(m)) || skippedMatchIds.includes(`del:${matchHideKey(m)}`) || skippedMatchIds.includes(id)) continue;
       if (m.status === "finished" && nowSecs - m.timestamp > 3.5 * 3600) continue; // drop long-finished games
       const started = m.status !== "upcoming";
-      // never show the same fixture twice: a live island replaces an older reminder-based match island
-      const dup = list.findIndex(a => a.type === 'match' && a.homeName && a.awayName && sameTeam(a.homeName, m.home.name) && sameTeam(a.awayName, m.away.name));
-      if (dup !== -1) { if (list[dup].id.startsWith('live-')) continue; list.splice(dup, 1); }
-      list.push({
+      (isPinned ? pinC : favC).push({
         id,
         name: m.league.name,
         diff: m.timestamp - nowSecs,
@@ -252,6 +251,17 @@ export function LiveMatchIsland() {
       });
     }
 
+    const isLive = (a: AlertItem) => !!a.isExpired;
+    const best = (c: AlertItem[], skip?: AlertItem) => c.filter(a => a !== skip && a.id !== skip?.id)
+      .sort((a, b) => Number(isLive(b)) - Number(isLive(a)) || (a.diff >= 0 ? 0 : 1) - (b.diff >= 0 ? 0 : 1) || Math.abs(a.diff) - Math.abs(b.diff))[0];
+    const p1 = best(pinC), p2 = best(favC, p1);
+    for (const it of [p1, p2]) {
+      if (!it) continue;
+      // never show the same fixture twice: a live island replaces an older reminder-based match island
+      const dup = list.findIndex(a => a.type === 'match' && a.homeName && a.awayName && sameTeam(a.homeName, it.homeName!) && sameTeam(a.awayName, it.awayName!));
+      if (dup !== -1) list.splice(dup, 1);
+      list.push(it);
+    }
     // favourite teams' live matches first, then by time
     return list.sort((a, b) => Number(!!b.favLive) - Number(!!a.favLive) || Math.abs(a.diff) - Math.abs(b.diff));
   }, [now, prayerTimes, prayerSettings, reminders, generalAzkar, skippedReminderIds, skippedMatchIds, showSyncIsland, isInitialLoading, liveFeed, pinned, favoriteTeams]);

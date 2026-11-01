@@ -319,6 +319,7 @@ public class IslandService extends Service {
     @Override
     public void onDestroy() {
         handler.removeCallbacksAndMessages(null);
+        try { if (matchLock != null && matchLock.isHeld()) matchLock.release(); } catch (Exception ignored) { }
         if (quranPlayer != null) {
             quranPlayer.release();
             quranPlayer = null;
@@ -357,6 +358,7 @@ public class IslandService extends Service {
         for (JSONObject m : matches) if (matchItem(m, now).critical) critical = true;
         // the deciding minutes: every 15 s
         long every = appVisible ? 6 * POLL_MS : POLL_MS;   // 10 s behind other apps, 1 min with the app open
+        keepAwake(now);
         if (now - lastPoll > every && pollDue(now)) {
             lastPoll = now;
             pollMatches();
@@ -468,6 +470,26 @@ public class IslandService extends Service {
 
     /** today's favourite / pinned matches (any state), as the API sent them */
     private final List<JSONObject> matches = new ArrayList<>();
+
+    // While a match is live (or about to start) the phone must not doze: in deep sleep this service's 1-second tick
+    // stops, the scores are not asked for, and every goal arrived late and all at once when the screen woke up.
+    // A partial wake lock (the processor only, the screen stays off) is held exactly for that window.
+    private android.os.PowerManager.WakeLock matchLock;
+    private void keepAwake(long now) {
+        boolean hot = false;
+        for (JSONObject m : matches) {
+            String st = m.optString("status");
+            long k = m.optLong("timestamp") * 1000L;
+            if ("live".equals(st) || ("upcoming".equals(st) && k - now < 10 * 60_000L && k > now - 3 * 3600_000L)) { hot = true; break; }
+        }
+        try {
+            if (hot && (matchLock == null || !matchLock.isHeld())) {
+                android.os.PowerManager pm = (android.os.PowerManager) getSystemService(POWER_SERVICE);
+                matchLock = pm.newWakeLock(android.os.PowerManager.PARTIAL_WAKE_LOCK, "drivecast:live-match");
+                matchLock.acquire(3 * 3600_000L);
+            } else if (!hot && matchLock != null && matchLock.isHeld()) { matchLock.release(); matchLock = null; }
+        } catch (Exception ignored) { }
+    }
 
     /** set when a request fails: try again on the normal rhythm */
     private boolean pollFailed = false;
@@ -790,6 +812,9 @@ public class IslandService extends Service {
             it.title = "🔊 " + ((JSONObject) av).optString("title") + "  " + ((JSONObject) av).optInt("i") + "/" + ((JSONObject) av).optInt("n");
             out.add(it);
         }
+        // two match islands, like the site: (1) the matches I pinned, (2) my teams - the one playing now, else the
+        // nearest one (the next kick-off, else the one that just ended)
+        List<IslandArt.Item> pinC = new ArrayList<>(), favC = new ArrayList<>();
         for (JSONObject m : matches) {
             if (!m.optBoolean("island", true)) continue; // a favourite whose island switch is off: widget only
             IslandArt.Item it = matchItem(m, now);
@@ -797,9 +822,11 @@ public class IslandService extends Service {
                 // the API has no end time: about 2 hours after kick-off, shown for half an hour
                 if (now - it.kickoff > 150 * 60_000L) continue;
             }
-            // a team with its island on: its match shows all day (the countdown to kick-off, live, then the result)
-            out.add(it);
+            (m.optBoolean("pinned") ? pinC : favC).add(it);
         }
+        IslandArt.Item p1 = bestMatch(pinC, null, now), p2 = bestMatch(favC, p1, now);
+        if (p1 != null) out.add(p1);
+        if (p2 != null) out.add(p2);
         JSONArray list = Widgets.countdowns(this);
         for (int i = 0; list != null && i < list.length(); i++) {
             JSONObject c = list.optJSONObject(i);
@@ -846,6 +873,19 @@ public class IslandService extends Service {
             return Long.compare(Math.abs(distance(x, now)), Math.abs(distance(y, now)));
         });
         return out;
+    }
+
+    private IslandArt.Item bestMatch(List<IslandArt.Item> c, IslandArt.Item skip, long now) {
+        IslandArt.Item best = null;
+        for (IslandArt.Item it : c) {
+            if (skip != null && (it == skip || it.id.equals(skip.id))) continue;
+            if (best == null) { best = it; continue; }
+            if (it.live() != best.live()) { if (it.live()) best = it; continue; }
+            boolean up = it.kickoff >= now, bup = best.kickoff >= now;
+            if (up != bup) { if (up) best = it; continue; }
+            if (Math.abs(it.kickoff - now) < Math.abs(best.kickoff - now)) best = it;
+        }
+        return best;
     }
 
     /**
