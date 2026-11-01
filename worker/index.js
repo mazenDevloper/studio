@@ -1,5 +1,6 @@
 import { handle as pushPage, watch } from './push.js';
 import { ask } from './assistant.js';
+import { ytFind } from './ytfind.js';
 import { files, favFromDb, favToDb, binProxy, binGet } from './files.js';
 import { readable, health } from './reader.js';
 import { visionBody } from './vision.js';
@@ -233,6 +234,7 @@ export default {
       if (u.pathname === '/hub/today') return await cached(req, ctx, 30, () => today(env));
       if (u.pathname === '/hub/library') return await cached(req, ctx, 120, () => hubLibrary(env));
       if (u.pathname.startsWith('/hub/')) return env.HUB.get(env.HUB.idFromName('home')).fetch(req);
+      if (u.pathname === '/yt/find') return new Response(JSON.stringify(await ytFind(u).catch(() => ({ items: [] }))), { headers: H });
       if (u.pathname === '/ask' && req.method === 'POST') return new Response(JSON.stringify(await ask(req, env)), { headers: H });
       // the iPhone's screen inside Madar (ReplayKit broadcast → here → every Madar watching)
       if (u.pathname.startsWith('/screen/')) return env.SCREENS.get(env.SCREENS.idFromName('all')).fetch(req);
