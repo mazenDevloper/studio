@@ -24,3 +24,28 @@ export async function ytFind(u) {
   if (picks.includes('long')) items = [...items.slice(0, picks.includes('views') ? 5 : 10)].sort((a, b) => b.len - a.len).concat(items.slice(picks.includes('views') ? 5 : 10));
   return { items: items.slice(0, 8) };
 }
+
+// «/yt/related?v=ID»: YouTube's own «up next» for a video (the watch page's side list), for «يوتيوب مدار»
+export async function ytRelated(u) {
+  const v = (u.searchParams.get('v') || '').replace(/[^\w-]/g, '').slice(0, 15);
+  if (!v) return { items: [] };
+  const r = await fetch('https://www.youtube.com/watch?v=' + v + '&hl=ar', { headers: { 'accept-language': 'ar,en;q=0.8', 'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36', cookie: 'CONSENT=YES+1; SOCS=CAI' } });
+  const html = await r.text();
+  const m = html.match(/var ytInitialData = (\{.+?\});<\/script>/s);
+  if (!m) return { items: [] };
+  const out = [], seen = new Set([v]);
+  (function walk(o) {
+    if (!o || typeof o !== 'object' || out.length >= 30) return;
+    const c = o.compactVideoRenderer;
+    if (c?.videoId && !seen.has(c.videoId)) { seen.add(c.videoId); out.push({ id: c.videoId, title: c.title?.simpleText || c.title?.runs?.map(x => x.text).join('') || '', channel: c.longBylineText?.runs?.[0]?.text || '', thumb: 'https://i.ytimg.com/vi/' + c.videoId + '/mqdefault.jpg', live: !c.lengthText }); return; }
+    const l = o.lockupViewModel;
+    if (l?.contentId && l.contentType === 'LOCKUP_CONTENT_TYPE_VIDEO' && !seen.has(l.contentId)) {
+      seen.add(l.contentId);
+      const md = l.metadata?.lockupMetadataViewModel;
+      out.push({ id: l.contentId, title: md?.title?.content || '', channel: md?.metadata?.contentMetadataViewModel?.metadataRows?.[0]?.metadataParts?.[0]?.text?.content || '', thumb: 'https://i.ytimg.com/vi/' + l.contentId + '/mqdefault.jpg' });
+      return;
+    }
+    for (const k in o) walk(o[k]);
+  })(JSON.parse(m[1]).contents?.twoColumnWatchNextResults?.secondaryResults || {});
+  return { items: out };
+}
