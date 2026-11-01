@@ -46,9 +46,9 @@ export function DevicesStrip({ className, big, fallback }: { className?: string;
               <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-zinc-900 shadow-[0_0_8px_#34d399]" />
             </div>
             <div className="min-w-0 leading-tight">
-              <div className={cn("font-black truncate max-w-[9rem]", big ? "text-sm" : "text-[11px]")}>{sys ? "مدار · " + String(d.name || "").split(" · ")[0] : KIND_AR[k] || d.name}{me ? " · أنت" : ""}</div>
+              <div className={cn("font-black line-clamp-2 max-w-[10rem]", big ? "text-sm" : "text-[11px]")}>{sys ? "مدار · " + String(d.name || "").split(" · ")[0] : KIND_AR[k] || d.name}{me ? " · أنت" : ""}</div>
               {sys && <div className="text-[10px] text-emerald-300/80">⏻ اضغط للإيقاظ</div>}
-              {p?.title && <div className="text-[10px] text-white/55 truncate max-w-[9rem]">▶ {p.title}</div>}
+              {p?.title && <div className="text-[10px] text-white/55 line-clamp-2 max-w-[10rem]">▶ {p.title}</div>}
             </div>
           </div>
         );
@@ -96,7 +96,7 @@ export function WelcomeCard() {
     <>
       {show && w && (
         <div dir="rtl" className="fixed inset-x-0 top-6 z-[100003] flex justify-center px-4 pointer-events-none animate-in fade-in slide-in-from-top-4 duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]">
-          <div className="pointer-events-auto w-full max-w-xl rounded-[2rem] material-thick shadow-2xl p-5 text-label">
+          <div className="pointer-events-auto w-full max-w-xl rounded-[2rem] lg-glass p-5 text-label">
             <div className="flex items-start gap-3">
               <div className="flex-1 min-w-0">
                 <div className="text-2xl font-black">{w.greet} 👋</div>
@@ -122,7 +122,7 @@ export function WelcomeCard() {
                     <span className="truncate">{w.match.away.name}</span>
                     {w.match.away.logo && <img src={w.match.away.logo} alt="" className="w-5 h-5" />}
                   </div>
-                  <div className="text-[11px] text-white/60 truncate">{w.match.league}</div>
+                  <div className="text-[11px] text-white/60 line-clamp-2">{w.match.league}</div>
                 </div>
               )}
             </div>

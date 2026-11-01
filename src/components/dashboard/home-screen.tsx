@@ -90,7 +90,7 @@ function PrayerW({ size }: { size: Size }) {
 function MatchW({ size }: { size: Size }) {
   const w = useWelcome(), router = useRouter(), m = w?.match;
   const Team = ({ t }: { t: { name: string; logo?: string } }) => (
-    <div className="flex flex-col items-center gap-1 min-w-0 flex-1">{t.logo ? <img src={t.logo} alt="" className={size === "s" ? "w-9 h-9" : "w-12 h-12"} /> : <Trophy className="w-8 h-8 opacity-60" />}<span className="text-xs font-semibold truncate max-w-full">{t.name}</span></div>
+    <div className="flex flex-col items-center gap-1 min-w-0 flex-1">{t.logo ? <img src={t.logo} alt="" className={size === "s" ? "w-9 h-9" : "w-12 h-12"} /> : <Trophy className="w-8 h-8 opacity-60" />}<span className="text-xs font-semibold line-clamp-2 leading-tight text-center max-w-full">{t.name}</span></div>
   );
   return (
     <Glass className="p-4 flex flex-col" onClick={() => router.push("/matches")} tint={m?.live ? "linear-gradient(160deg,rgba(244,63,94,.42),rgba(76,5,25,.4))" : undefined}>
@@ -102,7 +102,7 @@ function MatchW({ size }: { size: Size }) {
           <Team t={m.away} />
         </div>
       ) : <div className="m-auto text-sm text-white/60">لا مباراة لفريقك اليوم</div>}
-      {m?.league && size !== "s" && <div className="text-xs text-white/60 text-center truncate">{m.league}</div>}
+      {m?.league && size !== "s" && <div className="text-xs text-white/60 text-center line-clamp-2">{m.league}</div>}
     </Glass>
   );
 }
@@ -121,7 +121,7 @@ function DevicesW() {
           return (
             <button key={d.id} onClick={sys ? () => hub.sendTo(d.id, { type: "wake", share: true }) : undefined} className="flex flex-col items-center gap-1.5 min-w-0">
               <span className={cn("relative w-14 h-14 rounded-full grid place-items-center bg-white/10 ring-[3px]", sys ? "ring-amber-300/70" : "ring-emerald-400/90")}><I className="w-6 h-6" /></span>
-              <span className="text-[11px] font-semibold truncate max-w-full">{sys ? "⏻ أيقظ" : KIND_AR[k] || d.name}</span>
+              <span className="text-[11px] font-semibold line-clamp-2 leading-tight text-center max-w-full">{sys ? "⏻ أيقظ" : KIND_AR[k] || d.name}</span>
             </button>
           );
         })}
@@ -138,8 +138,8 @@ function NowPlayingW({ size }: { size: Size }) {
       <div className="flex items-center gap-3 min-w-0">
         <div className="w-14 h-14 rounded-xl overflow-hidden bg-white/10 shrink-0">{v?.thumbnail && <img src={v.thumbnail} alt="" className="w-full h-full object-cover" />}</div>
         <div className="min-w-0 flex-1">
-          <div className="font-semibold truncate">{v?.title || "لا شيء يعمل"}</div>
-          <div className="text-sm text-white/60 truncate">{v?.channelTitle || v?.channel || "DriveCast"}</div>
+          <div className="font-semibold line-clamp-2">{v?.title || "لا شيء يعمل"}</div>
+          <div className="text-sm text-white/60 line-clamp-2">{v?.channelTitle || v?.channel || "DriveCast"}</div>
         </div>
       </div>
       {size !== "s" && (
@@ -298,7 +298,7 @@ export function HomeScreen() {
               {Object.entries(WIDGETS).map(([k, w]) => (
                 <div key={k} className="rounded-3xl bg-white/[0.07] p-4 flex items-center gap-3">
                   <span className="w-12 h-12 rounded-2xl lg-chip grid place-items-center shrink-0"><w.icon className="w-6 h-6" /></span>
-                  <div className="flex-1 min-w-0"><div className="font-semibold">{w.name}</div><div className="text-xs text-white/60 truncate">{w.desc}</div></div>
+                  <div className="flex-1 min-w-0"><div className="font-semibold">{w.name}</div><div className="text-xs text-white/60 line-clamp-2">{w.desc}</div></div>
                   <div className="flex gap-1">{w.sizes.map(s => <button key={s} onClick={() => add(k, s)} className="focusable h-9 px-3 rounded-full bg-[#0a84ff] text-xs font-bold">{{ s: "صغير", m: "متوسط", l: "كبير", w: "عريض" }[s]}</button>)}</div>
                 </div>
               ))}
