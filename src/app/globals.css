@@ -352,6 +352,7 @@ html, body { max-width: 100%; overflow-x: hidden; overscroll-behavior-x: none; }
 .lg-numerals { display: inline-block; transform: scaleY(1.32); letter-spacing: -0.05em; margin-block: 0.18em; }
 /* edit mode: the widgets jiggle, like holding an icon on the Home Screen */
 @keyframes lg-jiggle { 0% { transform: rotate(-0.9deg); } 50% { transform: rotate(0.9deg); } 100% { transform: rotate(-0.9deg); } }
+@keyframes memoji-float { 0%,100% { transform: translateY(0) rotate(-1.5deg); } 50% { transform: translateY(-6%) rotate(1.5deg); } }
 .lg-jiggle { animation: lg-jiggle 0.32s ease-in-out infinite; transform-origin: 50% 60%; }
 @media (prefers-reduced-motion: reduce) { .lg-jiggle { animation: none; } }
 

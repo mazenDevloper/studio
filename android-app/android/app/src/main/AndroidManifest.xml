@@ -291,6 +291,27 @@
             </intent-filter>
         </activity>
 
+        <!-- the assistant widget: your picture, tap = voice assistant; its picture is chosen here -->
+        <receiver
+            android:name=".Widgets$AssistantWidget"
+            android:exported="false"
+            android:label="@string/widget_assistant_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_assistant_info" />
+        </receiver>
+        <activity
+            android:name=".AvatarPickActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:taskAffinity=".avatarpick"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+
         <!-- choose / pin the manuscript of one manuscript widget -->
         <activity
             android:name=".ManuscriptPickActivity"

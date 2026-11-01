@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- the assistant widget: only your picture (its transparent parts stay transparent), tap = voice assistant -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <ImageView
+        android:id="@+id/assistant_img"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:contentDescription="@string/widget_assistant_label"
+        android:scaleType="fitCenter"
+        android:src="@drawable/assistant_avatar" />
+
+    <TextView
+        android:id="@+id/assistant_edit"
+        android:layout_width="28dp"
+        android:layout_height="28dp"
+        android:layout_gravity="top|end"
+        android:background="@drawable/widget_btn_round"
+        android:gravity="center"
+        android:text="✎"
+        android:textColor="#FFFFFF"
+        android:textSize="13sp" />
+</FrameLayout>

@@ -12,7 +12,7 @@ import { hub } from "@/lib/hub";
  * listens here (Web Speech) and does the simple ones: matches / azkar open their screens, anything else is
  * searched in the media screen and the first result plays.
  */
-export function SiteVoiceButton() {
+export function SiteVoiceButton({ face, faceClass }: { face?: string; faceClass?: string } = {}) {
   const router = useRouter();
   const path = usePathname();
   const [listening, setListening] = useState(false);
@@ -58,6 +58,7 @@ export function SiteVoiceButton() {
   const actRef = useRef(act);
   actRef.current = act;
   useEffect(() => {
+    if (face) return;   // the Memoji widget is a second button: only the island's one answers the iPhone app
     const on = (e: Event) => {
       const t = String((e as CustomEvent).detail || "");
       setHeard(t);
@@ -66,7 +67,7 @@ export function SiteVoiceButton() {
     };
     window.addEventListener("native-voice", on);
     return () => window.removeEventListener("native-voice", on);
-  }, []);
+  }, [face]);
 
   const start = () => {
     const plugin: any = nativeIsland();
@@ -93,11 +94,21 @@ export function SiteVoiceButton() {
 
   return (
     <div className="relative pointer-events-auto">
+      {face ? (
+        // the Memoji: your picture floats; listening = it lifts and glows
+        <button onClick={start} title="المساعد الصوتي" className={cn("block focusable rounded-full active:scale-95 transition-transform", faceClass)}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={face} alt="المساعد" draggable={false}
+            className={cn("w-full h-full object-contain select-none motion-safe:animate-[memoji-float_4s_ease-in-out_infinite] transition-[filter] duration-300",
+              listening ? "drop-shadow-[0_0_22px_rgba(52,211,153,.85)]" : "drop-shadow-[0_10px_18px_rgba(0,0,0,.45)]")} />
+        </button>
+      ) : (
       <button onClick={start} title="أمر صوتي"
         className={cn("shadow-2xl w-12 h-12 rounded-full flex items-center justify-center premium-glass cursor-pointer border active:scale-90 transition-all",
           listening ? "border-red-400 bg-red-600/40 animate-pulse" : "border-white/10")}>
         <Mic className={cn("w-5 h-5", listening ? "text-white" : "text-emerald-400")} />
       </button>
+      )}
       {answer && (
         <div className="absolute top-14 right-0 w-[22rem] max-w-[80vw] rounded-2xl bg-black/90 border border-emerald-400/30 px-4 py-3 text-sm font-bold text-white leading-6 z-50" dir="rtl">✨ {answer}</div>
       )}

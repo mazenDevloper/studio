@@ -12,6 +12,7 @@ import { useMediaStore } from "@/lib/store";
 import { hub, KIND_AR } from "@/lib/hub";
 import { cn } from "@/lib/utils";
 import { sendClipboard } from "@/components/hub/welcome-card";
+import { SiteVoiceButton } from "@/components/voice/site-voice";
 import { ActiveAzkarWidget } from "./widgets/active-azkar-widget";
 import { ReminderSummaryWidget } from "./widgets/reminder-summary-widget";
 import { MoonWidget } from "./widgets/moon-widget";
@@ -179,10 +180,40 @@ function ClipW() {
     </Glass>
   );
 }
+// «المساعد»: your Memoji (or any picture with a transparent background) floating on the glass - tap it and speak
+const FACE_KEY = "dc.memoji.face";
+function MemojiW({ size }: { size: Size }) {
+  const [face, setFace] = useState("/memoji.png");
+  const file = useRef<HTMLInputElement>(null);
+  useEffect(() => { try { const f = localStorage.getItem(FACE_KEY); if (f) setFace(f); } catch {} }, []);
+  // the picture is kept small (≤ 320 px PNG, transparency kept) so it costs nothing to store or draw
+  const pick = (f?: File) => {
+    if (!f) return;
+    const img = new Image();
+    img.onload = () => {
+      const k = Math.min(1, 320 / Math.max(img.width, img.height)), c = document.createElement("canvas");
+      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext("2d")!.drawImage(img, 0, 0, c.width, c.height);
+      const url = c.toDataURL("image/png"); setFace(url);
+      try { localStorage.setItem(FACE_KEY, url); } catch {}
+      URL.revokeObjectURL(img.src);
+    };
+    img.src = URL.createObjectURL(f);
+  };
+  return (
+    <Glass className="relative p-2 flex items-center justify-center gap-3 overflow-visible">
+      <SiteVoiceButton face={face} faceClass={size === "s" ? "w-[86%] aspect-square" : "h-[92%] aspect-square"} />
+      {size !== "s" && <div className="text-right" dir="rtl"><div className="text-base font-bold">المساعد</div><div className="text-xs text-white/60">اضغط وجهك وتكلّم</div></div>}
+      <button onClick={e => { e.stopPropagation(); file.current?.click(); }} title="غيّر الصورة" className="absolute top-2 left-2 w-7 h-7 rounded-full bg-black/40 text-white/80 text-xs grid place-items-center focusable">✎</button>
+      <input ref={file} type="file" accept="image/png,image/webp,image/*" hidden onChange={e => pick(e.target.files?.[0])} />
+    </Glass>
+  );
+}
 const Embed = ({ children }: { children: ReactNode }) => <Glass className="[&>*]:!bg-transparent">{children}</Glass>;
 
 // the gallery: every widget, its sizes, and how it draws
 const WIDGETS: Record<string, { name: string; desc: string; icon: any; sizes: Size[]; rows?: string; draw: (s: Size) => ReactNode }> = {
+  memoji: { name: "المساعد (Memoji)", desc: "وجهك العائم - اضغطه وتكلّم · ✎ أي صورة بخلفية شفافة", icon: Sparkles, sizes: ["s", "m"], draw: s => <MemojiW size={s} /> },
   clock: { name: "الساعة", desc: "الوقت بأرقام زجاجية والتاريخ الهجري", icon: Clock, sizes: ["s", "m", "l"], draw: s => <ClockW size={s} /> },
   calendar: { name: "التقويم", desc: "اليوم والشهر الميلادي والهجري", icon: CalendarDays, sizes: ["s"], draw: () => <CalendarW /> },
   prayer: { name: "الصلاة", desc: "الصلاة القادمة والعدّ التنازلي", icon: Moon, sizes: ["s", "m"], draw: s => <PrayerW size={s} /> },
@@ -199,7 +230,7 @@ const WIDGETS: Record<string, { name: string; desc: string; icon: any; sizes: Si
   shortcuts: { name: "الاختصارات", desc: "اختصاراتك السيادية", icon: LayoutGrid, sizes: ["w"], rows: "row-span-3", draw: () => <Embed><SovereignShortcutsWidget /></Embed> },
 };
 const DEFAULT: Placed[] = [
-  { id: "a", type: "clock", size: "m" }, { id: "b", type: "prayer", size: "s" }, { id: "c", type: "match", size: "s" },
+  { id: "z", type: "memoji", size: "s" }, { id: "a", type: "clock", size: "m" }, { id: "b", type: "prayer", size: "s" }, { id: "c", type: "match", size: "s" },
   { id: "d", type: "nowplaying", size: "m" }, { id: "e", type: "devices", size: "m" }, { id: "f", type: "controls", size: "m" },
   { id: "g", type: "calendar", size: "s" }, { id: "h", type: "clip", size: "s" }, { id: "i", type: "azkar", size: "m" }, { id: "j", type: "reminders", size: "m" },
   { id: "k", type: "prayerbar", size: "w" }, { id: "l", type: "saved", size: "w" },

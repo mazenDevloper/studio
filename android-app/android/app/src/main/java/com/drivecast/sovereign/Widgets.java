@@ -105,6 +105,15 @@ public final class Widgets {
 
     public static class DayWidget extends Base { }
 
+    /** Your picture (any transparent PNG, a Memoji by default); tap = the voice assistant, ✎ = change the picture. */
+    public static class AssistantWidget extends Base {
+        @Override
+        public void onDeleted(Context ctx, int[] ids) {
+            super.onDeleted(ctx, ids);
+            for (int id : ids) new java.io.File(ctx.getFilesDir(), "assistant_avatar_" + id + ".png").delete();
+        }
+    }
+
     // ---- shared ----
 
     static JSONObject json(Context ctx, String key) {
@@ -266,6 +275,33 @@ public final class Widgets {
         renderBrowse(ctx, m, SearchWidget.class);
         render(ctx, m, MapWidget.class, 250, 180, Widgets::map);
         render(ctx, m, DayWidget.class, 300, 170, Widgets::day);
+        render(ctx, m, AssistantWidget.class, 110, 110, Widgets::assistant);
+    }
+
+    // ---- assistant: only the picture, scaled down to the widget (a few hundred KB at most) ----
+
+    private static RemoteViews assistant(Context ctx, int w, int h, int realH) {
+        int id = currentId;
+        RemoteViews v = new RemoteViews(ctx.getPackageName(), R.layout.widget_assistant);
+        java.io.File f = new java.io.File(ctx.getFilesDir(), "assistant_avatar_" + id + ".png");
+        if (f.exists()) {
+            android.graphics.BitmapFactory.Options o = new android.graphics.BitmapFactory.Options();
+            o.inJustDecodeBounds = true;
+            android.graphics.BitmapFactory.decodeFile(f.getPath(), o);
+            int side = Math.max(1, Math.min(Math.max(w, h), 480)), s = 1;
+            while (Math.max(o.outWidth, o.outHeight) / (s * 2) >= side) s *= 2;
+            o = new android.graphics.BitmapFactory.Options();
+            o.inSampleSize = s;
+            Bitmap b = android.graphics.BitmapFactory.decodeFile(f.getPath(), o);
+            if (b != null) v.setImageViewBitmap(R.id.assistant_img, b);
+        }
+        Intent vi = new Intent(ctx, VoiceActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        v.setOnClickPendingIntent(R.id.widget_root, PendingIntent.getActivity(ctx, 106, vi, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT));
+        Intent pick = new Intent(ctx, AvatarPickActivity.class).putExtra("wid", id).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        v.setOnClickPendingIntent(R.id.assistant_edit, PendingIntent.getActivity(ctx, 9000 + id, pick, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT));
+        // the pencil shows only on a bigger widget (it stays reachable from the launcher's "reconfigure")
+        v.setViewVisibility(R.id.assistant_edit, Math.min(w, h) / ctx.getResources().getDisplayMetrics().density >= 90 ? android.view.View.VISIBLE : android.view.View.GONE);
+        return v;
     }
 
     private static void render(Context ctx, AppWidgetManager m, Class<?> provider, int defW, int defH, Builder b) {

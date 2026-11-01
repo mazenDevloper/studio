@@ -17,6 +17,8 @@
     <string name="widget_moon_desc">القمر بطوره الحالي مع التاريخ الهجري والميلادي والطقس</string>
     <string name="widget_manuscript_desc">المخطوطات بحبر اللوحة (أبيض، ذهبي، لون أو نقش) فوق خلفيتها</string>
     <string name="widget_folders_desc">مجلداتك والفيديوهات الأكثر مشاهدة من قنواتك المميزة</string>
+    <string name="widget_assistant_label">المساعد</string>
+    <string name="widget_assistant_desc">صورتك (أي صورة بخلفية شفافة) — اضغطها لتكلّم المساعد الصوتي</string>
     <string name="widget_moon_label">القمر</string>
     <string name="widget_manuscript_label">المخطوطة</string>
     <string name="widget_folders_label">المجلدات</string>

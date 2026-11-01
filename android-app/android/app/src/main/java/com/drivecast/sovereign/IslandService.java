@@ -316,8 +316,29 @@ public class IslandService extends Service {
         return null;
     }
 
+    /**
+     * The app swiped away from recents: some phones (Samsung, Xiaomi…) stop its services with it. The islands come
+     * back by themselves a second later (an alarm that starts the service again; nothing if they were turned off).
+     */
+    @Override
+    public void onTaskRemoved(Intent rootIntent) {
+        super.onTaskRemoved(rootIntent);
+        restartSoon(this);
+    }
+
+    static void restartSoon(Context ctx) {
+        try {
+            android.app.AlarmManager am = (android.app.AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
+            Intent i = new Intent(ctx, BootReceiver.class).setAction(BootReceiver.RESTART);
+            PendingIntent pi = PendingIntent.getBroadcast(ctx, 4401, i, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+            if (am != null) am.set(android.app.AlarmManager.ELAPSED_REALTIME_WAKEUP, android.os.SystemClock.elapsedRealtime() + 1500, pi);
+        } catch (Exception ignored) {
+        }
+    }
+
     @Override
     public void onDestroy() {
+        live.stop();
         handler.removeCallbacksAndMessages(null);
         try { if (matchLock != null && matchLock.isHeld()) matchLock.release(); } catch (Exception ignored) { }
         if (quranPlayer != null) {
@@ -359,6 +380,12 @@ public class IslandService extends Service {
         // the deciding minutes: every 15 s
         long every = appVisible ? 6 * POLL_MS : POLL_MS;   // 10 s behind other apps, 1 min with the app open
         keepAwake(now);
+        // the live channel only while it matters; while it is healthy the timed requests drop to one a minute
+        if (liveish(now)) {
+            live.start();
+            if (now - lastLivePing > 40_000) { lastLivePing = now; live.ping(); }
+            if (live.healthy()) every = Math.max(every, 60_000);
+        } else live.stop();
         if (now - lastPoll > every && pollDue(now)) {
             lastPoll = now;
             pollMatches();
@@ -514,6 +541,26 @@ public class IslandService extends Service {
 
     private long lastPollOk = 0;
 
+    // ---- live channel: the server pushes the scores the moment they change (goals in ~5 s, fewer requests) ----
+    private volatile String pushedBody;
+    private long lastLivePing = 0;
+    private final LiveSocket live = new LiveSocket(text -> {
+        if (!text.startsWith("{\"type\":\"now\"")) return;   // a cloud-setting note: the normal refresh handles it
+        pushedBody = text;
+        handler.post(() -> { lastPoll = System.currentTimeMillis(); pollMatches(); });
+    });
+
+    /** a game is live, or kicks off within 10 minutes */
+    private boolean liveish(long now) {
+        for (JSONObject m : matches) {
+            String st = m.optString("status");
+            if ("live".equals(st)) return true;
+            long k = m.optLong("timestamp") * 1000L;
+            if ("upcoming".equals(st) && Math.abs(k - now) < 10 * 60_000L) return true;
+        }
+        return false;
+    }
+
     private void pollMatches() {
         final String configUrl = config.optString("apiUrl", "");
         final JSONArray configPins = config.optJSONArray("pins");
@@ -545,17 +592,22 @@ public class IslandService extends Service {
             final boolean viaServer = pins == null || pins.length() == 0;
             if (viaServer) apiUrl = "https://studio.c-p.workers.dev/now?lang=1";   // matches + goals with scorers + prayers
             if (apiUrl.isEmpty()) return;
+            final String pushed = viaServer ? pushedBody : null;
+            pushedBody = null;
             List<JSONObject> mine = new ArrayList<>();
             JSONArray widgetData = new JSONArray();
             try {
-                HttpURLConnection c = (HttpURLConnection) new URL(apiUrl).openConnection();
-                c.setConnectTimeout(15_000);
-                c.setReadTimeout(30_000);
-                c.setRequestProperty("Accept", "application/json");
                 StringBuilder sb = new StringBuilder();
-                try (BufferedReader r = new BufferedReader(new InputStreamReader(c.getInputStream(), "UTF-8"))) {
-                    String line;
-                    while ((line = r.readLine()) != null) sb.append(line);
+                if (pushed != null) sb.append(pushed);   // the live channel already brought the new state
+                else {
+                    HttpURLConnection c = (HttpURLConnection) new URL(apiUrl).openConnection();
+                    c.setConnectTimeout(15_000);
+                    c.setReadTimeout(30_000);
+                    c.setRequestProperty("Accept", "application/json");
+                    try (BufferedReader r = new BufferedReader(new InputStreamReader(c.getInputStream(), "UTF-8"))) {
+                        String line;
+                        while ((line = r.readLine()) != null) sb.append(line);
+                    }
                 }
                 JSONObject root = new JSONObject(sb.toString());
                 JSONArray list = root.optJSONArray("matches");
@@ -1173,10 +1225,15 @@ public class IslandService extends Service {
      * overlay ("display over other apps").
      */
     @SuppressLint("ClickableViewAccessibility")
+    private long islandAddedAt = 0;
+
     private void showIsland(List<IslandArt.Item> items, long now) {
         IslandAccessibilityService acc = IslandAccessibilityService.instance;
         boolean useAcc = acc != null;
         if (island != null && useAcc != islandOnAccessibility) removeIsland();
+        // «always outside»: a pill the system took away (a display / theme change, the accessibility service
+        // restarting, a launcher crash) is put back on the next second instead of staying gone
+        if (island != null && !island.isAttachedToWindow() && now - islandAddedAt > 3000) removeIsland();
         if (island == null) {
             WindowManager wm = useAcc ? acc.windowManager() : windowManager;
             island = new LinearLayout(this);
@@ -1288,6 +1345,7 @@ public class IslandService extends Service {
             try {
                 wm.addView(island, params);
                 islandOnAccessibility = useAcc;
+                islandAddedAt = now;
             } catch (Exception e) {
                 island = null;
                 return;
@@ -3205,10 +3263,10 @@ public class IslandService extends Service {
             IslandArt.drawGoal(this, new Canvas(small), new RectF(d * 2, d * 2, small.getWidth() - d * 2, small.getHeight() - d * 2), compact, hl, al);
             Bitmap big = Bitmap.createBitmap(w, Math.round(150 * d), Bitmap.Config.ARGB_8888);
             IslandArt.drawGoal(this, new Canvas(big), new RectF(d * 6, d * 6, big.getWidth() - d * 6, big.getHeight() - d * 6), g, hl, al);
-            android.widget.RemoteViews sv = new android.widget.RemoteViews(getPackageName(), R.layout.notification_goal);
-            sv.setImageViewBitmap(R.id.goal_picture, small);
-            android.widget.RemoteViews bv = new android.widget.RemoteViews(getPackageName(), R.layout.notification_goal_big);
-            bv.setImageViewBitmap(R.id.goal_picture, big);
+            // animated: the goal card's own animation as frames in a flipper (the reveal, then the finished card held);
+            // small frames (about half the screen's density) keep it light; any trouble → the still picture
+            android.widget.RemoteViews sv = goalFrames(R.layout.notification_goal, compact, 360, 64, small);
+            android.widget.RemoteViews bv = goalFrames(R.layout.notification_goal_big, g, 360, 150, big);
 
             String team = "home".equals(g.side) ? g.home : g.away;
             String text = g.home + " " + g.sh + " - " + g.sa + " " + g.away + (g.scorer.isEmpty() ? "" : " · " + g.scorer + " " + g.minute);
@@ -3235,6 +3293,38 @@ public class IslandService extends Service {
             nm.notify(g.id.hashCode(), b.build());
         } catch (Exception ignored) {
         }
+    }
+
+    private android.widget.RemoteViews goalFrames(int layout, IslandArt.Item g, int wDp, int hDp, Bitmap still) {
+        android.widget.RemoteViews v = new android.widget.RemoteViews(getPackageName(), layout);
+        try {
+            float d = Math.min(1.25f, getResources().getDisplayMetrics().density);   // ≈ 6 MB for both views, under the limit
+            int w = Math.round(wDp * d), h = Math.round(hDp * d);
+            // 14 frames at 140 ms ≈ the 2 s reveal; then the last frame repeats (a held card) before it starts again
+            long[] at = new long[14];
+            for (int i = 0; i < at.length; i++) at[i] = 150 + i * 160L;
+            Bitmap last = null;
+            for (long t : at) {
+                Bitmap f = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+                IslandArt.drawGoalAnimated(this, new Canvas(f), new RectF(0, 0, w, h), g, t);
+                android.widget.RemoteViews fr = new android.widget.RemoteViews(getPackageName(), R.layout.notification_goal_frame);
+                fr.setImageViewBitmap(R.id.goal_frame, f);
+                v.addView(R.id.goal_flip, fr);
+                last = f;
+            }
+            // hold the finished card (~3 s): the same bitmap, so no extra memory in this process
+            for (int i = 0; i < 20 && last != null; i++) {
+                android.widget.RemoteViews fr = new android.widget.RemoteViews(getPackageName(), R.layout.notification_goal_frame);
+                fr.setImageViewBitmap(R.id.goal_frame, last);
+                v.addView(R.id.goal_flip, fr);
+            }
+        } catch (Throwable e) {
+            v = new android.widget.RemoteViews(getPackageName(), layout);
+            v.setViewVisibility(R.id.goal_flip, android.view.View.GONE);
+            v.setViewVisibility(R.id.goal_picture, android.view.View.VISIBLE);
+            v.setImageViewBitmap(R.id.goal_picture, still);
+        }
+        return v;
     }
 
     private static IslandArt.Item copyWithoutScorer(IslandArt.Item g) {
