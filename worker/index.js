@@ -86,6 +86,31 @@ async function goalsOf(list, lang) {
   return out;
 }
 
+// «مركز المباراة» in Madar: the details of one match - every event (goals, cards, substitutions), the main
+// statistics and the line-ups - from the same 365scores game page
+async function matchCenter(u) {
+  const id = String(u.searchParams.get('id') || '').replace(/^365/, '').replace(/\D/g, ''), lang = +(u.searchParams.get('lang') || 27);
+  if (!id) return { ok: false };
+  const [d, st] = await Promise.all([
+    get365(`https://webws.365scores.com/web/game/?appTypeId=5&langId=${lang}&timezoneName=Asia/Muscat&userCountryId=1&gameId=${id}`, 5000),
+    get365(`https://webws.365scores.com/web/game/stats/?appTypeId=5&langId=${lang}&timezoneName=Asia/Muscat&userCountryId=1&games=${id}`, 5000).catch(() => ({})),
+  ]);
+  const g = d.game || {}, home = g.homeCompetitor || {}, away = g.awayCompetitor || {};
+  const members = new Map((g.members || []).map(x => [x.id, x.shortName || x.name]));
+  const TYPE = { 1: 'goal', 2: 'yellow', 3: 'red', 1000: 'sub' };
+  const events = (g.events || []).map(e => ({ type: TYPE[e.eventType?.id] || (e.eventType?.name || ''), name: e.eventType?.name || '', side: e.competitorId === home.id ? 'home' : 'away', minute: e.gameTimeDisplay || (Math.round(e.gameTime || 0) + "'"), player: members.get(e.playerId) || '' })).slice(-40);
+  const line = c => ((c.lineups && c.lineups.members) || []).filter(m => m.status === 1).map(m => ({ name: members.get(m.id) || '', num: m.jerseyNumber || '', pos: m.position?.name || '' })).slice(0, 11);
+  const stats = [];
+  for (const x of (st.statistics || [])) {
+    let row = stats.find(r => r.name === x.name); if (!row) { row = { name: x.name, home: '', away: '' }; stats.push(row); }
+    row[x.competitorId === home.id ? 'home' : 'away'] = x.value;
+  }
+  return { ok: true, id: '365' + id, minute: g.gameTimeDisplay || '', status: g.statusText || '',
+    home: { name: home.name, score: home.score, formation: home.lineups?.formation || '', lineup: line(home) },
+    away: { name: away.name, score: away.score, formation: away.lineups?.formation || '', lineup: line(away) },
+    events, stats: stats.slice(0, 12) };
+}
+
 const lastGood = {};
 async function matches(env, lang) {
   const teams = await favourites(env);
@@ -234,6 +259,7 @@ export default {
       if (u.pathname === '/hub/today') return await cached(req, ctx, 30, () => today(env));
       if (u.pathname === '/hub/library') return await cached(req, ctx, 120, () => hubLibrary(env));
       if (u.pathname.startsWith('/hub/')) return env.HUB.get(env.HUB.idFromName('home')).fetch(req);
+      if (u.pathname === '/match') return new Response(JSON.stringify(await matchCenter(u).catch(e => ({ ok: false, error: String(e.message || e) }))), { headers: H });
       if (u.pathname === '/yt/related') return new Response(JSON.stringify(await ytRelated(u).catch(() => ({ items: [] }))), { headers: H });
       if (u.pathname === '/yt/find') return new Response(JSON.stringify(await ytFind(u).catch(() => ({ items: [] }))), { headers: H });
       if (u.pathname === '/ask' && req.method === 'POST') return new Response(JSON.stringify(await ask(req, env)), { headers: H });
