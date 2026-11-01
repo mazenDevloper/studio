@@ -38,6 +38,7 @@ export async function ask(req, env) {
   if (!q) return { say: '', action: { type: 'none' } };
   const [d, hub] = await Promise.all([nowData(env, 27).catch(() => ({ matches: [], events: [], teams: [] })), hubDevices(env).catch(() => ({ devices: [], state: {} }))]);
   const items = await catalog(env, hub.state || {});
+  const madar = String(body.commands || '').slice(0, 9000);   // Madar's own commands («id · what it does» per line)
   const me = String(body.device || '');
   const devLines = hub.devices.map(x => `- id=${x.id} · ${x.label} «${x.name}»${x.id === me ? ' (الجهاز الذي يكلمك الآن)' : ''}${x.asleep ? ' · في الخلفية (يمكن إيقاظه)' : ''}${x.playing ? ' · يعرض الآن: ' + x.playing.title : ' · لا يعرض شيئاً'}`);
   const itemLines = items.map(x => `${x.n}. ${x.title || x.id} (${x.kind === 'iptv' ? 'قناة' : x.kind === 'yt' ? 'يوتيوب' : x.kind})`);
@@ -60,15 +61,21 @@ ${itemLines.join('\n') || '- لا شيء محفوظ'}${body.context ? '\nسيا�
 - {"do":"ping","device":..}   ليرنّ الجهاز ويُعثر عليه
 - {"do":"wake","device":..}   إيقاظ جهاز فيه مدار (حتى لو كانت شاشته نائمة)
 وإجراء واحد على الشاشة الحالية (action): open_matches، open_url (value رابط كامل)، environment (مدار: passthrough, night, cinema, sunset, lounge, realStudy, study)، open_app (youtube, shahid, netflix, makkah, games, keyboard)، أو none.
-أعد JSON فقط: {"say":"...","devices":[...],"action":{"type":"...","value":"..."}}`;
+${madar ? `
+أنت الآن داخل مدار. حلّل الطلب: ماذا يريد المستخدم فعلاً؟ قسّمه إلى خطوات بالترتيب، واختر لكل خطوة أمراً من قائمة أوامر مدار التالية (المعرّف · ما يفعله)، و«arg» نص الوسيط إن لزم (اسم سورة، كلمات بحث، رقم، رابط، اسم بيئة):
+${madar}
+${body.screen ? 'ما على الشاشة الآن: ' + String(body.screen).slice(0, 800) : ''}
+ضع الخطوات في "madar": [{"id":"...","arg":"..."}] (حتى 5). إن كان سؤالاً فأجب في say ولا تضع أوامر إلا لو أفاد. لا تخترع معرّفات غير موجودة.` : ''}
+أعد JSON فقط: {"say":"...","devices":[...],"action":{"type":"...","value":"..."}${madar ? ',"madar":[{"id":"...","arg":"..."}]' : ''}}`;
   const history = Array.isArray(body.history) ? body.history.slice(-6).filter(m => m && (m.role === 'user' || m.role === 'assistant')).map(m => ({ role: m.role, content: String(m.content).slice(0, 400) })) : [];
   const r = await env.AI.run(MODEL, {
     messages: [{ role: 'system', content: sys }, ...history, { role: 'user', content: q }],
-    max_tokens: 400, temperature: 0.2,
+    max_tokens: 500, temperature: 0.2,
     response_format: { type: 'json_schema', json_schema: { type: 'object', properties: {
       say: { type: 'string' },
       devices: { type: 'array', items: { type: 'object', properties: { do: { type: 'string' }, device: { type: 'string' }, item: { type: 'number' }, action: { type: 'string' }, text: { type: 'string' }, minutes: { type: 'number' } }, required: ['do', 'device'] } },
-      action: { type: 'object', properties: { type: { type: 'string' }, value: { type: 'string' } }, required: ['type'] } }, required: ['say'] } },
+      action: { type: 'object', properties: { type: { type: 'string' }, value: { type: 'string' } }, required: ['type'] },
+      madar: { type: 'array', items: { type: 'object', properties: { id: { type: 'string' }, arg: { type: 'string' } }, required: ['id'] } } }, required: ['say'] } },
   });
   let out = r && r.response;
   if (typeof out === 'string') { try { out = JSON.parse(out.slice(out.indexOf('{'), out.lastIndexOf('}') + 1)); } catch (e) { out = { say: out }; } }
@@ -91,5 +98,6 @@ ${itemLines.join('\n') || '- لا شيء محفوظ'}${body.context ? '\nسيا�
     const res = await hubObj.fetch('https://hub/hub/op', { method: 'POST', body: JSON.stringify({ op: 'send', to: dest, msg }) }).then(x => x.json()).catch(() => ({}));
     done.push({ ...c, to, delivered: res.delivered || 0 });   // «here» too: the hub delivers it to the asking device like any other
   }
-  return { say: String(out.say || '').slice(0, 400), action: out.action && out.action.type ? out.action : { type: 'none' }, done };
+  const steps = (Array.isArray(out.madar) ? out.madar : []).filter(x => x && typeof x.id === 'string').slice(0, 5).map(x => ({ id: x.id.slice(0, 40), arg: String(x.arg || '').slice(0, 200) }));
+  return { say: String(out.say || '').slice(0, 400), action: out.action && out.action.type ? out.action : { type: 'none' }, done, madar: steps };
 }
