@@ -330,7 +330,7 @@ export function LiveMatchIsland() {
 
   return (
     <>
-    <div ref={islandRootRef} className={cn("fixed top-6 max-[639px]:top-2 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3 pointer-events-none scale-[0.63] max-[639px]:scale-[0.45] min-[968px]:scale-[0.72] origin-top dir-rtl transition-all duration-700", hasOnTop ? "z-[100002]" : "z-[10001]", (showIslands || activeAlerts.length) ? "translate-y-0 opacity-100" : "-translate-y-20 opacity-0")}>
+    <div ref={islandRootRef} style={{ top: "max(2px, env(safe-area-inset-top))" }} className={cn("fixed left-1/2 -translate-x-1/2 flex flex-col items-center gap-3 pointer-events-none scale-[0.63] max-[639px]:scale-[0.45] min-[968px]:scale-[0.72] origin-top dir-rtl transition-all duration-700", hasOnTop ? "z-[100002]" : "z-[10001]", (showIslands || activeAlerts.length) ? "translate-y-0 opacity-100" : "-translate-y-20 opacity-0")}>
       <div className="flex items-start gap-3">
         <div onClick={toggleShowIslands} className="pointer-events-auto shadow-2xl w-12 h-12 shrink-0 rounded-full flex items-center justify-center premium-glass cursor-pointer border border-white/10 active:scale-90 transition-all">{showIslands ? <Eye className="w-5 h-5 text-accent" /> : <EyeOff className="w-5 h-5 text-white/20" />}</div>
         <div className="shrink-0"><SiteVoiceButton /></div>
