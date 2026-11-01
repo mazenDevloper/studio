@@ -51,7 +51,7 @@ ${situation(d)}
 الأجهزة المتصلة الآن:
 ${devLines.join('\n') || '- لا أجهزة متصلة غير هذا'}
 ما يمكن تشغيله (رقم. العنوان):
-${itemLines.join('\n') || '- لا شيء محفوظ'}${body.context ? '\nسياق إضافي من الجهاز:\n' + String(body.context).slice(0, 1000) : ''}
+${itemLines.join('\n') || '- لا شيء محفوظ'}${body.context ? '\nسياق إضافي من الجهاز:\n' + String(body.context).slice(0, body.screen ? 600 : 1500) : ''}
 
 الأوامر على الأجهزة (devices): مصفوفة، كل عنصر {"do": "...", "device": "<id من القائمة أو here للجهاز الحالي أو all>", ...}:
 - {"do":"play","device":..,"item":<رقم من القائمة>}   تشغيل شيء على جهاز
@@ -64,7 +64,7 @@ ${itemLines.join('\n') || '- لا شيء محفوظ'}${body.context ? '\nسيا�
 ${madar ? `
 أنت الآن داخل مدار. حلّل الطلب: ماذا يريد المستخدم فعلاً؟ قسّمه إلى خطوات بالترتيب، واختر لكل خطوة أمراً من قائمة أوامر مدار التالية (المعرّف · ما يفعله)، و«arg» نص الوسيط إن لزم (اسم سورة، كلمات بحث، رقم، رابط، اسم بيئة):
 ${madar}
-${body.screen ? 'ما على الشاشة الآن: ' + String(body.screen).slice(0, 800) : ''}
+${body.screen ? 'كل ما في مدار الآن (أجب عن أي سؤال عن مدار من هذه البيانات بدقة، ولا تخترع):\n' + String(body.screen).slice(0, 4000) : ''}
 ضع الخطوات في "madar": [{"id":"...","arg":"..."}] (حتى 5). إن كان سؤالاً فأجب في say ولا تضع أوامر إلا لو أفاد. لا تخترع معرّفات غير موجودة.` : ''}
 أعد JSON فقط: {"say":"...","devices":[...],"action":{"type":"...","value":"..."}${madar ? ',"madar":[{"id":"...","arg":"..."}]' : ''}}`;
   const history = Array.isArray(body.history) ? body.history.slice(-6).filter(m => m && (m.role === 'user' || m.role === 'assistant')).map(m => ({ role: m.role, content: String(m.content).slice(0, 400) })) : [];
