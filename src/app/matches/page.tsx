@@ -405,15 +405,16 @@ function Team({ team, league, navId }: { team: TopMatch["home"]; league: TopMatc
   };
   return (
     <div className="flex flex-col items-center gap-2 min-w-0">
-      <div className="relative">
-        {team.logo ? <img src={fastImg(team.logo)} decoding="async" alt="" className="w-12 h-12 object-contain" loading="lazy" /> : <div className="w-12 h-12 rounded-full bg-white/10" />}
+      {/* the logo stays clear: the favourite star sits beside the name, not on the crest */}
+      {team.logo ? <img src={fastImg(team.logo)} decoding="async" alt="" className="w-12 h-12 object-contain" loading="lazy" /> : <div className="w-12 h-12 rounded-full bg-white/10" />}
+      <div className="flex items-center justify-center gap-1 w-full min-w-0">
         <button onClick={toggle} title={fav ? "إزالة من فرقي المفضلة" : "إضافة إلى فرقي المفضلة"} data-nav-id={navId}
-          className={cn("focusable no-focus-scale absolute -top-2 -right-3 w-7 h-7 rounded-full border flex items-center justify-center",
-            fav ? "bg-yellow-400 border-yellow-300 text-black shadow-[0_0_10px_rgba(250,204,21,0.5)]" : "bg-black/70 border-white/15 text-white/40 hover:text-yellow-300")}>
-          <Star className={cn("w-3.5 h-3.5", fav && "fill-current")} />
+          className={cn("focusable no-focus-scale shrink-0 w-6 h-6 rounded-full border flex items-center justify-center",
+            fav ? "bg-yellow-400 border-yellow-300 text-black shadow-[0_0_10px_rgba(250,204,21,0.5)]" : "bg-black/40 border-white/15 text-white/40 hover:text-yellow-300")}>
+          <Star className={cn("w-3 h-3", fav && "fill-current")} />
         </button>
+        <span className="text-xs font-black text-center min-w-0 break-words line-clamp-2 leading-tight" dir="ltr" title={team.name}>{team.name}</span>
       </div>
-      <span className="text-xs font-black text-center w-full break-words line-clamp-2 leading-tight" dir="ltr" title={team.name}>{team.name}</span>
     </div>
   );
 }

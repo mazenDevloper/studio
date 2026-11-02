@@ -10,6 +10,7 @@ import { HlsVideo } from "@/components/iptv/hls-video";
 import { IptvSource, LoadResult, loadSource } from "@/lib/m3u-loader";
 import { M3uChannel } from "@/lib/m3u";
 import { cn } from "@/lib/utils";
+import { MAIN_IPTV_LISTS, DEFAULT_IPTV_URL } from "@/lib/iptv-defaults";
 
 interface M3uPlayerPopupProps {
   open: boolean;
@@ -92,6 +93,11 @@ export function M3uPlayerPopup({ open, onOpenChange, initialUrl, onLoad }: M3uPl
           </TabsContent>
         </Tabs>
 
+        {/* the main lists: one tap */}
+        <div className="flex flex-wrap gap-2" dir="rtl">
+          <button onClick={() => load({ kind: "url", url: DEFAULT_IPTV_URL })} disabled={loading} className="h-9 px-3 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold focusable">⭐ القائمتان الرئيسيتان</button>
+          {MAIN_IPTV_LISTS.map(l => <button key={l.url} onClick={() => load({ kind: "url", url: l.url })} disabled={loading} className="h-9 px-3 rounded-full bg-white/10 text-white/80 text-xs font-semibold focusable" dir="ltr">{l.name}</button>)}
+        </div>
         {error && <div className="flex items-center gap-2 text-sm text-red-400"><AlertTriangle className="w-4 h-4" />{error}</div>}
         {mixedContent && <div className="text-xs text-yellow-400">البث http داخل صفحة https قد يحجبه المتصفح / http stream on an https page may be blocked.</div>}
 

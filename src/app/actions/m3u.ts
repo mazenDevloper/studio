@@ -8,14 +8,24 @@ import { assertPublicHttpUrl } from "@/lib/net-guard";
 
 const MAX_BYTES = 20 * 1024 * 1024;
 
-export async function fetchPlaylistText(url: string): Promise<{ ok: true; text: string } | { ok: false; error: string }> {
+export async function fetchPlaylistText(url: string, depth = 0): Promise<{ ok: true; text: string } | { ok: false; error: string }> {
   try {
     const u = assertPublicHttpUrl(url);
     const res = await fetch(u, { cache: "no-store", signal: AbortSignal.timeout(30000), headers: { "User-Agent": "VLC/3.0.20" } });
     if (!res.ok) return { ok: false, error: `HTTP ${res.status}` };
-    const buf = await res.arrayBuffer();
-    if (buf.byteLength > MAX_BYTES) return { ok: false, error: "Playlist too large" };
-    return { ok: true, text: new TextDecoder().decode(buf) };
+    let bytes = new Uint8Array(await res.arrayBuffer());
+    if (bytes.byteLength > MAX_BYTES) return { ok: false, error: "Playlist too large" };
+    // links that are not ".m3u" (iptv.llc and the like) often send the list gzipped without saying so, as UTF-16,
+    // or as a web page that links to the list: all three are read here
+    if (bytes[0] === 0x1f && bytes[1] === 0x8b) bytes = new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"))).arrayBuffer());
+    const enc = bytes[0] === 0xff && bytes[1] === 0xfe ? "utf-16le" : bytes[0] === 0xfe && bytes[1] === 0xff ? "utf-16be" : "utf-8";
+    let text = new TextDecoder(enc).decode(bytes).replace(/^\uFEFF/, "");
+    if (!/#EXTINF|#EXTM3U|#EXT-X-/i.test(text) && /<html|<a\s/i.test(text) && depth < 1) {
+      const links = Array.from(text.matchAll(/href=["']([^"']+)["']/gi)).map(m => { try { return new URL(m[1].replace(/&amp;/g, "&"), res.url || u).href; } catch { return ""; } })
+        .filter(h => /\.m3u8?(\?|$)|m3u|playlist|get\.php/i.test(h));
+      if (links.length) return fetchPlaylistText(links[0], depth + 1);
+    }
+    return { ok: true, text };
   } catch (e: any) {
     return { ok: false, error: e?.message || "Fetch failed" };
   }

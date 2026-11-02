@@ -141,20 +141,22 @@ export function MatchScheduleWidget() {
                         <div className="flex flex-col items-center gap-2 flex-1 min-w-0 group/team relative">
                           <div className="relative w-14 h-14 drop-shadow-2xl">
                             <Image src={match.homeLogo} alt={match.homeTeam} fill className="object-contain" />
+                          </div>
+                          <div className="flex items-center justify-center gap-1 w-full min-w-0">
                             <button 
                               onClick={(e) => { 
                                 e.stopPropagation(); 
                                 toggleFavoriteTeam({ id: match.homeTeamId!, name: match.homeTeam, logo: match.homeLogo }); 
                               }}
                               className={cn(
-                                "absolute -top-3 -right-3 w-7 h-7 rounded-full border border-white/10 backdrop-blur-3xl flex items-center justify-center transition-all active:scale-90 z-30",
+                                "shrink-0 w-6 h-6 rounded-full border border-white/10 backdrop-blur-3xl flex items-center justify-center transition-all active:scale-90 z-30",
                                 isFavTeam(match.homeTeamId!) ? "bg-yellow-500 text-black shadow-glow" : "bg-black/60 text-white/40 hover:text-white"
                               )}
                             >
-                              <Star className={cn("w-3.5 h-3.5", isFavTeam(match.homeTeamId!) && "fill-current")} />
+                              <Star className={cn("w-3 h-3", isFavTeam(match.homeTeamId!) && "fill-current")} />
                             </button>
+                          <span className={cn("text-[10px] font-black truncate min-w-0 text-center uppercase tracking-tighter", isFavTeam(match.homeTeamId!) ? "text-primary" : "text-white")}>{match.homeTeam}</span>
                           </div>
-                          <span className={cn("text-[10px] font-black truncate w-full text-center uppercase tracking-tighter", isFavTeam(match.homeTeamId!) ? "text-primary" : "text-white")}>{match.homeTeam}</span>
                         </div>
 
                         <div className="flex flex-col items-center justify-center min-w-[60px]">
@@ -169,20 +171,22 @@ export function MatchScheduleWidget() {
                         <div className="flex flex-col items-center gap-2 flex-1 min-w-0 group/team relative">
                           <div className="relative w-14 h-14 drop-shadow-2xl">
                             <Image src={match.awayLogo} alt={match.awayTeam} fill className="object-contain" />
+                          </div>
+                          <div className="flex items-center justify-center gap-1 w-full min-w-0">
                             <button 
                               onClick={(e) => { 
                                 e.stopPropagation(); 
                                 toggleFavoriteTeam({ id: match.awayTeamId!, name: match.awayTeam, logo: match.awayLogo }); 
                               }}
                               className={cn(
-                                "absolute -top-3 -left-3 w-7 h-7 rounded-full border border-white/10 backdrop-blur-3xl flex items-center justify-center transition-all active:scale-90 z-30",
+                                "shrink-0 w-6 h-6 rounded-full border border-white/10 backdrop-blur-3xl flex items-center justify-center transition-all active:scale-90 z-30",
                                 isFavTeam(match.awayTeamId!) ? "bg-yellow-500 text-black shadow-glow" : "bg-black/60 text-white/40 hover:text-white"
                               )}
                             >
-                              <Star className={cn("w-3.5 h-3.5", isFavTeam(match.awayTeamId!) && "fill-current")} />
+                              <Star className={cn("w-3 h-3", isFavTeam(match.awayTeamId!) && "fill-current")} />
                             </button>
+                          <span className={cn("text-[10px] font-black truncate min-w-0 text-center uppercase tracking-tighter", isFavTeam(match.awayTeamId!) ? "text-primary" : "text-white")}>{match.awayTeam}</span>
                           </div>
-                          <span className={cn("text-[10px] font-black truncate w-full text-center uppercase tracking-tighter", isFavTeam(match.awayTeamId!) ? "text-primary" : "text-white")}>{match.awayTeam}</span>
                         </div>
                       </div>
 

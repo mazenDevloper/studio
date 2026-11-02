@@ -35,7 +35,20 @@ export async function loadSource(src: IptvSource): Promise<LoadResult> {
     return loadXtream({ host, username: src.username, password: src.password });
   }
 
-  const input = src.url.trim();
+  // several links (the main lists): loaded side by side and merged; one that fails doesn't stop the others
+  const parts = src.url.split(/\s+/).map(x => x.trim()).filter(Boolean);
+  if (parts.length > 1) {
+    const all = await Promise.allSettled(parts.map(url => loadSource({ kind: "url", url })));
+    const seen = new Set<string>(), channels: M3uChannel[] = [];
+    for (const r of all) if (r.status === "fulfilled") for (const c of r.value.channels) {
+      if (seen.has(c.url)) continue; seen.add(c.url); channels.push({ ...c, id: String(channels.length) });
+    }
+    if (!channels.length) throw new Error((all.find(r => r.status === "rejected") as PromiseRejectedResult | undefined)?.reason?.message || "لم يتم العثور على قنوات / No channels found");
+    return { single: false, channels };
+  }
+  let input = src.url.trim();
+  // a bare address ("iptv.llc", "example.com/list") is a link too
+  if (!/^https?:\/\//i.test(input) && /^[\w-]+(\.[\w-]+)+(:\d+)?(\/|$)/.test(input)) input = "https://" + input;
   if (!/^https?:\/\//i.test(input)) throw new Error("أدخل رابطا صحيحا يبدأ بـ http(s)");
   const one = (url: string, name = "Stream"): LoadResult => ({ single: true, channels: [{ id: "0", name, url: toPlayableUrl(url) }] });
 
@@ -48,13 +61,16 @@ export async function loadSource(src: IptvSource): Promise<LoadResult> {
     try { return await loadXtream(creds); } catch { /* fall through to plain m3u */ }
   }
 
-  const res = await withTimeout(fetchPlaylistText(input));
+  let res = await withTimeout(fetchPlaylistText(input));
+  // some list servers only answer on http
+  if (!res.ok && input.startsWith("https://")) { const alt = await withTimeout(fetchPlaylistText("http://" + input.slice(8))).catch(() => null); if (alt?.ok) res = alt; }
   if (!res.ok) {
     // Server could not read it: let the browser try a plain stream link directly.
     if (/\.m3u8?(\?|$)/i.test(input)) return one(input);
     throw new Error(res.error);
   }
   if (isHlsManifest(res.text)) return one(input);
+  if (!/#EXTINF/i.test(res.text) && /^\s*https?:\/\//m.test(res.text) === false) throw new Error("الرابط لا يحتوي قائمة قنوات / Not a playlist");
   const list = parseM3u(res.text).map(c => ({ ...c, url: toPlayableUrl(c.url) }));
   if (!list.length) throw new Error("لم يتم العثور على قنوات / No channels found");
   return { single: false, channels: list };

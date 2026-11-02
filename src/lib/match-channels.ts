@@ -66,6 +66,11 @@ export const LEAGUE_CHANNEL_RULES: LeagueChannelRule[] = [
     test: l => slug(l, "sco.1", "sco.cis") || named(l, /scottish (premiership|league cup)|^spfl/i)
       || (/scotland/i.test(l.country ?? "") && named(l, /^premiership$|league cup|super cup/i)),
   },
+  {
+    // Dubai Sports carries the Argentine league in the region (the foreign channels below stay as a fallback)
+    label: "الدوري الأرجنتيني", channels: ["Dubai Sports"], kind: "rights",
+    test: l => slug(l, "arg.1") || (named(l, /liga profesional|primera divisi[oó]n|torneo (apertura|clausura)|copa de la liga/i) && /argentin/i.test(l.country ?? "")),
+  },
   // ---------- Arab networks (exact channel number comes from the match sources) ----------
   { label: "الدوري الهولندي", channels: ["Dubai Sports"], kind: "network",
     test: l => slug(l, "ned.1") || named(l, /eredivisie/i) },
