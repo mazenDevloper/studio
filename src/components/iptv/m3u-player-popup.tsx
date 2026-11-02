@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Loader2, Play, Search, Tv, AlertTriangle } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Loader2, Play, Search, Tv, AlertTriangle, Upload } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { HlsVideo } from "@/components/iptv/hls-video";
-import { IptvSource, LoadResult, loadSource } from "@/lib/m3u-loader";
+import { IptvSource, LoadResult, loadSource, fromText } from "@/lib/m3u-loader";
+import { fileText, saveIptvFile } from "@/lib/iptv-files";
 import { M3uChannel } from "@/lib/m3u";
 import { cn } from "@/lib/utils";
 import { MAIN_IPTV_LISTS, DEFAULT_IPTV_URL } from "@/lib/iptv-defaults";
@@ -54,6 +55,24 @@ export function M3uPlayerPopup({ open, onOpenChange, initialUrl, onLoad }: M3uPl
     }
   };
 
+  // «ملف m3u من جهازك»: read here (nothing is uploaded anywhere), kept in this browser for the next visits
+  const fileRef = useRef<HTMLInputElement>(null);
+  const importFile = async (f?: File) => {
+    if (!f) return;
+    setError(""); setLoading(true); setChannels([]); setCurrent(null); setGroup("all");
+    try {
+      const text = await fileText(f), res = fromText(text);
+      const source: IptvSource = { kind: "file", id: "f-" + Date.now().toString(36), name: f.name };
+      await saveIptvFile(source.id, text);
+      if (onLoad) { onLoad(res, source); onOpenChange(false); return; }
+      setChannels(res.channels);
+    } catch (e: any) {
+      setError(e?.message || "تعذّرت قراءة الملف");
+    } finally {
+      setLoading(false); if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+
   const groups = useMemo(() => ["all", ...Array.from(new Set(channels.map(c => c.group).filter(Boolean) as string[]))], [channels]);
   const visible = useMemo(() => {
     const q = search.toLowerCase();
@@ -95,6 +114,8 @@ export function M3uPlayerPopup({ open, onOpenChange, initialUrl, onLoad }: M3uPl
 
         {/* the main lists: one tap */}
         <div className="flex flex-wrap gap-2" dir="rtl">
+          <button onClick={() => fileRef.current?.click()} disabled={loading} className="h-9 px-3 rounded-full bg-sky-500/20 text-sky-300 text-xs font-bold focusable flex items-center gap-1.5"><Upload className="w-3.5 h-3.5" /> ملف m3u من جهازك</button>
+          <input ref={fileRef} type="file" accept=".m3u,.m3u8,.txt,.gz,audio/x-mpegurl,application/x-mpegurl,application/vnd.apple.mpegurl,text/plain" hidden onChange={e => importFile(e.target.files?.[0])} />
           <button onClick={() => load({ kind: "url", url: DEFAULT_IPTV_URL })} disabled={loading} className="h-9 px-3 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold focusable">⭐ القائمتان الرئيسيتان</button>
           {MAIN_IPTV_LISTS.map(l => <button key={l.url} onClick={() => load({ kind: "url", url: l.url })} disabled={loading} className="h-9 px-3 rounded-full bg-white/10 text-white/80 text-xs font-semibold focusable" dir="ltr">{l.name}</button>)}
         </div>

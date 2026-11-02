@@ -3,7 +3,9 @@ import { M3uChannel, XtreamCreds, isHlsManifest, parseM3u, toPlayableUrl, xtream
 
 export type IptvSource =
   | { kind: "url"; url: string }
-  | { kind: "xtream"; host: string; username: string; password: string };
+  | { kind: "xtream"; host: string; username: string; password: string }
+  /** an .m3u file imported from the device (its text is kept in IndexedDB under `id`) */
+  | { kind: "file"; id: string; name: string };
 
 export interface LoadResult {
   channels: M3uChannel[];
@@ -27,8 +29,21 @@ async function loadXtream(c: XtreamCreds): Promise<LoadResult> {
   return { single: false, channels: res.channels.map(ch => ({ ...ch, url: xtreamLiveUrl(c, ch.id) })) };
 }
 
+/** channels from the text of an .m3u file */
+export function fromText(text: string): LoadResult {
+  const list = parseM3u(text).map(c => ({ ...c, url: toPlayableUrl(c.url) }));
+  if (!list.length) throw new Error("لم يتم العثور على قنوات في الملف / No channels in the file");
+  return { single: false, channels: list };
+}
+
 /** Resolve an m3u8 stream, m3u playlist, Xtream get.php link or Xtream credentials into channels. */
 export async function loadSource(src: IptvSource): Promise<LoadResult> {
+  if (src.kind === "file") {
+    const { readIptvFile } = await import("@/lib/iptv-files");
+    const text = await readIptvFile(src.id);
+    if (!text) throw new Error("الملف لم يعد موجوداً في هذا المتصفح — استورده مرة أخرى");
+    return fromText(text);
+  }
   if (src.kind === "xtream") {
     if (!src.host || !src.username || !src.password) throw new Error("أكمل بيانات Xtream");
     const host = /^https?:\/\//i.test(src.host) ? src.host : `http://${src.host}`;
