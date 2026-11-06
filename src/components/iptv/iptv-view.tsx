@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { IptvPlaybackSettings } from "@/components/iptv/iptv-playback-settings";
 import { Input } from "@/components/ui/input";
 import { getIptvCategories, getIptvChannels } from "@/app/actions/iptv";
+import { fetchEpgNow, type EpgItem } from "@/app/actions/epg";
 import { cn } from "@/lib/utils";
 import { ShortcutBadge } from "@/components/layout/car-dock";
 import { M3uPlayerPopup } from "@/components/iptv/m3u-player-popup";
@@ -23,7 +24,7 @@ const PAGE_SIZE = 120;
 const GROUPS_PREVIEW = 12;
 
 const toIptvChannel = (c: M3uChannel): IptvChannel => ({
-  name: c.name, stream_id: `m3u:${c.url}`, stream_icon: c.logo || "", category_id: "source", url: c.url, type: "live", group: c.group,
+  name: c.name, stream_id: `m3u:${c.url}`, stream_icon: c.logo || "", category_id: "source", url: c.url, type: "live", group: c.group, tvg: c.tvgId,
 });
 
 /**
@@ -59,9 +60,24 @@ export function IptvView() {
 
   const isDockLeft = dockSide === 'left';
 
+  // «الآن / التالي» from the list's TV guide, refreshed every 15 minutes (only channels that have a guide id)
+  const [epg, setEpg] = useState<Record<string, EpgItem[]>>({});
+  const epgSrc = useRef<{ urls: string[]; ids: string[] } | null>(null);
+  const loadEpg = () => {
+    const e = epgSrc.current; if (!e || !e.urls.length || !e.ids.length) return;
+    fetchEpgNow(e.urls, e.ids).then(m => { if (epgSrc.current === e) setEpg(m); }).catch(() => {});
+  };
+  useEffect(() => { const t = setInterval(loadEpg, 15 * 60_000); return () => clearInterval(t); }, []);
+  const nowOn = (ch: IptvChannel) => {
+    const l = ch.tvg ? epg[ch.tvg] : undefined, t = Date.now();
+    const cur = l?.find(x => x.s <= t && x.e > t), next = l?.find(x => x.s > t);
+    return { cur, next };
+  };
+
   const applySource = (res: LoadResult) => {
     const list = res.channels.map(toIptvChannel);
     setSourceChannels(list);
+    setEpg({}); epgSrc.current = { urls: res.epg || [], ids: [...new Set(list.map(c => c.tvg).filter(Boolean) as string[])] }; loadEpg();
     // the match cards open channels from this same list
     if (!res.single) useIptvCatalog.getState().setChannels(list);
     setGroup("all");
@@ -322,6 +338,9 @@ export function IptvView() {
                   {ch.stream_icon ? <img src={ch.stream_icon} loading="lazy" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="" onError={(e) => (e.currentTarget.style.display = "none")} /> : <div className="w-full h-full flex items-center justify-center bg-zinc-900"><Tv className="w-14 h-14 text-white/10" /></div>}
                   <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-end p-4">
                     <span className="text-white text-xs font-black text-center truncate w-full">{ch.name}</span>
+                    {(() => { const { cur, next } = nowOn(ch); return cur ? (
+                      <span className="text-emerald-300 text-[10px] font-bold text-center truncate w-full" dir="auto" title={next ? `التالي: ${next.t}` : undefined}>الآن: {cur.t}</span>
+                    ) : null; })()}
                   </div>
                   <button
                     onClick={(e) => { e.stopPropagation(); toggleFavoriteIptvChannel(ch); }}

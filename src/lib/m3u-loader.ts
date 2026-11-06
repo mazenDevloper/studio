@@ -1,5 +1,5 @@
 import { fetchPlaylistText, fetchXtreamLive } from "@/app/actions/m3u";
-import { M3uChannel, XtreamCreds, isHlsManifest, parseM3u, toPlayableUrl, xtreamFromUrl, xtreamLiveUrl } from "@/lib/m3u";
+import { M3uChannel, XtreamCreds, epgUrls, isHlsManifest, parseM3u, toPlayableUrl, xtreamFromUrl, xtreamLiveUrl } from "@/lib/m3u";
 
 export type IptvSource =
   | { kind: "url"; url: string }
@@ -11,6 +11,8 @@ export interface LoadResult {
   channels: M3uChannel[];
   /** True when the link was a single stream (not a channel list). */
   single: boolean;
+  /** the TV guide (XMLTV) links the list names */
+  epg?: string[];
 }
 
 const LOAD_TIMEOUT_MS = 40000;
@@ -33,7 +35,7 @@ async function loadXtream(c: XtreamCreds): Promise<LoadResult> {
 export function fromText(text: string): LoadResult {
   const list = parseM3u(text).map(c => ({ ...c, url: toPlayableUrl(c.url) }));
   if (!list.length) throw new Error("لم يتم العثور على قنوات في الملف / No channels in the file");
-  return { single: false, channels: list };
+  return { single: false, channels: list, epg: epgUrls(text) };
 }
 
 /** Resolve an m3u8 stream, m3u playlist, Xtream get.php link or Xtream credentials into channels. */
@@ -58,8 +60,9 @@ export async function loadSource(src: IptvSource): Promise<LoadResult> {
     for (const r of all) if (r.status === "fulfilled") for (const c of r.value.channels) {
       if (seen.has(c.url)) continue; seen.add(c.url); channels.push({ ...c, id: String(channels.length) });
     }
+    const epg = [...new Set(all.flatMap(r => r.status === "fulfilled" ? r.value.epg || [] : []))];
     if (!channels.length) throw new Error((all.find(r => r.status === "rejected") as PromiseRejectedResult | undefined)?.reason?.message || "لم يتم العثور على قنوات / No channels found");
-    return { single: false, channels };
+    return { single: false, channels, epg };
   }
   let input = src.url.trim();
   // a bare address ("iptv.llc", "example.com/list") is a link too
@@ -88,5 +91,5 @@ export async function loadSource(src: IptvSource): Promise<LoadResult> {
   if (!/#EXTINF/i.test(res.text) && /^\s*https?:\/\//m.test(res.text) === false) throw new Error("الرابط لا يحتوي قائمة قنوات / Not a playlist");
   const list = parseM3u(res.text).map(c => ({ ...c, url: toPlayableUrl(c.url) }));
   if (!list.length) throw new Error("لم يتم العثور على قنوات / No channels found");
-  return { single: false, channels: list };
+  return { single: false, channels: list, epg: epgUrls(res.text) };
 }

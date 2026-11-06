@@ -112,6 +112,8 @@ export interface IptvChannel {
   url?: string; type?: 'iptv' | 'web' | 'live'; stream_type?: string; displayNumber?: number; group?: string;
   /** broadcast-name keys (see match-channels.ts) the user linked to this channel from a match card */
   matchAliases?: string[];
+  /** tvg-id: the channel in its list's TV guide (EPG) */
+  tvg?: string;
 }
 
 export interface FavoriteTeam { id: number; name: string; logo: string; /** the club's country (tells Liverpool of England from Liverpool of Uruguay) */ country?: string;

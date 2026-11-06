@@ -4,6 +4,15 @@ export interface M3uChannel {
   url: string;
   logo?: string;
   group?: string;
+  /** tvg-id: the channel's id in the list's TV guide (XMLTV) */
+  tvgId?: string;
+}
+
+/** the TV guide links a list names in its header (#EXTM3U url-tvg="…" / x-tvg-url="…", comma separated) */
+export function epgUrls(text: string): string[] {
+  const head = text.slice(0, 2000).split(/\r?\n/).find(l => /^#EXTM3U/i.test(l.trim())) || "";
+  const v = head.match(/(?:x-tvg-url|url-tvg|tvg-url)="([^"]+)"/i)?.[1] || "";
+  return v.split(",").map(x => x.trim()).filter(x => /^https?:\/\//i.test(x));
 }
 
 export type XtreamCreds = { host: string; username: string; password: string };
@@ -25,7 +34,7 @@ export function parseM3u(text: string): M3uChannel[] {
       const attr = (key: string) => line.match(new RegExp(`${key}="([^"]*)"`, "i"))?.[1];
       // the title follows the first comma outside quoted attributes (titles may contain commas)
       const name = line.slice(line.replace(/"[^"]*"/g, q => " ".repeat(q.length)).indexOf(",") + 1).trim();
-      meta = { name: name || attr("tvg-name") || "Channel", logo: attr("tvg-logo"), group: attr("group-title") };
+      meta = { name: name || attr("tvg-name") || "Channel", logo: attr("tvg-logo"), group: attr("group-title"), tvgId: attr("tvg-id") || undefined };
     } else if (line.startsWith("#EXTGRP:") && meta) {
       meta.group = meta.group || line.slice(8).trim();
     } else if (!line.startsWith("#")) {
@@ -35,6 +44,7 @@ export function parseM3u(text: string): M3uChannel[] {
         url: line,
         logo: meta?.logo,
         group: meta?.group,
+        tvgId: meta?.tvgId,
       });
       meta = null;
     }
