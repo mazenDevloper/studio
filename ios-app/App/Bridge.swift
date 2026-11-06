@@ -96,6 +96,13 @@ final class Bridge {
                 DCShared.defaults.set(s, forKey: "widgets")
             }
             reply([:])
+        case "setAssistantImage":
+            // the dashboard's Memoji widget picture → the home-screen «المساعد» widget
+            let u = DCShared.folder.appendingPathComponent("assistant.png")
+            if let s = args["data"] as? String, let b64 = s.components(separatedBy: ",").last, let d = Data(base64Encoded: b64) { try? d.write(to: u) }
+            else { try? FileManager.default.removeItem(at: u) }
+            WidgetCenter.shared.reloadTimelines(ofKind: "AssistantWidget")
+            reply([:])
         case "getStatus":
             UNUserNotificationCenter.current().getNotificationSettings { st in
                 reply([

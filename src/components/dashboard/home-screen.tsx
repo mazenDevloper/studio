@@ -196,6 +196,8 @@ function MemojiW({ size }: { size: Size }) {
       c.getContext("2d")!.drawImage(img, 0, 0, c.width, c.height);
       const url = c.toDataURL("image/png"); setFace(url);
       try { localStorage.setItem(FACE_KEY, url); } catch {}
+      // the iPhone app: the same picture on the home-screen «المساعد» widget
+      import("@/lib/native-app").then(m => m.nativeIsland()?.setAssistantImage?.({ data: url })).catch(() => {});
       URL.revokeObjectURL(img.src);
     };
     img.src = URL.createObjectURL(f);

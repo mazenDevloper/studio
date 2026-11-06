@@ -18,6 +18,8 @@ interface NativeIslandPlugin {
   requestAccessibility(): Promise<void>;
   setTextZoom(o: { percent: number }): Promise<void>;
   updateWidgets(o: { data: string }): Promise<void>;
+  /** iPhone: the picture of the home-screen «المساعد» widget (a PNG data URL; empty = the Memoji) */
+  setAssistantImage?(o: { data: string }): Promise<void>;
   setMatchesIsland(o: { enabled: boolean }): Promise<void>;
   setPrayerIsland(o: { enabled: boolean }): Promise<void>;
   setVideoPlaying(o: { playing: boolean }): Promise<void>;

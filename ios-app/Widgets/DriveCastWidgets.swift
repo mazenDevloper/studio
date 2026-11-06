@@ -6,10 +6,12 @@ struct DriveCastWidgets: WidgetBundle {
     var body: some Widget {
         #if NO_LIVE_ACTIVITY
         PrayerWidget()
+        AssistantWidget()
         MoreWidgets().body
         #else
         IslandLiveActivity()
         PrayerWidget()
+        AssistantWidget()
         MoreWidgets().body
         if #available(iOS 17.0, *) { StartIslandWidget() }
         if #available(iOS 18.0, *) { StartIslandControl(); AliveControl() }
