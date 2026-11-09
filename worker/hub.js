@@ -64,6 +64,11 @@ export class Hub extends DurableObject {
   async webSocketError(ws) { this.webSocketClose(ws); }
 
   async op(d, from, ws) {
+    if (d.op === 'dctv-put' || d.op === 'dctv-get') {   // DriveCast TV's own copy (below): answered to the asker only
+      const r = await this.dctv(d, ws);
+      if (ws) { try { ws.send(JSON.stringify({ type: 'dctv-store', rid: d.rid, ...r })); } catch (e) {} }
+      return r;
+    }
     const st = await this.load(), save = k => this.ctx.storage.put(k, st[k]);
     const who = { id: from.id, name: from.name, kind: from.kind, app: from.app };
     if (d.op === 'set' && KEYS.includes(d.key) && d.key !== 'stats') {
@@ -109,6 +114,29 @@ export class Hub extends DurableObject {
       st.stats = s; await save('stats'); return { ok: true };
     }
     return { ok: false, error: 'op?' };
+  }
+  // DriveCast TV's board, phrase and settings, so its web version works with the TV off. Private, unlike the shared state:
+  // never in /hub/state or hello, and read or written only with the key the TV and the web derive from the TV's 6-digit code
+  // (sha256 of "<tv id>:<code>"). Kept in 40 000-character parts (a stored value is at most 128 KB).
+  async dctv(d, ws) {
+    const tv = clip(d.tv, 40), key = String(d.key || ''), base = 'dctv:' + tv;
+    if (!/^dctv-[a-z0-9]+$/.test(tv) || !/^[0-9a-f]{64}$/.test(key)) return { ok: false, error: 'bad' };
+    const meta = await this.ctx.storage.get(base);
+    if (d.op === 'dctv-get') {
+      if (!meta) return { ok: true, data: null, at: 0 };
+      if (meta.key !== key) return { ok: false, error: 'key' };
+      const parts = await this.ctx.storage.get(Array.from({ length: meta.n }, (_, i) => base + ':' + i));
+      return { ok: true, at: meta.at, data: Array.from({ length: meta.n }, (_, i) => parts.get(base + ':' + i) || '').join('') };
+    }
+    if (meta && meta.key !== key && meta.key !== d.oldKey) return { ok: false, error: 'key' };   // a new code: the TV sends the old key too
+    const text = typeof d.data === 'string' ? d.data : JSON.stringify(d.data ?? null);
+    if (text.length > 4e6) return { ok: false, error: 'big' };
+    const n = Math.max(1, Math.ceil(text.length / 4e4)), at = Date.now(), puts = { [base]: { key, at, n } };
+    for (let i = 0; i < n; i++) puts[base + ':' + i] = text.slice(i * 4e4, (i + 1) * 4e4);
+    await this.ctx.storage.put(puts);
+    if (meta && meta.n > n) await this.ctx.storage.delete(Array.from({ length: meta.n - n }, (_, i) => base + ':' + (n + i)));
+    this.broadcast({ type: 'dctv-changed', tv, at }, ws);   // no content: the TV and its web pages fetch it with their key
+    return { ok: true, at };
   }
   // the islands every device draws the same way - prepared here
   async islands(device) {

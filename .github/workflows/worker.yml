@@ -7,7 +7,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    if: ${{ vars.CF_READY == '1' }}
+    if: ${{ vars.CF_READY == '1' || vars.CF_READY == 'true' }}
     steps:
       - uses: actions/checkout@v4
       - uses: cloudflare/wrangler-action@v3
@@ -15,6 +15,3 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: worker
-          secrets: BIN_KEY
-        env:
-          BIN_KEY: ${{ secrets.BIN_KEY }}
