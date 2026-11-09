@@ -7,10 +7,14 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    if: ${{ vars.CF_READY == '1' || vars.CF_READY == 'true' }}
     steps:
+      - id: ready   # deploys once the Cloudflare secrets are in this repo
+        env: { T: '${{ secrets.CLOUDFLARE_API_TOKEN }}' }
+        run: if [ -n "$T" ]; then echo ok=1 >> $GITHUB_OUTPUT; else echo "::warning::no CLOUDFLARE_API_TOKEN secret in this repo"; fi
       - uses: actions/checkout@v4
+        if: steps.ready.outputs.ok
       - uses: cloudflare/wrangler-action@v3
+        if: steps.ready.outputs.ok
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
