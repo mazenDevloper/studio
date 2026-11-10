@@ -229,6 +229,43 @@ export async function nowData(env, lang) {
   return { ...m, goals: await goalsOf(m.matches, lang), events: ev.events };
 }
 
+// ---- /tv?u=<stream>: a TV channel for DriveCast TV's web page. A browser on an https page refuses http streams and streams
+// with no CORS header; this passes the playlist (its links rewritten to come back here) and the pieces through.
+// Only for DriveCast's own pages, only GET, only public hosts, only playlists / video / audio.
+const TV_PAGES = /^https:\/\/(mazendevloper\.github\.io|[a-z0-9-]+\.c-p\.workers\.dev|cplay2\.[a-z.]+|localhost(:\d+)?)(\/|$)/i;
+async function tvProxy(req, u) {
+  const CH = { 'access-control-allow-origin': '*', 'access-control-expose-headers': 'content-length, content-range, accept-ranges' };
+  const no = (c, t) => new Response(t, { status: c, headers: CH });
+  if (req.method !== 'GET') return no(405, 'GET only');
+  const from = req.headers.get('origin') || req.headers.get('referer') || '';
+  if (!TV_PAGES.test(from.endsWith('/') ? from : from + '/')) return no(403, 'DriveCast TV only');
+  let t; try { t = new URL(u.searchParams.get('u') || ''); } catch (e) { return no(400, 'bad link'); }
+  if (!/^https?:$/.test(t.protocol)) return no(400, 'bad link');
+  const h = t.hostname;
+  if (h === 'localhost' || /^(127\.|10\.|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.|0\.)/.test(h) || h.includes(':') || h.endsWith('.local') || h.endsWith('.internal')) return no(400, 'bad host');
+  const hd = { 'user-agent': 'Mozilla/5.0 (Linux; Android 11) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36' };
+  const range = req.headers.get('range'); if (range) hd.range = range;
+  const r = await fetch(t.href, { headers: hd, redirect: 'follow' });
+  const type = (r.headers.get('content-type') || '').toLowerCase(), final = r.url || t.href;
+  const isList = /mpegurl/.test(type) || /\.m3u8?(\?|$)/i.test(new URL(final).pathname);
+  if (isList) {
+    const text = await r.text();
+    if (!text.trimStart().startsWith('#EXTM3U')) return no(415, 'not a stream');
+    const back = x => { try { return u.origin + '/tv?u=' + encodeURIComponent(new URL(x, final).href); } catch (e) { return x; } };
+    const out = text.split('\n').map(l => {
+      const s = l.trim();
+      if (!s) return l;
+      if (s[0] !== '#') return back(s);
+      return l.replace(/URI="([^"]+)"/g, (m, x) => 'URI="' + back(x) + '"');
+    }).join('\n');
+    return new Response(out, { status: r.status, headers: { ...CH, 'content-type': 'application/vnd.apple.mpegurl', 'cache-control': 'no-store' } });
+  }
+  if (!/^(video|audio)\/|octet-stream|mp2t|mp4|aac|mpeg/.test(type) && type) return no(415, 'not a stream');
+  const oh = { ...CH, 'content-type': type || 'video/mp2t' };
+  for (const k of ['content-length', 'content-range', 'accept-ranges']) { const v = r.headers.get(k); if (v) oh[k] = v; }
+  return new Response(r.body, { status: r.status, headers: oh });
+}
+
 export default {
   async fetch(req, env, ctx) {
     const u = new URL(req.url);
@@ -266,6 +303,7 @@ export default {
       // the iPhone's screen inside Madar (ReplayKit broadcast → here → every Madar watching)
       if (u.pathname.startsWith('/screen/')) return env.SCREENS.get(env.SCREENS.idFromName('all')).fetch(req);
       if (u.pathname === '/lk/token') return new Response(JSON.stringify(await lkToken(env, u)), { headers: H });
+      if (u.pathname === '/tv') return await tvProxy(req, u);
       if (u.pathname.startsWith('/bin/')) return await binProxy(req, env, u, ctx);
       if (u.pathname.startsWith('/ipa/') || u.pathname.startsWith('/f/') || u.pathname.startsWith('/m/') || u.pathname === '/upload') { const r = await files(req, env, u); if (r) return r; }
       // Madar's reader: the readable text of a web article; Madar's sports mode: weight / workouts from Apple Health (Shortcuts)
