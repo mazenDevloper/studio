@@ -49,6 +49,7 @@ export class Hub extends DurableObject {
       this.broadcast({ type: 'devices', devices: this.devices() }, server);
       return new Response(null, { status: 101, webSocket: client });
     }
+    if (p.endsWith('/m3u')) return this.m3u(req, u);
     if (p.endsWith('/state')) return new Response(JSON.stringify({ state: await this.load(), devices: this.devices() }), { headers: H });
     if (p.endsWith('/op') && req.method === 'POST') { const r = await this.op(await req.json().catch(() => ({})), { id: 'http', name: 'الخادم', kind: 'server', app: 'server' }); return new Response(JSON.stringify(r), { headers: H }); }
     if (p.endsWith('/islands')) return new Response(JSON.stringify(await this.islands(u.searchParams.get('device') || '')), { headers: H });
@@ -137,6 +138,47 @@ export class Hub extends DurableObject {
     if (meta && meta.n > n) await this.ctx.storage.delete(Array.from({ length: meta.n - n }, (_, i) => base + ':' + (n + i)));
     this.broadcast({ type: 'dctv-changed', tv, at }, ws);   // no content: the TV and its web pages fetch it with their key
     return { ok: true, at };
+  }
+  // DriveCast TV's own channel lists (M3U files uploaded from a phone or the web), kept here so the TV and its web version
+  // read them from anywhere. The same key as its private copy (sha256 of "<tv id>:<code>"); up to 8 lists, 8 MB each.
+  //   POST /hub/m3u?tv=&key=&name=   (the file as the body)  → { ok, id, url }
+  //   GET  /hub/m3u?tv=&key=&id=     → the list (text)        ·   GET ?tv=&key=&list=1 → [{ id, name, at, size }]
+  //   POST /hub/m3u?tv=&key=&del=<id>
+  async m3u(req, u) {
+    const C = { 'access-control-allow-origin': '*', 'access-control-allow-methods': 'GET, POST, OPTIONS', 'access-control-allow-headers': 'content-type' };
+    const J = (o, st) => new Response(JSON.stringify(o), { status: st || 200, headers: { ...C, 'content-type': 'application/json; charset=utf-8' } });
+    if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: C });
+    const tv = clip(u.searchParams.get('tv'), 40), key = String(u.searchParams.get('key') || '');
+    if (!/^dctv-[a-z0-9]+$/.test(tv) || !/^[0-9a-f]{64}$/.test(key)) return J({ ok: false, error: 'bad' }, 400);
+    const meta = await this.ctx.storage.get('dctv:' + tv);
+    if (!meta || meta.key !== key) return J({ ok: false, error: 'key' }, 403);
+    const ix = 'dctvm3u:' + tv, list = (await this.ctx.storage.get(ix)) || [];
+    if (req.method === 'GET' && u.searchParams.get('list')) return J({ ok: true, lists: list });
+    if (req.method === 'GET') {
+      const id = String(u.searchParams.get('id') || ''), it = list.find(x => x.id === id); if (!it) return J({ ok: false, error: 'none' }, 404);
+      const parts = await this.ctx.storage.get(Array.from({ length: it.n }, (_, i) => ix + ':' + id + ':' + i));
+      return new Response(Array.from({ length: it.n }, (_, i) => parts.get(ix + ':' + id + ':' + i) || '').join(''), { headers: { ...C, 'content-type': 'audio/x-mpegurl; charset=utf-8', 'cache-control': 'no-store' } });
+    }
+    if (req.method !== 'POST') return J({ ok: false, error: 'method' }, 405);
+    const del = u.searchParams.get('del');
+    if (del) {
+      const it = list.find(x => x.id === del); if (!it) return J({ ok: true });
+      await this.ctx.storage.delete(Array.from({ length: it.n }, (_, i) => ix + ':' + del + ':' + i));
+      await this.ctx.storage.put(ix, list.filter(x => x.id !== del)); return J({ ok: true });
+    }
+    const text = await req.text();
+    if (!/#EXTM3U|#EXTINF|^https?:\/\//m.test(text.slice(0, 4000))) return J({ ok: false, error: 'not m3u' }, 400);
+    if (text.length > 8e6) return J({ ok: false, error: 'big' }, 413);
+    const name = clip(u.searchParams.get('name') || 'قائمتي', 60);
+    const old = list.find(x => x.name === name), id = old ? old.id : Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    if (!old && list.length >= 8) return J({ ok: false, error: 'full' }, 409);
+    const n = Math.max(1, Math.ceil(text.length / 4e4)), puts = {};
+    for (let i = 0; i < n; i++) puts[ix + ':' + id + ':' + i] = text.slice(i * 4e4, (i + 1) * 4e4);
+    if (old && old.n > n) await this.ctx.storage.delete(Array.from({ length: old.n - n }, (_, i) => ix + ':' + id + ':' + (n + i)));
+    const item = { id, name, at: Date.now(), size: text.length, n, channels: (text.match(/#EXTINF/g) || []).length };
+    puts[ix] = [...list.filter(x => x.id !== id), item];
+    await this.ctx.storage.put(puts);
+    return J({ ok: true, id, channels: item.channels, url: `${u.origin}/hub/m3u?tv=${tv}&key=${key}&id=${id}` });
   }
   // the islands every device draws the same way - prepared here
   async islands(device) {
