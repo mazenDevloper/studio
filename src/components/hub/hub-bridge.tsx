@@ -175,11 +175,11 @@ export function HubBridge() {
     {playing && others.length > 0 && (
       <div dir="rtl" className="fixed bottom-28 left-3 z-[100002]">
         <div className="pointer-events-auto relative">
-          <button className={pill} onClick={() => setMenu(!menu)}>📤 {madar.length ? "إلى مدار" : "أرسل"}</button>
+          <button className={pill} onClick={() => setMenu(!menu)}>📤 كمّل على جهاز ثاني</button>
           {menu && (
             <div className="absolute bottom-full mb-2 left-0 rounded-2xl bg-zinc-900/95 border border-white/10 p-2 min-w-[12rem]">
               {others.map(d => (
-                <button key={d.id} className="block w-full text-right rounded-xl px-3 py-2 text-white hover:bg-white/10" onClick={() => { sendPlayingTo(d.id); setMenu(false); }}>{d.app === "madar" ? "🥽 " : "📺 "}{d.name}</button>
+                <button key={d.id} className="block w-full text-right rounded-xl px-3 py-2 text-white hover:bg-white/10" onClick={() => { sendPlayingTo(d.id); setMenu(false); }}>{d.app === "madar" ? "🥽 " : "📺 "}{String(d.name || "").split(" · ")[0]}</button>
               ))}
               <button className="block w-full text-right rounded-xl px-3 py-2 text-white/70 hover:bg-white/10" onClick={() => { setMenu(false); router.push("/hub"); }}>المركز…</button>
             </div>
