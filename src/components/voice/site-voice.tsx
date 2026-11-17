@@ -47,7 +47,7 @@ export function SiteVoiceButton({ face, faceClass }: { face?: string; faceClass?
   };
   const local = (t: string) => {
     if (/مباري|ماتش|نتيج/.test(t)) { router.push("/matches"); return; }
-    if (/اذكار|أذكار/.test(t)) { router.push("/football"); return; }
+    if (/اذكار|أذكار/.test(t)) { router.push("/azkar"); return; }
     const q = t.replace(/^\s*(شغّل|شغل|شغلي|شغّلي|ابحث عن|إبحث عن|ابحث|سمعني|سمّعني|أبي|ابي|حط)\s*/u, "").trim() || t;
     (window as any).__nativeMediaAction = { type: "voice", id: q };
     if (path === "/media") window.dispatchEvent(new CustomEvent("native-media-action"));

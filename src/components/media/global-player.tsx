@@ -286,7 +286,7 @@ export function GlobalVideoPlayer() {
                        <LayoutList className="w-5 h-5 text-white" />
                     </div>
                     <div className="flex flex-col">
-                       <h3 className="text-sm font-black text-white tracking-tighter">قائمة المجلد السيادي</h3>
+                       <h3 className="text-sm font-black text-white tracking-tighter">قائمة المجلد</h3>
                        <span className="text-[8px] text-white/40 font-bold uppercase tracking-[0.3em]">{playlist.length} تلاوة</span>
                     </div>
                  </div>
@@ -356,7 +356,7 @@ export function GlobalVideoPlayer() {
               <div className="flex items-center gap-2 animate-in slide-in-from-left-4 duration-300">
                 {isWebType && (
                   <div className="flex items-center gap-2 bg-white/5 rounded-full px-4 h-11 min-[968px]:h-12 border-2 border-white/10 group focus-within:border-emerald-500/40 transition-all">
-                    <Input value={urlInput} onChange={(e) => setUrlInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handlePutToIframe()} placeholder="URL..." className="bg-transparent border-none text-[15px] font-black text-white p-0 h-full w-28 min-[968px]:w-40 focus-visible:ring-0" />
+                    <Input value={urlInput} onChange={(e) => setUrlInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handlePutToIframe()} placeholder="الصق الرابط…" className="bg-transparent border-none text-[15px] font-black text-white p-0 h-full w-28 min-[968px]:w-40 focus-visible:ring-0" />
                     <button onClick={handlePutToIframe} className="w-10 h-10 rounded-xl bg-emerald-600/20 text-emerald-400 flex items-center justify-center"><ChevronRight className="w-5 h-5" /></button>
                   </div>
                 )}
@@ -421,7 +421,7 @@ export function GlobalVideoPlayer() {
                   </PopoverTrigger>
                   <PopoverContent side="top" align="center" className="bg-zinc-950/95 backdrop-blur-3xl border-white/10 w-96 p-4 rounded-[3rem] shadow-2xl mb-10 z-[100001]">
                      <div className="space-y-2">
-                        <h4 className="text-[12px] font-black text-white/20 uppercase tracking-[0.4em] px-4 py-3 border-b border-white/5">حفظ في المجلد السيادي</h4>
+                        <h4 className="text-[12px] font-black text-white/20 uppercase tracking-[0.4em] px-4 py-3 border-b border-white/5">حفظ في المجلد</h4>
                         <button onClick={() => activeVideo && toggleSaveVideo(activeVideo)} className="w-full text-right p-5 rounded-3xl hover:bg-white/10 flex items-center justify-between text-white text-lg font-black transition-all">
                            <span>المفضلات العامة ⭐</span>
                            {isSaved && <BookmarkCheck className="w-6 h-6 text-accent" />}

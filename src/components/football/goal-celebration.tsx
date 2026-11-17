@@ -197,14 +197,14 @@ export function GoalCelebration() {
         {/* ACT 1 - the word alone, centred */}
         <div className="gi-act1 absolute inset-0 flex items-center justify-center">
           <div className="gi-goal-out">
-            <div className="gi-goal text-[4.2rem] md:text-[6.5rem] leading-none font-black italic tracking-tight text-white [text-shadow:0_0_30px_rgba(0,255,133,0.9),0_6px_24px_rgba(0,0,0,0.8)]">GOAL!</div>
+            <div className="gi-goal text-[4.2rem] md:text-[6.5rem] leading-none font-black italic tracking-tight text-white [text-shadow:0_0_30px_rgba(0,255,133,0.9),0_6px_24px_rgba(0,0,0,0.8)]">هدف!</div>
           </div>
         </div>
 
         {/* ACT 2 - scorer card; the score bar sits in front of the photo */}
         <div className="gi-act2 absolute inset-0">
           <div className="gi-label absolute top-3 inset-x-4 flex items-center gap-2 min-w-0">
-            <span className="shrink-0 px-2.5 py-0.5 rounded-full bg-[#00ff85] text-[#37003c] text-xs md:text-sm font-black italic">GOAL ⚽</span>
+            <span className="shrink-0 px-2.5 py-0.5 rounded-full bg-[#00ff85] text-[#37003c] text-xs md:text-sm font-black italic">هدف ⚽</span>
             <span className="text-[11px] md:text-xs text-white/70 font-bold truncate">{m.league.name}{minute ? ` · ${minute}` : ""}</span>
           </div>
 

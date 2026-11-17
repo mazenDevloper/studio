@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>المشاكل</title>
+<style>
+:root{--bg:#0b0d12;--card:#151922;--line:#262c38;--text:#f2f4f8;--dim:#8b93a3;--accent:#0a84ff}
+@media (prefers-color-scheme: light){:root{--bg:#f5f6f8;--card:#fff;--line:#e3e6ec;--text:#14171c;--dim:#6b7280}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px/1.6 -apple-system,system-ui,"SF Arabic","Geeza Pro",sans-serif}
+main{max-width:760px;margin:0 auto;padding:24px 16px 60px}
+h1{font-size:28px;margin:0 0 4px}p.sub{color:var(--dim);margin:0 0 18px;font-size:14px}
+.seg{display:flex;gap:6px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px;margin-bottom:16px;overflow-x:auto}
+.seg button{flex:1;border:0;background:none;color:var(--text);font:inherit;font-size:14px;padding:8px 12px;border-radius:9px;cursor:pointer;white-space:nowrap}
+.seg button.on{background:var(--accent);color:#fff}
+.row{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:8px}
+.meta{display:flex;gap:10px;color:var(--dim);font-size:13px;flex-wrap:wrap}.meta b{color:var(--text);font-weight:600}
+.msg{margin-top:6px;font-family:ui-monospace,Menlo,monospace;font-size:13px;direction:ltr;text-align:left;white-space:pre-wrap;word-break:break-word}
+.n{background:rgba(255,159,10,.15);color:#ff9f0a;border-radius:6px;padding:0 6px}
+.empty{color:var(--dim);text-align:center;padding:40px 0}
+</style>
+</head>
+<body>
+<main>
+  <h1>المشاكل</h1>
+  <p class="sub">ما واجهته DriveCast وDriveCast TV ومدار على أجهزتك، يصل هنا لحاله. الروابط محذوفة منه.</p>
+  <div class="seg" id="seg">
+    <button data-a="" class="on">الكل</button><button data-a="drivecast">DriveCast</button><button data-a="dctv">التلفزيون</button><button data-a="dctv-lite">التلفزيون الخفيف</button><button data-a="madar">مدار</button>
+  </div>
+  <div id="list"><div class="empty">أجيب القائمة…</div></div>
+</main>
+<script>
+const NAME = { drivecast: 'DriveCast', dctv: 'DriveCast TV', 'dctv-lite': 'DriveCast TV الخفيف', madar: 'مدار', other: 'غير معروف' };
+let app = '';
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+async function load() {
+  const box = document.getElementById('list');
+  try {
+    const r = await (await fetch('https://studio.c-p.workers.dev/crash?n=200' + (app ? '&app=' + app : ''))).json();
+    box.innerHTML = r.length ? r.map(x => `<div class="row"><div class="meta"><b>${esc(NAME[x.app] || x.app)}</b><span>${esc(x.dev)}</span><span>${x.ver ? 'نسخة ' + esc(x.ver) : ''}</span><span>${new Date(x.at).toLocaleString('ar', { dateStyle: 'medium', timeStyle: 'short' })}</span>${x.n > 1 ? `<span class="n">×${x.n}</span>` : ''}</div><div class="msg">${esc(x.msg)}</div></div>`).join('')
+      : '<div class="empty">ما فيه مشاكل ✅</div>';
+  } catch (e) { box.innerHTML = '<div class="empty">ما قدرت أوصل للخادم — جرّب بعد شوي</div>'; }
+}
+document.getElementById('seg').onclick = e => { const b = e.target.closest('button'); if (!b) return; app = b.dataset.a; document.querySelectorAll('#seg button').forEach(x => x.classList.toggle('on', x === b)); load(); };
+load(); setInterval(load, 60000);
+</script>
+</body>
+</html>

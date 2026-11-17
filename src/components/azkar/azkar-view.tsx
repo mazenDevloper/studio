@@ -182,10 +182,10 @@ export function AzkarView() {
       <header className="flex flex-wrap items-center justify-between gap-4 relative z-50">
         <div className="flex flex-col gap-1">
           <h1 className="text-5xl font-black text-white tracking-tighter flex items-center gap-4">
-            {activeTab === 'evening' ? 'أذكار المساء' : activeTab === 'general' ? 'أذكار سيادية' : 'أذكار الصباح'} 
+            {activeTab === 'evening' ? 'أذكار المساء' : activeTab === 'general' ? 'أذكاري' : 'أذكار الصباح'} 
             {activeTab === 'evening' ? <Moon className="w-10 h-10 text-blue-400" /> : activeTab === 'general' ? <Bookmark className="w-10 h-10 text-emerald-400" /> : <Sun className="w-10 h-10 text-yellow-500" />}
           </h1>
-          <p className="text-white/20 font-bold uppercase tracking-[0.6em] text-[10px]">Sovereign Remembrance Hub</p>
+          <p className="text-white/20 font-bold uppercase tracking-[0.6em] text-[10px]">الأذكار</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-4">
@@ -193,7 +193,7 @@ export function AzkarView() {
               <TabsList className="bg-transparent border-none h-14">
                  <TabsTrigger value="morning" className="rounded-full px-5 md:px-10 font-black text-sm h-full focusable">الصباح</TabsTrigger>
                  <TabsTrigger value="evening" className="rounded-full px-5 md:px-10 font-black text-sm h-full focusable">المساء</TabsTrigger>
-                 <TabsTrigger value="general" className="rounded-full px-5 md:px-10 font-black text-sm h-full focusable">سيادية</TabsTrigger>
+                 <TabsTrigger value="general" className="rounded-full px-5 md:px-10 font-black text-sm h-full focusable">أذكاري</TabsTrigger>
               </TabsList>
            </Tabs>
            
@@ -210,7 +210,7 @@ export function AzkarView() {
         <div className="space-y-10 animate-in fade-in duration-500">
            <div className="bg-black/40 p-8 rounded-[3rem] border border-white/10 flex gap-4 max-w-4xl mx-auto shadow-2xl">
               <Input 
-                placeholder="أضف ذكراً سيادياً جديداً..." 
+                placeholder="أضف ذكراً جديداً..." 
                 value={newReminderText} 
                 onChange={(e) => setNewReminderText(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleAddGeneralAzkar()}
@@ -247,7 +247,7 @@ export function AzkarView() {
               {(!generalAzkar || generalAzkar.length === 0) && (
                 <div className="col-span-full py-40 text-center opacity-10 flex flex-col items-center gap-6">
                    <Bookmark className="w-32 h-32" />
-                   <p className="text-4xl font-black">لا توجد أذكار سيادية محفوظة</p>
+                   <p className="text-4xl font-black">لا توجد أذكار محفوظة بعد</p>
                 </div>
               )}
            </div>

@@ -17,7 +17,7 @@ export function VoiceCommandHub() {
     const t = transcript.toLowerCase();
     
     if (t.includes("كره") || t.includes("رياضه") || t.includes("football")) {
-      router.push("/football");
+      router.push("/azkar");
       toast({ title: "جاري الانتقال", description: "فتح مركز كووورة الرياضي" });
     } else if (t.includes("ميديا") || t.includes("يوتيوب") || t.includes("media")) {
       router.push("/media");

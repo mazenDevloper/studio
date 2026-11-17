@@ -362,7 +362,7 @@ export function LiveMatchIsland() {
                       </div>
                       <div className="flex flex-col items-center">
                          <span className="text-[0.7rem] font-black uppercase text-white/60 tracking-widest leading-none mb-1">{alert.name}</span>
-                         <span className="text-[0.8rem] font-black text-primary animate-pulse uppercase tracking-[0.3em]">Online</span>
+                         <span className="text-[0.8rem] font-black text-primary animate-pulse uppercase tracking-[0.3em]">متصل</span>
                       </div>
                    </div>
                  );

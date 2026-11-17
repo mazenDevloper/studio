@@ -45,7 +45,7 @@ export function WeatherWidget() {
   if (error) {
     return (
       <div className="h-full w-full p-6 flex flex-col items-center justify-center text-center">
-        <div className="text-white/20 font-black text-[12px] uppercase tracking-widest">Weather Offline</div>
+        <div className="text-white/20 font-black text-[12px] uppercase tracking-widest">الطقس غير متاح الآن</div>
       </div>
     );
   }
@@ -53,7 +53,7 @@ export function WeatherWidget() {
   if (!weather) {
     return (
       <div className="h-full w-full p-6 flex flex-col items-center justify-center text-center">
-        <div className="animate-pulse text-white/20 font-black text-[12px] uppercase tracking-[0.5em]">Satellite Sync...</div>
+        <div className="animate-pulse text-white/20 font-black text-[12px] uppercase tracking-[0.5em]">أجيب الطقس…</div>
       </div>
     );
   }

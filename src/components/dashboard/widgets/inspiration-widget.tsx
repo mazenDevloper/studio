@@ -8,7 +8,7 @@ export function InspirationWidget() {
     <div className="h-full bg-zinc-900/40 backdrop-blur-3xl rounded-[2.5rem] border border-white/5 overflow-hidden relative shadow-2xl group">
       <Image 
         src="https://images.unsplash.com/photo-1594911772125-07fc7a2d8d9f?q=80&w=1000"
-        alt="Inspiration"
+        alt=""
         fill
         className="object-cover opacity-60 group-hover:scale-110 transition-transform duration-1000 grayscale hover:grayscale-0"
         data-ai-hint="islamic calligraphy"

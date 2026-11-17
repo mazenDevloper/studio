@@ -38,7 +38,7 @@ export function FootballView() {
           <h1 className="text-4xl font-headline font-bold text-white tracking-tighter flex items-center gap-3">
             مركز كووورة <Trophy className="w-8 h-8 text-accent animate-bounce" />
           </h1>
-          <p className="text-white/40 text-xs font-bold uppercase tracking-widest mr-1">Global Football Live Hub</p>
+          <p className="text-white/40 text-xs font-bold uppercase tracking-widest mr-1">المباريات مباشرة</p>
         </div>
         <Button variant="outline" onClick={loadMatches} disabled={loading} className="rounded-full bg-white/5 border-white/10 text-white focusable h-12 px-8" data-nav-id="football-refresh-btn">
           <RefreshCw className={cn("w-4 h-4 ml-2", loading && "animate-spin")} /> تحديث يدوي

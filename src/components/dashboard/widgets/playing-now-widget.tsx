@@ -29,7 +29,7 @@ export function PlayingNowWidget() {
             <div className="w-full flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Activity className={cn("w-4 h-4 text-accent", isPlaying && "animate-pulse")} />
-                <span className="text-[10px] text-white/40 font-bold uppercase tracking-[0.2em]">Active Transmission</span>
+                <span className="text-[10px] text-white/40 font-bold uppercase tracking-[0.2em]">يعمل الآن</span>
               </div>
               <Button 
                 variant="ghost" 
@@ -54,7 +54,7 @@ export function PlayingNowWidget() {
                 <h3 className="text-sm font-black font-headline text-white line-clamp-2 leading-tight uppercase tracking-tight drop-shadow-lg">
                   {activeVideo.title}
                 </h3>
-                <p className="text-[9px] text-accent font-black uppercase tracking-[0.3em] drop-shadow-md">Direct Feed</p>
+                <p className="text-[9px] text-accent font-black uppercase tracking-[0.3em] drop-shadow-md">بث مباشر</p>
               </div>
             </div>
 
@@ -62,7 +62,7 @@ export function PlayingNowWidget() {
               <div className="h-1 w-12 bg-accent/20 rounded-full overflow-hidden">
                 <div className={cn("h-full bg-accent w-1/3 shadow-[0_0_8px_hsl(var(--accent))]", isPlaying && "animate-[shimmer_2s_infinite]")} />
               </div>
-              <span className="text-[9px] text-white/20 font-bold uppercase tracking-widest">Optimized Signal</span>
+              <span className="text-[9px] text-white/20 font-bold uppercase tracking-widest">جودة تلقائية</span>
             </div>
           </div>
         </>
@@ -70,12 +70,12 @@ export function PlayingNowWidget() {
         <div className="h-full w-full flex flex-col items-center justify-center gap-6 p-8">
           <div className="absolute top-6 left-8 flex items-center gap-2">
             <Activity className="w-4 h-4 text-white/10" />
-            <span className="text-[10px] text-white/20 font-bold uppercase tracking-[0.2em]">Idle Mode</span>
+            <span className="text-[10px] text-white/20 font-bold uppercase tracking-[0.2em]">متوقف</span>
           </div>
           <div className="w-24 h-24 rounded-full bg-white/5 border border-white/5 flex items-center justify-center">
             <Radio className="w-10 h-10 text-white/20" />
           </div>
-          <p className="text-xs font-black text-white/20 uppercase tracking-[0.4em]">No Active Stream</p>
+          <p className="text-xs font-black text-white/20 uppercase tracking-[0.4em]">لا شيء يعمل الآن</p>
         </div>
       )}
     </div>

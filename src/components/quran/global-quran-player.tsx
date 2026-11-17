@@ -38,7 +38,7 @@ export function GlobalQuranPlayer() {
     >
       <SovereignIframe
         src={`${activeQuranUrl}${activeQuranUrl.includes('?') ? '&' : '?'}autoplay=1`}
-        title="Background Quran Engine"
+        title="مشغّل القرآن"
       />
     </div>
   );

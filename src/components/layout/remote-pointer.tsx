@@ -36,7 +36,7 @@ export function RemotePointer() {
     const mappings = useMediaStore.getState().keyMappings;
     const isPlayerActive = (activeVideo || activeIptv) && isFullScreen && !isMinimized;
     const normalizedKey = key.toLowerCase();
-    const screenMap: Record<string, string> = { '/': 'dashboard', '/dashboard': 'dashboard', '/media': 'media', '/quran': 'quran', '/football': 'football', '/iptv': 'iptv', '/settings': 'settings' };
+    const screenMap: Record<string, string> = { '/': 'dashboard', '/dashboard': 'dashboard', '/media': 'media', '/quran': 'quran', '/football': 'football', '/azkar': 'football', '/iptv': 'iptv', '/settings': 'settings' };
     const pageCtx = screenMap[pathname] || 'global';
     const match = (keysArr: string[] | undefined) => (Array.isArray(keysArr) ? keysArr : []).some(k => k.toLowerCase() === normalizedKey);
     
@@ -292,9 +292,9 @@ export function RemotePointer() {
     if (isAction(finalKey, 'goto_media')) { e?.preventDefault(); router.push('/media'); return; }
     if (isAction(finalKey, 'goto_quran')) { e?.preventDefault(); router.push('/quran'); return; }
     if (isAction(finalKey, 'goto_matches')) { e?.preventDefault(); router.push('/matches'); return; }
-    if (isAction(finalKey, 'goto_hihi2')) { e?.preventDefault(); router.push('/hihi2'); return; }
+    if (isAction(finalKey, 'goto_hihi2')) { e?.preventDefault(); router.push('/sports'); return; }
     if (isAction(finalKey, 'goto_iptv')) { e?.preventDefault(); router.push('/iptv'); return; }
-    if (isAction(finalKey, 'goto_football')) { e?.preventDefault(); router.push('/football'); return; }
+    if (isAction(finalKey, 'goto_football')) { e?.preventDefault(); router.push('/azkar'); return; }
     if (isAction(finalKey, 'goto_settings')) { e?.preventDefault(); router.push('/settings'); return; }
     if (isAction(finalKey, 'goto_car_dashboard')) { e?.preventDefault(); router.push('/car-dashboard'); return; }
   }, [navigate, isAction, wallPlateType, router, isRecordingKey, recordingAction, setIsRecordingKey, setRecordingAction, setKeyMapping, toast, activeVideo, activeIptv, isFullScreen, isMinimized, nextTrack, prevTrack]);

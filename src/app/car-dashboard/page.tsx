@@ -210,7 +210,7 @@ export default function CarDashboardPage() {
         <div className="w-full h-full rounded-[3rem] overflow-hidden border-2 border-white/10 shadow-2xl relative bg-zinc-900">
           <SovereignIframe 
             src="https://dmusera.netlify.app/amap" 
-            title="Sovereign Radar Map" 
+            title="الخريطة" 
             allow="geolocation; autoplay; fullscreen; microphone; camera; display-capture; clipboard-write; encrypted-media; picture-in-picture; web-share; accelerometer; gyroscope"
           />
         </div>

@@ -256,7 +256,7 @@ export function IptvView() {
             <h1 className="text-3xl font-black font-headline text-white tracking-tighter flex items-center gap-4">
               مركز البث المباشر <Tv className="w-8 h-8 text-emerald-500 animate-pulse" />
             </h1>
-            <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest">Premium Live Feed Hub</p>
+            <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest">القنوات المباشرة</p>
           </div>
           <div className="flex flex-wrap gap-3">
             {selectedCat === 'direct' && (

@@ -63,7 +63,7 @@ export function MatchScheduleWidget() {
             <Trophy className="h-6 w-6 text-white" />
           </div>
           جدول مباريات اليوم
-          <span className="text-[10px] text-white/20 uppercase tracking-[0.2em] font-bold ml-2">Live Center</span>
+          <span className="text-[10px] text-white/20 uppercase tracking-[0.2em] font-bold ml-2">المباريات</span>
         </CardTitle>
         
         <Button 

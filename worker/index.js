@@ -302,6 +302,9 @@ export default {
       if (u.pathname === '/ask' && req.method === 'POST') return new Response(JSON.stringify(await ask(req, env)), { headers: H });
       // the iPhone's screen inside Madar (ReplayKit broadcast → here → every Madar watching)
       if (u.pathname.startsWith('/screen/')) return env.SCREENS.get(env.SCREENS.idFromName('all')).fetch(req);
+      // 🧯 the problems every app meets (DriveCast, DriveCast TV, Madar), sent on their own: one list for the whole system.
+      // Links are cut to «<رابط>» before they are kept (no stream addresses, no tokens); the last 300, kept 30 days.
+      if (u.pathname === '/crash') return await crashLog(req, env, u);
       if (u.pathname === '/lk/token') return new Response(JSON.stringify(await lkToken(env, u)), { headers: H });
       if (u.pathname === '/tv') return await tvProxy(req, u);
       if (u.pathname.startsWith('/bin/')) return await binProxy(req, env, u, ctx);
@@ -323,3 +326,25 @@ export default {
     ctx.waitUntil(watch(env, matches, goalsOf).catch(e => console.log('watch', e && e.message)));
   },
 };
+
+
+async function crashLog(req, env, u) {
+  const KEY = 'crash:list';
+  if (!env.PUSH) return new Response('[]', { headers: H });
+  let list = []; try { list = JSON.parse(await env.PUSH.get(KEY) || '[]'); } catch (e) {}
+  if (req.method === 'POST') {
+    let b = {}; try { b = await req.json(); } catch (e) {}
+    const clean = v => String(v || '').replace(/\b[a-z][a-z0-9+.-]*:\/\/\S+/gi, '<رابط>').replace(/(password|pass|token|key|pin)=\S+/gi, '$1=…').slice(0, 600);
+    const app = /^(drivecast|dctv|dctv-lite|madar)$/.test(b.app) ? b.app : 'other';
+    const row = { at: Date.now(), app, ver: clean(b.ver).slice(0, 20), dev: clean(b.dev).slice(0, 40), msg: clean(b.msg) };
+    if (!row.msg) return new Response('{"ok":false}', { headers: H });
+    // the same problem again within an hour counts up instead of filling the list
+    const same = list.find(x => x.app === row.app && x.msg === row.msg && row.at - x.at < 3600e3);
+    if (same) { same.n = (same.n || 1) + 1; same.at = row.at; } else list.unshift(row);
+    list = list.slice(0, 300);
+    await env.PUSH.put(KEY, JSON.stringify(list), { expirationTtl: 30 * 86400 });
+    return new Response('{"ok":true}', { headers: H });
+  }
+  const app = u.searchParams.get('app');
+  return new Response(JSON.stringify(list.filter(x => !app || x.app === app).slice(0, Math.min(300, +u.searchParams.get('n') || 100))), { headers: H });
+}

@@ -153,7 +153,7 @@ function NowPlayingW({ size }: { size: Size }) {
   );
 }
 const CONTROLS = [
-  { href: "/quran", label: "القرآن", icon: BookOpen, c: "#34c759" }, { href: "/football", label: "الأذكار", icon: Sparkles, c: "#ff9f0a" },
+  { href: "/quran", label: "القرآن", icon: BookOpen, c: "#34c759" }, { href: "/azkar", label: "الأذكار", icon: Sparkles, c: "#ff9f0a" },
   { href: "/matches", label: "المباريات", icon: Trophy, c: "#ff375f" }, { href: "/iptv", label: "البث", icon: Tv, c: "#0a84ff" },
   { href: "/media", label: "الوسائط", icon: Radio, c: "#bf5af2" }, { href: "/hub", label: "مدار", icon: Glasses, c: "#64d2ff" },
   { href: "/car-dashboard", label: "السيارة", icon: Gauge, c: "#ffd60a" }, { href: "/settings", label: "الإعدادات", icon: Settings, c: "#8e8e93" },
@@ -229,7 +229,7 @@ const WIDGETS: Record<string, { name: string; desc: string; icon: any; sizes: Si
   moon: { name: "القمر", desc: "طور القمر الليلة", icon: Moon, sizes: ["s", "m", "l"], draw: () => <Embed><MoonWidget /></Embed> },
   prayerbar: { name: "شريط الصلوات", desc: "الصلوات الخمس على خط اليوم", icon: Moon, sizes: ["w"], rows: "row-span-2", draw: () => <div className="h-full"><PrayerTimelineWidget /></div> },
   saved: { name: "الفيديوهات المحفوظة", desc: "قائمتك من يوتيوب", icon: Bookmark, sizes: ["w"], rows: "row-span-4", draw: () => <div><YouTubeSavedWidget /></div> },
-  shortcuts: { name: "الاختصارات", desc: "اختصاراتك السيادية", icon: LayoutGrid, sizes: ["w"], rows: "row-span-3", draw: () => <Embed><SovereignShortcutsWidget /></Embed> },
+  shortcuts: { name: "الاختصارات", desc: "اختصاراتك", icon: LayoutGrid, sizes: ["w"], rows: "row-span-3", draw: () => <Embed><SovereignShortcutsWidget /></Embed> },
 };
 const DEFAULT: Placed[] = [
   { id: "z", type: "memoji", size: "s" }, { id: "a", type: "clock", size: "m" }, { id: "b", type: "prayer", size: "s" }, { id: "c", type: "match", size: "s" },

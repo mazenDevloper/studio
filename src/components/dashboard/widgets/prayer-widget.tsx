@@ -46,7 +46,7 @@ export function PrayerWidget() {
     <Card className="h-full border-none bg-zinc-900/50 rounded-[2.5rem] overflow-hidden">
       <CardContent className="p-6 h-full flex flex-col justify-center gap-4">
         <div className="flex items-center justify-between">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Prayer Array</span>
+          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">مواقيت الصلاة</span>
           <Star className="h-4 w-4 text-accent" />
         </div>
         <div className="grid grid-cols-3 gap-3">

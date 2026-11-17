@@ -24,7 +24,7 @@ export function CalendarWidget() {
     <div className="h-full bg-zinc-900/60 backdrop-blur-3xl rounded-[2.5rem] border border-white/5 p-8 flex flex-col justify-between relative shadow-2xl overflow-hidden group">
       <div className="absolute top-6 left-8 flex items-center gap-2">
         <CalendarIcon className="w-4 h-4 text-accent" />
-        <span className="text-[10px] text-white/40 font-bold uppercase tracking-[0.2em]">Hub Synchronization</span>
+        <span className="text-[10px] text-white/40 font-bold uppercase tracking-[0.2em]">التقويم</span>
       </div>
 
       <div className="flex-1 flex flex-col justify-center items-center gap-2">
@@ -63,7 +63,7 @@ export function CalendarWidget() {
       <div className="flex items-center justify-between pt-4 border-t border-white/5">
         <div className="flex items-center gap-2">
           <MapPin className="w-3 h-3 text-muted-foreground" />
-          <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-widest">Makkah Region</span>
+          <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-widest">تقويم أم القرى</span>
         </div>
         <div className="flex gap-1">
           <div className="w-1 h-1 rounded-full bg-primary" />

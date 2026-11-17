@@ -305,7 +305,7 @@ export function MediaView() {
       const input = newPlaylistName.trim(); if (!input) return;
       const listMatch = input.match(/[?&]list=([^&]+)/);
       if (listMatch) {
-        toast({ title: "جاري الاستيراد", description: "جاري سحب المجلد السيادي..." });
+        toast({ title: "جاري الاستيراد", description: "جاري سحب المجلد..." });
         const data = await fetchYouTubePlaylistVideos(listMatch[1]);
         addPlaylist(data.title, data.videos);
         toast({ title: "تم الاستيراد بنجاح" });
@@ -446,7 +446,7 @@ export function MediaView() {
             <img src={video.thumbnail} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="" />
             {video.duration && <div className="absolute bottom-2 right-2 bg-black text-white text-[12px] px-2 py-1 rounded font-black z-10">{video.duration}</div>}
             <div className="absolute top-4 right-4 z-[60] opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-2">
-              <button onClick={(event) => { event.stopPropagation(); if (!video.isPlaylist) { setActiveAudio({ id: video.id, title: video.title, thumbnail: video.thumbnail, channelTitle: video.channelTitle }); toast({ title: "الوضع الصوتي السيادي", description: `جاري تشغيل: ${video.title}` }); } }} className="w-10 h-10 rounded-full bg-primary text-white backdrop-blur-xl border border-primary/40 flex items-center justify-center hover:bg-primary/80 transition-all shadow-glow active:scale-90"><Music className="w-5 h-5" /></button>
+              <button onClick={(event) => { event.stopPropagation(); if (!video.isPlaylist) { setActiveAudio({ id: video.id, title: video.title, thumbnail: video.thumbnail, channelTitle: video.channelTitle }); toast({ title: "الوضع الصوتي", description: `جاري تشغيل: ${video.title}` }); } }} className="w-10 h-10 rounded-full bg-primary text-white backdrop-blur-xl border border-primary/40 flex items-center justify-center hover:bg-primary/80 transition-all shadow-glow active:scale-90"><Music className="w-5 h-5" /></button>
             </div>
             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"><div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center border-2 border-primary/40 shadow-glow">{video.isPlaylist ? <Library className="w-8 h-8 text-white" /> : <Youtube className="w-8 h-8 text-white fill-white" />}</div></div>
           </div>
@@ -464,7 +464,7 @@ export function MediaView() {
           <div data-row-id="sidebar-main-actions"><div onClick={resetView} className={cn("flex items-center justify-center gap-3 p-3 cursor-pointer focusable w-[90%] mx-auto rounded-xl", !selectedChannel && !selectedPlaylist && searchResults.length === 0 ? "bg-primary text-white" : "hover:bg-white/5")} tabIndex={0} data-nav-id="sidebar-all-btn"><List className="w-5 h-5" />{!isSidebarShrinked && <span className="font-black text-sm">الكل</span>}</div></div>
           <div className="px-4 py-4 space-y-6" data-row-id="sidebar-desktop-sections">
               <div className="space-y-3" data-row-id="sidebar-playlists">
-                 <h4 className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] px-2">مجلداتك السيادية</h4>
+                 <h4 className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] px-2">مجلداتك</h4>
                  <div onClick={() => handlePlaylistEntry('favorites')} className={cn( "flex items-center justify-between p-1.5 px-3 rounded-xl cursor-pointer transition-all focusable group border", selectedPlaylist === 'favorites' ? "bg-amber-600 border-amber-400 text-white shadow-glow" : "bg-amber-900/10 border-white/5 text-white/80" )} tabIndex={0} data-nav-id="sidebar-playlist-favorites"><div className="flex items-center gap-3"><div className={cn("w-7 h-7 rounded-lg flex items-center justify-center shadow-lg", selectedPlaylist === 'favorites' ? "bg-white/20" : "bg-amber-600")}><Star className="w-3.5 h-3.5 text-white" /></div><div className="flex flex-col min-w-0"><span className="text-[11px] font-black truncate max-w-[90px] tracking-tighter">المفضلات ⭐</span><span className="text-[7px] font-black opacity-60 uppercase">{savedVideos.length} فيديو</span></div></div></div>
                  {playlists.map((p, idx) => (
                    <div key={p.id} onClick={() => handlePlaylistEntry(p.id)} className={cn("flex items-center justify-between p-1.5 px-3 rounded-xl cursor-pointer transition-all focusable group border", selectedPlaylist === p.id ? "bg-indigo-600 border-indigo-400 text-white shadow-glow" : "bg-indigo-900/10 border-white/5 text-white/80")} tabIndex={0} data-nav-id={`sidebar-playlist-${idx}`}><div className="flex items-center gap-3"><div className={cn("w-7 h-7 rounded-lg flex items-center justify-center shadow-lg", selectedPlaylist === 'favorites' ? "bg-white/20" : "bg-indigo-600")}><Library className="w-3.5 h-3.5 text-white" /></div><div className="flex flex-col min-w-0"><span className="text-[11px] font-black truncate max-w-[90px] tracking-tighter">{p.name}</span><span className="text-[7px] font-black opacity-60 uppercase">{p.videos.length} تلاوة</span></div></div><button onClick={(event) => { event.stopPropagation(); removePlaylist(p.id); }} className="w-7 h-7 rounded-full bg-red-600/20 text-red-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity focusable shrink-0 ml-2"><Trash2 className="w-4 h-4" /></button></div>
@@ -473,7 +473,7 @@ export function MediaView() {
               </div>
 
               <div className="space-y-3 pt-6 border-t border-white/5" data-row-id="sidebar-subscriptions">
-                 <h4 className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] px-2">الاشتراكات السيادية</h4>
+                 <h4 className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] px-2">الاشتراكات</h4>
                  <div className="flex flex-col gap-1">
                     {favoriteChannels.map((ch, idx) => (
                       <div 
@@ -539,7 +539,7 @@ export function MediaView() {
             <section data-row-id="row-all-playlists" className="py-4">
               <div className="px-10 mb-6 flex items-center gap-4">
                 <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center shadow-glow"><Library className="w-6 h-6 text-white" /></div>
-                <h2 className="text-2xl font-black text-white uppercase tracking-widest">المجلدات والترددات المجرسة</h2>
+                <h2 className="text-2xl font-black text-white uppercase tracking-widest">مجلداتي</h2>
               </div>
               <div className={horizontalListClass}>
                 <div onClick={() => handlePlaylistEntry('favorites')} className="w-64 h-40 group relative overflow-hidden bg-zinc-900 border-2 border-amber-500/20 rounded-[2.5rem] focusable cursor-pointer shrink-0 flex flex-col justify-end p-6 shadow-2xl transition-all outline-none" tabIndex={0} data-nav-id="all-playlist-favorites">
@@ -621,7 +621,7 @@ export function MediaView() {
             <section data-row-id="row-subscriptions-mobile" className="py-2 show-subs-under-reciters">
               <div className="px-10 mb-4 flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg bg-red-600 flex items-center justify-center"><Youtube className="w-5 h-5 text-white" /></div>
-                <h2 className="text-lg font-black text-white/60">الاشتراكات السيادية</h2>
+                <h2 className="text-lg font-black text-white/60">الاشتراكات</h2>
               </div>
               <div className={cn(horizontalListClass, "gap-1 py-2")}>
                   {favoriteChannels.map((ch, idx) => (
@@ -680,7 +680,7 @@ export function MediaView() {
                        <div className="flex flex-col gap-2">
                           <div className="flex items-center gap-3">
                              <h3 className="text-4xl font-black text-white tracking-tighter">{podcastIdentity.name}</h3>
-                             <div className="px-3 py-1 bg-emerald-500 text-black text-[10px] font-black rounded-lg shadow-glow uppercase">بودكاست سيادي</div>
+                             <div className="px-3 py-1 bg-emerald-500 text-black text-[10px] font-black rounded-lg shadow-glow uppercase">بودكاست</div>
                           </div>
                           <p className="text-white/40 font-bold text-sm">تم التعرف على القناة تلقائياً.. اضغط للإضافة إلى ملف البودكاست السحابي</p>
                        </div>
@@ -713,7 +713,7 @@ export function MediaView() {
                     <div className="aspect-video relative overflow-hidden">
                       <img src={video.thumbnail} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="" />
                       <div className="absolute top-4 right-4 z-[60] opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-2">
-                        <button onClick={(event) => { event.stopPropagation(); if (!video.isPlaylist) { setActiveAudio({ id: video.id, title: video.title, thumbnail: video.thumbnail, channelTitle: video.channelTitle }); toast({ title: "الوضع الصوتي السيادي", description: `جاري تشغيل: ${video.title}` }); } }} className="w-10 h-10 rounded-full bg-primary text-white border border-primary/40 flex items-center justify-center hover:bg-primary/80 shadow-glow active:scale-90"><Music className="w-5 h-5" /></button>
+                        <button onClick={(event) => { event.stopPropagation(); if (!video.isPlaylist) { setActiveAudio({ id: video.id, title: video.title, thumbnail: video.thumbnail, channelTitle: video.channelTitle }); toast({ title: "الوضع الصوتي", description: `جاري تشغيل: ${video.title}` }); } }} className="w-10 h-10 rounded-full bg-primary text-white border border-primary/40 flex items-center justify-center hover:bg-primary/80 shadow-glow active:scale-90"><Music className="w-5 h-5" /></button>
                       </div>
                     </div>
                     <div className="p-4 space-y-2"><h3 className="text-xs font-black text-white line-clamp-2 leading-tight">{video.title}</h3></div>

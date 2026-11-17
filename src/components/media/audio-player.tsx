@@ -69,7 +69,7 @@ export function AudioPlayer() {
         <div className="flex-1 min-w-0 space-y-2">
           <div className="flex flex-col">
              <h3 className="text-xl font-black text-white truncate leading-tight drop-shadow-md">{activeAudio.title}</h3>
-             <p className="text-[10px] font-black text-primary uppercase tracking-[0.4em] mt-1">{metadata?.author_name || "Sovereign Stream"}</p>
+             <p className="text-[10px] font-black text-primary uppercase tracking-[0.4em] mt-1">{metadata?.author_name || "صوت"}</p>
           </div>
 
           <div className="flex items-center gap-4">
@@ -87,7 +87,7 @@ export function AudioPlayer() {
              {isFallback && (
                <div className="flex items-center gap-2 px-3 py-1 bg-yellow-500/20 rounded-full border border-yellow-500/30 animate-in fade-in">
                   <AlertTriangle className="w-3 h-3 text-yellow-500" />
-                  <span className="text-[8px] font-black text-yellow-500 uppercase tracking-widest">Fallback Active</span>
+                  <span className="text-[8px] font-black text-yellow-500 uppercase tracking-widest">تشغيل احتياطي</span>
                </div>
              )}
           </div>
@@ -123,7 +123,7 @@ export function AudioPlayer() {
           <div className="offscreen-hidden w-1 h-1">
             <SovereignIframe 
               src={`https://www.youtube.com/embed/${activeAudio.id}?autoplay=1&mute=0&enablejsapi=1`}
-              title="Hidden Fallback Engine"
+              title="مشغّل احتياطي"
             />
           </div>
         )}

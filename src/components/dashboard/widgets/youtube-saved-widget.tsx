@@ -60,8 +60,8 @@ export function YouTubeSavedWidget() {
             <div className="w-10 h-10 rounded-2xl bg-indigo-600 flex items-center justify-center shadow-lg">
               <Library className="h-6 w-6 text-white" />
             </div>
-            المجلدات والترددات المجرسة
-            <span className="text-[10px] text-white/20 uppercase tracking-[0.2em] font-bold ml-2">Sovereign Frequencies</span>
+            مجلداتي
+            <span className="text-[10px] text-white/20 uppercase tracking-[0.2em] font-bold ml-2">محفوظات يوتيوب</span>
           </CardTitle>
         </CardHeader>
         

@@ -113,7 +113,7 @@ const TeamSelector = ({
          />
          {search && filteredTeams.length > 0 && (
            <div className="absolute top-full left-0 right-0 z-[100] mt-2 bg-zinc-950 border border-white/10 rounded-3xl overflow-hidden shadow-[0_0_100px_rgba(0,0,0,1)] animate-in fade-in slide-in-from-top-2 p-4">
-              <h4 className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] mb-4 px-2">نتائج البحث السيادية</h4>
+              <h4 className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] mb-4 px-2">نتائج البحث</h4>
               <div className="grid grid-cols-3 gap-3">
                 {filteredTeams.map((team, idx) => (
                   <button 
@@ -340,7 +340,7 @@ export function SettingsView() {
       const updated = { teams: [...teams, { id: Date.now(), name, logo }] };
       await updateBin(JSONBIN_TEAM_LOGOS_BIN_ID, updated);
       setTeamLogos(updated.teams);
-      toast({ title: "تم الإضافة بنجاح", description: `تم حفظ ${name} في السحابة السيادية.` });
+      toast({ title: "تم الإضافة بنجاح", description: `تم حفظ ${name} في السحابة.` });
     } catch (e) {
       toast({ variant: "destructive", title: "خطأ سحابي", description: "فشل الاتصال بمركز البيانات." });
     }
@@ -420,7 +420,7 @@ export function SettingsView() {
     if (editingManuscriptId) updateManuscript(editingManuscriptId, item);
     else addManuscript(item);
     setEditingManuscriptId(null); setManuscriptInput(""); setCurrentWords([]); setManuscriptMode('write'); setSelectedWordId(null); setIsFullscreenEditor(false);
-    toast({ title: "تم حفظ المخطوطة السيادية" });
+    toast({ title: "تم حفظ المخطوطة" });
   };
 
   const generateManuscriptPng = async (words: ManuscriptWord[], fontFamily: string): Promise<string> => {
@@ -502,8 +502,8 @@ export function SettingsView() {
     <div data-nav-zone="content" className="p-12 space-y-12 max-w-7xl mx-auto pb-40 text-right dir-rtl bg-black min-h-full transition-none">
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-col gap-2">
-          <h1 className="text-6xl font-black text-white tracking-tighter flex items-center gap-6">الإعدادات السيادية <Settings className="w-12 h-12 text-primary" /></h1>
-          <p className="text-white/40 font-bold uppercase tracking-[0.6em] text-sm">Unified System Hub v3100.0</p>
+          <h1 className="text-6xl font-black text-white tracking-tighter flex items-center gap-6">الإعدادات <Settings className="w-12 h-12 text-primary" /></h1>
+          <p className="text-white/40 font-bold uppercase tracking-[0.6em] text-sm">كل إعدادات DriveCast في مكان واحد</p>
         </div>
         <div className="flex flex-wrap gap-4">
           <Button onClick={handleManualRefresh} disabled={isRefreshing} className="bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-full h-14 px-8 font-black focusable"><RefreshCw className={cn("w-5 h-5 ml-2", isRefreshing && "animate-spin")} /> تحديث محلي</Button>
@@ -612,7 +612,7 @@ export function SettingsView() {
         <TabsContent value="reminders" className="space-y-8 animate-in fade-in duration-0">
            <Card className="bg-white/5 border-white/10 p-10 rounded-[3.5rem] shadow-2xl relative">
               <div className="flex justify-between items-center mb-12">
-                 <CardTitle className="text-4xl font-black text-white flex items-center gap-6"><Bell className="w-12 h-12 text-blue-400" /> إدارة التذكيرات السيادية</CardTitle>
+                 <CardTitle className="text-4xl font-black text-white flex items-center gap-6"><Bell className="w-12 h-12 text-blue-400" /> إدارة التذكيرات</CardTitle>
                  <Button onClick={() => handleDirectFetch(JSONBIN_MASTER_BIN_ID, "التذكيرات")} variant="outline" className="w-14 h-14 rounded-full bg-white/5 border-white/10 flex items-center justify-center text-white/40 focusable shadow-glow"><CloudDownload className="w-6 h-6" /></Button>
               </div>
 
@@ -683,7 +683,7 @@ export function SettingsView() {
                             <Select value={remForm.color} onValueChange={(v) => setRemForm({...remForm, color: v})}>
                                <SelectTrigger className="h-16 bg-white/5 border-white/10 rounded-2xl text-xl font-black focusable"><SelectValue /></SelectTrigger>
                                <SelectContent className="bg-zinc-950">
-                                  <SelectItem value="text-primary">أزرق سيادي</SelectItem>
+                                  <SelectItem value="text-primary">أزرق</SelectItem>
                                   <SelectItem value="text-emerald-400">أخضر ملكي</SelectItem>
                                   <SelectItem value="text-yellow-500">ذهبي فاخر</SelectItem>
                                   <SelectItem value="text-red-500">أحمر تنبيهي</SelectItem>
@@ -778,7 +778,7 @@ export function SettingsView() {
 
                  <Button onClick={handleAddReminder} className="w-full h-20 bg-primary text-white rounded-[1.5rem] font-black text-2xl shadow-glow focusable">
                     {editingRemId ? <Edit2 className="w-8 h-8 ml-4" /> : <Plus className="w-8 h-8 ml-4" />}
-                    {editingRemId ? "تحديث التذكير السيادي" : "حفظ التذكير السيادي الجديد"}
+                    {editingRemId ? "تحديث التذكير" : "حفظ التذكير الجديد"}
                  </Button>
               </div>
 
@@ -873,12 +873,12 @@ export function SettingsView() {
         <TabsContent value="azkar" className="space-y-8 animate-in fade-in duration-0">
            <Card className="bg-white/5 border-white/10 p-10 rounded-[3.5rem] shadow-2xl relative">
               <div className="flex justify-between items-center mb-12">
-                 <CardTitle className="text-4xl font-black text-white flex items-center gap-6"><Bookmark className="w-12 h-12 text-emerald-400" /> إدارة الأذكار السيادية</CardTitle>
+                 <CardTitle className="text-4xl font-black text-white flex items-center gap-6"><Bookmark className="w-12 h-12 text-emerald-400" /> إدارة الأذكار</CardTitle>
                  <Button onClick={() => handleDirectFetch(JSONBIN_MASTER_BIN_ID, "الأذكار")} variant="outline" className="w-14 h-14 rounded-full bg-white/5 border-white/10 flex items-center justify-center text-white/40 focusable"><CloudDownload className="w-6 h-6" /></Button>
               </div>
 
               <div className="bg-black/40 p-10 rounded-[3rem] border border-white/5 flex gap-6 mb-12 shadow-2xl">
-                 <Input placeholder="أدخل نص الذكر السيادي الجديد..." value={zikrInput} onChange={(e) => setZikrInput(e.target.value)} className="h-16 bg-white/5 border-none rounded-xl text-2xl font-black text-white px-8 focusable flex-1" />
+                 <Input placeholder="أدخل نص الذكر الجديد..." value={zikrInput} onChange={(e) => setZikrInput(e.target.value)} className="h-16 bg-white/5 border-none rounded-xl text-2xl font-black text-white px-8 focusable flex-1" />
                  <Button onClick={handleAddGeneralZikr} className="h-16 px-12 bg-emerald-600 text-white text-xl font-black rounded-xl shadow-glow focusable">
                     {editingZikrId ? <Edit2 className="w-6 h-6 ml-3" /> : <Plus className="w-6 h-6 ml-3" />}
                     {editingZikrId ? "تحديث" : "إضافة"}
@@ -1009,7 +1009,7 @@ export function SettingsView() {
            <EndActionCard />
            <Card className="bg-white/5 border-white/10 p-10 rounded-[3.5rem] shadow-2xl relative">
               <div className="flex justify-between items-center mb-12">
-                 <CardTitle className="text-4xl font-black text-white flex items-center gap-6"><Library className="w-12 h-12 text-indigo-400" /> إدارة المجلدات السيادية</CardTitle>
+                 <CardTitle className="text-4xl font-black text-white flex items-center gap-6"><Library className="w-12 h-12 text-indigo-400" /> إدارة المجلدات</CardTitle>
                  <div className="flex gap-4">
                     <Button onClick={() => handleDirectFetch(JSONBIN_MASTER_BIN_ID, "المجلدات")} variant="outline" className="w-14 h-14 rounded-full bg-white/5 border-white/10 flex items-center justify-center text-white/40 focusable shadow-glow"><CloudDownload className="w-6 h-6" /></Button>
                     <Button onClick={() => setIsAddingPlaylist(true)} className="h-14 px-8 bg-indigo-600 text-white rounded-full font-black shadow-glow focusable"><Plus className="w-5 h-5 ml-2" /> إنشاء مجلد جديد</Button>
@@ -1048,7 +1048,7 @@ export function SettingsView() {
         <TabsContent value="iptv" className="space-y-8 animate-in fade-in duration-0">
            <Card className="bg-white/5 border-white/10 p-10 rounded-[3.5rem] shadow-2xl relative">
               <div className="flex justify-between items-center mb-12">
-                 <CardTitle className="text-4xl font-black text-white flex items-center gap-6"><Tv className="w-12 h-12 text-emerald-500" /> إدارة قنوات IPTV السيادية</CardTitle>
+                 <CardTitle className="text-4xl font-black text-white flex items-center gap-6"><Tv className="w-12 h-12 text-emerald-500" /> إدارة قنوات IPTV</CardTitle>
                  <div className="flex gap-4">
                     <Button onClick={() => handleDirectFetch(JSONBIN_IPTV_FAVS_BIN_ID, "القنوات")} variant="outline" className="w-14 h-14 rounded-full bg-white/5 border-white/10 flex items-center justify-center text-white/40 focusable shadow-glow"><CloudDownload className="w-6 h-6" /></Button>
                     <Button onClick={() => { setIsAddingIptv(true); setIptvEditForm({ name: "", url: "", stream_icon: "" }); }} className="h-14 px-8 bg-emerald-600 text-white rounded-full font-black shadow-glow focusable"><Plus className="w-5 h-5 ml-2" /> إضافة قناة جديدة</Button>
@@ -1144,7 +1144,7 @@ export function SettingsView() {
         <TabsContent value="buttonmap" className="space-y-8 animate-in fade-in duration-0">
            <Card className="bg-white/5 border-white/10 p-10 rounded-[3.5rem] shadow-2xl relative">
               <div className="flex justify-between items-center mb-12">
-                 <CardTitle className="text-4xl font-black text-white flex items-center gap-6"><Gamepad2 className="w-12 h-12 text-primary" /> معايرة التحكم السيادية v3100.0</CardTitle>
+                 <CardTitle className="text-4xl font-black text-white flex items-center gap-6"><Gamepad2 className="w-12 h-12 text-primary" /> معايرة أزرار التحكم</CardTitle>
                  <div className="flex gap-4">
                     <Button onClick={() => handleDirectFetch(JSONBIN_MASTER_BIN_ID, "الأزرار")} variant="outline" className="w-14 h-14 rounded-full bg-white/5 border-white/10 flex items-center justify-center text-white/40 focusable shadow-glow"><CloudDownload className="w-6 h-6" /></Button>
                     <Button onClick={async () => { setIsSyncing(true); await syncMasterBin(); setIsSyncing(false); toast({ title: "تم الحفظ سحابياً" }); }} className="w-14 h-14 rounded-full bg-primary text-white flex items-center justify-center shadow-glow focusable">{isSyncing ? <Loader2 className="w-6 h-6 animate-spin" /> : <Zap className="w-6 h-6" />}</Button>
@@ -1183,7 +1183,7 @@ export function SettingsView() {
                                          <button onClick={() => { setIsRecordingKey(false); setRecordingAction(null); }} className="w-20 h-20 rounded-full bg-red-600/20 text-red-500 border-2 border-red-500/40 flex items-center justify-center shadow-glow focusable active:scale-90 transition-all"><X className="w-10 h-10" /></button>
                                       </div>
                                       <DialogHeader className="mb-20 text-center">
-                                         <DialogTitle className="text-6xl font-black text-white tracking-widest uppercase mb-4">برمجة المفتاح السيادي</DialogTitle>
+                                         <DialogTitle className="text-6xl font-black text-white tracking-widest uppercase mb-4">برمجة المفتاح</DialogTitle>
                                          <p className="text-primary font-bold uppercase tracking-[0.5em]">الإجراء: {act} | السياق: {ctx}</p>
                                       </DialogHeader>
 

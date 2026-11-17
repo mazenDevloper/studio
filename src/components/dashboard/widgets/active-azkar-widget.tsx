@@ -60,7 +60,7 @@ export function ActiveAzkarWidget() {
     <div className="h-full w-full rounded-[2.5rem] border border-white/10 flex flex-col relative overflow-hidden group focusable outline-none bg-black p-0 m-0" tabIndex={0}>
       {mapSettings.showManuscriptBg !== false && mapSettings.manuscriptBgUrl && (
         <div className="absolute inset-0 z-0">
-          <Image src={mapSettings.manuscriptBgUrl} alt="Bg" fill className="object-cover" style={{ opacity: (mapSettings.bgOpacity ?? 80) / 100 }} unoptimized />
+          <Image src={mapSettings.manuscriptBgUrl} alt="" fill className="object-cover" style={{ opacity: (mapSettings.bgOpacity ?? 80) / 100 }} unoptimized />
         </div>
       )}
       
@@ -74,7 +74,7 @@ export function ActiveAzkarWidget() {
             )}
           </button>
         ) : (
-          <p className="text-white/20 font-black uppercase tracking-widest text-[10px]">نظام المخطوطات السيادي</p>
+          <p className="text-white/20 font-black uppercase tracking-widest text-[10px]">نظام المخطوطات</p>
         )}
       </div>
 

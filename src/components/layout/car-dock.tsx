@@ -1,7 +1,7 @@
 
 "use client";
 
-import { LayoutDashboard, Radio, Settings, ArrowLeft, Trophy, ArrowRightLeft, Tv, BookOpen, Sparkles, ChevronUp, ChevronDown, Layout, Glasses } from "lucide-react";
+import { LayoutDashboard, Radio, Settings, ArrowLeft, Trophy, ArrowRightLeft, Tv, BookOpen, Sparkles, ChevronUp, ChevronDown, Layout, Glasses, LayoutGrid } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useMediaStore, AppAction, MappingContext } from "@/lib/store";
@@ -33,7 +33,7 @@ export function ShortcutBadge({ action, className, context = 'default' }: { acti
   
   const screenMap: Record<string, MappingContext> = { 
     '/dashboard': 'dashboard', '/media': 'media', '/quran': 'quran', 
-    '/football': 'football', '/iptv': 'iptv', '/settings': 'settings' 
+    '/football': 'football', '/azkar': 'football', '/iptv': 'iptv', '/settings': 'settings' 
   };
   const pageCtx = screenMap[pathname] || 'global';
 
@@ -97,38 +97,32 @@ export function CarDock() {
     }
   }, [pathname, mounted]);
 
-  const apps = [
-    { name: "المباريات", href: "/matches", icon: Trophy, action: "goto_matches" as AppAction },
-    { name: "Media", href: "/media", icon: Radio, action: "goto_media" as AppAction },
-    { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard, action: "goto_home" as AppAction },
-    { 
-      name: "CarPanel", 
-      href: "/car-dashboard", 
-      icon: Layout, 
-      action: "goto_car_dashboard" as AppAction,
-      className: "hidden min-[501px]:max-[968px]:flex" 
-    },
-    { name: "Quran", href: "/quran", icon: BookOpen, action: "goto_quran" as AppAction },
-    { 
-      name: "الرياضة", 
-      href: "/hihi2", 
-      icon: FootballBallIcon, 
-      action: "goto_hihi2" as AppAction,
-      className: "hidden md:flex" 
-    },
-    { 
-      name: "IPTV", 
-      href: "/iptv", 
-      icon: Tv, 
-      action: "goto_iptv" as AppAction,
-      className: "hidden md:flex" 
-    },
-    { name: "Azkar", href: "/football", icon: Sparkles, action: "goto_football" as AppAction },
-    { name: "مدار", href: "/hub", icon: Glasses, action: "goto_hub" as unknown as AppAction },
-    { name: "Settings", href: "/settings", icon: Settings, action: "goto_settings" as AppAction },
+  // five sections on the bar (Apple's rule for a tab bar), the rest one press away in «المزيد»; every one keeps its remote key
+  const apps: { id: string; name: string; href: string; icon: any; action: AppAction; main?: boolean; className?: string }[] = [
+    { id: "Dashboard", name: "الرئيسية", href: "/dashboard", icon: LayoutDashboard, action: "goto_home" as AppAction, main: true },
+    { id: "Media", name: "الوسائط", href: "/media", icon: Radio, action: "goto_media" as AppAction, main: true },
+    { id: "Matches", name: "المباريات", href: "/matches", icon: Trophy, action: "goto_matches" as AppAction, main: true },
+    { id: "Quran", name: "القرآن", href: "/quran", icon: BookOpen, action: "goto_quran" as AppAction, main: true },
+    { id: "Azkar", name: "الأذكار", href: "/azkar", icon: Sparkles, action: "goto_football" as AppAction, main: true },
+    { id: "IPTV", name: "القنوات", href: "/iptv", icon: Tv, action: "goto_iptv" as AppAction },
+    { id: "Sports", name: "الرياضة", href: "/sports", icon: FootballBallIcon, action: "goto_hihi2" as AppAction },
+    { id: "CarPanel", name: "لوحة السيارة", href: "/car-dashboard", icon: Layout, action: "goto_car_dashboard" as AppAction },
+    { id: "Madar", name: "مدار", href: "/hub", icon: Glasses, action: "goto_hub" as unknown as AppAction },
+    { id: "Settings", name: "الإعدادات", href: "/settings", icon: Settings, action: "goto_settings" as AppAction },
   ];
+  const main = apps.filter(a => a.main), more = apps.filter(a => !a.main);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const inMore = more.some(a => a.href === pathname || (a.href === "/sports" && pathname === "/hihi2"));
+  useEffect(() => {
+    if (!moreOpen) return;
+    setTimeout(() => (document.querySelector('[data-nav-id="more-0"]') as HTMLElement | null)?.focus(), 30);
+    const close = (e: KeyboardEvent) => { if (["Escape", "GoBack", "BrowserBack", "Backspace"].includes(e.key)) { e.preventDefault(); e.stopPropagation(); setMoreOpen(false); (document.querySelector('[data-nav-id="dock-More"]') as HTMLElement | null)?.focus(); } };
+    window.addEventListener("keydown", close, true);
+    return () => window.removeEventListener("keydown", close, true);
+  }, [moreOpen]);
 
   const handleNavigate = (href: string) => {
+    setMoreOpen(false);
     if (pathname === href && href === '/media') resetMediaView();
     // Load whatever the target screen shows if it is still empty; pressing the icon of the screen you are on
     // forces a fresh cloud fetch. A second check a few seconds later covers a first fetch that failed.
@@ -166,16 +160,17 @@ export function CarDock() {
         dockSide === 'right' && "dock-reversed"
       )} style={{ zoom: typeof window !== "undefined" && window.innerWidth <= 968 ? 1 : (dockScale || 1.0), willChange: 'transform' }}>
         <div className="flex flex-col items-center flex-1 justify-start gap-2">
-          {apps.map((app) => {
-            const isActive = pathname === app.href;
+          {main.map((app) => {
+            const isActive = pathname === app.href || (app.href === "/azkar" && pathname === "/football");
             // keep the active glow small: a 100px drop-shadow made the fixed dock's layer ~300px bigger than the bar,
             // and on the bottom bar (<968px) every finger swipe starting in that invisible area hit the dock instead of
             // the page - the screen "would not scroll" there, on the side of the active button.
             return (
               <button 
-                key={app.name} 
+                key={app.id} 
                 onClick={() => handleNavigate(app.href)} 
-                data-nav-id={`dock-${app.name}`} 
+                data-nav-id={`dock-${app.id}`} 
+                aria-label={app.name} title={app.name}
                 className={cn(
                   "w-12 h-12 min-[980px]:w-14 min-[980px]:h-14 rounded-[1.5rem] flex items-center justify-center transition-all duration-0 relative focusable outline-none mb-3", 
                   isActive ? "bg-blue-600/10 shadow-[0_0_30px_rgba(37,99,235,0.2)] border border-blue-500/20 z-50 scale-110" : "bg-transparent",
@@ -187,6 +182,16 @@ export function CarDock() {
               </button>
             );
           })}
+          <button
+            onClick={() => setMoreOpen(v => !v)}
+            data-nav-id="dock-More" aria-label="المزيد" title="المزيد" aria-expanded={moreOpen}
+            className={cn(
+              "w-12 h-12 min-[980px]:w-14 min-[980px]:h-14 rounded-[1.5rem] flex items-center justify-center relative focusable outline-none mb-3",
+              (inMore || moreOpen) ? "bg-blue-600/10 border border-blue-500/20 scale-110 text-blue-400" : "bg-transparent text-white"
+            )}
+          >
+            <LayoutGrid className="w-6 h-6 min-[980px]:w-7 min-[980px]:h-7" />
+          </button>
           {/* the floating direction button is hidden below 968px, so the bottom bar gets its own */}
           <button
             onClick={toggleDockSide}
@@ -201,6 +206,28 @@ export function CarDock() {
           <button onClick={() => router.back()} className="w-10 h-10 min-[980px]:w-12 min-[980px]:h-12 rounded-full bg-white/5 border border-white/10 text-white focusable flex items-center justify-center relative"><ArrowLeft className="w-5 h-5 min-[980px]:w-6 min-[980px]:h-6" /></button>
         </div>
       </div>
+
+      {moreOpen && (
+        <div className="fixed inset-0 z-[10003] bg-black/50 backdrop-blur-sm flex items-center justify-center p-6" onClick={() => setMoreOpen(false)}>
+          <div dir="rtl" className="material-thick rounded-[2rem] border border-white/10 p-6 w-full max-w-xl shadow-2xl" onClick={e => e.stopPropagation()}>
+            <h2 className="text-white text-xl font-bold mb-5 px-1">المزيد</h2>
+            <div className="grid grid-cols-3 gap-3">
+              {more.map((app, i) => {
+                const isActive = pathname === app.href || (app.href === "/sports" && pathname === "/hihi2");
+                return (
+                  <button key={app.id} data-nav-id={`more-${i}`} onClick={() => handleNavigate(app.href)}
+                    className={cn("focusable outline-none rounded-2xl p-4 flex flex-col items-center gap-2 border transition-colors relative",
+                      isActive ? "bg-blue-600/15 border-blue-500/30 text-blue-300" : "bg-white/5 border-white/10 text-white hover:bg-white/10")}>
+                    <ShortcutBadge action={app.action} />
+                    <app.icon className="w-7 h-7" />
+                    <span className="text-sm font-semibold">{app.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className={cn(
         "fixed bottom-8 z-[10002] flex flex-col gap-4 items-center",

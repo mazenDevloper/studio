@@ -236,7 +236,7 @@ export function ReminderSummaryWidget() {
       {topReminders.length === 0 && (
         <div className="flex flex-col items-center justify-center opacity-20 gap-4">
            <Timer className="w-12 h-12" />
-           <span className="text-xs font-black uppercase tracking-[0.4em]">No Pending Alerts</span>
+           <span className="text-xs font-black uppercase tracking-[0.4em]">لا تنبيهات قادمة</span>
         </div>
       )}
     </div>

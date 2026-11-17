@@ -98,8 +98,8 @@ function RootLayoutWrapper({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if ('mediaSession' in navigator) {
       const metadata = new MediaMetadata({
-        title: activeVideo?.title || activeIptv?.name || activeAudio?.title || 'بث سيادي نشط',
-        artist: activeVideo?.channelTitle || activeAudio?.channelTitle || 'DriveCast Sovereign Hub',
+        title: activeVideo?.title || activeIptv?.name || activeAudio?.title || 'بث نشط',
+        artist: activeVideo?.channelTitle || activeAudio?.channelTitle || 'DriveCast',
         artwork: [{ src: activeVideo?.thumbnail || activeIptv?.stream_icon || activeAudio?.thumbnail || 'https://www.image2url.com/r2/default/images/1782382707952-d99447c6-bc60-475d-9406-5fd2ef320bd5.png', sizes: '512x512', type: 'image/jpeg' }]
       });
       navigator.mediaSession.metadata = metadata;
@@ -111,6 +111,21 @@ function RootLayoutWrapper({ children }: { children: React.ReactNode }) {
     setMounted(true);
     fetchPriorityData('all');
   }, [fetchPriorityData]);
+
+  // 🧯 a problem on this device goes to DriveCast's server on its own (/crash: one list for DriveCast, the TV and Madar;
+  // links are cut there) — at most 10 a session, the same one once
+  useEffect(() => {
+    let n = 0; const seen = new Set<string>();
+    const send = (msg: string) => {
+      if (!msg || seen.has(msg) || n++ >= 10) return; seen.add(msg);
+      const body = JSON.stringify({ app: 'drivecast', ver: process.env.NEXT_PUBLIC_BUILD_ID || '', dev: navigator.userAgent.replace(/.*\(([^)]*)\).*/, '$1').slice(0, 40), msg: msg.slice(0, 500) });
+      try { navigator.sendBeacon?.('https://studio.c-p.workers.dev/crash', body) || fetch('https://studio.c-p.workers.dev/crash', { method: 'POST', body, keepalive: true }).catch(() => {}); } catch {}
+    };
+    const onErr = (e: ErrorEvent) => send((e.message || 'error') + (e.filename ? ' @' + e.filename.split('/').pop() + ':' + e.lineno : ''));
+    const onRej = (e: PromiseRejectionEvent) => { const r: any = e.reason; const m = String(r?.message || r || ''); if (!/abort|network|fetch|load failed/i.test(m)) send('promise: ' + m); };
+    window.addEventListener('error', onErr); window.addEventListener('unhandledrejection', onRej);
+    return () => { window.removeEventListener('error', onErr); window.removeEventListener('unhandledrejection', onRej); };
+  }, []);
 
   if (!mounted) return <div className="bg-black w-full h-screen" />;
   
@@ -125,7 +140,7 @@ function RootLayoutWrapper({ children }: { children: React.ReactNode }) {
            </div>
            <div className="text-center space-y-2">
               <h1 className="text-4xl font-black text-white tracking-[0.3em] uppercase">DriveCast</h1>
-              <p className="text-primary font-black text-[10px] uppercase tracking-[0.8em] animate-pulse">Sovereign OS Active</p>
+              
            </div>
         </div>
       )}

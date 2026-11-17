@@ -246,7 +246,7 @@ export function MapWidget() {
               <button onClick={() => adjustTilt(5)} className="bg-white/20 hover:bg-white/30 px-3 py-1 rounded text-white w-10 h-10 flex items-center justify-center focusable">
                 <ChevronUp className="w-5 h-5" />
               </button>
-              <span className="text-white text-[10px] uppercase font-bold self-center w-8 text-center">Tilt</span>
+              <span className="text-white text-[10px] uppercase font-bold self-center w-8 text-center">إمالة</span>
               <button onClick={() => adjustTilt(-5)} className="bg-white/20 hover:bg-white/30 px-3 py-1 rounded text-white w-10 h-10 flex items-center justify-center focusable">
                 <ChevronDown className="w-5 h-5" />
               </button>

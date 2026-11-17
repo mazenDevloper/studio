@@ -3,9 +3,9 @@ import { MetadataRoute } from 'next'
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'DriveCast Sovereign Hub',
+    name: 'DriveCast',
     short_name: 'DriveCast',
-    description: 'Unified System Hub for Car OS - Sovereign Edition',
+    description: 'DriveCast: السيارة والجوال والوسائط',
     id: '/',
     start_url: '/',
     scope: '/',

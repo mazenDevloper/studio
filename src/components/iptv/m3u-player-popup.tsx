@@ -104,8 +104,8 @@ export function M3uPlayerPopup({ open, onOpenChange, initialUrl, onLoad }: M3uPl
           </TabsContent>
           <TabsContent value="xtream" className="flex flex-wrap gap-2">
             <Input dir="ltr" value={xt.host} onChange={e => setXt({ ...xt, host: e.target.value })} placeholder="http://host:port" className="bg-white/5 border-white/10 flex-1 min-w-[180px]" />
-            <Input dir="ltr" value={xt.username} onChange={e => setXt({ ...xt, username: e.target.value })} placeholder="username" className="bg-white/5 border-white/10 w-36" />
-            <Input dir="ltr" type="password" value={xt.password} onChange={e => setXt({ ...xt, password: e.target.value })} placeholder="password" className="bg-white/5 border-white/10 w-36" />
+            <Input dir="ltr" value={xt.username} onChange={e => setXt({ ...xt, username: e.target.value })} placeholder="اسم المستخدم" className="bg-white/5 border-white/10 w-36" />
+            <Input dir="ltr" type="password" value={xt.password} onChange={e => setXt({ ...xt, password: e.target.value })} placeholder="كلمة المرور" className="bg-white/5 border-white/10 w-36" />
             <Button onClick={() => load({ kind: "xtream", ...xt })} disabled={loading} className="bg-emerald-500 text-black hover:bg-emerald-400">
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
             </Button>
@@ -120,7 +120,7 @@ export function M3uPlayerPopup({ open, onOpenChange, initialUrl, onLoad }: M3uPl
           {MAIN_IPTV_LISTS.map(l => <button key={l.url} onClick={() => load({ kind: "url", url: l.url })} disabled={loading} className="h-9 px-3 rounded-full bg-white/10 text-white/80 text-xs font-semibold focusable" dir="ltr">{l.name}</button>)}
         </div>
         {error && <div className="flex items-center gap-2 text-sm text-red-400"><AlertTriangle className="w-4 h-4" />{error}</div>}
-        {mixedContent && <div className="text-xs text-yellow-400">البث http داخل صفحة https قد يحجبه المتصفح / http stream on an https page may be blocked.</div>}
+        {mixedContent && <div className="text-xs text-yellow-400">البث http داخل صفحة https قد يحجبه المتصفح</div>}
 
         {showPlayer && (
           <div className={cn("grid gap-3", channels.length ? "md:grid-cols-[1fr_300px]" : "grid-cols-1")}>
@@ -134,7 +134,7 @@ export function M3uPlayerPopup({ open, onOpenChange, initialUrl, onLoad }: M3uPl
               <div className="flex flex-col gap-2 min-h-0" style={{ maxHeight: 360 }}>
                 <div className="relative">
                   <Search className="w-4 h-4 absolute left-2 top-2.5 text-white/40" />
-                  <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search" className="pl-8 bg-white/5 border-white/10" />
+                  <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="ابحث" className="pl-8 bg-white/5 border-white/10" />
                 </div>
                 <select value={group} onChange={e => setGroup(e.target.value)} className="bg-white/5 border border-white/10 rounded-md h-9 px-2 text-sm">
                   {groups.map(g => <option key={g} value={g} className="bg-black">{g === "all" ? "All" : g}</option>)}
@@ -147,7 +147,7 @@ export function M3uPlayerPopup({ open, onOpenChange, initialUrl, onLoad }: M3uPl
                       <span className="truncate">{c.name}</span>
                     </button>
                   ))}
-                  {!visible.length && <p className="text-xs text-white/40 p-2">No results</p>}
+                  {!visible.length && <p className="text-xs text-white/40 p-2">ما فيه نتائج</p>}
                 </div>
                 <p className="text-[10px] text-white/30">{channels.length} channels</p>
               </div>

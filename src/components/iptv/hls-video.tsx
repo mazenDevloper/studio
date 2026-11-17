@@ -259,7 +259,7 @@ export function HlsVideo({ src, className, onError }: HlsVideoProps) {
       {status === "failed" && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/80 text-center px-6">
           <span className="text-white font-black text-sm">{FAIL_MESSAGE}</span>
-          <span className="text-white/50 text-xs">القناة غير متاحة الآن أو الرابط محجوب / channel offline or blocked</span>
+          <span className="text-white/50 text-xs">القناة غير متاحة الآن أو الرابط محجوب</span>
           <button onClick={() => { reloadsRef.current = 0; playedRef.current = false; setAttempt(n => n + 1); }} className="mt-2 h-9 px-5 rounded-full bg-white text-black text-xs font-black focusable">إعادة المحاولة</button>
         </div>
       )}

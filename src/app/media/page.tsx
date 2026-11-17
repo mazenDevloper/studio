@@ -14,7 +14,7 @@ export default function MediaPage() {
       <Suspense fallback={
         <div className="h-full w-full flex flex-col items-center justify-center bg-black gap-4">
           <Loader2 className="w-12 h-12 animate-spin text-primary" />
-          <p className="text-white/40 font-black text-xs uppercase tracking-[0.5em] animate-pulse">Synchronizing Media Radar...</p>
+          <p className="text-white/40 font-black text-xs uppercase tracking-[0.5em] animate-pulse">أجهّز الوسائط…</p>
         </div>
       }>
         <MediaView />
