@@ -157,6 +157,18 @@ export async function handle(req, env, u) {
     await env.PUSH.put('subs', JSON.stringify(subs.slice(-40)));
     return J({ ok: true, devices: subs.length });
   }
+  // 📺 DriveCast TV's own alerts (a reminded match started, a goal in it): to every phone that turned the alerts on. Short
+  // text only, one every 15 s at most
+  if (u.pathname === '/push/notify' && req.method === 'POST') {
+    const b = await req.json().catch(() => ({}));
+    const title = String(b.title || '').slice(0, 120), body = String(b.body || '').slice(0, 160);
+    if (!title) return J({ error: 'title' }, 400);
+    const last = +(await env.PUSH.get('notifyAt')) || 0;
+    if (Date.now() - last < 15e3) return J({ error: 'busy' }, 429);
+    await env.PUSH.put('notifyAt', String(Date.now()), { expirationTtl: 120 });
+    await addAlerts(env, [{ id: 'tv-' + Date.now(), at: Date.now(), kind: 'tv', title, body }]);
+    return J({ sent: await pushAll(env) });
+  }
   if (u.pathname === '/push/test' && req.method === 'POST') {
     await addAlerts(env, [{ id: 'test-' + Date.now(), at: Date.now(), title: '⚽ تجربة: هدف!', body: 'هكذا يصلك الهدف والهاتف مقفل' }]);
     return J({ sent: await pushAll(env) });
