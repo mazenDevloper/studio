@@ -14,7 +14,6 @@ import { MATCHES_PREFETCH_SCRIPT } from "@/lib/live-matches";
 import { YoutubeBackgroundBridge } from "@/components/media/youtube-background-bridge";
 import { GlobalQuranPlayer } from "@/components/quran/global-quran-player";
 import { AudioPlayer } from "@/components/media/audio-player";
-import { FirebaseClientProvider } from "@/firebase";
 import { LiveMatchIsland } from "@/components/football/live-match-island";
 import { RemotePointer } from "@/components/layout/remote-pointer";
 import { MainLayoutShell } from "@/components/layout/main-layout-shell";
@@ -186,7 +185,6 @@ export default function RootLayout({
         <Script src="/madar-bridge.js" strategy="afterInteractive" />
       </head>
       <body className="font-body antialiased bg-black text-foreground overflow-hidden h-screen w-full relative" suppressHydrationWarning>
-        <FirebaseClientProvider>
           <RootLayoutWrapper>
             <LiveMatchIsland />
             <NativeIslandBridge />
@@ -206,7 +204,6 @@ export default function RootLayout({
           <PrayerGuard />
             <Toaster />
           </RootLayoutWrapper>
-        </FirebaseClientProvider>
       </body>
     </html>
   );
